@@ -285,6 +285,82 @@ def home():
     return send_from_directory(str(FRONTEND_DIR), "index.html")
 
 
+# ── CRON externo (cron-job.org gratis) ──────────────────────────
+# Endpoints protegidos para disparar las tareas programadas desde
+# servicios externos como cron-job.org, UptimeRobot Pings, etc.
+# Configurar variable CRON_SECRET en Render con un string random.
+import os as _os_cron
+import json as _json_cron
+import subprocess as _sub_cron
+from pathlib import Path as _Path_cron
+
+CRON_SECRET = _os_cron.environ.get("CRON_SECRET", "")
+
+
+def _check_cron_auth(req) -> bool:
+    """Verifica el bearer token o query param `secret`."""
+    if not CRON_SECRET:
+        return False
+    auth = req.headers.get("Authorization", "")
+    if auth.startswith("Bearer ") and auth[7:] == CRON_SECRET:
+        return True
+    if req.args.get("secret") == CRON_SECRET:
+        return True
+    return False
+
+
+@app.route("/api/cron/<tipo>", methods=["GET", "POST"])
+def api_cron_dispatch(tipo):
+    """Despacha una tarea programada. Tipos válidos: drift, precio, semanal.
+
+    Auth: header `Authorization: Bearer <CRON_SECRET>` o ?secret=<CRON_SECRET>.
+    """
+    if not _check_cron_auth(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    tipo = (tipo or "").strip().lower()
+    if tipo not in ("drift", "precio", "semanal"):
+        return jsonify({"error": f"tipo desconocido: {tipo}",
+                        "validos": ["drift", "precio", "semanal"]}), 400
+
+    # Verificar que existe el snapshot del usuario (escrito por el frontend)
+    snap_path = _Path_cron(__file__).parent / "portafolio_snapshot.json"
+    if not snap_path.exists():
+        return jsonify({"ok": True, "skipped": True,
+                        "razon": "no hay snapshot del portafolio aún"}), 200
+
+    # Verificar que esta alerta está activada en el snapshot
+    try:
+        with open(snap_path, encoding="utf-8") as f:
+            snap = _json_cron.load(f)
+        activas = snap.get("alertas_activas") or {}
+        if not activas.get(tipo, False):
+            return jsonify({"ok": True, "skipped": True,
+                            "razon": f"alerta '{tipo}' desactivada por el usuario"}), 200
+    except Exception as e:
+        return jsonify({"error": f"no se pudo leer snapshot: {e}"}), 500
+
+    # Disparar el script CLI
+    try:
+        script = _Path_cron(__file__).parent / "enviar_alerta_programada.py"
+        result = _sub_cron.run(
+            ["python3", str(script), tipo],
+            capture_output=True, text=True, timeout=45,
+            cwd=str(_Path_cron(__file__).parent),
+        )
+        return jsonify({
+            "ok":        result.returncode == 0,
+            "tipo":      tipo,
+            "exit_code": result.returncode,
+            "stdout":    result.stdout[-1000:],  # últimas 1000 chars
+            "stderr":    result.stderr[-500:],
+        }), 200 if result.returncode == 0 else 500
+    except _sub_cron.TimeoutExpired:
+        return jsonify({"error": "timeout en script de alerta"}), 504
+    except Exception as e:
+        return jsonify({"error": f"fallo ejecutando: {e}"}), 500
+
+
 # ── PWA: service worker desde la raíz para tener scope "/" ──────
 @app.route("/sw.js")
 def pwa_service_worker():
