@@ -54,42 +54,21 @@ services:
       - key: PYTHON_ENV
         value: "production"
 
-  # ── Worker / cron jobs ────────────────────────────────
-  # Refresca universo de precios el día 1 de cada mes a las 7am MX (13:00 UTC)
-  - type: cron
-    name: refresca-universo
-    runtime: python
-    plan: free                  # $0 — los cron jobs en free son ilimitados mientras no excedas 750h/mes
-    schedule: "0 13 1 * *"
-    buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "cd backend && python3 descargar_universo.py"
-
-  # Resumen semanal: lunes 8am MX (14:00 UTC)
-  - type: cron
-    name: alerta-resumen-semanal
-    runtime: python
-    plan: free                  # $0 — los cron jobs en free son ilimitados mientras no excedas 750h/mes
-    schedule: "0 14 * * 1"
-    buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "cd backend && python3 enviar_alerta_programada.py semanal"
-
-  # Drift diario: lun-vie 9am MX (15:00 UTC)
-  - type: cron
-    name: alerta-drift
-    runtime: python
-    plan: free                  # $0 — los cron jobs en free son ilimitados mientras no excedas 750h/mes
-    schedule: "0 15 * * 1-5"
-    buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "cd backend && python3 enviar_alerta_programada.py drift"
-
-  # Movimientos de precio: lun-vie 5pm MX (23:00 UTC)
-  - type: cron
-    name: alerta-precios
-    runtime: python
-    plan: free                  # $0 — los cron jobs en free son ilimitados mientras no excedas 750h/mes
-    schedule: "0 23 * * 1-5"
-    buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "cd backend && python3 enviar_alerta_programada.py precio"
+  # ── NOTA SOBRE CRON JOBS ──────────────────────────────
+  # Render NO permite cron jobs en plan free. Los tenemos comentados aquí.
+  # Para ejecutarlos sin pagar, usar https://cron-job.org (gratis) apuntando
+  # a endpoints HTTP del web service que disparan las tareas (ver app.py
+  # rutas /api/cron/*).
+  #
+  # Cuando upgradees a plan starter ($7/mes c/u), descomenta lo de abajo.
+  #
+  # - type: cron
+  #   name: refresca-universo
+  #   runtime: python
+  #   plan: starter
+  #   schedule: "0 13 1 * *"
+  #   buildCommand: "pip install -r backend/requirements.txt"
+  #   startCommand: "cd backend && python3 descargar_universo.py"
 
 databases:
   - name: miportafolio-db
