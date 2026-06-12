@@ -7203,7 +7203,8 @@ const Analizador = (() => {
       </div>
     `;
 
-    cont.innerHTML = headerHTML + peerHTML + ddHTML + srHTML
+    // ddHTML + srHTML removidos (requieren Claude API)
+    cont.innerHTML = headerHTML + peerHTML
                    + `<div id="an-dashboard-host"><div class="bg-surface border border-surface-border rounded-2xl p-5 text-center text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando dashboard financiero…</div></div>`;
     cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
     cargarDashboardFinanciero(d.ticker);

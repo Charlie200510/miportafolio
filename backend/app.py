@@ -225,6 +225,20 @@ app = Flask(
     static_folder=str(FRONTEND_DIR),
     static_url_path="/static",
 )
+
+# ── Auto-inicializar schema Postgres al arrancar (idempotente) ──
+# En Render free no hay Shell, así que el schema lo crea el server solo.
+try:
+    import db as _db
+    if _db.DATABASE_URL.startswith(("postgres://", "postgresql://")):
+        try:
+            _db.init_schema()
+            print("✓ DB schema verificado/inicializado")
+        except Exception as _se:
+            print(f"warn: no se pudo inicializar schema DB: {_se}")
+except Exception as _de:
+    print(f"warn: módulo db no disponible: {_de}")
+
 # CORS — incluye orígenes de Capacitor iOS para que la app móvil pueda llamar al API
 CORS(app,
     origins=[
