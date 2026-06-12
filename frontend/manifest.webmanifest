@@ -1,0 +1,23 @@
+{
+  "name": "Mi Portafolio",
+  "short_name": "Mi Portafolio",
+  "description": "Análisis profesional de tu portafolio de inversión.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0b",
+  "theme_color": "#22c55e",
+  "lang": "es-MX",
+  "categories": ["finance"],
+  "icons": [
+    { "src": "/static/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Analizar acción",  "url": "/?vista=analizar",  "description": "Análisis 1-100 individual" },
+    { "name": "Periódico",        "url": "/?vista=periodico", "description": "Cierres y noticias del día" },
+    { "name": "Mi portafolio",    "url": "/?vista=portafolio","description": "Tu dashboard" }
+  ]
+}

@@ -1,0 +1,27 @@
+# Build artifacts y dependencias
+node_modules/
+www/                          # se genera desde ../frontend con `npm run sync-www`
+ios/App/build/
+ios/App/Pods/
+ios/App/Podfile.lock
+ios/App/.build/
+ios/.build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+xcuserdata/
+
+# Credenciales y firmas (NUNCA committear)
+*.p12
+*.cer
+*.mobileprovision
+*.certSigningRequest
+ios/App/App/GoogleService-Info.plist
+ios/App/App/RevenueCat.plist
+ios/App/App/PrivateConfig.plist
+
+# Capacitor caché
+.capacitor/
+ios-out/
+
+# macOS
+.DS_Store

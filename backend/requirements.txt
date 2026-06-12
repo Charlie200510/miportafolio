@@ -1,0 +1,31 @@
+# Mi Portafolio — dependencias backend (producción)
+# Pin de versiones para builds reproducibles
+
+# Core web
+Flask>=3.0,<4.0
+flask-cors>=4.0
+gunicorn>=21.2  # WSGI server para producción
+
+# Análisis cuantitativo
+numpy>=1.26,<3.0
+pandas>=2.1
+scipy>=1.11
+yfinance>=0.2.40
+
+# HTTP cliente
+requests>=2.31
+
+# Reportes PDF
+reportlab>=4.0
+
+# Postgres (production DB)
+psycopg[binary]>=3.1,<4.0
+
+# Observabilidad
+sentry-sdk[flask]>=1.40
+
+# Rate limiting
+Flask-Limiter>=3.5
+
+# Variables de entorno
+python-dotenv>=1.0

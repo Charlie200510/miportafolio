@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Crea tu cuenta — Mi Portafolio</title>
+  <link rel="icon" type="image/png" href="/static/logo.png" />
+  <link rel="apple-touch-icon" href="/static/logo.png" />
+  <link rel="manifest" href="/static/manifest.webmanifest" />
+  <meta name="theme-color" content="#040605" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Mi Portafolio" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Outfit', 'system-ui', 'sans-serif'],
+            sans:    ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            ink: { 900: '#040605', 800: '#0a0d0c', 700: '#10141a', 600: '#1a1f24' },
+            brand: {
+              300: '#6ee7b7', 400: '#34d399', 500: '#22c55e',
+              600: '#16a34a', 700: '#15803d',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      background:
+        radial-gradient(ellipse 1200px 600px at 50% -100px, rgba(34,197,94,0.20), transparent 70%),
+        radial-gradient(ellipse 600px 400px at 100% 50%, rgba(34,197,94,0.06), transparent 65%),
+        #040605;
+      color: #f4f4f5;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    .display { font-family: 'Outfit', sans-serif; }
+    .text-grad-brand {
+      background: linear-gradient(135deg, #6ee7b7 0%, #22c55e 60%, #15803d 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .btn-primary {
+      background: linear-gradient(180deg, #34d399 0%, #16a34a 100%);
+      color: #04190e;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.25),
+        0 1px 2px rgba(0,0,0,0.4),
+        0 30px 80px -20px rgba(34,197,94,0.55);
+      transition: transform .15s ease, filter .2s ease;
+    }
+    .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.005));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 40px 100px -20px rgba(34,197,94,0.18), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    .fade-up { animation: fadeUp 0.7s ease-out both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    .input-line {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.08);
+      transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .input-line:focus {
+      outline: none;
+      border-color: rgba(34,197,94,0.5);
+      box-shadow: 0 0 0 4px rgba(34,197,94,0.12);
+      background: rgba(255,255,255,0.04);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-brand-500/30 selection:text-white">
+
+  <!-- Nav minimal -->
+  <nav class="px-6 sm:px-10 py-5 border-b border-white/5">
+    <a href="/landing" class="flex items-center gap-2.5 w-fit">
+      <img src="/static/logo.png" alt="Mi Portafolio" class="w-8 h-8 object-cover" />
+      <span class="display font-semibold tracking-tight text-[16px]">Mi <span class="text-grad-brand">Portafolio</span></span>
+    </a>
+  </nav>
+
+  <main class="flex-1 flex items-center justify-center px-6 py-16">
+    <div class="w-full max-w-md fade-up">
+
+      <!-- Header -->
+      <div class="text-center mb-10">
+        <p class="text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-400 mb-4">Empieza ahora</p>
+        <h1 class="display text-4xl sm:text-5xl font-medium tracking-tight leading-[1.05]">
+          Tu cuenta <br>
+          <span class="text-grad-brand italic font-light">en 30 segundos.</span>
+        </h1>
+        <p class="mt-5 text-zinc-400 text-[15px] leading-relaxed">
+          Te mandamos un link de acceso a tu correo. Sin tarjeta, sin contraseñas que recordar.
+        </p>
+      </div>
+
+      <!-- Card -->
+      <div class="card rounded-2xl p-7">
+        <form id="signup-form" class="space-y-5">
+          <label class="block">
+            <span class="text-[12px] font-semibold tracking-wider uppercase text-zinc-500">Correo electrónico</span>
+            <input id="signup-email" type="email" required autocomplete="email"
+                   placeholder="tu@correo.com"
+                   class="input-line mt-2 w-full px-4 py-3.5 rounded-xl text-zinc-100 text-[15px] placeholder:text-zinc-600" />
+          </label>
+          <button type="submit"
+                  class="btn-primary w-full py-4 rounded-xl font-semibold text-[15px]">
+            Mandarme el link de acceso →
+          </button>
+        </form>
+
+        <div id="signup-estado" class="mt-4 text-[13px]"></div>
+
+        <!-- Divider -->
+        <div class="mt-7 pt-6 border-t border-white/5 space-y-2.5">
+          <div class="flex items-start gap-3 text-[13px] text-zinc-400">
+            <span class="text-brand-400 mt-0.5">✓</span>
+            <span>14 días de prueba completa, sin tarjeta</span>
+          </div>
+          <div class="flex items-start gap-3 text-[13px] text-zinc-400">
+            <span class="text-brand-400 mt-0.5">✓</span>
+            <span>Después <span class="text-zinc-200 font-semibold">$79 MXN/mes</span> · cancela en un click</span>
+          </div>
+          <div class="flex items-start gap-3 text-[13px] text-zinc-400">
+            <span class="text-brand-400 mt-0.5">✓</span>
+            <span>Todas las funciones desde el día 1</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="mt-6 text-center text-[12px] text-zinc-500">
+        ¿Ya tienes cuenta?
+        <a href="/static/index.html" class="text-brand-400 hover:text-brand-300 transition font-medium">Iniciar sesión</a>
+      </p>
+    </div>
+  </main>
+
+  <footer class="border-t border-white/5">
+    <div class="max-w-md mx-auto px-6 py-6 text-center text-[11px] text-zinc-600 leading-relaxed">
+      Al continuar aceptas los términos y la política de privacidad.
+      Mi Portafolio no constituye asesoría de inversión.
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('signup-email').value.trim();
+      const estado = document.getElementById('signup-estado');
+      if (!email) return;
+      estado.innerHTML = '<span class="text-zinc-400">Enviando link…</span>';
+      try {
+        const r = await fetch('/api/auth/magiclink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || 'Error al enviar.');
+        estado.innerHTML = `<span class="text-brand-400 font-semibold">✓ Listo.</span> <span class="text-zinc-400">Revisa tu correo (${email}). El link es válido por 15 minutos.</span>`;
+      } catch (err) {
+        estado.innerHTML = `<span class="text-red-400">${err.message || err}</span>`;
+      }
+    });
+  </script>
+
+</body>
+</html>

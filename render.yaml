@@ -1,0 +1,100 @@
+# ============================================================
+#  Mi Portafolio — Configuración de deploy en Render
+#  https://render.com/docs/blueprint-spec
+# ============================================================
+#  Cómo usar:
+#  1. Push este repo a GitHub
+#  2. En Render: New + → Blueprint → conecta el repo → detecta este archivo
+#  3. Define los env vars en el panel (no commitearlos aquí)
+#  4. Deploy automático en cada push a main
+# ============================================================
+
+services:
+  # ── API Flask + frontend estático ─────────────────────
+  - type: web
+    name: miportafolio-app
+    runtime: python
+    region: oregon              # o "frankfurt" si quieres latencia menor a MX
+    plan: free                  # $0 USD/mes — se duerme tras 15min sin tráfico. Cambiar a "starter" ($7) cuando empieces a cobrar.
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && gunicorn app:app --workers 2 --threads 4 --timeout 60 --bind 0.0.0.0:$PORT"
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: miportafolio-db
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false             # se llena manualmente en el dashboard
+      - key: SMTP_HOST
+        value: smtp.office365.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: MERCADOPAGO_ACCESS_TOKEN
+        sync: false
+      - key: MERCADOPAGO_PRECIO_MXN
+        value: "79.00"
+      - key: MERCADOPAGO_PLAN_NOMBRE
+        value: "Mi Portafolio Premium"
+      - key: MERCADOPAGO_BACK_URL
+        value: "https://miportafolio.app/static/index.html?paid=1"
+      - key: MERCADOPAGO_WEBHOOK_SECRET
+        sync: false
+      - key: SENTRY_DSN
+        sync: false             # opcional; activa observabilidad si lo defines
+      - key: PYTHON_ENV
+        value: "production"
+
+  # ── Worker / cron jobs ────────────────────────────────
+  # Refresca universo de precios el día 1 de cada mes a las 7am MX (13:00 UTC)
+  - type: cron
+    name: refresca-universo
+    runtime: python
+    plan: free                  # $0 — los cron jobs en free son ilimitados mientras no excedas 750h/mes
+    schedule: "0 13 1 * *"
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && python3 descargar_universo.py"
+
+  # Resumen semanal: lunes 8am MX (14:00 UTC)
+  - type: cron
+    name: alerta-resumen-semanal
+    runtime: python
+    plan: free                  # $0 — los cron jobs en free son ilimitados mientras no excedas 750h/mes
+    schedule: "0 14 * * 1"
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && python3 enviar_alerta_programada.py semanal"
+
+  # Drift diario: lun-vie 9am MX (15:00 UTC)
+  - type: cron
+    name: alerta-drift
+    runtime: python
+    plan: free                  # $0 — los cron jobs en free son ilimitados mientras no excedas 750h/mes
+    schedule: "0 15 * * 1-5"
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && python3 enviar_alerta_programada.py drift"
+
+  # Movimientos de precio: lun-vie 5pm MX (23:00 UTC)
+  - type: cron
+    name: alerta-precios
+    runtime: python
+    plan: free                  # $0 — los cron jobs en free son ilimitados mientras no excedas 750h/mes
+    schedule: "0 23 * * 1-5"
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && python3 enviar_alerta_programada.py precio"
+
+databases:
+  - name: miportafolio-db
+    plan: free                  # $0 USD/mes — válido por 90 días, después se borra. Cambiar a "starter" ($7) antes de los 90 días si quieres mantener data.
+    databaseName: miportafolio
+    user: miportafolio
+    region: oregon
+    postgresMajorVersion: 16

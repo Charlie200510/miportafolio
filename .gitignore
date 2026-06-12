@@ -1,0 +1,46 @@
+# Credenciales — NUNCA committear
+.env
+backend/.env
+*.env.local
+
+# Datos generados (regenerable con descargar_universo.py)
+backend/universo_precios.csv
+backend/universo_info.json
+backend/cache_precios/
+backend/cache_info.json
+backend/precios_acciones.csv
+backend/info_activos.json
+backend/resultados.json
+backend/insights.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# Logs y temporales
+*.log
+*.bak
+
+# Snapshots de usuario y datos generados localmente (vivirán en Postgres en producción)
+backend/portafolio_snapshot.json
+backend/_data/
+backend/_datos/
+backend/cache_precios/
+backend/sessions/
+backend/users/
+backend/.env.production
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
