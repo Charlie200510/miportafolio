@@ -6,6 +6,9 @@ backend/.env
 # Datos generados (regenerable con descargar_universo.py)
 backend/universo_precios.csv
 backend/universo_info.json
+# NOTA: las versiones _lite SÍ se commitean (son las que usa producción)
+# backend/universo_lite_precios.csv  ← se commitea
+# backend/universo_lite_info.json    ← se commitea
 backend/cache_precios/
 backend/cache_info.json
 backend/precios_acciones.csv

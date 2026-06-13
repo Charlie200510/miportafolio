@@ -22,8 +22,19 @@ from analisis import (
 )
 
 BACKEND_DIR = Path(__file__).parent
-UNIVERSO_PRECIOS = BACKEND_DIR / "universo_precios.csv"
-UNIVERSO_INFO    = BACKEND_DIR / "universo_info.json"
+UNIVERSO_PRECIOS_FULL = BACKEND_DIR / "universo_precios.csv"
+UNIVERSO_INFO_FULL    = BACKEND_DIR / "universo_info.json"
+UNIVERSO_PRECIOS_LITE = BACKEND_DIR / "universo_lite_precios.csv"
+UNIVERSO_INFO_LITE    = BACKEND_DIR / "universo_lite_info.json"
+
+# Usar versión completa si existe (dev local con 11K tickers),
+# si no, usar lite (~1000 tickers, commiteada para producción)
+if UNIVERSO_PRECIOS_FULL.exists():
+    UNIVERSO_PRECIOS = UNIVERSO_PRECIOS_FULL
+    UNIVERSO_INFO    = UNIVERSO_INFO_FULL
+else:
+    UNIVERSO_PRECIOS = UNIVERSO_PRECIOS_LITE
+    UNIVERSO_INFO    = UNIVERSO_INFO_LITE
 
 # Límites razonables en tickers que el usuario puede seleccionar
 MIN_TICKERS = 2
