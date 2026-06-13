@@ -263,29 +263,7 @@
         </p>
       </div>
 
-      <!-- Perfiles sugeridos (atajo) -->
-      <div class="mb-8 fade-up">
-        <div class="flex items-center justify-between mb-3">
-          <div>
-            <p class="text-[10px] uppercase tracking-wider text-zinc-500">
-              <span class="text-accent-purple">●</span> Perfiles sugeridos
-            </p>
-            <h3 class="text-sm font-semibold text-zinc-200 mt-0.5">Empieza con uno pre-armado</h3>
-            <p class="text-[11px] text-zinc-600 mt-0.5 leading-snug max-w-lg">Si no sabes por dónde empezar, haz clic en el perfil que más se parezca a cómo quieres invertir. Lo puedes editar después.</p>
-          </div>
-          <span class="text-[11px] text-zinc-500">Son ejemplos ilustrativos, no asesoría.</span>
-        </div>
-        <div id="perfiles-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-          <div class="col-span-full text-xs text-zinc-500 py-6 text-center">Cargando perfiles…</div>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-3 mb-5">
-        <div class="flex-1 border-t border-surface-border"></div>
-        <span class="text-[10px] uppercase tracking-wider text-zinc-600">o elige tu propia mezcla</span>
-        <div class="flex-1 border-t border-surface-border"></div>
-      </div>
-
+      <!-- Buscador + lista de tickers + selección (PRIMERO) -->
       <div class="grid lg:grid-cols-5 gap-4">
         <!-- Buscador + lista curada -->
         <div class="lg:col-span-3 bg-surface-card border border-surface-border rounded-xl p-5 fade-up fade-up-1">
@@ -351,6 +329,29 @@
             </button>
             <p id="pick-error" class="text-[11px] text-accent-red mt-2 hidden"></p>
           </div>
+        </div>
+      </div>
+
+      <!-- Divider + Perfiles sugeridos (DESPUÉS del picker) -->
+      <div class="flex items-center gap-3 mt-10 mb-5">
+        <div class="flex-1 border-t border-surface-border"></div>
+        <span class="text-[10px] uppercase tracking-wider text-zinc-600">o empieza con un perfil pre-armado</span>
+        <div class="flex-1 border-t border-surface-border"></div>
+      </div>
+
+      <div class="fade-up">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div>
+            <p class="text-[10px] uppercase tracking-wider text-zinc-500">
+              <span class="text-accent-purple">●</span> Perfiles sugeridos
+            </p>
+            <h3 class="text-sm font-semibold text-zinc-200 mt-0.5">10 mezclas pre-armadas</h3>
+            <p class="text-[11px] text-zinc-600 mt-0.5 leading-snug max-w-lg">Si prefieres arrancar rápido, clic en el perfil más parecido a cómo quieres invertir. Lo puedes editar después.</p>
+          </div>
+          <span class="text-[11px] text-zinc-500">Ilustrativos, no asesoría.</span>
+        </div>
+        <div id="perfiles-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+          <div class="col-span-full text-xs text-zinc-500 py-6 text-center">Cargando perfiles…</div>
         </div>
       </div>
     </section>
