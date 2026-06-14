@@ -7,6 +7,7 @@ guarda su portafolio) y dispara la alerta indicada por argumento:
     python3 enviar_alerta_programada.py drift
     python3 enviar_alerta_programada.py precio
     python3 enviar_alerta_programada.py semanal
+    python3 enviar_alerta_programada.py periodico    # newsletter matutino
 
 No depende de Flask — importa alertas.py directamente y manda por SMTP
 usando las credenciales de .env. Pensado para ejecutarse desde tareas
@@ -115,6 +116,23 @@ def _construir_payload(tipo: str, snap: dict) -> dict:
             "posiciones": posiciones,
             "umbral_pct": 5.0,
         }
+    if tipo == "periodico":
+        # Newsletter matutino con cierres + titulares + cierres del portafolio
+        try:
+            import periodico as _peri
+            resumen   = _peri.resumen_diario()
+            cierres   = _peri.cierres_indices()
+            tickers   = [p.get("ticker") for p in posiciones if p.get("ticker")]
+            noticias  = _peri.noticias_portafolio(tickers[:10], limite=6) if tickers else []
+        except Exception as e:
+            print(f"warn: no se pudo cargar periodico.py: {e}")
+            resumen, cierres, noticias = {}, {}, []
+        return {
+            "resumen":    resumen,
+            "cierres":    cierres,
+            "noticias":   noticias,
+            "posiciones": posiciones,
+        }
     if tipo in ("semanal", "reporte_semanal"):
         # Top/bottom performers basados en cambio_pct si hay
         ranked = sorted(
@@ -141,7 +159,7 @@ def _construir_payload(tipo: str, snap: dict) -> dict:
 
 def main():
     if len(sys.argv) < 2:
-        print("Uso: python3 enviar_alerta_programada.py <drift|precio|semanal>")
+        print("Uso: python3 enviar_alerta_programada.py <drift|precio|semanal|periodico>")
         sys.exit(1)
     tipo = sys.argv[1].strip().lower()
 

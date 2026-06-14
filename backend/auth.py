@@ -16,6 +16,7 @@ Env vars:
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import secrets
@@ -141,6 +142,7 @@ def verificar_token(token: str) -> dict[str, Any]:
     if not token:
         raise ValueError("Token vacio")
 
+    es_primera_sesion = False
     with _LOCK:
         data = _cargar()
         _limpiar_expirados(data)
@@ -161,15 +163,78 @@ def verificar_token(token: str) -> dict[str, Any]:
         }
         usuarios = data.setdefault("usuarios", {})
         if email in usuarios:
+            es_primera_sesion = usuarios[email].get("ultima_sesion") is None
             usuarios[email]["ultima_sesion"] = ahora
+            if es_primera_sesion:
+                usuarios[email]["bienvenida_enviada"] = True
         _guardar(data)
+
+    # Email de bienvenida (solo primera sesion). Fuera del lock para no
+    # bloquear otras requests si el envio tarda.
+    if es_primera_sesion:
+        try:
+            asunto = "Bienvenido a Mi Portafolio"
+            cuerpo = _html_bienvenida(email)
+            _alertas.enviar_correo(email, asunto, cuerpo)
+        except Exception as exc:
+            print(f"[auth] no se pudo enviar email de bienvenida a {email}: {exc}")
 
     return {
         "ok": True,
         "session_id": session_id,
         "email": email,
         "expira_en": ahora + _SESSION_TTL,
+        "primera_sesion": es_primera_sesion,
     }
+
+
+def _html_bienvenida(email: str) -> str:
+    """Email de bienvenida — onboarding rápido con los 3 primeros pasos."""
+    nombre = (email or "").split("@")[0]
+    return f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#fafafa;color:#18181b;">
+<div style="max-width:600px;margin:20px auto;background:#fff;border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;padding:32px 28px;">
+    <p style="margin:0;font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:0.8;">Mi Portafolio</p>
+    <h1 style="margin:6px 0 0 0;font-size:26px;font-weight:700;">Bienvenido, {html.escape(nombre)}</h1>
+    <p style="margin:8px 0 0 0;opacity:0.9;font-size:14px;">Tu análisis financiero profesional empieza ahora.</p>
+  </div>
+  <div style="padding:28px 24px;">
+    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;">
+      Gracias por unirte. Mi Portafolio te da las mismas herramientas que usan los
+      analistas profesionales — Markowitz, Sharpe, backtesting y stress tests — adaptadas
+      al inversionista mexicano (BMV, SIC, ISR del 10%).
+    </p>
+    <h3 style="margin:24px 0 12px;font-size:14px;color:#16a34a;text-transform:uppercase;letter-spacing:1px;">Primeros pasos (5 min)</h3>
+    <div style="background:#fafafa;border:1px solid #e4e4e7;border-radius:8px;padding:18px;margin-bottom:18px;">
+      <p style="margin:0 0 12px;font-weight:600;">1 · Define tu portafolio</p>
+      <p style="margin:0 0 4px;font-size:13px;color:#52525b;line-height:1.5;">
+        Ve a Mi Portafolio y pega 3-10 tickers. AAPL, NVDA, WALMEX.MX, GFNORTEO.MX, BTC-USD funcionan.
+      </p>
+    </div>
+    <div style="background:#fafafa;border:1px solid #e4e4e7;border-radius:8px;padding:18px;margin-bottom:18px;">
+      <p style="margin:0 0 12px;font-weight:600;">2 · Activa las alertas automáticas</p>
+      <p style="margin:0 0 4px;font-size:13px;color:#52525b;line-height:1.5;">
+        En la pestaña Alertas, marca las 3 opciones (drift, precio, semanal) para recibir
+        avisos importantes sobre tus inversiones sin tener que entrar a la app.
+      </p>
+    </div>
+    <div style="background:#fafafa;border:1px solid #e4e4e7;border-radius:8px;padding:18px;margin-bottom:18px;">
+      <p style="margin:0 0 12px;font-weight:600;">3 · Explora los perfiles pre-armados</p>
+      <p style="margin:0 0 4px;font-size:13px;color:#52525b;line-height:1.5;">
+        Si quieres una mezcla óptima sin pensar mucho, abajo de la página principal hay 10
+        portafolios pre-armados — desde conservador hasta agresivo.
+      </p>
+    </div>
+    <div style="text-align:center;margin:28px 0 8px;">
+      <a href="https://miportafolio.uk" style="display:inline-block;background:#22c55e;color:#0a0a0b;text-decoration:none;font-weight:700;padding:14px 32px;border-radius:10px;font-size:15px;">Abrir Mi Portafolio →</a>
+    </div>
+  </div>
+  <div style="padding:16px 24px;background:#fafafa;border-top:1px solid #e4e4e7;font-size:11px;color:#71717a;line-height:1.5;">
+    Si tienes dudas, responde a este email — leemos todas.<br>
+    NO somos asesor financiero registrado ante CNBV. Esta herramienta es educativa.
+  </div>
+</div></body></html>"""
 
 
 def obtener_sesion(session_id: Optional[str]) -> Optional[dict[str, Any]]:

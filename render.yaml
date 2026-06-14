@@ -17,7 +17,7 @@ services:
     region: oregon              # o "frankfurt" si quieres latencia menor a MX
     plan: free                  # $0 USD/mes — se duerme tras 15min sin tráfico. Cambiar a "starter" ($7) cuando empieces a cobrar.
     buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "cd backend && gunicorn app:app --workers 2 --threads 4 --timeout 60 --bind 0.0.0.0:$PORT"
+    startCommand: "cd backend && gunicorn app:app --workers 1 --threads 2 --timeout 90 --preload --max-requests 200 --max-requests-jitter 50 --bind 0.0.0.0:$PORT"
     healthCheckPath: /
     autoDeploy: true
     envVars:
@@ -29,6 +29,12 @@ services:
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false             # se llena manualmente en el dashboard
+      # Resend (preferido): si está configurado se usa Resend, sino fallback a SMTP
+      - key: RESEND_API_KEY
+        sync: false             # se llena manualmente desde resend.com → API Keys
+      - key: RESEND_FROM
+        value: "Mi Portafolio <onboarding@resend.dev>"
+      # SMTP fallback (Outlook/Gmail/etc.)
       - key: SMTP_HOST
         value: smtp.office365.com
       - key: SMTP_PORT
@@ -39,6 +45,8 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      - key: CRON_SECRET
+        sync: false             # secret para autenticar /api/cron/<tipo>
       - key: MERCADOPAGO_ACCESS_TOKEN
         sync: false
       - key: MERCADOPAGO_PRECIO_MXN

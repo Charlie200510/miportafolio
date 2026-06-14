@@ -849,9 +849,37 @@
           `;
         }).join('')}
       </div>
-      <p class="text-[10px] text-zinc-600 mt-3 italic text-center">Recordatorios genéricos. No constituyen asesoría fiscal. Consulta a tu contador.</p>
+      <div class="mt-4 pt-4 border-t border-surface-border flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
+        <p class="text-[10px] text-zinc-600 italic flex-1">Recordatorios genéricos. No constituyen asesoría fiscal.</p>
+        <button id="mp-fiscal-export-ics" class="text-[11px] px-3 py-2 rounded border border-accent-indigo/30 text-accent-indigo hover:bg-accent-indigo/10 transition font-medium whitespace-nowrap" title="Descarga las fechas SAT + earnings de tus tickers como archivo .ics para Google Calendar / Apple Calendar / Outlook">
+          ↓ Descargar a tu calendario (.ics)
+        </button>
+      </div>
     `;
     host.appendChild(widget);
+    document.getElementById('mp-fiscal-export-ics')?.addEventListener('click', () => {
+      try {
+        let tickers = [];
+        try { tickers = JSON.parse(localStorage.getItem('miPortafolio.tickers.v1') || '[]'); } catch {}
+        const params = new URLSearchParams({
+          tickers:    (tickers || []).join(','),
+          earnings:   '1',
+          dividendos: '1',
+          fiscal:     '1',
+        });
+        const url = `/api/calendario/ics?${params.toString()}`;
+        // Forzar download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'mi-portafolio.ics';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.toast && window.toast('Calendario descargado. Ábrelo para importar a Google/Apple Calendar.', 'success', 5000);
+      } catch (e) {
+        window.toast && window.toast('Error generando calendario: ' + e.message, 'error');
+      }
+    });
   }
   // Watch for vista-transacciones becoming visible
   const _fiscalObserver = new MutationObserver(() => {

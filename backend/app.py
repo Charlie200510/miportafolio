@@ -260,6 +260,29 @@ CORS(app,
 
 
 # ------------------------------------------------------------
+# Memoria: gc.collect() después de requests pesadas (free tier 512 MB)
+# Las rutas que cargan pandas DataFrames grandes generan basura que no
+# se libera por default. Forzar GC reduce los OOM kills de Render.
+# ------------------------------------------------------------
+import gc as _gc
+_PESADAS = ("/api/analizar", "/api/backtest", "/api/stress-test",
+            "/api/perfiles", "/api/universo", "/api/explorar",
+            "/api/rebalanceo", "/api/dividendos", "/api/fundamentals",
+            "/api/dashboard", "/api/reporte/pdf", "/api/alertas/enviar",
+            "/api/cron/")
+
+@app.after_request
+def _gc_after_heavy(response):
+    try:
+        path = request.path or ""
+        if any(path.startswith(p) for p in _PESADAS):
+            _gc.collect()
+    except Exception:
+        pass
+    return response
+
+
+# ------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------
 def _leer_json(ruta: Path):
@@ -319,9 +342,9 @@ def api_cron_dispatch(tipo):
         return jsonify({"error": "unauthorized"}), 401
 
     tipo = (tipo or "").strip().lower()
-    if tipo not in ("drift", "precio", "semanal"):
+    if tipo not in ("drift", "precio", "semanal", "periodico"):
         return jsonify({"error": f"tipo desconocido: {tipo}",
-                        "validos": ["drift", "precio", "semanal"]}), 400
+                        "validos": ["drift", "precio", "semanal", "periodico"]}), 400
 
     # Verificar que existe el snapshot del usuario (escrito por el frontend)
     snap_path = _Path_cron(__file__).parent / "portafolio_snapshot.json"
@@ -1444,6 +1467,46 @@ def api_portafolio_snapshot():
         return jsonify({"ok": True, "actualizado": snap["actualizado"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/calendario/ics", methods=["GET", "POST"])
+def api_calendario_ics():
+    """Genera un .ics descargable con earnings, dividendos y fechas fiscales MX.
+
+    GET  /api/calendario/ics?tickers=AAPL,MSFT&fiscal=1&earnings=1&dividendos=1
+    POST {"tickers": ["AAPL","MSFT"], "fiscal": true, ...}
+
+    Respuesta: archivo .ics (text/calendar) que el usuario importa a Google
+    Calendar, Apple Calendar, Outlook, etc.
+    """
+    try:
+        import calendario as _cal
+        if request.method == "POST":
+            body = request.get_json(silent=True) or {}
+            tickers = body.get("tickers") or []
+            incl_earn = bool(body.get("earnings", True))
+            incl_div  = bool(body.get("dividendos", True))
+            incl_fisc = bool(body.get("fiscal", True))
+        else:
+            raw_tickers = (request.args.get("tickers") or "").strip()
+            tickers = [t.strip() for t in raw_tickers.split(",") if t.strip()]
+            incl_earn = request.args.get("earnings", "1") != "0"
+            incl_div  = request.args.get("dividendos", "1") != "0"
+            incl_fisc = request.args.get("fiscal", "1") != "0"
+
+        ics = _cal.generar_ics(
+            tickers=tickers,
+            incluir_earnings=incl_earn,
+            incluir_dividendos=incl_div,
+            incluir_fiscal_mx=incl_fisc,
+        )
+        return Response(
+            ics,
+            mimetype="text/calendar; charset=utf-8",
+            headers={"Content-Disposition": "attachment; filename=mi-portafolio.ics"},
+        )
+    except Exception as e:
+        return jsonify({"error": f"fallo generando .ics: {e}"}), 500
 
 
 @app.route("/api/alertas/enviar", methods=["POST"])

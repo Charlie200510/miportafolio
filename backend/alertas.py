@@ -351,6 +351,94 @@ def render_reporte_semanal(
     return subject, _html_base("Resumen semanal", cuerpo)
 
 
+def render_periodico_diario(
+    nombre: str,
+    resumen: Dict[str, Any],
+    cierres: Dict[str, Any],
+    noticias: List[Dict[str, Any]],
+    posiciones: List[Dict[str, Any]],
+) -> Tuple[str, str]:
+    """Newsletter matutino con cierres, titulares y noticias de tus tickers."""
+    fecha_hoy = datetime.now().strftime("%A %d de %B").capitalize()
+    clase = resumen.get("clasificacion") or {}
+    emoji = "📈" if clase.get("tipo") == "positivo" else ("📉" if clase.get("tipo") == "negativo" else "📊")
+    etiqueta_dia = clase.get("etiqueta") or "Mercados mixtos"
+    subject = f"{emoji} Mi Portafolio · {etiqueta_dia} · {fecha_hoy.split(',')[0] if ',' in fecha_hoy else fecha_hoy}"
+
+    # Bloque de cierres de índices
+    indices = (cierres.get("indices") or [])[:5]
+    filas_indices = ""
+    for idx in indices:
+        cambio = idx.get("cambio_pct")
+        if not isinstance(cambio, (int, float)):
+            continue
+        color = "#16a34a" if cambio >= 0 else "#dc2626"
+        signo = "+" if cambio >= 0 else ""
+        precio = idx.get("precio_actual")
+        precio_str = f"${precio:,.2f}" if isinstance(precio, (int, float)) else "—"
+        filas_indices += f"""
+        <tr>
+          <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-weight:600;font-size:13px;">{html.escape(idx.get('nombre') or '—')}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-size:12px;color:#71717a;">{precio_str}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;color:{color};font-weight:700;font-size:13px;">{signo}{cambio:.2f}%</td>
+        </tr>"""
+
+    # Bloque de titulares (top 3 del mercado general)
+    titulares = resumen.get("titulares") or []
+    items_titulares = ""
+    for t in titulares[:3]:
+        titulo = (t.get("titulo") or "").strip()
+        proveedor = t.get("proveedor") or ""
+        url = t.get("url") or "#"
+        items_titulares += f"""
+        <div style="padding:12px 0;border-bottom:1px solid #f0f0f0;">
+          <a href="{html.escape(url)}" style="color:#18181b;text-decoration:none;font-weight:600;font-size:14px;line-height:1.4;">{html.escape(titulo)}</a>
+          <p style="margin:4px 0 0;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.05em;">{html.escape(proveedor)}</p>
+        </div>"""
+
+    # Bloque de noticias del portafolio (si hay)
+    bloque_portafolio = ""
+    if noticias:
+        items_port = ""
+        for n in noticias[:5]:
+            titulo = (n.get("titulo") or "").strip()
+            ticker = n.get("ticker") or ""
+            url = n.get("url") or "#"
+            items_port += f"""
+            <div style="padding:10px 0;border-bottom:1px solid #f5f5f5;">
+              <p style="margin:0 0 3px;font-size:10px;color:#16a34a;font-weight:700;letter-spacing:0.08em;">{html.escape(ticker)}</p>
+              <a href="{html.escape(url)}" style="color:#18181b;text-decoration:none;font-weight:600;font-size:13px;line-height:1.4;">{html.escape(titulo)}</a>
+            </div>"""
+        bloque_portafolio = f"""
+        <h3 style="margin:24px 0 8px;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;">Tus tickers</h3>
+        <div>{items_port}</div>"""
+
+    cuerpo = f"""
+    <p style="margin:0 0 4px;font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">{html.escape(fecha_hoy)}</p>
+    <p style="margin:0 0 18px;font-size:15px;line-height:1.55;color:#18181b;">Hola {html.escape(nombre)}, aquí está el resumen del día:</p>
+
+    <div style="background:linear-gradient(135deg,#fafafa,#f4f4f5);border:1px solid #e4e4e7;border-radius:10px;padding:16px;margin-bottom:24px;">
+      <p style="margin:0;font-size:14px;line-height:1.55;color:#27272a;">{html.escape(resumen.get('resumen_mercado') or 'No hay datos de cierre disponibles.')}</p>
+    </div>
+
+    <h3 style="margin:0 0 8px;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;">Cierres de hoy</h3>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+      <tbody>{filas_indices or '<tr><td style="padding:12px;color:#71717a;font-size:12px;">Datos no disponibles ahora.</td></tr>'}</tbody>
+    </table>
+
+    <h3 style="margin:0 0 4px;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;">Titulares del día</h3>
+    <div>{items_titulares or '<p style="padding:12px;color:#71717a;font-size:12px;">Sin titulares disponibles.</p>'}</div>
+
+    {bloque_portafolio}
+
+    <p style="margin:24px 0 0;font-size:12px;color:#52525b;line-height:1.55;">
+      Datos de Yahoo Finance. Esto es información agregada, NO asesoría de inversión.
+      Para ver tu portafolio completo, <a href="https://miportafolio.uk" style="color:#16a34a;font-weight:600;">abre la app</a>.
+    </p>"""
+
+    return subject, _html_base(f"Periódico · {fecha_hoy.split(',')[0] if ',' in fecha_hoy else fecha_hoy}", cuerpo)
+
+
 # ---- Envío vía Resend (recomendado) ----------------------------------------
 
 def _enviar_resend(destinatario: str, subject: str, html_body: str, reply_to: Optional[str] = None) -> Dict[str, Any]:
@@ -462,6 +550,14 @@ def enviar_alerta(
             metricas=payload.get("metricas") or {},
             top_performers=payload.get("top"),
             bottom_performers=payload.get("bottom"),
+        )
+    elif tipo == "periodico":
+        subject, html_body = render_periodico_diario(
+            nombre=nombre,
+            resumen=payload.get("resumen") or {},
+            cierres=payload.get("cierres") or {},
+            noticias=payload.get("noticias") or [],
+            posiciones=payload.get("posiciones") or [],
         )
     else:
         raise ValueError(f"Tipo de alerta desconocido: {tipo!r}")
