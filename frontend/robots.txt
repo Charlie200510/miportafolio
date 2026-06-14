@@ -1,0 +1,17 @@
+# robots.txt — Mi Portafolio
+# https://miportafolio.uk
+
+User-agent: *
+Allow: /
+Allow: /landing
+Allow: /signup
+Allow: /terminos
+Allow: /privacidad
+Allow: /static/
+
+# No indexar endpoints API ni snapshots privados
+Disallow: /api/
+Disallow: /static/portafolio_snapshot.json
+
+# Sitemap
+Sitemap: https://miportafolio.uk/sitemap.xml

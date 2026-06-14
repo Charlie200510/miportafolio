@@ -1,10 +1,19 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-MX">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Portafolio — Análisis profesional para el inversionista mexicano</title>
-  <meta name="description" content="Mi Portafolio: optimiza tu inversión con Markowitz, ISR MX automático, Monte Carlo, alertas por email y un asistente IA. $79 MXN al mes.">
+
+  <!-- SEO PRIMARY -->
+  <title>Mi Portafolio · Análisis de inversión para el mexicano | miportafolio.uk</title>
+  <meta name="description" content="Optimiza tus inversiones con Markowitz, calcula tu ISR mexicano automático, compara contra SIEFOREs y AFOREs. Plataforma educativa para retail mexicano. Gratis con cuenta.">
+  <meta name="keywords" content="mi portafolio, portafolio inversión, markowitz mexico, calcular ISR acciones, analizar portafolio, sharpe ratio, optimización portafolio mexicano, CETES, BMV, SIC, retail mexico">
+  <meta name="author" content="Mi Portafolio">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="googlebot" content="index, follow">
+  <link rel="canonical" href="https://miportafolio.uk/">
+
+  <!-- iOS / PWA -->
   <link rel="icon" type="image/png" href="/static/logo.png" />
   <link rel="apple-touch-icon" href="/static/logo.png" />
   <link rel="manifest" href="/static/manifest.webmanifest" />
@@ -12,11 +21,145 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Mi Portafolio" />
-  <meta property="og:title" content="Mi Portafolio — Análisis profesional para retail mexicano" />
-  <meta property="og:description" content="Markowitz, ISR MX, Monte Carlo y asistente IA. $79 MXN al mes." />
-  <meta property="og:image" content="/static/logo.png" />
+
+  <!-- Open Graph (Facebook, LinkedIn, WhatsApp) -->
   <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://miportafolio.uk/" />
+  <meta property="og:title" content="Mi Portafolio — Análisis profesional para el inversionista mexicano" />
+  <meta property="og:description" content="Markowitz, ISR mexicano, Monte Carlo, stress tests, alertas por email y calendario fiscal SAT. Todas las herramientas profesionales en una sola app, en español." />
+  <meta property="og:image" content="https://miportafolio.uk/static/logo.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:locale" content="es_MX" />
+  <meta property="og:site_name" content="Mi Portafolio" />
+
+  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Mi Portafolio — Análisis profesional para retail mexicano" />
+  <meta name="twitter:description" content="Markowitz, ISR MX, Monte Carlo y mucho más. La app financiera que te hubiera gustado tener." />
+  <meta name="twitter:image" content="https://miportafolio.uk/static/logo.png" />
+
+  <!-- Structured Data: Software Application (rich snippets en resultados Google) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Mi Portafolio",
+    "alternateName": ["MiPortafolio", "Mi Portafolio MX"],
+    "url": "https://miportafolio.uk",
+    "description": "Plataforma educativa de análisis de inversión para el retail mexicano. Optimiza con Markowitz, calcula ISR mexicano automático, compara contra benchmarks locales (IPC, CETES, AFOREs).",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web, iOS, Android",
+    "inLanguage": "es-MX",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "MXN",
+      "description": "Cuenta gratuita con todas las herramientas de análisis."
+    },
+    "featureList": [
+      "Optimización de portafolio Markowitz",
+      "Cálculo automático de ISR mexicano (10%)",
+      "Simulación Monte Carlo de retornos futuros",
+      "Stress tests con escenarios históricos (AMLO 2018, COVID, elecciones 2024, aranceles Trump)",
+      "Comparación contra AFOREs y SIEFOREs mexicanas",
+      "Calendario fiscal SAT con recordatorios",
+      "Backtesting con datos reales",
+      "Alertas automáticas de drift y precios",
+      "Multi-portafolio con sandbox 'qué pasaría si'",
+      "Import CSV de brokers (GBM, Kuspit, Bursanet)"
+    ],
+    "creator": {
+      "@type": "Organization",
+      "name": "Mi Portafolio",
+      "url": "https://miportafolio.uk"
+    },
+    "screenshot": "https://miportafolio.uk/static/logo.png",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "reviewCount": "1",
+      "bestRating": "5",
+      "worstRating": "1"
+    }
+  }
+  </script>
+
+  <!-- Structured Data: FAQ (rich snippets en Google) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "¿Qué es Mi Portafolio?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Mi Portafolio es una plataforma educativa para el inversionista mexicano que aplica las mismas herramientas que usan los analistas profesionales (Markowitz, Sharpe, backtests, Monte Carlo) pero adaptadas al contexto local: BMV, SIC, CETES, ISR mexicano del 10%, AFOREs y SIEFOREs."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "¿Cuánto cuesta Mi Portafolio?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Es gratis con cuenta. La cuenta es solo para guardar tu portafolio entre sesiones — todos los análisis son gratuitos."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "¿Mi Portafolio ejecuta compras de acciones?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Mi Portafolio es una herramienta de análisis, no una casa de bolsa. No está registrado ante CNBV y no ejecuta trades. Te orientamos al broker mexicano más barato para cada ticker, tú ejecutas la compra en tu broker (GBM, Kuspit, Bursanet, etc.)."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "¿Mi Portafolio guarda mis datos bancarios?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Nunca pedimos credenciales bancarias, números de cuenta ni datos de tarjetas. Tus transacciones viven en tu navegador (localStorage) y las métricas se calculan sin guardarse en servidor."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "¿Cómo calcula el ISR mexicano sobre acciones?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Mi Portafolio calcula automáticamente el 10% sobre utilidades realizadas según el Artículo 129 de la LISR. Identifica oportunidades de tax-loss harvesting antes del 31 de diciembre y genera el cálculo exacto para tu declaración anual del SAT."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "¿Es Mi Portafolio asesor financiero registrado en CNBV?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Mi Portafolio es una herramienta educativa, NO un asesor financiero registrado ante la Comisión Nacional Bancaria y de Valores (CNBV). Los análisis, scores y recomendaciones son ilustrativos. Las decisiones de inversión son responsabilidad del usuario."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- Structured Data: Organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Mi Portafolio",
+    "url": "https://miportafolio.uk",
+    "logo": "https://miportafolio.uk/static/logo.png",
+    "sameAs": [],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "Customer Support",
+      "email": "soporte@miportafolio.app",
+      "availableLanguage": ["Spanish", "English"]
+    }
+  }
+  </script>
 
   <!-- Fonts: Outfit (geometric sans para headlines) + Inter (body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">

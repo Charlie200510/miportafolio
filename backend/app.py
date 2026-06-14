@@ -398,6 +398,17 @@ def pwa_manifest():
     return send_from_directory(str(FRONTEND_DIR), "manifest.webmanifest")
 
 
+# ── SEO: robots.txt y sitemap.xml en raíz ────────────────────────
+@app.route("/robots.txt")
+def seo_robots():
+    return send_from_directory(str(FRONTEND_DIR), "robots.txt", mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def seo_sitemap():
+    return send_from_directory(str(FRONTEND_DIR), "sitemap.xml", mimetype="application/xml")
+
+
 # ── Páginas legales ─────────────────────────────────────────────
 @app.route("/terminos")
 def pagina_terminos():
