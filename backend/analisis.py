@@ -304,18 +304,83 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
     # ============================================================
     # 8. CONCENTRACIÓN (sector / país / moneda)
     # ============================================================
-    # Para cada activo multiplicamos su PESO en el portafolio por la
-    # categoría a la que pertenece. Después sumamos por categoría.
-    # Ejemplo: si AAPL (sector=Technology, peso=0.5) y AMZN (sector=
-    # Consumer Cyclical, peso=0.5), la concentración por sector es:
-    #   Technology: 0.5,  Consumer Cyclical: 0.5
+    # Mapeo de ETFs conocidos (para no caer en "Desconocido")
+    _ETF_MAP = {
+        'SPY': {'sector':'ETF Mercado amplio (USA)','pais':'Estados Unidos','moneda':'USD'},
+        'VOO': {'sector':'ETF Mercado amplio (USA)','pais':'Estados Unidos','moneda':'USD'},
+        'IVV': {'sector':'ETF Mercado amplio (USA)','pais':'Estados Unidos','moneda':'USD'},
+        'VTI': {'sector':'ETF Mercado amplio (USA)','pais':'Estados Unidos','moneda':'USD'},
+        'QQQ': {'sector':'ETF Tecnología',           'pais':'Estados Unidos','moneda':'USD'},
+        'XLK': {'sector':'ETF Tecnología',           'pais':'Estados Unidos','moneda':'USD'},
+        'SMH': {'sector':'ETF Semiconductores',      'pais':'Estados Unidos','moneda':'USD'},
+        'VXUS':{'sector':'ETF Mercado internacional','pais':'Global',        'moneda':'USD'},
+        'VEA': {'sector':'ETF Mercados desarrollados','pais':'Global',       'moneda':'USD'},
+        'VWO': {'sector':'ETF Mercados emergentes',  'pais':'Global',        'moneda':'USD'},
+        'EWZ': {'sector':'ETF Brasil',               'pais':'Brasil',        'moneda':'USD'},
+        'EWW': {'sector':'ETF México',               'pais':'México',        'moneda':'USD'},
+        'EWJ': {'sector':'ETF Japón',                'pais':'Japón',         'moneda':'USD'},
+        'EWY': {'sector':'ETF Corea del Sur',        'pais':'Corea del Sur', 'moneda':'USD'},
+        'EWU': {'sector':'ETF Reino Unido',          'pais':'Reino Unido',   'moneda':'USD'},
+        'EWQ': {'sector':'ETF Francia',              'pais':'Francia',       'moneda':'USD'},
+        'EWP': {'sector':'ETF España',               'pais':'España',        'moneda':'USD'},
+        'EWT': {'sector':'ETF Taiwán',               'pais':'Taiwán',        'moneda':'USD'},
+        'FXI': {'sector':'ETF China',                'pais':'China',         'moneda':'USD'},
+        'XLF': {'sector':'ETF Financiero',           'pais':'Estados Unidos','moneda':'USD'},
+        'XLE': {'sector':'ETF Energía',              'pais':'Estados Unidos','moneda':'USD'},
+        'XLV': {'sector':'ETF Salud',                'pais':'Estados Unidos','moneda':'USD'},
+        'XLY': {'sector':'ETF Consumo discrecional', 'pais':'Estados Unidos','moneda':'USD'},
+        'XLP': {'sector':'ETF Consumo básico',       'pais':'Estados Unidos','moneda':'USD'},
+        'XLI': {'sector':'ETF Industrial',           'pais':'Estados Unidos','moneda':'USD'},
+        'XLU': {'sector':'ETF Servicios públicos',   'pais':'Estados Unidos','moneda':'USD'},
+        'XLB': {'sector':'ETF Materiales',           'pais':'Estados Unidos','moneda':'USD'},
+        'XLRE':{'sector':'ETF Bienes raíces',        'pais':'Estados Unidos','moneda':'USD'},
+        'TLT': {'sector':'ETF Bonos largo plazo',    'pais':'Estados Unidos','moneda':'USD'},
+        'BND': {'sector':'ETF Bonos agregado',       'pais':'Estados Unidos','moneda':'USD'},
+        'AGG': {'sector':'ETF Bonos agregado',       'pais':'Estados Unidos','moneda':'USD'},
+        'HYG': {'sector':'ETF Bonos high yield',     'pais':'Estados Unidos','moneda':'USD'},
+        'GLD': {'sector':'ETF Oro',                  'pais':'Global',        'moneda':'USD'},
+        'SLV': {'sector':'ETF Plata',                'pais':'Global',        'moneda':'USD'},
+        'GDX': {'sector':'ETF Mineras de oro',       'pais':'Global',        'moneda':'USD'},
+        'GDXJ':{'sector':'ETF Mineras junior',       'pais':'Global',        'moneda':'USD'},
+        'USO': {'sector':'ETF Petróleo',             'pais':'Global',        'moneda':'USD'},
+        'FBTC':{'sector':'ETF Bitcoin spot',         'pais':'Global',        'moneda':'USD'},
+        'GBTC':{'sector':'ETF Bitcoin spot',         'pais':'Global',        'moneda':'USD'},
+        'IBIT':{'sector':'ETF Bitcoin spot',         'pais':'Global',        'moneda':'USD'},
+        'NAFTRAC.MX': {'sector':'ETF Mercado amplio (México)','pais':'México','moneda':'MXN'},
+    }
+    _ETF_KEYWORDS = ('etf', 'trust', 'fund', 'ishares', 'vanguard', 'spdr')
+
+    def _inferir(ticker, meta, campo):
+        """Devuelve sector/pais/moneda con fallbacks heurísticos:
+        1) metadata real si no es 'Desconocido'
+        2) ETFs conocidos (mapeo manual)
+        3) -USD/-USDT → Criptomonedas
+        4) .MX → BMV / México / MXN
+        5) ETFs por nombre (iShares, Vanguard, etc.) → ETF / Fondo
+        6) default: USA / USD (NYSE/Nasdaq sin sufijo)
+        """
+        valor = meta.get(campo) if meta else None
+        if valor and valor not in ("Desconocido", "", None, "ETF / Índice"):
+            return valor
+        t = (ticker or "").upper()
+        if t in _ETF_MAP:
+            return _ETF_MAP[t][campo]
+        if t.endswith("-USD") or t.endswith("-USDT"):
+            return {"sector": "Criptomonedas", "pais": "Global", "moneda": "USD"}[campo]
+        if t.endswith(".MX"):
+            return {"sector": "BMV (acción mexicana)", "pais": "México", "moneda": "MXN"}[campo]
+        nombre = (meta.get("nombre", "") if meta else "").lower()
+        if any(kw in nombre for kw in _ETF_KEYWORDS):
+            return {"sector": "ETF / Fondo", "pais": "Global", "moneda": "USD"}[campo]
+        return {"sector": "Otros", "pais": "Estados Unidos", "moneda": "USD"}[campo]
+
     def _agrupar_por(campo):
-        """Agrega peso total por valor de 'campo' (sector/pais/moneda)."""
+        """Agrega peso total por valor del campo aplicando inferencia."""
         agrupado = {}
         for t in activos:
-            valor = info.get(t, {}).get(campo, "Desconocido")
+            meta = info.get(t, {}) or {}
+            valor = _inferir(t, meta, campo)
             agrupado[valor] = agrupado.get(valor, 0) + pesos_dict[t]
-        # Redondear y ordenar de mayor a menor
         return dict(sorted(
             ((k, round(v, 4)) for k, v in agrupado.items()),
             key=lambda x: -x[1]
