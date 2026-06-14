@@ -40,7 +40,9 @@ from scipy.optimize import minimize
 
 
 _BACKEND_DIR = Path(__file__).parent
-_UNIV_CSV = _BACKEND_DIR / "universo_precios.csv"
+_UNIV_FULL = _BACKEND_DIR / "universo_precios.csv"
+_UNIV_LITE = _BACKEND_DIR / "universo_lite_precios.csv"
+_UNIV_CSV  = _UNIV_FULL if _UNIV_FULL.exists() else _UNIV_LITE
 
 DIAS_HABILES = 252
 TASA_LIBRE_RIESGO = 0.095
@@ -195,9 +197,9 @@ PERFILES = [
         ),
         "universo": [
             "BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "XRP-USD",
-            "ADA-USD", "AVAX-USD", "DOT-USD", "LINK-USD", "MATIC-USD",
+            "ADA-USD", "AVAX-USD", "DOT-USD", "LINK-USD", "POL28321-USD",
             "DOGE-USD", "LTC-USD", "ATOM-USD", "NEAR-USD", "FIL-USD",
-            "UNI7083-USD", "AAVE-USD",
+            "UNI7083-USD", "AAVE-USD", "HYPE32196-USD",
         ],
     },
     {

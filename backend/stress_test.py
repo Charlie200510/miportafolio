@@ -26,8 +26,12 @@ import pandas as pd
 
 
 _BACKEND_DIR = Path(__file__).parent
-_UNIV_CSV = _BACKEND_DIR / "universo_precios.csv"
-_INFO_JSON = _BACKEND_DIR / "universo_info.json"
+_UNIV_FULL = _BACKEND_DIR / "universo_precios.csv"
+_UNIV_LITE = _BACKEND_DIR / "universo_lite_precios.csv"
+_UNIV_CSV  = _UNIV_FULL if _UNIV_FULL.exists() else _UNIV_LITE
+_INFO_FULL = _BACKEND_DIR / "universo_info.json"
+_INFO_LITE = _BACKEND_DIR / "universo_lite_info.json"
+_INFO_JSON = _INFO_FULL if _INFO_FULL.exists() else _INFO_LITE
 
 
 # Escenarios predefinidos. Cada shock se aplica al ticker según su clasificación.
