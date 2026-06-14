@@ -271,20 +271,63 @@
     document.body.appendChild(t);
   }
 
+  // Estado del target actual — usado por listeners de scroll/resize
+  let _tourTargetActual = null;
+  let _tourScrollHandler = null;
+
   function _posicionarTooltip(elTarget) {
+    if (!elTarget) return;
     const tooltip = document.getElementById('mp-tour-tooltip');
+    if (!tooltip) return;
+    // Asegurar que el tooltip ya tiene medidas (display:block antes de medir)
+    tooltip.style.visibility = 'hidden';
+    tooltip.style.display = 'block';
     const rect = elTarget.getBoundingClientRect();
     const tipRect = tooltip.getBoundingClientRect();
-    let top = rect.bottom + 12;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const MARGIN = 12;
+
+    // Posición preferida: abajo del target
+    let top  = rect.bottom + MARGIN;
     let left = rect.left + (rect.width / 2) - (tipRect.width / 2);
-    // Si se sale por abajo, ponerlo arriba
-    if (top + tipRect.height > window.innerHeight - 20) {
-      top = rect.top - tipRect.height - 12;
+
+    // Si no cabe abajo, intentar arriba
+    if (top + tipRect.height > vh - MARGIN) {
+      const topAlt = rect.top - tipRect.height - MARGIN;
+      if (topAlt >= MARGIN) {
+        top = topAlt;
+      } else {
+        // Ni arriba ni abajo caben — centrar verticalmente en viewport
+        top = Math.max(MARGIN, Math.min(vh - tipRect.height - MARGIN, (vh - tipRect.height) / 2));
+      }
     }
-    // Ajustar horizontalmente para no salirse
-    left = Math.max(12, Math.min(left, window.innerWidth - tipRect.width - 12));
-    tooltip.style.top = top + 'px';
+    // Clamp horizontal
+    left = Math.max(MARGIN, Math.min(left, vw - tipRect.width - MARGIN));
+    // Clamp vertical final (defensa contra targets gigantes)
+    top  = Math.max(MARGIN, Math.min(top,  vh - tipRect.height - MARGIN));
+
+    tooltip.style.top  = top  + 'px';
     tooltip.style.left = left + 'px';
+    tooltip.style.visibility = 'visible';
+  }
+
+  // Espera a que el scroll smooth termine (sin scroll events durante 100ms)
+  function _esperarScrollFin(cb) {
+    let timer = null;
+    const onScroll = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        window.removeEventListener('scroll', onScroll);
+        cb();
+      }, 100);
+    };
+    // Si no hay scroll, igual ejecutar después de 400ms (fallback)
+    timer = setTimeout(() => {
+      window.removeEventListener('scroll', onScroll);
+      cb();
+    }, 500);
+    window.addEventListener('scroll', onScroll, { passive: true });
   }
 
   function _mostrarPaso(idx) {
@@ -303,9 +346,13 @@
       return;
     }
     el.classList.add('mp-tour-highlight');
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    const tooltip = document.getElementById('mp-tour-tooltip');
+    // Si el target es muy alto (más del 60% del viewport), alinear al inicio
+    // en vez de al centro para que quepa el tooltip debajo.
+    const targetRect = el.getBoundingClientRect();
+    const block = (targetRect.height > window.innerHeight * 0.6) ? 'start' : 'center';
+    el.scrollIntoView({ behavior: 'smooth', block, inline: 'nearest' });
+
     document.getElementById('mp-tour-title').textContent = step.title;
     document.getElementById('mp-tour-body').textContent = step.body;
     document.getElementById('mp-tour-progress').textContent = `PASO ${idx + 1} DE ${steps.length}`;
@@ -314,12 +361,30 @@
     btnNext.onclick = () => _mostrarPaso(idx + 1);
     document.getElementById('mp-tour-skip').onclick = _terminar;
 
-    tooltip.style.display = 'block';
-    setTimeout(() => _posicionarTooltip(el), 50);
+    _tourTargetActual = el;
+    // Posicionar inmediatamente (con tooltip oculto), después esperar fin de scroll
+    _posicionarTooltip(el);
+    _esperarScrollFin(() => _posicionarTooltip(el));
+    // Re-posicionar también en cualquier scroll/resize posterior
+    if (_tourScrollHandler) {
+      window.removeEventListener('scroll', _tourScrollHandler);
+      window.removeEventListener('resize', _tourScrollHandler);
+    }
+    _tourScrollHandler = () => {
+      if (_tourTargetActual) _posicionarTooltip(_tourTargetActual);
+    };
+    window.addEventListener('scroll', _tourScrollHandler, { passive: true });
+    window.addEventListener('resize', _tourScrollHandler);
   }
 
   function _terminar() {
     _marcarCompletado();
+    if (_tourScrollHandler) {
+      window.removeEventListener('scroll', _tourScrollHandler);
+      window.removeEventListener('resize', _tourScrollHandler);
+      _tourScrollHandler = null;
+    }
+    _tourTargetActual = null;
     document.getElementById('mp-tour-backdrop')?.remove();
     document.getElementById('mp-tour-tooltip')?.remove();
     document.querySelectorAll('.mp-tour-highlight').forEach(el => el.classList.remove('mp-tour-highlight'));
