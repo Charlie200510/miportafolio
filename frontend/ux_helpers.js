@@ -208,26 +208,9 @@
     if (msg) return msg;
     return 'Algo salió mal. Intenta de nuevo.';
   };
-  const _origFetch = window.fetch;
-  window.fetch = function(url, init) {
-    return _origFetch(url, init).then(async (res) => {
-      if (!res.ok && typeof url === 'string' && url.includes('/api/')) {
-        // Solo loguear errores de API silenciosamente, no toast automático
-        // (los módulos individuales deciden si mostrar toast)
-        try {
-          const body = await res.clone().json();
-          if (!body._humanized) body._humanized = _humanError(res.status, body.error || body.detalle);
-        } catch (_) {}
-      }
-      return res;
-    }).catch((err) => {
-      // Network errors completos
-      if (err && err.message && err.message.includes('Failed to fetch')) {
-        window.toast(_humanError(0), 'error', 4000);
-      }
-      throw err;
-    });
-  };
+  // NOTA: el wrapper de fetch fue removido — interfería con res.json() en
+  // algunos browsers (Safari iOS especialmente) cuando se hacía res.clone().
+  // Cada módulo maneja sus propios errores de forma local.
   window.humanError = _humanError;
 
   // ============================================================

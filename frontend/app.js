@@ -1058,21 +1058,33 @@ const Explorador = (() => {
   const MAX = 15;
 
   // --- cargar universo ------------------------------------------------------
-  async function cargarUniverso() {
+  async function cargarUniverso(intento = 0) {
     if (state.cargado) return;
     try {
       const res = await fetch('/api/universo');
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || 'error al cargar universo');
-      state.universo = body.tickers || [];
+      let body = null;
+      try { body = await res.json(); } catch { body = null; }
+      if (!res.ok) throw new Error((body && body.error) || `HTTP ${res.status}`);
+      if (!body || !Array.isArray(body.tickers)) throw new Error('respuesta vacía');
+      state.universo = body.tickers;
       state.periodo = body.periodo;
       state.cargado = true;
       renderMeta();
       renderLista();
     } catch (err) {
+      // Reintentar hasta 2 veces (cold start de Render free tier puede tardar)
+      if (intento < 2) {
+        $('universo-lista').innerHTML = `
+          <div class="col-span-2 text-xs text-zinc-500 py-8 text-center">
+            Cargando universo… ${intento + 1}/3
+          </div>`;
+        setTimeout(() => cargarUniverso(intento + 1), 4000);
+        return;
+      }
       $('universo-lista').innerHTML = `
         <div class="col-span-2 text-xs text-accent-red py-8 text-center">
-          ${err.message}. Corre <code>python descargar_universo.py</code> primero.
+          No se pudo cargar el universo. Recarga la página.
+          <button onclick="location.reload()" class="ml-2 px-2 py-1 bg-accent-red/20 rounded text-xs">↻ Recargar</button>
         </div>`;
     }
   }
@@ -1442,13 +1454,15 @@ const Picker = (() => {
   }
 
   // ---- Universo ---------------------------------------------------------
-  async function cargar() {
+  async function cargar(intento = 0) {
     if (state.cargado) return;
     try {
       const res = await fetch('/api/universo');
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || 'error');
-      state.universo = body.tickers || [];
+      let body = null;
+      try { body = await res.json(); } catch { body = null; }
+      if (!res.ok) throw new Error((body && body.error) || `HTTP ${res.status}`);
+      if (!body || !Array.isArray(body.tickers)) throw new Error('respuesta vacía');
+      state.universo = body.tickers;
       state.cargado = true;
       const n = state.universo.length;
       const recos = state.universo.filter(x => x.recomendada).length;
@@ -1459,6 +1473,15 @@ const Picker = (() => {
       const recosTickers = state.universo.filter(x => x.recomendada).map(x => x.ticker).slice(0, 50);
       if (recosTickers.length) refrescarPrecios(recosTickers);
     } catch (err) {
+      // Reintentar hasta 2 veces (cold start de Render)
+      if (intento < 2) {
+        $('pick-curado-lista').innerHTML = `
+          <div class="col-span-2 py-8 text-center">
+            <p class="text-xs text-zinc-500">Despertando servidor… ${intento + 1}/3</p>
+          </div>`;
+        setTimeout(() => cargar(intento + 1), 4000);
+        return;
+      }
       $('pick-curado-lista').innerHTML = `
         <div class="col-span-2 py-8 text-center">
           <div class="w-12 h-12 rounded-xl bg-accent-amber/10 border border-accent-amber/30 flex items-center justify-center mx-auto mb-3">
@@ -1470,6 +1493,7 @@ const Picker = (() => {
           <p class="text-[11px] text-zinc-500 max-w-xs mx-auto leading-relaxed">
             El servidor está despertando o sin conexión. Espera 30 segundos y refresca la página.
           </p>
+          <button onclick="location.reload()" class="mt-3 px-3 py-1.5 bg-accent-amber/20 text-accent-amber rounded text-xs">↻ Recargar</button>
         </div>`;
     }
     renderSeleccion();
@@ -1798,19 +1822,31 @@ const Picker = (() => {
   // ============================================================
   const perfilesCache = [];
 
-  async function cargarPerfiles() {
+  async function cargarPerfiles(intento = 0) {
     const grid = $('perfiles-grid');
     if (!grid) return;
     try {
       const res = await fetch('/api/perfiles');
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || 'error');
+      let body = null;
+      try { body = await res.json(); } catch { body = null; }
+      if (!res.ok) throw new Error((body && body.error) || `HTTP ${res.status}`);
+      if (!Array.isArray(body)) throw new Error('respuesta vacía');
       perfilesCache.splice(0, perfilesCache.length, ...(body || []));
       renderPerfiles();
     } catch (err) {
+      // Reintentar hasta 2 veces (cold start de Render puede tardar)
+      if (intento < 2) {
+        grid.innerHTML = `
+          <div class="col-span-full text-xs text-zinc-500 py-4 text-center">
+            Cargando perfiles… ${intento + 1}/3
+          </div>`;
+        setTimeout(() => cargarPerfiles(intento + 1), 4000);
+        return;
+      }
       grid.innerHTML = `
         <div class="col-span-full text-xs text-zinc-500 py-4 text-center">
-          Perfiles no disponibles (${escapeHtml(err.message)}).
+          Perfiles no disponibles.
+          <button onclick="location.reload()" class="ml-2 px-2 py-1 bg-zinc-700 rounded text-xs hover:bg-zinc-600">↻ Recargar</button>
         </div>`;
     }
   }
@@ -6971,23 +7007,36 @@ const Analizador = (() => {
     await cargarUniverso();
   }
 
-  async function cargarUniverso() {
+  async function cargarUniverso(intento = 0) {
     if (estado.cargado) { renderUniverso(); return; }
     try {
       const res = await fetch('/api/universo');
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || 'error');
-      estado.universo = body.tickers || [];
+      let body = null;
+      try { body = await res.json(); } catch { body = null; }
+      if (!res.ok) throw new Error((body && body.error) || `HTTP ${res.status}`);
+      if (!body || !Array.isArray(body.tickers)) throw new Error('respuesta vacía');
+      estado.universo = body.tickers;
       estado.cargado = true;
       const recos = estado.universo.filter(x => x.recomendada).length;
       const meta = $('an-univ-meta');
       if (meta) meta.textContent = `· ${estado.universo.length} acciones · ⭐ ${recos} destacadas`;
       renderUniverso();
     } catch (err) {
+      // Reintentar hasta 2 veces (cold start de Render)
+      if (intento < 2) {
+        const cont = $('an-univ-lista');
+        if (cont) cont.innerHTML = `
+          <div class="col-span-full text-center text-xs text-zinc-500 py-6">
+            Cargando universo… ${intento + 1}/3
+          </div>`;
+        setTimeout(() => cargarUniverso(intento + 1), 4000);
+        return;
+      }
       const cont = $('an-univ-lista');
       if (cont) cont.innerHTML = `
         <div class="col-span-full text-center text-xs text-zinc-500 py-6">
-          Universo no disponible (${escapeHtml(err.message)}).
+          Universo no disponible.
+          <button onclick="location.reload()" class="ml-2 px-2 py-1 bg-zinc-700 rounded text-xs hover:bg-zinc-600">↻ Recargar</button>
         </div>`;
     }
   }
