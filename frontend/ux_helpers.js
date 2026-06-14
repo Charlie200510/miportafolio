@@ -256,6 +256,12 @@
   ];
 
   function _esMobile() {
+    // Múltiples checks porque iOS Safari puede reportar innerWidth raro
+    // 1) Media query (más confiable que innerWidth)
+    if (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) return true;
+    // 2) Pointer coarse = touch device (iOS, Android)
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 900) return true;
+    // 3) Fallback al check viejo
     return window.innerWidth < 640;
   }
 

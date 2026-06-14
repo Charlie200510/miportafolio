@@ -4,9 +4,12 @@
    - APIs (/api/*) → network-only (datos siempre frescos)
    - Static assets (logo, fonts) → cache-first largo
 */
-const VERSION = 'mp-v1.0.0';
+// IMPORTANTE: Bumpear esta versión cada vez que cambies JS/CSS críticos
+// para forzar invalidación del cache en todos los usuarios.
+const VERSION = 'mp-v1.0.2';
 const SHELL_CACHE  = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
+const ASSETS_CACHE = `${VERSION}-assets`;
 
 const PRECACHE_URLS = [
   '/',
@@ -52,9 +55,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets (logo, fonts, etc.)
+  // JS y CSS → stale-while-revalidate (cache para velocidad, pero siempre
+  // actualiza en background. Así los fixes llegan al usuario sin que tenga
+  // que limpiar el cache manualmente).
+  if (url.pathname.match(/\.(js|css)$/)) {
+    event.respondWith(staleWhileRevalidate(req, STATIC_CACHE));
+    return;
+  }
+
+  // Imágenes, fonts y otros assets pesados → cache-first (rara vez cambian)
   if (url.pathname.startsWith('/static/')) {
-    event.respondWith(cacheFirst(req, STATIC_CACHE));
+    event.respondWith(cacheFirst(req, ASSETS_CACHE));
     return;
   }
 });
