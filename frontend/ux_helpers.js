@@ -452,7 +452,120 @@
     document.querySelectorAll('.mp-tour-highlight').forEach(el => el.classList.remove('mp-tour-highlight'));
   }
 
+  // ============================================================
+  // MOBILE TUTORIAL — wizard fullscreen totalmente independiente
+  // ============================================================
+  // No toca el DOM existente, no scrollea, no posiciona nada relativo
+  // a elementos. Solo un modal fullscreen con 4 pantallas y botón gigante.
+  // Imposible que falle por stacking context, iOS Safari, etc.
+  function _iniciarTourMobile() {
+    if (document.getElementById('mp-tour-mobile')) return;
+    let idx = 0;
+    const total = TOUR_STEPS.length;
+
+    const html = `
+      <div id="mp-tour-mobile" style="
+        position: fixed; inset: 0; z-index: 999999;
+        background: #0a0a0b;
+        display: flex; flex-direction: column;
+        padding: env(safe-area-inset-top, 16px) 20px env(safe-area-inset-bottom, 16px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      ">
+        <!-- Header con close -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;">
+          <span id="mpm-progreso" style="font-size:11px;font-weight:600;letter-spacing:0.15em;color:#22c55e;text-transform:uppercase;"></span>
+          <button id="mpm-cerrar" aria-label="Cerrar tutorial" style="
+            background: rgba(255,255,255,0.08);
+            border: none; color: #f4f4f5;
+            width: 36px; height: 36px; border-radius: 50%;
+            font-size: 20px; cursor: pointer; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+          ">×</button>
+        </div>
+
+        <!-- Contenido central -->
+        <div style="flex:1; display:flex; flex-direction:column; justify-content:center; padding: 40px 0;">
+          <div id="mpm-icono" style="
+            width: 64px; height: 64px; border-radius: 18px;
+            background: linear-gradient(135deg, #16a34a, #22c55e);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px; margin-bottom: 24px;
+            box-shadow: 0 0 40px rgba(34,197,94,0.3);
+          ">📊</div>
+          <h2 id="mpm-titulo" style="
+            font-size: 26px; font-weight: 700; color: #fff;
+            margin: 0 0 14px; letter-spacing: -0.02em; line-height: 1.2;
+          "></h2>
+          <p id="mpm-cuerpo" style="
+            font-size: 16px; color: #a1a1aa;
+            margin: 0; line-height: 1.55;
+          "></p>
+        </div>
+
+        <!-- Footer con dots y botón gigante -->
+        <div style="padding-bottom: 8px;">
+          <div id="mpm-dots" style="display:flex;justify-content:center;gap:6px;margin-bottom:20px;"></div>
+          <button id="mpm-siguiente" style="
+            display: block; width: 100%;
+            background: #22c55e; color: #0a0a0b;
+            border: none; border-radius: 14px;
+            padding: 18px;
+            font-size: 17px; font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 24px -8px rgba(34,197,94,0.6);
+            -webkit-tap-highlight-color: transparent;
+          "></button>
+          <button id="mpm-saltar" style="
+            display: block; width: 100%;
+            background: transparent; color: #71717a;
+            border: none; padding: 14px;
+            font-size: 14px; cursor: pointer; margin-top: 4px;
+          ">Saltar tutorial</button>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.body.style.overflow = 'hidden';
+
+    const ICONOS = ['📊', '🔍', '📰', '⚡'];
+
+    function render() {
+      const step = TOUR_STEPS[idx];
+      document.getElementById('mpm-progreso').textContent = `Paso ${idx+1} de ${total}`;
+      document.getElementById('mpm-titulo').textContent = step.title;
+      document.getElementById('mpm-cuerpo').textContent = step.body;
+      document.getElementById('mpm-icono').textContent = ICONOS[idx] || '📊';
+      document.getElementById('mpm-siguiente').textContent = (idx === total-1) ? 'Empezar a usar la app' : 'Siguiente';
+      // Dots
+      const dots = TOUR_STEPS.map((_, i) =>
+        `<span style="width:${i===idx?'24':'8'}px;height:8px;border-radius:4px;background:${i===idx?'#22c55e':'#3f3f46'};transition:width .25s;"></span>`
+      ).join('');
+      document.getElementById('mpm-dots').innerHTML = dots;
+    }
+
+    function cerrar() {
+      _marcarCompletado();
+      document.body.style.overflow = '';
+      document.getElementById('mp-tour-mobile')?.remove();
+    }
+    function siguiente() {
+      if (idx === total - 1) { cerrar(); return; }
+      idx++;
+      render();
+    }
+
+    document.getElementById('mpm-siguiente').addEventListener('click', siguiente);
+    document.getElementById('mpm-saltar').addEventListener('click', cerrar);
+    document.getElementById('mpm-cerrar').addEventListener('click', cerrar);
+
+    render();
+  }
+
   function _iniciarTour() {
+    if (_esMobile()) {
+      _iniciarTourMobile();
+      return;
+    }
     _crearOverlay();
     document.getElementById('mp-tour-backdrop').style.display = 'block';
     _mostrarPaso(0);
