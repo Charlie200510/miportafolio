@@ -899,6 +899,51 @@
       </div>
     </div>
 
+    <!-- Métricas de comportamiento (aplica a crypto, ETFs y stocks) -->
+    <div class="mt-2 mb-4 hidden" id="fund-comportamiento-wrapper">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">📊 Comportamiento estadístico</h3>
+        <span id="fund-composicion-badge" class="text-[10px] text-zinc-500"></span>
+      </div>
+      <p class="text-[11px] text-zinc-500 mb-3 leading-relaxed">
+        Métricas que aplican para <span class="text-zinc-300">cualquier activo</span> — útiles especialmente para ETFs y crypto donde el P/E no aplica.
+      </p>
+      <div id="fund-comportamiento" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Std anualizada de los retornos diarios. <15% es baja; 15-30% normal; >30% volátil; >60% típico de crypto.">
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Volatilidad anual</p>
+          <p id="fund-resumen-vol" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+        </div>
+        <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Retorno por unidad de riesgo. >1 bueno, >2 excelente, <0 perdedor vs tasa libre de riesgo.">
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Sharpe ratio</p>
+          <p id="fund-resumen-sharpe" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+        </div>
+        <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Como Sharpe pero solo penaliza volatilidad NEGATIVA. Mejor métrica para activos con asimetría (crypto, opciones).">
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Sortino ratio</p>
+          <p id="fund-resumen-sortino" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+        </div>
+        <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="La peor caída desde un pico hasta un valle del último año. Mide dolor histórico máximo.">
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Max drawdown 1Y</p>
+          <p id="fund-resumen-dd" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+        </div>
+        <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="0 = no se mueve con S&P 500 (diversificador); 1 = perfectamente correlacionado; -1 = inverso.">
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Correlación S&amp;P 500</p>
+          <p id="fund-resumen-corr" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+        </div>
+        <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuánto cambió el portafolio promedio en el último mes.">
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Retorno 1M</p>
+          <p id="fund-resumen-r1m" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+        </div>
+        <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuánto cambió desde el 1 de enero del año actual.">
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Retorno YTD</p>
+          <p id="fund-resumen-rytd" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+        </div>
+        <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuánto cambió el portafolio promedio en el último año.">
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Retorno 1Y</p>
+          <p id="fund-resumen-r1y" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Avisos -->
     <div id="fund-avisos-box" class="hidden bg-accent-amber/5 border border-accent-amber/20 rounded-xl p-4 mb-4">
       <ul id="fund-avisos" class="space-y-1.5 text-xs text-zinc-400 leading-relaxed list-disc list-inside"></ul>
@@ -943,6 +988,15 @@
         <div><span class="text-zinc-200 font-semibold">Market Cap:</span> tamaño total de la empresa (precio × acciones). &gt;$10B = large cap; $2-10B = mid; &lt;$2B = small.</div>
         <div><span class="text-zinc-200 font-semibold">EPS (Earnings per Share):</span> utilidad por acción. EPS creciente año tras año es señal sana.</div>
         <div><span class="text-zinc-200 font-semibold">Posición 52w:</span> dónde está el precio entre su mínimo y máximo del último año. Cerca del máximo = momentum; cerca del mínimo = posible oportunidad o problema.</div>
+      </div>
+      <p class="text-[11px] font-semibold text-zinc-300 mt-4 mb-2 pt-3 border-t border-surface-border">📊 Métricas de comportamiento (para crypto, ETFs y stocks)</p>
+      <div class="grid md:grid-cols-2 gap-3 text-[11px] text-zinc-400 leading-relaxed">
+        <div><span class="text-zinc-200 font-semibold">Volatilidad anual:</span> qué tanto sube y baja el precio cada año. &lt;15% = baja (bonos, blue chips); 15-30% = normal (acciones grandes); &gt;30% = volátil; &gt;60% = típico de crypto.</div>
+        <div><span class="text-zinc-200 font-semibold">Sharpe ratio:</span> cuánto retorno extra obtienes por cada unidad de riesgo que asumes. &gt;1 = bueno; &gt;2 = excelente; &lt;0 = peor que dejarlo en CETES/UST.</div>
+        <div><span class="text-zinc-200 font-semibold">Sortino ratio:</span> como Sharpe pero solo penaliza la volatilidad NEGATIVA (las caídas). Mejor que Sharpe para activos asimétricos como crypto u opciones.</div>
+        <div><span class="text-zinc-200 font-semibold">Max drawdown:</span> la peor caída desde un pico hasta un valle en el último año. Mide el dolor máximo histórico. Si tu max DD es -40% y no aguantas, mejor reducir riesgo.</div>
+        <div><span class="text-zinc-200 font-semibold">Correlación S&amp;P 500:</span> qué tan parecido se mueve a las acciones de USA. 0 = independiente (buen diversificador); 1 = mismo movimiento; -1 = inverso (raro). Crypto suele tener 0.3-0.5.</div>
+        <div><span class="text-zinc-200 font-semibold">Retornos 1M/YTD/1Y:</span> qué tanto subió o bajó tu portafolio promedio en esos plazos. YTD = desde el 1 de enero del año actual.</div>
       </div>
     </details>
   </section>

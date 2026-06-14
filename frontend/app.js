@@ -4759,13 +4759,20 @@ const Fundamentales = (() => {
     if (!box) return;
     if (!resumen || !resumen.num_ok) {
       box.classList.add('hidden');
+      const compWrap = $('fund-comportamiento-wrapper');
+      if (compWrap) compWrap.classList.add('hidden');
       return;
     }
     box.classList.remove('hidden');
     // Helpers de formato
-    const _fmtNum  = (v, d=1) => v != null ? v.toFixed(d) : 'N/D';
-    const _fmtPct  = (v, d=2) => v != null ? (v * 100).toFixed(d) + '%' : '0%';
+    const _fmtNum   = (v, d=1) => v != null ? v.toFixed(d) : 'N/D';
+    const _fmtPct   = (v, d=2) => v != null ? (v * 100).toFixed(d) + '%' : '0%';
     const _fmtRatio = v => v != null ? v.toFixed(2) : 'N/D';
+    const _fmtPctSig = (v, d=2) => {
+      if (v == null) return 'N/D';
+      const p = (v * 100).toFixed(d);
+      return v >= 0 ? '+' + p + '%' : p + '%';
+    };
     // Llenar todas las cards de resumen
     $('fund-resumen-pe').textContent     = _fmtNum(resumen.pe_promedio, 1);
     if ($('fund-resumen-pb'))     $('fund-resumen-pb').textContent     = _fmtRatio(resumen.pb_promedio);
@@ -4775,6 +4782,40 @@ const Fundamentales = (() => {
     if ($('fund-resumen-roe'))    $('fund-resumen-roe').textContent    = _fmtPct(resumen.roe_promedio, 1);
     if ($('fund-resumen-margen')) $('fund-resumen-margen').textContent = _fmtPct(resumen.margen_neto_promedio, 1);
     $('fund-resumen-count').textContent  = `${resumen.num_ok}/${resumen.num_tickers}`;
+
+    // --- Métricas de comportamiento (siempre disponibles) ---
+    const compWrap = $('fund-comportamiento-wrapper');
+    if (compWrap && resumen.num_ok > 0) {
+      compWrap.classList.remove('hidden');
+      // Badge de composición
+      const comp = resumen.composicion || {};
+      const partes = [];
+      if (comp.stocks) partes.push(`${comp.stocks} acción${comp.stocks > 1 ? 'es' : ''}`);
+      if (comp.etfs)   partes.push(`${comp.etfs} ETF${comp.etfs > 1 ? 's' : ''}`);
+      if (comp.crypto) partes.push(`${comp.crypto} crypto`);
+      const badge = $('fund-composicion-badge');
+      if (badge) badge.textContent = partes.join(' · ');
+
+      // Colorear retornos según signo
+      const colorRet = v => v == null ? 'text-zinc-100' : (v >= 0 ? 'text-accent-green' : 'text-accent-red');
+      const setCard = (id, valor, formatter, colorFn) => {
+        const el = $(id);
+        if (!el) return;
+        el.textContent = formatter(valor);
+        if (colorFn) {
+          el.classList.remove('text-accent-green', 'text-accent-red', 'text-zinc-100');
+          el.classList.add(colorFn(valor));
+        }
+      };
+      setCard('fund-resumen-vol',     resumen.volatilidad_promedio,        v => _fmtPct(v, 1));
+      setCard('fund-resumen-sharpe',  resumen.sharpe_promedio,             _fmtRatio);
+      setCard('fund-resumen-sortino', resumen.sortino_promedio,            _fmtRatio);
+      setCard('fund-resumen-dd',      resumen.max_drawdown_promedio,       v => _fmtPctSig(v, 1), () => 'text-accent-red');
+      setCard('fund-resumen-corr',    resumen.correlacion_sp500_promedio,  _fmtRatio);
+      setCard('fund-resumen-r1m',     resumen.retorno_1m_promedio,         v => _fmtPctSig(v, 2), colorRet);
+      setCard('fund-resumen-rytd',    resumen.retorno_ytd_promedio,        v => _fmtPctSig(v, 2), colorRet);
+      setCard('fund-resumen-r1y',     resumen.retorno_1y_promedio,         v => _fmtPctSig(v, 2), colorRet);
+    }
   }
 
   function renderAvisos(avisos) {

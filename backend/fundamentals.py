@@ -86,6 +86,96 @@ def _benchmark_para(ticker: str) -> str:
     return "SPY"
 
 
+# ----------------------------------------------------------------
+# Métricas de comportamiento (aplica a stocks, ETFs y crypto)
+# ----------------------------------------------------------------
+def _metricas_comportamiento(ticker: str) -> Dict[str, Any]:
+    """Calcula métricas estadísticas que funcionan para CUALQUIER activo:
+    volatilidad anualizada, Sharpe, Sortino, max drawdown, correlación.
+
+    Útil especialmente para crypto y ETFs donde P/E y ROE no aplican.
+    """
+    out: Dict[str, Any] = {
+        "volatilidad_anual":   None,
+        "sharpe_ratio":        None,
+        "sortino_ratio":       None,
+        "max_drawdown":        None,
+        "correlacion_sp500":   None,
+        "retorno_1m":          None,
+        "retorno_3m":          None,
+        "retorno_1y":          None,
+        "retorno_ytd":         None,
+    }
+    try:
+        import numpy as np
+        import pandas as pd
+        from datetime import date
+
+        hist = yf.Ticker(ticker).history(period="1y", auto_adjust=True)
+        if hist is None or hist.empty or "Close" not in hist.columns:
+            return out
+        precios = hist["Close"].dropna()
+        if len(precios) < 30:
+            return out
+
+        retornos = precios.pct_change().dropna()
+
+        # Volatilidad anualizada (std diaria × sqrt(252))
+        vol = float(retornos.std() * np.sqrt(252))
+        out["volatilidad_anual"] = round(vol, 4)
+
+        # Sharpe ratio: (retorno_anual - rf) / vol_anual
+        # rf = 4.5% USD (UST 3m) o 9.5% MXN (CETES 28d)
+        rf = 0.095 if ticker.upper().endswith(".MX") else 0.045
+        retorno_anual = float((1 + retornos.mean()) ** 252 - 1)
+        if vol > 0:
+            sharpe = (retorno_anual - rf) / vol
+            out["sharpe_ratio"] = round(sharpe, 3)
+
+        # Sortino ratio (solo penaliza volatilidad negativa)
+        retornos_neg = retornos[retornos < 0]
+        if len(retornos_neg) > 5:
+            downside_vol = float(retornos_neg.std() * np.sqrt(252))
+            if downside_vol > 0:
+                sortino = (retorno_anual - rf) / downside_vol
+                out["sortino_ratio"] = round(sortino, 3)
+
+        # Max drawdown
+        cummax = precios.cummax()
+        dd = (precios - cummax) / cummax
+        out["max_drawdown"] = round(float(dd.min()), 4)
+
+        # Correlación con SP500 (excepto si es SPY mismo)
+        if ticker.upper() != "SPY":
+            spy_ret = _obtener_retornos_benchmark("SPY")
+            if spy_ret is not None:
+                comun = retornos.index.intersection(spy_ret.index)
+                if len(comun) >= 30:
+                    corr = float(retornos.loc[comun].corr(spy_ret.loc[comun]))
+                    out["correlacion_sp500"] = round(corr, 3)
+
+        # Retornos en diferentes ventanas
+        if len(precios) >= 21:
+            out["retorno_1m"] = round(float(precios.iloc[-1] / precios.iloc[-21] - 1), 4)
+        if len(precios) >= 63:
+            out["retorno_3m"] = round(float(precios.iloc[-1] / precios.iloc[-63] - 1), 4)
+        if len(precios) >= 200:
+            out["retorno_1y"] = round(float(precios.iloc[-1] / precios.iloc[0] - 1), 4)
+
+        # YTD: desde el primer día hábil del año actual
+        try:
+            año = date.today().year
+            inicio_año = precios[precios.index >= f"{año}-01-01"]
+            if len(inicio_año) >= 2:
+                out["retorno_ytd"] = round(float(inicio_año.iloc[-1] / inicio_año.iloc[0] - 1), 4)
+        except Exception:
+            pass
+
+    except Exception:
+        pass
+    return out
+
+
 # ---- Rangos orientativos (heurísticas amigables para retail) --------------
 # No son reglas duras; sirven para etiquetar métricas con un color.
 
@@ -283,6 +373,9 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
         except Exception:
             proximas_earnings = None
 
+        # Métricas de comportamiento (funcionan para crypto, ETFs, stocks)
+        comportamiento = _metricas_comportamiento(ticker)
+
         out.update({
             "ok":                True,
             "nombre":            nombre,
@@ -299,6 +392,16 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
             "peg":               peg,
             "beta":              beta,
             "beta_eval":         _evaluar_beta(beta),
+            # Métricas que SIEMPRE están (crypto, ETFs, stocks):
+            "volatilidad_anual": comportamiento["volatilidad_anual"],
+            "sharpe_ratio":      comportamiento["sharpe_ratio"],
+            "sortino_ratio":     comportamiento["sortino_ratio"],
+            "max_drawdown":      comportamiento["max_drawdown"],
+            "correlacion_sp500": comportamiento["correlacion_sp500"],
+            "retorno_1m":        comportamiento["retorno_1m"],
+            "retorno_3m":        comportamiento["retorno_3m"],
+            "retorno_1y":        comportamiento["retorno_1y"],
+            "retorno_ytd":       comportamiento["retorno_ytd"],
             "dividend_yield":    dividend_yield,
             "dividend_yield_eval": _evaluar_yield(dividend_yield),
             "dividend_rate":     dividend_rate,
@@ -363,9 +466,22 @@ def analizar_fundamentales(tickers: List[str]) -> Dict[str, Any]:
             return None
         return sum(vals) / len(vals)
 
+    # Clasificar el portafolio por tipo de activo (para decidir qué métricas mostrar)
+    n_crypto = sum(1 for r in validos if any(s in r.get("ticker", "").upper() for s in ("-USD", "-USDT")))
+    n_etf    = sum(1 for r in validos if (r.get("ticker", "").upper() in {
+        "SPY","VOO","IVV","VTI","QQQ","XLK","SMH","VXUS","VEA","VWO","EWZ","EWW","EWJ","EWY",
+        "EWU","EWQ","EWP","EWT","FXI","XLF","XLE","XLV","XLY","XLP","XLI","XLU","XLB","XLRE",
+        "TLT","BND","AGG","HYG","GLD","SLV","GDX","GDXJ","USO","FBTC","GBTC","IBIT","NAFTRAC.MX"
+    }))
+    n_stocks = len(validos) - n_crypto - n_etf
+
     resumen = {
         "num_tickers":    len(ordenados),
         "num_ok":         len(validos),
+        "tipo_dominante": ("crypto" if n_crypto > n_etf + n_stocks else
+                           "etf"    if n_etf > n_stocks else "stocks"),
+        "composicion":    {"stocks": n_stocks, "etfs": n_etf, "crypto": n_crypto},
+        # Fundamentales tradicionales (pueden ser None para crypto/ETFs)
         "pe_promedio":    _prom("pe_trailing"),
         "pb_promedio":    _prom("pb"),
         "peg_promedio":   _prom("peg"),
@@ -375,6 +491,16 @@ def analizar_fundamentales(tickers: List[str]) -> Dict[str, Any]:
         "margen_neto_promedio":      _prom_anidado("margenes", "neto"),
         "margen_operativo_promedio": _prom_anidado("margenes", "operativo"),
         "debt_equity_promedio":      _prom("debt_to_equity"),
+        # Métricas de comportamiento (SIEMPRE disponibles — funcionan para todo)
+        "volatilidad_promedio":   _prom("volatilidad_anual"),
+        "sharpe_promedio":        _prom("sharpe_ratio"),
+        "sortino_promedio":       _prom("sortino_ratio"),
+        "max_drawdown_promedio":  _prom("max_drawdown"),
+        "correlacion_sp500_promedio": _prom("correlacion_sp500"),
+        "retorno_1m_promedio":    _prom("retorno_1m"),
+        "retorno_3m_promedio":    _prom("retorno_3m"),
+        "retorno_1y_promedio":    _prom("retorno_1y"),
+        "retorno_ytd_promedio":   _prom("retorno_ytd"),
     }
 
     # Avisos educativos sobre el portafolio
