@@ -154,6 +154,38 @@ def listar_brokers() -> list[dict]:
     return BROKERS
 
 
+def _url_compra(broker_id: str, ticker: str) -> str:
+    """Devuelve la URL más específica posible para llegar a la pantalla
+    de compra del ticker en ese broker. Si el broker no tiene URL pública
+    por ticker (típico en apps mexicanas que requieren login), devuelve la
+    URL principal donde el usuario puede buscar el ticker manualmente."""
+    es_mx = ticker.endswith(".MX")
+    es_us = (not es_mx) and (not ticker.endswith("-USD")) and ("." not in ticker)
+    tk_clean = ticker.replace(".MX", "").replace("-USD", "")
+
+    # URLs específicas por broker — verificadas pero pueden cambiar
+    # Cuando no hay URL específica, el usuario busca el ticker en la app
+    direct_urls = {
+        "gbm":      "https://gbmplus.com",              # app móvil, login requerido
+        "kuspit":   "https://www.kuspit.com",
+        "hapi":     "https://hapi.com",
+        "bursanet": "https://www.bursanet.mx",
+        "actinver": "https://www.actinver.com/es/personas/inversion",
+        "vector":   "https://www.vector.com.mx",
+    }
+    # Brokers gringos: SÍ tienen URLs públicas por ticker
+    if broker_id == "schwab" and es_us:
+        return f"https://www.schwab.com/research/stocks/quotes/summary/{tk_clean}"
+    if broker_id == "ibkr" and es_us:
+        return f"https://www.interactivebrokers.com/en/index.php?f=46685&symbol={tk_clean}"
+    if broker_id == "schwab":
+        return "https://www.schwab.com"
+    if broker_id == "ibkr":
+        return "https://www.interactivebrokers.com"
+
+    return direct_urls.get(broker_id, f"https://www.google.com/search?q=comprar+{ticker}")
+
+
 def comparar_para_ticker(ticker: str, monto_mxn: float = 10000.0) -> list[dict]:
     """Para un ticker dado, calcula costo total estimado (comisión + spread FX si aplica)
     de comprar `monto_mxn` MXN en cada broker que lo ofrezca."""
@@ -191,6 +223,9 @@ def comparar_para_ticker(ticker: str, monto_mxn: float = 10000.0) -> list[dict]:
                 "comision_estimada_mxn": round(comision_mxn, 2),
                 "monto_neto_mxn":        round(monto_mxn - comision_mxn, 2),
                 "nota":                  nota,
+                "url_compra":            _url_compra(b["id"], ticker),
+                "minimo_apertura_mxn":   b.get("minimo_apertura_mxn", 0),
+                "ideal_para":            b.get("ideal_para", ""),
             })
     out.sort(key=lambda x: x["comision_estimada_mxn"])
     return out

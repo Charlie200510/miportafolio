@@ -7309,6 +7309,11 @@ const Analizador = (() => {
             <h3 class="text-2xl font-semibold text-zinc-100 mt-1">${escapeHtml(d.nombre || d.ticker)}</h3>
             <p class="text-sm text-zinc-500 font-mono mt-0.5">${escapeHtml(d.ticker)} · ${escapeHtml(moneda)}</p>
             ${d.precio_actual != null ? `<p class="text-base text-zinc-200 tabular mt-2">Último precio: <span class="font-semibold">${fmtMoney(d.precio_actual, moneda)} ${escapeHtml(moneda)}</span></p>` : ''}
+            <button onclick="window.abrirModalCompra && window.abrirModalCompra('${escapeHtml(d.ticker)}')"
+              class="mt-3 inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg bg-accent-green text-zinc-950 hover:brightness-110 transition"
+              title="Ver brokers que ofrecen este ticker, con comisiones comparadas y link directo">
+              💳 Cómo comprar ${escapeHtml(d.ticker)} →
+            </button>
           </div>
           <div class="text-center">
             <div class="inline-flex items-center justify-center w-28 h-28 rounded-full border-4 ${verCls} relative">

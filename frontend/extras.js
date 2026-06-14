@@ -190,4 +190,105 @@
     });
   };
 
+  // ============================================================
+  // BROKER PICKER — "Cómo comprar [TICKER]"
+  // ============================================================
+  // Mi Portafolio NO ejecuta trades (no es casa de bolsa CNBV).
+  // Este modal muestra brokers MX/US compatibles con el ticker,
+  // sus comisiones y un botón "Abrir broker" con la URL.
+  window.abrirModalCompra = async function(ticker, monto = 10000) {
+    if (!ticker) return;
+    if (document.getElementById('mp-compra-modal')) return;
+
+    // Loading placeholder
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="mp-compra-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px);">
+        <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;max-width:540px;width:100%;max-height:90vh;overflow-y:auto;">
+          <div id="mp-compra-content" style="padding:24px;">
+            <p style="color:#71717a;font-size:13px;text-align:center;">Buscando brokers compatibles con ${ticker}…</p>
+          </div>
+        </div>
+      </div>`);
+    document.getElementById('mp-compra-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'mp-compra-modal') e.target.remove();
+    });
+
+    let brokers = [];
+    try {
+      const res = await fetch(`/api/brokers-mx/comparar/${encodeURIComponent(ticker)}?monto=${monto}`);
+      const body = await res.json();
+      brokers = Array.isArray(body) ? body : (body.brokers || []);
+    } catch (e) {
+      const cont = document.getElementById('mp-compra-content');
+      if (cont) cont.innerHTML = `<p style="color:#ef4444;font-size:13px;">Error: ${e.message}</p>`;
+      return;
+    }
+
+    if (!brokers.length) {
+      const cont = document.getElementById('mp-compra-content');
+      if (cont) cont.innerHTML = `
+        <p style="color:#a1a1aa;font-size:13px;text-align:center;">
+          No tenemos brokers MX con datos para <strong style="color:#fff;">${ticker}</strong>.
+          Verifica el ticker o búscalo manualmente en tu broker.
+        </p>
+        <button onclick="document.getElementById('mp-compra-modal').remove()" style="margin-top:16px;display:block;width:100%;background:#22c55e;color:#0a0a0b;border:none;padding:10px;border-radius:8px;font-weight:600;cursor:pointer;">Cerrar</button>`;
+      return;
+    }
+
+    // Render lista
+    const items = brokers.map((b, i) => {
+      const esTop = i === 0;
+      const minAp = b.minimo_apertura_mxn || 0;
+      const minApStr = minAp >= 1000000 ? `$${(minAp/1000000).toFixed(1)}M MXN` :
+                       minAp >= 1000    ? `$${(minAp/1000).toFixed(0)}k MXN` :
+                       minAp > 0        ? `$${minAp} MXN` : 'Sin mínimo';
+      return `
+        <div style="display:flex;gap:12px;align-items:center;padding:14px;background:${esTop ? 'rgba(34,197,94,0.06)' : '#161616'};border:1px solid ${esTop ? 'rgba(34,197,94,0.3)' : '#2a2a2f'};border-radius:12px;margin-bottom:8px;">
+          <span style="font-size:22px;flex-shrink:0;">${b.emoji || '🏦'}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <p style="margin:0;font-weight:600;color:#f4f4f5;font-size:14px;">${b.broker}</p>
+              ${esTop ? '<span style="font-size:9px;background:#22c55e;color:#0a0a0b;padding:2px 6px;border-radius:4px;font-weight:700;text-transform:uppercase;">Más barato</span>' : ''}
+            </div>
+            <p style="margin:3px 0 0;font-size:11px;color:#a1a1aa;">
+              Comisión: <strong style="color:#fff;">$${b.comision_estimada_mxn.toFixed(2)}</strong>
+              ${b.nota ? `<span style="color:#71717a;"> · ${b.nota}</span>` : ''}
+            </p>
+            <p style="margin:2px 0 0;font-size:10px;color:#71717a;">Mínimo apertura: ${minApStr}</p>
+          </div>
+          <a href="${b.url_compra}" target="_blank" rel="noopener noreferrer" style="flex-shrink:0;background:${esTop ? '#22c55e' : '#27272a'};color:${esTop ? '#0a0a0b' : '#f4f4f5'};border:none;padding:10px 14px;border-radius:8px;font-weight:600;font-size:12px;text-decoration:none;white-space:nowrap;">
+            Abrir →
+          </a>
+        </div>`;
+    }).join('');
+
+    const content = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
+        <div>
+          <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;">Cómo comprar</p>
+          <h2 style="margin:4px 0 0;font-size:22px;color:#f4f4f5;font-weight:700;letter-spacing:-0.01em;">${ticker}</h2>
+        </div>
+        <button onclick="document.getElementById('mp-compra-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;line-height:1;padding:4px 8px;">×</button>
+      </div>
+      <p style="margin:0 0 16px;font-size:12px;color:#a1a1aa;line-height:1.5;">
+        Comisiones estimadas comprando <strong style="color:#fff;">$${monto.toLocaleString()} MXN</strong>. Ordenados de más barato a más caro.
+      </p>
+      <div style="margin-bottom:16px;">
+        ${items}
+      </div>
+      <div style="padding:12px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.25);border-radius:8px;">
+        <p style="margin:0;font-size:11px;color:#c4b5fd;line-height:1.55;">
+          ⚖️ <strong>Mi Portafolio no ejecuta trades</strong> ni custodia tu dinero. Al picar "Abrir" vas al sitio/app de tu broker — ahí inicias sesión y ejecutas la compra tú mismo. No somos casa de bolsa registrada ante CNBV.
+        </p>
+      </div>
+      <details style="margin-top:12px;">
+        <summary style="cursor:pointer;font-size:11px;color:#71717a;">¿Y si quiero comparar más opciones?</summary>
+        <p style="margin:8px 0 0;font-size:11px;color:#a1a1aa;line-height:1.55;">
+          La sección <strong>"Brokers MX"</strong> en la app principal tiene comparativa completa con fortalezas, debilidades, comisiones anuales y fees por inactividad de los 8 brokers documentados.
+        </p>
+      </details>`;
+    const cont = document.getElementById('mp-compra-content');
+    if (cont) cont.innerHTML = content;
+  };
+
 })();
