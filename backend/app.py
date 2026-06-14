@@ -409,6 +409,22 @@ def seo_sitemap():
     return send_from_directory(str(FRONTEND_DIR), "sitemap.xml", mimetype="application/xml")
 
 
+# ── Verificación de propiedad: Google Search Console y Bing ──────
+# Archivos tipo google<hash>.html o BingSiteAuth.xml en raíz
+@app.route("/<path:filename>")
+def archivo_raiz(filename):
+    """Sirve archivos de verificación (Google/Bing) y otros en la raíz
+    del frontend. Solo si existen físicamente y son archivos HTML/XML/TXT."""
+    # Por seguridad, solo servir tipos esperados desde la raíz
+    if not (filename.startswith("google") and filename.endswith(".html")) \
+       and filename not in ("BingSiteAuth.xml",):
+        abort(404)
+    ruta = FRONTEND_DIR / filename
+    if not ruta.exists() or not ruta.is_file():
+        abort(404)
+    return send_from_directory(str(FRONTEND_DIR), filename)
+
+
 # ── Páginas legales ─────────────────────────────────────────────
 @app.route("/terminos")
 def pagina_terminos():
