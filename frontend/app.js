@@ -213,7 +213,57 @@ function mostrarDashboard() {
 
 // --- carga principal --------------------------------------------------------
 
+// ============================================================
+// MODO DEMO — ?demo=1 en la URL precarga portafolio sample
+// ============================================================
+function _modoDemo() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('demo') === '1';
+  } catch { return false; }
+}
+
+function _cargarPortafolioDemo() {
+  // Portafolio de muestra: diversificado MX/US/cripto para mostrar todas las features
+  const tickersSample = ['AAPL', 'MSFT', 'NVDA', 'WALMEX.MX', 'GFNORTEO.MX', 'VOO', 'BTC-USD'];
+  const pesosFracSample = {
+    'AAPL':       0.20,
+    'MSFT':       0.18,
+    'NVDA':       0.15,
+    'WALMEX.MX':  0.12,
+    'GFNORTEO.MX':0.10,
+    'VOO':        0.15,
+    'BTC-USD':    0.10,
+  };
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(tickersSample));
+    localStorage.setItem(LS_KEY_PESOS, JSON.stringify(pesosFracSample));
+  } catch {}
+}
+
+function _activarBannerDemo() {
+  const banner = $('demo-banner');
+  if (!banner) return;
+  banner.classList.remove('hidden');
+  // El header también es sticky top-0; al añadir el banner, ajusto el header
+  // para que se pegue debajo del banner. Banner mide ~38px.
+  document.querySelectorAll('header.sticky, nav.sticky').forEach(el => {
+    const cur = parseInt(el.style.top || '0', 10) || 0;
+    el.style.top = (cur + 38) + 'px';
+  });
+}
+
 async function init() {
+  // Si viene con ?demo=1 y el usuario no tiene portafolio, precargamos uno sample
+  const esDemo = _modoDemo();
+  if (esDemo) {
+    const tickersExistentes = leerPortafolioGuardado();
+    if (!tickersExistentes || tickersExistentes.length < 2) {
+      _cargarPortafolioDemo();
+    }
+    _activarBannerDemo();
+  }
+
   const tickers = leerPortafolioGuardado();
   if (!tickers || tickers.length < 2) {
     // Primera vez: mostrar picker
