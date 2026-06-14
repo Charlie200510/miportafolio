@@ -865,19 +865,35 @@
 
     <!-- Resumen agregado -->
     <div id="fund-resumen" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4 mb-4 hidden">
-      <div class="bg-surface-card border border-surface-border rounded-xl p-4">
+      <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuántas veces pagas las utilidades anuales del portafolio. Más bajo = más barato.">
         <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">P/E promedio</p>
         <p id="fund-resumen-pe" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
-      <div class="bg-surface-card border border-surface-border rounded-xl p-4">
+      <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuántas veces pagas el valor contable. &lt;1 puede ser oportunidad o problema; &gt;3 es típico de tech.">
+        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">P/B promedio</p>
+        <p id="fund-resumen-pb" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+      </div>
+      <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="PEG = P/E / crecimiento esperado. PEG=1 es el balance ideal entre valuación y crecimiento.">
+        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">PEG promedio</p>
+        <p id="fund-resumen-peg" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+      </div>
+      <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="% del precio que recibes en dividendos al año. 0% = reinvierten todo; 5%+ = reparten fuerte.">
         <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Dividend yield promedio</p>
         <p id="fund-resumen-yield" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
-      <div class="bg-surface-card border border-surface-border rounded-xl p-4">
+      <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Volatilidad relativa al mercado. 1.0 = se mueve igual; 1.5 = 50% más volátil; 0.7 = más tranquilo.">
         <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Beta promedio</p>
         <p id="fund-resumen-beta" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
-      <div class="bg-surface-card border border-surface-border rounded-xl p-4">
+      <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Rentabilidad sobre capital propio. >15% sostenido indica calidad operativa.">
+        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">ROE promedio</p>
+        <p id="fund-resumen-roe" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+      </div>
+      <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="% de las ventas que se queda como ganancia final. >15% es muy bueno.">
+        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Margen neto promedio</p>
+        <p id="fund-resumen-margen" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
+      </div>
+      <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuántas empresas tienen datos fundamentales disponibles.">
         <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Empresas analizadas</p>
         <p id="fund-resumen-count" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
@@ -917,10 +933,16 @@
       <div class="mt-3 grid md:grid-cols-2 gap-3 text-[11px] text-zinc-400 leading-relaxed">
         <div><span class="text-zinc-200 font-semibold">P/E (Price to Earnings):</span> cuántas veces pagas las utilidades anuales. P/E de 20 = 20 años de utilidades actuales. Valores bajos pueden indicar "barato" o problemas; altos indican crecimiento esperado.</div>
         <div><span class="text-zinc-200 font-semibold">P/B (Price to Book):</span> cuántas veces pagas el valor contable. &lt;1 puede ser oportunidad o empresa dañada; &gt;3 es típico de tech.</div>
+        <div><span class="text-zinc-200 font-semibold">PEG (P/E to Growth):</span> ajusta el P/E por el crecimiento esperado. PEG=1 = balance perfecto entre precio y crecimiento. &lt;1 = barata para su crecimiento; &gt;2 = quizá sobrevaluada.</div>
         <div><span class="text-zinc-200 font-semibold">Dividend yield:</span> % del precio que recibes anualmente en dividendos. 0% = reinvierten todo; 5%+ = reparten fuerte.</div>
         <div><span class="text-zinc-200 font-semibold">Beta:</span> qué tan sensible es al mercado. 1 = se mueve igual; 1.5 = 50% más volátil; 0.7 = más tranquila.</div>
-        <div><span class="text-zinc-200 font-semibold">ROE:</span> rentabilidad sobre capital. &gt;15% sostenido indica calidad operativa.</div>
-        <div><span class="text-zinc-200 font-semibold">Posición 52w:</span> dónde está el precio entre su mínimo y máximo del último año.</div>
+        <div><span class="text-zinc-200 font-semibold">ROE (Return on Equity):</span> rentabilidad sobre capital propio. &gt;15% sostenido indica calidad operativa.</div>
+        <div><span class="text-zinc-200 font-semibold">Margen neto:</span> % de las ventas que se queda como ganancia final después de TODOS los gastos. &gt;15% es excelente, &lt;5% es delgado.</div>
+        <div><span class="text-zinc-200 font-semibold">Margen operativo:</span> % de las ventas que queda después de gastos operativos (sin contar impuestos ni intereses). Mide eficiencia del negocio core.</div>
+        <div><span class="text-zinc-200 font-semibold">Debt/Equity:</span> cuánta deuda usa por cada dólar de capital propio. &lt;0.5 es conservadora; &gt;2 es muy apalancada.</div>
+        <div><span class="text-zinc-200 font-semibold">Market Cap:</span> tamaño total de la empresa (precio × acciones). &gt;$10B = large cap; $2-10B = mid; &lt;$2B = small.</div>
+        <div><span class="text-zinc-200 font-semibold">EPS (Earnings per Share):</span> utilidad por acción. EPS creciente año tras año es señal sana.</div>
+        <div><span class="text-zinc-200 font-semibold">Posición 52w:</span> dónde está el precio entre su mínimo y máximo del último año. Cerca del máximo = momentum; cerca del mínimo = posible oportunidad o problema.</div>
       </div>
     </details>
   </section>

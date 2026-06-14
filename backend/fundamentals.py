@@ -351,12 +351,30 @@ def analizar_fundamentales(tickers: List[str]) -> Dict[str, Any]:
             return None
         return sum(vals) / len(vals)
 
+    # Helper: promedio de un campo anidado (ej. margenes.neto)
+    def _prom_anidado(campo: str, sub: str) -> Optional[float]:
+        vals = []
+        for r in validos:
+            obj = r.get(campo) or {}
+            v = obj.get(sub)
+            if isinstance(v, (int, float)):
+                vals.append(v)
+        if not vals:
+            return None
+        return sum(vals) / len(vals)
+
     resumen = {
         "num_tickers":    len(ordenados),
         "num_ok":         len(validos),
         "pe_promedio":    _prom("pe_trailing"),
+        "pb_promedio":    _prom("pb"),
+        "peg_promedio":   _prom("peg"),
         "yield_promedio": _prom("dividend_yield"),
         "beta_promedio":  _prom("beta"),
+        "roe_promedio":   _prom("roe"),
+        "margen_neto_promedio":      _prom_anidado("margenes", "neto"),
+        "margen_operativo_promedio": _prom_anidado("margenes", "operativo"),
+        "debt_equity_promedio":      _prom("debt_to_equity"),
     }
 
     # Avisos educativos sobre el portafolio

@@ -953,6 +953,94 @@ function renderCorrelaciones(data) {
 
 // --- CONCENTRACIÓN --------------------------------------------------------
 
+// ETFs y fondos conocidos: mapeo manual para que no salgan como "Desconocido"
+const _ETF_MAP = {
+  // Broad market US
+  'SPY': {sector:'ETF Mercado amplio (USA)', pais:'Estados Unidos', moneda:'USD'},
+  'VOO': {sector:'ETF Mercado amplio (USA)', pais:'Estados Unidos', moneda:'USD'},
+  'IVV': {sector:'ETF Mercado amplio (USA)', pais:'Estados Unidos', moneda:'USD'},
+  'VTI': {sector:'ETF Mercado amplio (USA)', pais:'Estados Unidos', moneda:'USD'},
+  // Tech
+  'QQQ': {sector:'ETF Tecnología', pais:'Estados Unidos', moneda:'USD'},
+  'XLK': {sector:'ETF Tecnología', pais:'Estados Unidos', moneda:'USD'},
+  'SMH': {sector:'ETF Semiconductores', pais:'Estados Unidos', moneda:'USD'},
+  // Internacional
+  'VXUS': {sector:'ETF Mercado internacional', pais:'Global', moneda:'USD'},
+  'VEA':  {sector:'ETF Mercados desarrollados', pais:'Global', moneda:'USD'},
+  'VWO':  {sector:'ETF Mercados emergentes', pais:'Global', moneda:'USD'},
+  'EWZ':  {sector:'ETF Brasil', pais:'Brasil', moneda:'USD'},
+  'EWW':  {sector:'ETF México', pais:'México', moneda:'USD'},
+  'EWJ':  {sector:'ETF Japón', pais:'Japón', moneda:'USD'},
+  'EWY':  {sector:'ETF Corea del Sur', pais:'Corea del Sur', moneda:'USD'},
+  'EWU':  {sector:'ETF Reino Unido', pais:'Reino Unido', moneda:'USD'},
+  'EWQ':  {sector:'ETF Francia', pais:'Francia', moneda:'USD'},
+  'EWP':  {sector:'ETF España', pais:'España', moneda:'USD'},
+  'EWT':  {sector:'ETF Taiwán', pais:'Taiwán', moneda:'USD'},
+  'FXI':  {sector:'ETF China', pais:'China', moneda:'USD'},
+  // Sectoriales US
+  'XLF': {sector:'ETF Financiero', pais:'Estados Unidos', moneda:'USD'},
+  'XLE': {sector:'ETF Energía', pais:'Estados Unidos', moneda:'USD'},
+  'XLV': {sector:'ETF Salud', pais:'Estados Unidos', moneda:'USD'},
+  'XLY': {sector:'ETF Consumo discrecional', pais:'Estados Unidos', moneda:'USD'},
+  'XLP': {sector:'ETF Consumo básico', pais:'Estados Unidos', moneda:'USD'},
+  'XLI': {sector:'ETF Industrial', pais:'Estados Unidos', moneda:'USD'},
+  'XLU': {sector:'ETF Servicios públicos', pais:'Estados Unidos', moneda:'USD'},
+  'XLB': {sector:'ETF Materiales', pais:'Estados Unidos', moneda:'USD'},
+  'XLRE':{sector:'ETF Bienes raíces', pais:'Estados Unidos', moneda:'USD'},
+  // Renta fija
+  'TLT': {sector:'ETF Bonos largo plazo', pais:'Estados Unidos', moneda:'USD'},
+  'BND': {sector:'ETF Bonos agregado', pais:'Estados Unidos', moneda:'USD'},
+  'AGG': {sector:'ETF Bonos agregado', pais:'Estados Unidos', moneda:'USD'},
+  'HYG': {sector:'ETF Bonos high yield', pais:'Estados Unidos', moneda:'USD'},
+  // Commodities y metales
+  'GLD': {sector:'ETF Oro', pais:'Global', moneda:'USD'},
+  'SLV': {sector:'ETF Plata', pais:'Global', moneda:'USD'},
+  'GDX': {sector:'ETF Mineras de oro', pais:'Global', moneda:'USD'},
+  'GDXJ':{sector:'ETF Mineras junior', pais:'Global', moneda:'USD'},
+  'USO': {sector:'ETF Petróleo', pais:'Global', moneda:'USD'},
+  // Crypto-related
+  'FBTC':{sector:'ETF Bitcoin spot', pais:'Global', moneda:'USD'},
+  'GBTC':{sector:'ETF Bitcoin spot', pais:'Global', moneda:'USD'},
+  'IBIT':{sector:'ETF Bitcoin spot', pais:'Global', moneda:'USD'},
+  // BMV México
+  'NAFTRAC.MX': {sector:'ETF Mercado amplio (México)', pais:'México', moneda:'MXN'},
+  'IPC.MX':     {sector:'ETF Mercado amplio (México)', pais:'México', moneda:'MXN'},
+};
+
+function _inferirCategoria(ticker, meta) {
+  const t = (ticker || '').toUpperCase();
+  // 1) ETFs conocidos (mapeo manual)
+  if (_ETF_MAP[t]) return _ETF_MAP[t];
+  // 2) Crypto: termina en -USD, -USDT
+  if (t.endsWith('-USD') || t.endsWith('-USDT')) {
+    return {sector: 'Criptomonedas', pais: 'Global', moneda: 'USD'};
+  }
+  // 3) Tickers .MX (BMV)
+  if (t.endsWith('.MX')) {
+    return {
+      sector: meta.sector || 'BMV (acción mexicana)',
+      pais:   meta.pais   || 'México',
+      moneda: meta.moneda || 'MXN',
+    };
+  }
+  // 4) ETFs no mapeados pero detectables por nombre/sector vacío
+  const nombre = (meta.nombre || '').toLowerCase();
+  if (nombre.includes('etf') || nombre.includes('trust') || nombre.includes('fund') ||
+      nombre.includes('ishares') || nombre.includes('vanguard') || nombre.includes('spdr')) {
+    return {
+      sector: meta.sector || 'ETF / Fondo',
+      pais:   meta.pais   || 'Global',
+      moneda: meta.moneda || 'USD',
+    };
+  }
+  // 5) Sin sufijo → asumir USA (la mayoría de NYSE/Nasdaq no usa sufijo)
+  return {
+    sector: meta.sector || 'Otros',
+    pais:   meta.pais   || 'Estados Unidos',
+    moneda: meta.moneda || 'USD',
+  };
+}
+
 function renderConcentracion(data, info) {
   const cont = $('concentracion-contenido');
   const c = data.concentracion;
@@ -974,12 +1062,10 @@ function renderConcentracion(data, info) {
     for (const t of Object.keys(pesos)) {
       const w = pesos[t];
       const meta = info[t] || {};
-      const s = meta.sector || 'Desconocido';
-      const p = meta.pais || 'Desconocido';
-      const mo = meta.moneda || 'Desconocido';
-      sectores[s] = (sectores[s] || 0) + w * 100;
-      paises[p]   = (paises[p]   || 0) + w * 100;
-      monedas[mo] = (monedas[mo] || 0) + w * 100;
+      const cat = _inferirCategoria(t, meta);
+      sectores[cat.sector] = (sectores[cat.sector] || 0) + w * 100;
+      paises[cat.pais]     = (paises[cat.pais]     || 0) + w * 100;
+      monedas[cat.moneda]  = (monedas[cat.moneda]  || 0) + w * 100;
     }
   }
 
@@ -4676,23 +4762,19 @@ const Fundamentales = (() => {
       return;
     }
     box.classList.remove('hidden');
-    // Helper: formatear con tooltip informativo si no hay dato
-    const _fmtPE = v => v != null ? v.toFixed(1) : 'N/D';
-    const _fmtYield = v => v != null ? (v * 100).toFixed(2) + '%' : '0%';
-    const _fmtBeta = v => v != null ? v.toFixed(2) : 'N/D';
-    $('fund-resumen-pe').textContent    = _fmtPE(resumen.pe_promedio);
-    $('fund-resumen-yield').textContent = _fmtYield(resumen.yield_promedio);
-    $('fund-resumen-beta').textContent  = _fmtBeta(resumen.beta_promedio);
-    $('fund-resumen-count').textContent = `${resumen.num_ok}/${resumen.num_tickers}`;
-    // Tooltips informativos si hay valores faltantes
-    const peEl = $('fund-resumen-pe');
-    const betaEl = $('fund-resumen-beta');
-    if (peEl && resumen.pe_promedio == null) {
-      peEl.title = 'P/E no disponible para todos los tickers (común con ETFs, crypto y empresas en pérdida)';
-    }
-    if (betaEl && resumen.beta_promedio == null) {
-      betaEl.title = 'Beta no disponible (común con crypto, ETFs nuevos o tickers sin historial de 1 año)';
-    }
+    // Helpers de formato
+    const _fmtNum  = (v, d=1) => v != null ? v.toFixed(d) : 'N/D';
+    const _fmtPct  = (v, d=2) => v != null ? (v * 100).toFixed(d) + '%' : '0%';
+    const _fmtRatio = v => v != null ? v.toFixed(2) : 'N/D';
+    // Llenar todas las cards de resumen
+    $('fund-resumen-pe').textContent     = _fmtNum(resumen.pe_promedio, 1);
+    if ($('fund-resumen-pb'))     $('fund-resumen-pb').textContent     = _fmtRatio(resumen.pb_promedio);
+    if ($('fund-resumen-peg'))    $('fund-resumen-peg').textContent    = _fmtRatio(resumen.peg_promedio);
+    $('fund-resumen-yield').textContent  = _fmtPct(resumen.yield_promedio, 2);
+    $('fund-resumen-beta').textContent   = _fmtRatio(resumen.beta_promedio);
+    if ($('fund-resumen-roe'))    $('fund-resumen-roe').textContent    = _fmtPct(resumen.roe_promedio, 1);
+    if ($('fund-resumen-margen')) $('fund-resumen-margen').textContent = _fmtPct(resumen.margen_neto_promedio, 1);
+    $('fund-resumen-count').textContent  = `${resumen.num_ok}/${resumen.num_tickers}`;
   }
 
   function renderAvisos(avisos) {
