@@ -1460,9 +1460,16 @@ const Picker = (() => {
       if (recosTickers.length) refrescarPrecios(recosTickers);
     } catch (err) {
       $('pick-curado-lista').innerHTML = `
-        <div class="col-span-2 text-xs text-zinc-500 py-4 text-center">
-          Universo no disponible (${err.message}). Corre
-          <code class="text-zinc-300">python descargar_universo.py</code> en el backend.
+        <div class="col-span-2 py-8 text-center">
+          <div class="w-12 h-12 rounded-xl bg-accent-amber/10 border border-accent-amber/30 flex items-center justify-center mx-auto mb-3">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-amber">
+              <path d="M1 1l22 22M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2"/><polyline points="22 6 12 13"/>
+            </svg>
+          </div>
+          <p class="text-sm font-semibold text-zinc-200 mb-1">Sin conexión al universo</p>
+          <p class="text-[11px] text-zinc-500 max-w-xs mx-auto leading-relaxed">
+            El servidor está despertando o sin conexión. Espera 30 segundos y refresca la página.
+          </p>
         </div>`;
     }
     renderSeleccion();
@@ -4978,7 +4985,7 @@ const Backtest = (() => {
   async function correr() {
     const { tickers, pesos } = obtenerPortafolio();
     if (!tickers.length) {
-      $('bt-error').textContent = 'Primero guarda tu portafolio.';
+      $('bt-error').innerHTML = 'Aún no tienes portafolio guardado. <a href="#" onclick="document.querySelector(\'.nav-tab[data-vista=portafolio]\').click(); return false;" class="text-accent-blue underline">Arma uno en 30 segundos →</a>';
       $('bt-error').classList.remove('hidden');
       return;
     }
@@ -5074,7 +5081,7 @@ const StressTest = (() => {
     const pesos = {};
     Object.entries(pesosFrac).forEach(([t, v]) => { pesos[t] = v * 100; });
     if (!tickers.length) {
-      $('st-error').textContent = 'Primero guarda tu portafolio.';
+      $('st-error').innerHTML = 'Aún no tienes portafolio guardado. <a href="#" onclick="document.querySelector(\'.nav-tab[data-vista=portafolio]\').click(); return false;" class="text-accent-red underline">Arma uno en 30 segundos →</a>';
       $('st-error').classList.remove('hidden');
       return;
     }

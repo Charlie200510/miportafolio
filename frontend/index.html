@@ -1890,8 +1890,19 @@
                 </tr>
               </thead>
               <tbody id="tx-lista" class="divide-y divide-surface-border">
-                <tr><td colspan="7" class="px-4 py-8 text-center text-zinc-500 text-xs">
-                  Aún no has capturado transacciones. Usa el formulario de arriba.
+                <tr><td colspan="7" class="px-4 py-10 text-center">
+                  <div class="max-w-md mx-auto">
+                    <div class="w-12 h-12 rounded-xl bg-accent-teal/10 border border-accent-teal/30 flex items-center justify-center mx-auto mb-3">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-teal">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                      </svg>
+                    </div>
+                    <p class="text-sm font-semibold text-zinc-200 mb-1">Aún no has capturado transacciones</p>
+                    <p class="text-xs text-zinc-500 leading-relaxed mb-4">
+                      Registra tus compras y ventas reales para que la app calcule tu ISR, rendimiento exacto y oportunidades de tax-loss harvesting.
+                    </p>
+                    <p class="text-[11px] text-zinc-600">↑ Usa el formulario de arriba · te toma 30 segundos por transacción</p>
+                  </div>
                 </td></tr>
               </tbody>
             </table>
@@ -1939,11 +1950,20 @@
       </div>
 
       <!-- Aviso si no hay transacciones -->
-      <div id="imp-sin-datos" class="bg-accent-indigo/5 border border-accent-indigo/20 rounded-xl p-6 text-center mb-8 hidden">
-        <div class="text-3xl mb-2">🧾</div>
-        <p class="text-sm text-zinc-300">
-          Registra tus compras y ventas arriba para calcular tu ISR estimado y buscar oportunidades de harvesting.
+      <div id="imp-sin-datos" class="bg-accent-indigo/5 border border-accent-indigo/20 rounded-xl p-8 text-center mb-8 hidden">
+        <div class="w-14 h-14 rounded-2xl bg-accent-indigo/15 border border-accent-indigo/30 flex items-center justify-center mx-auto mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-indigo">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>
+          </svg>
+        </div>
+        <p class="text-base font-semibold text-zinc-100 mb-2">Sin datos fiscales aún</p>
+        <p class="text-sm text-zinc-400 leading-relaxed max-w-md mx-auto mb-4">
+          Para calcular tu ISR mexicano (10% sobre utilidades) y buscar oportunidades de <span class="text-accent-green">tax-loss harvesting</span>, primero registra tus transacciones reales arriba.
         </p>
+        <div class="inline-flex items-center gap-2 text-[11px] text-zinc-500 bg-zinc-900/40 border border-surface-border rounded-full px-3 py-1.5">
+          <span class="text-accent-indigo">↑</span>
+          <span>Captura compras y ventas en el formulario de transacciones</span>
+        </div>
       </div>
 
       <!-- Contenido principal -->
