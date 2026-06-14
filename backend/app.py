@@ -413,15 +413,17 @@ def seo_sitemap():
 # Archivos tipo google<hash>.html o BingSiteAuth.xml en raíz
 @app.route("/<path:filename>")
 def archivo_raiz(filename):
-    """Sirve archivos de verificación (Google/Bing) y otros en la raíz
-    del frontend. Solo si existen físicamente y son archivos HTML/XML/TXT."""
-    # Por seguridad, solo servir tipos esperados desde la raíz
+    """Sirve archivos de verificación (Google/Bing) en la raíz del sitio.
+    Solo permite la whitelist específica."""
     if not (filename.startswith("google") and filename.endswith(".html")) \
        and filename not in ("BingSiteAuth.xml",):
         abort(404)
     ruta = FRONTEND_DIR / filename
     if not ruta.exists() or not ruta.is_file():
         abort(404)
+    # Mime type correcto según el archivo
+    if filename.endswith(".xml"):
+        return send_from_directory(str(FRONTEND_DIR), filename, mimetype="application/xml")
     return send_from_directory(str(FRONTEND_DIR), filename)
 
 
