@@ -87,8 +87,12 @@ CRYPTO_TICKERS = [
     "WBTC-USD", "DOT-USD", "LINK-USD", "BCH-USD", "NEAR-USD", "MATIC-USD",
     "LTC-USD", "DAI-USD", "UNI7083-USD", "PEPE24478-USD", "ICP-USD", "LEO-USD",
     "ETC-USD", "APT21794-USD", "HBAR-USD", "STX4847-USD", "RNDR-USD",
+    "HYPE32196-USD",  # Hyperliquid — top 10 por market cap (~$69B, jun 2026)
     # 30-100
     "FIL-USD", "ARB11841-USD", "VET-USD", "ATOM-USD", "MNT27075-USD", "OP-USD",
+    "SUI20947-USD",   # Sui — L1, #26-30 por market cap (~$3-7B, jun 2026)
+    "POL28321-USD",   # Polygon (sucesor de MATIC) — ~$1B market cap (jun 2026)
+    "TAO22974-USD",   # Bittensor — AI crypto, ~$3B market cap (jun 2026)
     "MKR-USD", "INJ-USD", "GRT6719-USD", "IMX10603-USD", "TIA22861-USD",
     "AAVE-USD", "WLD-USD", "ALGO-USD", "EGLD-USD", "FTM-USD", "QNT-USD",
     "FLOW-USD", "SAND-USD", "AXS-USD", "MANA-USD", "EOS-USD", "XLM-USD",
