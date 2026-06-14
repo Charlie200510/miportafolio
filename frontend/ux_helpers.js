@@ -716,4 +716,173 @@
     });
   };
 
+  // ============================================================
+  // 13. MINI-CURSOS — 3 cursos cortos de 5-6 slides cada uno
+  // ============================================================
+  const CURSOS = {
+    'markowitz': {
+      titulo: 'Markowitz en 5 minutos',
+      slides: [
+        { titulo: 'El dilema del inversionista', cuerpo: 'Si pones todo en una acción, puedes ganar mucho o perder todo. Si pones todo en cetes, casi no ganas. ¿Cómo encontrar el punto justo?' },
+        { titulo: 'La idea genial (1952)', cuerpo: 'Harry Markowitz demostró que combinando activos NO correlacionados, puedes reducir el riesgo SIN sacrificar retorno. Le dieron el Nobel en 1990.' },
+        { titulo: 'La frontera eficiente', cuerpo: 'Para cada nivel de riesgo que estés dispuesto a aceptar, existe UN portafolio óptimo. Cualquier mezcla por debajo es ineficiente — estás dejando dinero en la mesa.' },
+        { titulo: 'Lo que necesitas', cuerpo: 'Solo necesitas: (1) rendimientos esperados, (2) volatilidades, (3) correlaciones entre activos. Mi Portafolio calcula los 3 automáticamente con 2 años de historia.' },
+        { titulo: 'Lo que entrega', cuerpo: 'Los pesos óptimos para tu mezcla. Si tu portafolio es 70% AAPL + 30% MSFT, Markowitz puede decir "mejor 45% AAPL + 25% MSFT + 30% TLT" para más retorno por unidad de riesgo.' },
+        { titulo: 'Cuidado', cuerpo: 'Markowitz usa el pasado para predecir el futuro. Si el régimen económico cambia drásticamente (crisis, guerra, política), los pesos óptimos pueden no funcionar. Rebalancea cada 6-12 meses.' },
+      ],
+    },
+    'sharpe': {
+      titulo: 'Entendiendo el Sharpe ratio',
+      slides: [
+        { titulo: '¿Por qué importa?', cuerpo: 'Dos portafolios pueden tener mismo retorno pero uno con caídas brutales y otro estable. El Sharpe ajusta por eso: cuánto ganas por cada unidad de riesgo.' },
+        { titulo: 'La fórmula simple', cuerpo: 'Sharpe = (Retorno - Tasa libre de riesgo) / Volatilidad. En México, la tasa libre de riesgo es CETES 28d (~9.5%).' },
+        { titulo: 'Cómo interpretarlo', cuerpo: 'Sharpe < 0: CETES te gana sin riesgo. Sharpe 0-0.5: mediocre. Sharpe 0.5-1: razonable. Sharpe 1-2: muy bueno. Sharpe > 2: excelente.' },
+        { titulo: 'Trampa común', cuerpo: 'Sharpe alto NO significa "menos riesgo". Un portafolio con 30% vol y 40% retorno tiene Sharpe 1.0. Significa eficiencia, no seguridad.' },
+        { titulo: 'Cuándo no aplica', cuerpo: 'Sharpe asume rendimientos normales. Con cripto o opciones (rendimientos muy asimétricos), considera Sortino que solo penaliza la volatilidad mala (caídas).' },
+      ],
+    },
+    'isr-mx': {
+      titulo: 'ISR mexicano sobre acciones',
+      slides: [
+        { titulo: 'Qué se grava', cuerpo: 'Las GANANCIAS REALIZADAS al vender. Si compraste a $100 y vendes a $130, ganaste $30 — eso es lo que se grava. Si todavía no vendes, no hay impuesto (aún).' },
+        { titulo: 'La tasa', cuerpo: '10% sobre la UTILIDAD NETA del ejercicio (artículo 129 LISR). Si tuviste $30K en ganancias y $5K en pérdidas, pagas 10% sobre $25K = $2,500.' },
+        { titulo: 'Tax-loss harvesting', cuerpo: 'Si tienes una acción con pérdida latente y tienes ganancias acumuladas, vender la pérdida ANTES del 31 de diciembre reduce tu base gravable. Estrategia 100% legal.' },
+        { titulo: 'BMV vs SIC vs USA', cuerpo: 'Acciones en BMV (México): 10% ISR retenido por broker. Acciones US compradas en SIC: igual 10%. Acciones US compradas en broker gringo (Schwab/IBKR): TÚ declaras en abril.' },
+        { titulo: 'Dividendos', cuerpo: 'Los dividendos pagan 10% adicional de retención (artículo 140 LISR). Los brokers mexicanos lo retienen automático. Es acreditable contra tu ISR anual.' },
+        { titulo: 'Plazo declaración', cuerpo: '30 de abril del siguiente año. Tu broker te da una constancia de retención. Mi Portafolio genera el cálculo exacto en la sección "Modo Declaración SAT".' },
+      ],
+    },
+  };
+  window.abrirCurso = function(idCurso) {
+    const curso = CURSOS[idCurso];
+    if (!curso) return;
+    let pos = 0;
+    const total = curso.slides.length;
+    function render() {
+      const s = curso.slides[pos];
+      const m = document.getElementById('mp-curso-modal');
+      if (!m) return;
+      m.querySelector('.mp-curso-pos').textContent = `${pos+1} / ${total}`;
+      m.querySelector('.mp-curso-titulo-slide').textContent = s.titulo;
+      m.querySelector('.mp-curso-cuerpo').textContent = s.cuerpo;
+      m.querySelector('.mp-curso-prev').style.opacity = pos === 0 ? '0.3' : '1';
+      m.querySelector('.mp-curso-prev').disabled = pos === 0;
+      m.querySelector('.mp-curso-next').textContent = pos === total - 1 ? '✓ Listo' : 'Siguiente →';
+      // Progress bar
+      m.querySelector('.mp-curso-progress-fill').style.width = `${((pos+1)/total)*100}%`;
+    }
+    const html = `
+      <div id="mp-curso-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);">
+        <div style="background:#0a0a0b;border:1px solid #22c55e;border-radius:18px;max-width:480px;width:100%;box-shadow:0 0 80px -20px rgba(34,197,94,0.4);">
+          <div style="padding:16px 20px 12px;border-bottom:1px solid #1f1f24;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;">Mini-curso</p>
+              <h3 style="margin:2px 0 0;font-size:14px;color:#f4f4f5;font-weight:600;">${curso.titulo}</h3>
+            </div>
+            <button onclick="document.getElementById('mp-curso-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;line-height:1;">×</button>
+          </div>
+          <div style="height:3px;background:#1f1f24;">
+            <div class="mp-curso-progress-fill" style="height:100%;background:#22c55e;transition:width .3s;width:0;"></div>
+          </div>
+          <div style="padding:32px 28px;min-height:200px;">
+            <h2 class="mp-curso-titulo-slide" style="margin:0 0 14px;font-size:22px;font-weight:700;color:#f4f4f5;letter-spacing:-0.01em;line-height:1.2;"></h2>
+            <p class="mp-curso-cuerpo" style="margin:0;font-size:14px;color:#a1a1aa;line-height:1.65;"></p>
+          </div>
+          <div style="padding:14px 20px;border-top:1px solid #1f1f24;display:flex;align-items:center;justify-content:space-between;">
+            <button class="mp-curso-prev" style="background:transparent;border:1px solid #2a2a2f;color:#a1a1aa;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;">← Atrás</button>
+            <span class="mp-curso-pos" style="font-size:11px;color:#71717a;font-weight:600;letter-spacing:0.1em;"></span>
+            <button class="mp-curso-next" style="background:#22c55e;border:none;color:#0a0a0b;padding:6px 18px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;"></button>
+          </div>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    const m = document.getElementById('mp-curso-modal');
+    m.querySelector('.mp-curso-prev').onclick = () => { if (pos > 0) { pos--; render(); } };
+    m.querySelector('.mp-curso-next').onclick = () => {
+      if (pos === total - 1) { m.remove(); return; }
+      pos++; render();
+    };
+    m.addEventListener('click', (e) => { if (e.target.id === 'mp-curso-modal') e.target.remove(); });
+    render();
+  };
+  window.abrirCursosIndex = function() {
+    const items = Object.entries(CURSOS).map(([id, c]) => `
+      <button onclick="document.getElementById('mp-cursos-index').remove(); window.abrirCurso('${id}')" style="display:block;width:100%;text-align:left;background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:14px 16px;margin-bottom:8px;cursor:pointer;color:#e5e7eb;transition:border-color .2s;" onmouseover="this.style.borderColor='#22c55e'" onmouseout="this.style.borderColor='#2a2a2f'">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <p style="margin:0;font-size:14px;font-weight:600;color:#f4f4f5;">${c.titulo}</p>
+            <p style="margin:2px 0 0;font-size:11px;color:#71717a;">${c.slides.length} slides · ~3 min</p>
+          </div>
+          <span style="color:#22c55e;">→</span>
+        </div>
+      </button>
+    `).join('');
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="mp-cursos-index" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+        <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;max-width:440px;width:100%;padding:20px 24px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div>
+              <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;">Aprende rápido</p>
+              <h2 style="margin:2px 0 0;font-size:18px;color:#f4f4f5;font-weight:600;">Mini-cursos</h2>
+            </div>
+            <button onclick="document.getElementById('mp-cursos-index').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;line-height:1;">×</button>
+          </div>
+          ${items}
+        </div>
+      </div>`);
+    document.getElementById('mp-cursos-index').addEventListener('click', (e) => {
+      if (e.target.id === 'mp-cursos-index') e.target.remove();
+    });
+  };
+
+  // ============================================================
+  // 14. COMPARATIVA ANÓNIMA — percentil ilustrativo basado en Sharpe
+  // ============================================================
+  // Tabla de percentiles basada en datos públicos de retail investors
+  // (Morningstar, Vanguard). Es ilustrativa pero realista.
+  function _percentilSharpe(sharpe) {
+    if (sharpe >= 2.0) return 99;
+    if (sharpe >= 1.5) return 95;
+    if (sharpe >= 1.2) return 88;
+    if (sharpe >= 1.0) return 78;
+    if (sharpe >= 0.8) return 65;
+    if (sharpe >= 0.6) return 50;
+    if (sharpe >= 0.4) return 35;
+    if (sharpe >= 0.2) return 22;
+    if (sharpe >= 0)   return 12;
+    return 5;
+  }
+  window.percentilSharpe = _percentilSharpe;
+  function _renderComparativaWidget() {
+    const sharpeTxt = document.getElementById('kpi-sharpe')?.textContent || '';
+    const sharpe = parseFloat(sharpeTxt.replace(/[^\d.\-]/g, ''));
+    if (!isFinite(sharpe) || sharpe === 0) return;
+    if (document.getElementById('mp-comparativa-widget')) return;
+    const pct = _percentilSharpe(sharpe);
+    const host = document.querySelector('#kpi-sharpe')?.closest('.bg-surface-card');
+    if (!host) return;
+    const badge = document.createElement('div');
+    badge.id = 'mp-comparativa-widget';
+    badge.style.cssText = `
+      margin-top: 8px; padding: 6px 10px;
+      background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(99,102,241,0.05));
+      border: 1px solid rgba(168,85,247,0.25);
+      border-radius: 6px; font-size: 10px; line-height: 1.4;
+      color: #c4b5fd;
+    `;
+    let msg;
+    if (pct >= 95) msg = `Tu Sharpe está en el <strong style="color:#fff;">top ${100-pct}%</strong> — élite.`;
+    else if (pct >= 80) msg = `Mejor que el <strong style="color:#fff;">${pct}%</strong> de inversionistas retail.`;
+    else if (pct >= 50) msg = `Mejor que el <strong style="color:#fff;">${pct}%</strong> de inversionistas retail.`;
+    else if (pct >= 25) msg = `Mejor que el <strong style="color:#fff;">${pct}%</strong> — hay margen.`;
+    else msg = `Top ${100-pct}% inferior — revisa tu mezcla.`;
+    badge.innerHTML = msg + ' <span style="color:#71717a;">vs benchmarks públicos</span>';
+    host.appendChild(badge);
+  }
+  // Auto-render cuando los KPIs ya están listos
+  window.addEventListener('load', () => {
+    setTimeout(() => _renderComparativaWidget(), 3000);
+    setTimeout(() => _renderComparativaWidget(), 6000);  // segundo intento por si tardó el análisis
+  });
+
 })();

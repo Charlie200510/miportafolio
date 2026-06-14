@@ -190,9 +190,12 @@
           <div id="port-selector-menu" class="hidden absolute top-full left-0 mt-1 w-64 bg-surface-card border border-surface-border rounded-lg shadow-xl z-50 p-2">
             <p class="text-[10px] uppercase tracking-wider text-zinc-500 px-2 py-1">Cambiar a</p>
             <div id="port-list" class="space-y-0.5"></div>
-            <div class="border-t border-surface-border mt-2 pt-2 px-2">
+            <div class="border-t border-surface-border mt-2 pt-2 px-2 space-y-1">
               <button id="port-crear-btn" class="w-full text-left text-xs text-accent-green hover:bg-accent-green/10 rounded px-2 py-1.5 transition">
                 + Crear nuevo portafolio
+              </button>
+              <button onclick="window.crearSandbox && window.crearSandbox()" class="w-full text-left text-xs text-amber-400 hover:bg-amber-500/10 rounded px-2 py-1.5 transition" title="Duplica el portafolio actual para experimentar sin afectarlo">
+                ⚗ Crear sandbox (qué pasaría si...)
               </button>
             </div>
           </div>
@@ -1886,7 +1889,12 @@
               <h3 class="text-sm font-semibold text-zinc-100">Historial de operaciones</h3>
               <p class="text-[10px] text-zinc-600 mt-0.5">Orden cronológico. Puedes eliminar cualquiera y se recalcula todo.</p>
             </div>
-            <span class="text-[11px] text-zinc-500 tabular" id="tx-lista-count">0</span>
+            <div class="flex items-center gap-3">
+              <button onclick="window.abrirImportadorCSV && window.abrirImportadorCSV()" class="text-[11px] px-2.5 py-1 rounded border border-accent-teal/30 text-accent-teal hover:bg-accent-teal/10 transition" title="Importar transacciones desde CSV (GBM, Kuspit, Bursanet, etc.)">
+                ↑ Importar CSV
+              </button>
+              <span class="text-[11px] text-zinc-500 tabular" id="tx-lista-count">0</span>
+            </div>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-xs">
@@ -2684,6 +2692,7 @@ python3 backend/app.py</pre>
         <a href="/privacidad" class="text-zinc-400 hover:text-zinc-200 transition">Privacidad</a>
         <button onclick="window.abrirFAQ && window.abrirFAQ()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">FAQ</button>
         <button onclick="window.abrirGlosario && window.abrirGlosario()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Glosario</button>
+        <button onclick="window.abrirCursosIndex && window.abrirCursosIndex()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Mini-cursos</button>
         <a href="mailto:soporte@miportafolio.app" class="text-zinc-400 hover:text-zinc-200 transition">Soporte</a>
       </div>
       <div class="text-zinc-600 leading-relaxed max-w-md text-right">
@@ -2694,5 +2703,6 @@ python3 backend/app.py</pre>
 
   <script src="/static/app.js"></script>
   <script src="/static/ux_helpers.js"></script>
+  <script src="/static/extras.js"></script>
 </body>
 </html>
