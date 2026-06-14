@@ -88,11 +88,13 @@
       display: none;
     }
     #mp-tour-tooltip {
-      position: fixed; z-index: 9999; max-width: 320px;
+      position: fixed; z-index: 10001; max-width: 320px;
       background: #1a1a1c; border: 1px solid #22c55e;
       border-radius: 14px; padding: 18px 20px;
       box-shadow: 0 0 0 4px rgba(34,197,94,0.15), 0 24px 64px -12px rgba(0,0,0,0.6);
       display: none;
+    }
+    #mp-tour-tooltip.mp-tour-anim {
       animation: mpTourPop .35s cubic-bezier(.18,.95,.32,1) both;
     }
     @keyframes mpTourPop { from { opacity:0; transform: scale(.92); } to { opacity:1; transform: scale(1); } }
@@ -109,13 +111,27 @@
       font-size: 10px; color: #71717a; letter-spacing: 0.1em;
     }
     #mp-tour-tooltip button {
-      background: #22c55e; color: #0a0a0b; font-weight: 600; font-size: 12px;
-      border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+      background: #22c55e; color: #0a0a0b; font-weight: 600; font-size: 13px;
+      border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;
+      min-height: 36px;
     }
     #mp-tour-tooltip button.skip {
-      background: transparent; color: #71717a; padding: 6px 8px;
+      background: transparent; color: #71717a; padding: 8px 10px;
     }
     #mp-tour-tooltip button:hover { filter: brightness(1.1); }
+    /* Mobile: bottom-sheet style, respeta safe area iPhone */
+    @media (max-width: 639px) {
+      #mp-tour-tooltip {
+        padding: 16px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+        border-radius: 14px 14px 12px 12px;
+      }
+      #mp-tour-tooltip h4 { font-size: 16px; margin-bottom: 8px; }
+      #mp-tour-tooltip p  { font-size: 13px; margin-bottom: 16px; }
+      #mp-tour-tooltip button { font-size: 14px; padding: 10px 18px; min-height: 40px; }
+      .mp-tour-highlight {
+        box-shadow: 0 0 0 3px rgba(34,197,94,0.6), 0 0 0 9999px rgba(0,0,0,0.7) !important;
+      }
+    }
     .mp-tour-highlight {
       position: relative; z-index: 9999 !important;
       box-shadow: 0 0 0 4px rgba(34,197,94,0.5), 0 0 0 9999px rgba(0,0,0,0.7) !important;
@@ -228,11 +244,15 @@
       body: 'Resumen diario de mercados, cierres de tus tickers y noticias relevantes.',
     },
     {
-      selector: '#perfiles-grid',
+      selector: '#perfiles-header, #perfiles-grid',
       title: '10 perfiles pre-armados',
       body: 'Si no sabes por dónde empezar, click en cualquiera y la app te arma el portafolio óptimo. Edítalo después.',
     },
   ];
+
+  function _esMobile() {
+    return window.innerWidth < 640;
+  }
 
   function _yaCompletado() {
     try { return localStorage.getItem(TOUR_KEY) === '1'; } catch { return false; }
@@ -279,7 +299,26 @@
     if (!elTarget) return;
     const tooltip = document.getElementById('mp-tour-tooltip');
     if (!tooltip) return;
-    // Asegurar que el tooltip ya tiene medidas (display:block antes de medir)
+
+    // En mobile: anclar el tooltip fijo abajo de la pantalla
+    // (como bottom-sheet), nunca flotando junto al target.
+    // Así nunca queda fuera de pantalla por más que el scroll se mueva.
+    if (_esMobile()) {
+      tooltip.style.visibility = 'visible';
+      tooltip.style.display = 'block';
+      tooltip.style.left   = '12px';
+      tooltip.style.right  = '12px';
+      tooltip.style.bottom = '16px';
+      tooltip.style.top    = 'auto';
+      tooltip.style.maxWidth = 'none';
+      tooltip.style.width  = 'auto';
+      return;
+    }
+
+    // Desktop: posicionar junto al target
+    tooltip.style.right  = 'auto';
+    tooltip.style.bottom = 'auto';
+    tooltip.style.maxWidth = '320px';
     tooltip.style.visibility = 'hidden';
     tooltip.style.display = 'block';
     const rect = elTarget.getBoundingClientRect();
@@ -298,13 +337,10 @@
       if (topAlt >= MARGIN) {
         top = topAlt;
       } else {
-        // Ni arriba ni abajo caben — centrar verticalmente en viewport
         top = Math.max(MARGIN, Math.min(vh - tipRect.height - MARGIN, (vh - tipRect.height) / 2));
       }
     }
-    // Clamp horizontal
     left = Math.max(MARGIN, Math.min(left, vw - tipRect.width - MARGIN));
-    // Clamp vertical final (defensa contra targets gigantes)
     top  = Math.max(MARGIN, Math.min(top,  vh - tipRect.height - MARGIN));
 
     tooltip.style.top  = top  + 'px';
@@ -362,6 +398,14 @@
     document.getElementById('mp-tour-skip').onclick = _terminar;
 
     _tourTargetActual = el;
+    // Pop animación solo al cambiar de paso, no en cada scroll
+    const tip = document.getElementById('mp-tour-tooltip');
+    if (tip) {
+      tip.classList.remove('mp-tour-anim');
+      // forzar reflow para reiniciar animación
+      void tip.offsetWidth;
+      tip.classList.add('mp-tour-anim');
+    }
     // Posicionar inmediatamente (con tooltip oculto), después esperar fin de scroll
     _posicionarTooltip(el);
     _esperarScrollFin(() => _posicionarTooltip(el));
