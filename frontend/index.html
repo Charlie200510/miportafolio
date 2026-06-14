@@ -1851,6 +1851,43 @@
       </div>
     </section>
 
+    <!-- ====================================================== -->
+    <!-- COMPRAR ACCIONES — broker picker                       -->
+    <!-- ====================================================== -->
+    <section class="max-w-7xl mx-auto px-6 pb-4">
+      <div class="bg-surface-card border border-accent-green/20 rounded-xl p-5 fade-up">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-3">
+          <div>
+            <h3 class="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+              <span class="w-6 h-6 rounded-md bg-accent-green/15 border border-accent-green/30 flex items-center justify-center text-accent-green">💳</span>
+              Comprar acciones
+            </h3>
+            <p class="text-[11px] text-zinc-500 mt-1 leading-relaxed max-w-2xl">
+              Mi Portafolio no ejecuta trades (no somos casa de bolsa CNBV). Te orientamos al broker más barato para cada ticker y te abrimos la URL directa — tú ejecutas la compra en tu broker.
+            </p>
+          </div>
+        </div>
+
+        <!-- Buscador rápido por ticker -->
+        <div class="flex flex-col sm:flex-row gap-2 mb-4">
+          <input id="comprar-ticker-input" type="text" placeholder="Escribe un ticker (AAPL, WALMEX.MX, BTC-USD…)"
+            class="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 uppercase focus:outline-none focus:border-accent-green tabular" />
+          <input id="comprar-monto-input" type="number" min="100" step="100" value="10000" placeholder="Monto MXN"
+            class="w-full sm:w-32 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 tabular focus:outline-none focus:border-accent-green" />
+          <button id="comprar-ticker-btn"
+            class="bg-accent-green text-zinc-950 font-semibold text-sm py-2 px-5 rounded-md hover:brightness-110 transition">
+            Ver brokers →
+          </button>
+        </div>
+
+        <!-- Atajos: tickers actuales del portafolio -->
+        <div id="comprar-shortcuts-wrap" class="hidden">
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">⚡ Comprar más de tus tickers actuales</p>
+          <div id="comprar-shortcuts" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- KPIs -->
     <section class="max-w-7xl mx-auto px-6 pb-4">
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up fade-up-1">

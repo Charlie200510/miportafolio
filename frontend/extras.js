@@ -196,6 +196,65 @@
   // Mi Portafolio NO ejecuta trades (no es casa de bolsa CNBV).
   // Este modal muestra brokers MX/US compatibles con el ticker,
   // sus comisiones y un botón "Abrir broker" con la URL.
+  // Wire-up del card "Comprar acciones" en vista Transacciones
+  function _wireUpCompraSection() {
+    const inp = document.getElementById('comprar-ticker-input');
+    const inpMonto = document.getElementById('comprar-monto-input');
+    const btn = document.getElementById('comprar-ticker-btn');
+    if (!inp || !btn) return;
+    if (btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+
+    const ejecutar = () => {
+      const ticker = (inp.value || '').trim().toUpperCase();
+      const monto = parseFloat(inpMonto.value) || 10000;
+      if (!ticker) {
+        inp.focus();
+        return;
+      }
+      window.abrirModalCompra(ticker, monto);
+    };
+    btn.addEventListener('click', ejecutar);
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); ejecutar(); }
+    });
+    inpMonto.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); ejecutar(); }
+    });
+
+    // Renderizar shortcuts con los tickers actuales del portafolio
+    try {
+      const tickers = JSON.parse(localStorage.getItem('miPortafolio.tickers.v1') || '[]');
+      const wrap = document.getElementById('comprar-shortcuts-wrap');
+      const cont = document.getElementById('comprar-shortcuts');
+      if (Array.isArray(tickers) && tickers.length && wrap && cont) {
+        wrap.classList.remove('hidden');
+        cont.innerHTML = tickers.slice(0, 15).map(t => `
+          <button data-tk="${t}" class="comprar-chip px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-700 text-xs text-zinc-300 hover:border-accent-green hover:text-accent-green transition tabular">
+            ${t} →
+          </button>`).join('');
+        cont.querySelectorAll('.comprar-chip').forEach(b => {
+          b.addEventListener('click', () => {
+            const monto = parseFloat(inpMonto.value) || 10000;
+            window.abrirModalCompra(b.dataset.tk, monto);
+          });
+        });
+      }
+    } catch (_) {}
+  }
+  // Observer para inicializar cuando la vista de Transacciones se muestre
+  const _compraObserver = new MutationObserver(() => {
+    const v = document.getElementById('vista-transacciones');
+    if (v && !v.classList.contains('hidden')) _wireUpCompraSection();
+  });
+  window.addEventListener('load', () => {
+    const v = document.getElementById('vista-transacciones');
+    if (v) {
+      _compraObserver.observe(v, { attributes: true, attributeFilter: ['class'] });
+      if (!v.classList.contains('hidden')) _wireUpCompraSection();
+    }
+  });
+
   window.abrirModalCompra = async function(ticker, monto = 10000) {
     if (!ticker) return;
     if (document.getElementById('mp-compra-modal')) return;
