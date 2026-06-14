@@ -119,24 +119,46 @@
       background: transparent; color: #71717a; padding: 8px 10px;
     }
     #mp-tour-tooltip button:hover { filter: brightness(1.1); }
-    /* Mobile: bottom-sheet style, respeta safe area iPhone */
+    /* Mobile: bottom-sheet full-width, NO box-shadow 9999px trick */
     @media (max-width: 639px) {
-      #mp-tour-tooltip {
-        padding: 16px 18px calc(16px + env(safe-area-inset-bottom, 0px));
-        border-radius: 14px 14px 12px 12px;
+      #mp-tour-backdrop {
+        background: rgba(0,0,0,0.85); /* más oscuro porque ya no usamos shadow trick */
       }
-      #mp-tour-tooltip h4 { font-size: 16px; margin-bottom: 8px; }
-      #mp-tour-tooltip p  { font-size: 13px; margin-bottom: 16px; }
-      #mp-tour-tooltip button { font-size: 14px; padding: 10px 18px; min-height: 40px; }
+      #mp-tour-tooltip {
+        padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+        border-radius: 16px 16px 0 0;
+        border-top: 2px solid #22c55e;
+        border-left: none; border-right: none; border-bottom: none;
+      }
+      #mp-tour-tooltip h4 { font-size: 17px; margin-bottom: 8px; line-height: 1.3; }
+      #mp-tour-tooltip p  { font-size: 14px; margin-bottom: 18px; line-height: 1.5; }
+      #mp-tour-tooltip .mp-tour-actions {
+        gap: 8px;
+      }
+      #mp-tour-tooltip button {
+        font-size: 15px; padding: 12px 22px; min-height: 48px;
+        border-radius: 10px;
+      }
+      #mp-tour-tooltip button.skip {
+        font-size: 14px;
+      }
+      /* En mobile el highlight es solo un outline verde — el backdrop
+         oscurece todo lo de atrás, así no necesitamos el shadow trick */
       .mp-tour-highlight {
-        box-shadow: 0 0 0 3px rgba(34,197,94,0.6), 0 0 0 9999px rgba(0,0,0,0.7) !important;
+        outline: 3px solid #22c55e !important;
+        outline-offset: 4px;
+        box-shadow: none !important;
+        border-radius: 8px;
       }
     }
-    .mp-tour-highlight {
-      position: relative; z-index: 9999 !important;
-      box-shadow: 0 0 0 4px rgba(34,197,94,0.5), 0 0 0 9999px rgba(0,0,0,0.7) !important;
-      border-radius: 8px;
-      transition: box-shadow .3s;
+    /* Desktop: highlight con shadow trick */
+    @media (min-width: 640px) {
+      .mp-tour-highlight {
+        position: relative; z-index: 9999 !important;
+        box-shadow: 0 0 0 4px rgba(34,197,94,0.5), 0 0 0 9999px rgba(0,0,0,0.7) !important;
+        border-radius: 8px;
+        transition: box-shadow .3s;
+      }
     }
   `;
   const style = document.createElement('style');
@@ -279,16 +301,21 @@
     const t = document.createElement('div');
     t.id = 'mp-tour-tooltip';
     t.innerHTML = `
+      <button id="mp-tour-close-x" aria-label="Cerrar tutorial"
+        style="position:absolute;top:8px;right:10px;background:transparent;border:none;color:#71717a;font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;min-height:auto;">×</button>
       <h4 id="mp-tour-title"></h4>
       <p id="mp-tour-body"></p>
       <div class="mp-tour-actions">
         <span class="mp-tour-progress" id="mp-tour-progress"></span>
-        <div>
+        <div style="display:flex;gap:6px;align-items:center;">
           <button class="skip" id="mp-tour-skip">Saltar</button>
           <button id="mp-tour-next">Siguiente →</button>
         </div>
       </div>`;
+    t.style.position = 'fixed'; // fuerza por si algo CSS-side falla
     document.body.appendChild(t);
+    // El botón X siempre cierra el tutorial
+    document.getElementById('mp-tour-close-x').addEventListener('click', _terminar);
   }
 
   // Estado del target actual — usado por listeners de scroll/resize
@@ -383,11 +410,19 @@
     }
     el.classList.add('mp-tour-highlight');
 
-    // Si el target es muy alto (más del 60% del viewport), alinear al inicio
-    // en vez de al centro para que quepa el tooltip debajo.
-    const targetRect = el.getBoundingClientRect();
-    const block = (targetRect.height > window.innerHeight * 0.6) ? 'start' : 'center';
-    el.scrollIntoView({ behavior: 'smooth', block, inline: 'nearest' });
+    if (_esMobile()) {
+      // Mobile: scroll INSTANTÁNEO (smooth con position:fixed rompe iOS Safari)
+      // Y dejamos espacio abajo para el bottom-sheet (~180px)
+      const rect = el.getBoundingClientRect();
+      const targetCenter = rect.top + window.scrollY + rect.height / 2;
+      const viewportTop = targetCenter - (window.innerHeight - 180) / 2;
+      window.scrollTo({ top: Math.max(0, viewportTop), behavior: 'auto' });
+    } else {
+      // Desktop: comportamiento normal
+      const targetRect = el.getBoundingClientRect();
+      const block = (targetRect.height > window.innerHeight * 0.6) ? 'start' : 'center';
+      el.scrollIntoView({ behavior: 'smooth', block, inline: 'nearest' });
+    }
 
     document.getElementById('mp-tour-title').textContent = step.title;
     document.getElementById('mp-tour-body').textContent = step.body;
