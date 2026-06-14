@@ -4676,10 +4676,23 @@ const Fundamentales = (() => {
       return;
     }
     box.classList.remove('hidden');
-    $('fund-resumen-pe').textContent    = resumen.pe_promedio != null ? resumen.pe_promedio.toFixed(1) : '—';
-    $('fund-resumen-yield').textContent = resumen.yield_promedio != null ? (resumen.yield_promedio * 100).toFixed(2) + '%' : '—';
-    $('fund-resumen-beta').textContent  = resumen.beta_promedio != null ? resumen.beta_promedio.toFixed(2) : '—';
+    // Helper: formatear con tooltip informativo si no hay dato
+    const _fmtPE = v => v != null ? v.toFixed(1) : 'N/D';
+    const _fmtYield = v => v != null ? (v * 100).toFixed(2) + '%' : '0%';
+    const _fmtBeta = v => v != null ? v.toFixed(2) : 'N/D';
+    $('fund-resumen-pe').textContent    = _fmtPE(resumen.pe_promedio);
+    $('fund-resumen-yield').textContent = _fmtYield(resumen.yield_promedio);
+    $('fund-resumen-beta').textContent  = _fmtBeta(resumen.beta_promedio);
     $('fund-resumen-count').textContent = `${resumen.num_ok}/${resumen.num_tickers}`;
+    // Tooltips informativos si hay valores faltantes
+    const peEl = $('fund-resumen-pe');
+    const betaEl = $('fund-resumen-beta');
+    if (peEl && resumen.pe_promedio == null) {
+      peEl.title = 'P/E no disponible para todos los tickers (común con ETFs, crypto y empresas en pérdida)';
+    }
+    if (betaEl && resumen.beta_promedio == null) {
+      betaEl.title = 'Beta no disponible (común con crypto, ETFs nuevos o tickers sin historial de 1 año)';
+    }
   }
 
   function renderAvisos(avisos) {

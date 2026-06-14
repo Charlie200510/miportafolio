@@ -9,10 +9,81 @@ significan. Nada de recomendaciones de compra/venta.
 
 from __future__ import annotations
 
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import yfinance as yf
+
+
+# ----------------------------------------------------------------
+# Cache de benchmarks (SPY, NAFTRAC.MX) para cálculo de beta
+# ----------------------------------------------------------------
+_BENCHMARK_CACHE: Dict[str, Tuple[float, Any]] = {}  # ticker -> (timestamp, series_retornos)
+_BENCHMARK_TTL = 6 * 3600  # 6 horas
+_BENCHMARK_LOCK = threading.Lock()
+
+
+def _obtener_retornos_benchmark(symbol: str, periodo: str = "1y"):
+    """Descarga cierres del benchmark y devuelve serie de retornos diarios.
+    Cacheado 6 horas para no martillar yfinance."""
+    with _BENCHMARK_LOCK:
+        cached = _BENCHMARK_CACHE.get(symbol)
+        if cached and (time.time() - cached[0]) < _BENCHMARK_TTL:
+            return cached[1]
+    try:
+        hist = yf.Ticker(symbol).history(period=periodo, auto_adjust=True)
+        if hist is None or hist.empty or "Close" not in hist.columns:
+            return None
+        retornos = hist["Close"].pct_change().dropna()
+        if len(retornos) < 30:
+            return None
+        with _BENCHMARK_LOCK:
+            _BENCHMARK_CACHE[symbol] = (time.time(), retornos)
+        return retornos
+    except Exception:
+        return None
+
+
+def _calcular_beta(ticker: str, benchmark: str = "SPY") -> Optional[float]:
+    """Calcula beta = cov(ticker, benchmark) / var(benchmark) con ~1 año
+    de retornos diarios. Devuelve None si no hay suficientes datos."""
+    try:
+        bench_ret = _obtener_retornos_benchmark(benchmark)
+        if bench_ret is None:
+            return None
+        hist = yf.Ticker(ticker).history(period="1y", auto_adjust=True)
+        if hist is None or hist.empty:
+            return None
+        ticker_ret = hist["Close"].pct_change().dropna()
+        if len(ticker_ret) < 30:
+            return None
+        # Alinear fechas (intersección)
+        comun = ticker_ret.index.intersection(bench_ret.index)
+        if len(comun) < 30:
+            return None
+        tr = ticker_ret.loc[comun]
+        br = bench_ret.loc[comun]
+        var_b = br.var()
+        if not var_b or var_b == 0:
+            return None
+        cov = tr.cov(br)
+        beta = float(cov / var_b)
+        # Sanity check: beta normalmente está en [-3, 3]
+        if abs(beta) > 5:
+            return None
+        return round(beta, 3)
+    except Exception:
+        return None
+
+
+def _benchmark_para(ticker: str) -> str:
+    """Devuelve el benchmark apropiado: NAFTRAC.MX para acciones mexicanas,
+    SPY para todo lo demás. Crypto no se evalúa contra benchmark."""
+    if ticker.upper().endswith(".MX"):
+        return "NAFTRAC.MX"
+    return "SPY"
 
 
 # ---- Rangos orientativos (heurísticas amigables para retail) --------------
@@ -137,6 +208,38 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
         pb = _safe_float(info.get("priceToBook"))
         peg = _safe_float(info.get("pegRatio"))
         beta = _safe_float(info.get("beta"))
+
+        # --- Fallbacks para PE ---
+        # 1) Si no hay trailing pero sí EPS trailing y precio, calcular manual
+        _eps_trailing_temp = _safe_float(info.get("trailingEps"))
+        if pe_trailing is None and _eps_trailing_temp and _eps_trailing_temp > 0 and precio:
+            pe_trailing = round(precio / _eps_trailing_temp, 2)
+        # 2) Si todavía no hay PE pero sí forwardPE, usarlo como aproximación
+        if pe_trailing is None and pe_forward and pe_forward > 0:
+            pe_trailing = pe_forward
+        # 3) Para ETFs, intentar obtener PE del fondo (yfinance a veces lo expone)
+        if pe_trailing is None:
+            etf_pe = _safe_float(info.get("trailingPE")) or _safe_float(info.get("priceToEarnings"))
+            # quoteType=='ETF' a veces tiene yields pero no PE en info
+            qtype = (info.get("quoteType") or "").upper()
+            if qtype == "ETF":
+                # Algunos ETFs exponen 'trailingPE' via fast_info diferente
+                try:
+                    fi2 = t.fast_info
+                    if fi2:
+                        etf_pe = etf_pe or _safe_float(getattr(fi2, "trailingPE", None))
+                except Exception:
+                    pass
+            pe_trailing = etf_pe
+
+        # --- Fallback para Beta: calcular con regresión vs SPY o NAFTRAC.MX ---
+        if beta is None:
+            # Skip cálculo para crypto (no tiene sentido contra equity)
+            tk_upper = ticker.upper()
+            es_crypto = ("-USD" in tk_upper) or ("-USDT" in tk_upper) or tk_upper.startswith("X:")
+            if not es_crypto:
+                bench = _benchmark_para(ticker)
+                beta = _calcular_beta(ticker, benchmark=bench)
 
         dividend_yield = _safe_float(info.get("dividendYield"))
         # yfinance a veces regresa el yield como fracción (0.025) y a veces como % (2.5). Normalizar:
