@@ -528,4 +528,192 @@
     });
   };
 
+  // ============================================================
+  // 10. CALENDARIO FISCAL MX — fechas clave próximas
+  // ============================================================
+  const FECHAS_FISCALES_MX = [
+    // formato: { mes, dia, titulo, descripcion, tipo }
+    { mes:  1, dia: 17, titulo: 'Pago provisional ISR diciembre',  desc: 'Personas morales y físicas con actividad empresarial.', tipo: 'isr' },
+    { mes:  2, dia: 28, titulo: 'Declaración informativa anual',   desc: 'Personas morales — informativa múltiple.',              tipo: 'sat' },
+    { mes:  3, dia: 31, titulo: 'Declaración anual PM',            desc: 'Personas morales — pago anual de ISR.',                tipo: 'sat' },
+    { mes:  4, dia: 30, titulo: 'Declaración anual personas físicas', desc: 'Plazo límite para presentar tu declaración 2024-2025.', tipo: 'sat' },
+    { mes:  4, dia: 30, titulo: 'Posibilidad de saldo a favor',    desc: 'Si tuviste ISR retenido, puedes obtener reembolso.',   tipo: 'sat' },
+    { mes:  6, dia: 30, titulo: 'Cierre del Q2 fiscal',            desc: 'Buen momento para revisar tax-loss harvesting.',       tipo: 'tip' },
+    { mes:  9, dia: 30, titulo: 'Cierre del Q3 fiscal',            desc: 'Tip: revisa pérdidas latentes para harvesting.',       tipo: 'tip' },
+    { mes: 12, dia: 15, titulo: 'Último día para tax harvesting',  desc: 'Cierra pérdidas antes del 31 dic para deducirlas este ejercicio.', tipo: 'tip' },
+    { mes: 12, dia: 31, titulo: 'Cierre fiscal',                   desc: 'Fin del ejercicio. Suma final de ganancias/pérdidas.',  tipo: 'sat' },
+  ];
+  function _proximasFechasFiscales(n = 3) {
+    const hoy = new Date();
+    const año = hoy.getFullYear();
+    const proximas = FECHAS_FISCALES_MX.map(f => {
+      let fecha = new Date(año, f.mes - 1, f.dia);
+      if (fecha < hoy) fecha = new Date(año + 1, f.mes - 1, f.dia);
+      const diasFaltan = Math.ceil((fecha - hoy) / 86400000);
+      return { ...f, fecha, diasFaltan };
+    }).sort((a, b) => a.fecha - b.fecha);
+    return proximas.slice(0, n);
+  }
+  window.fechasFiscalesMX = _proximasFechasFiscales;
+  // Auto-renderea un widget en vista-transacciones si existe el host
+  function _renderFiscalWidget() {
+    const host = document.getElementById('imp-contenido');
+    if (!host || document.getElementById('mp-fiscal-widget')) return;
+    const fechas = _proximasFechasFiscales(3);
+    const tipoColor = {
+      isr:  { bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.3)',  color: '#f59e0b', label: 'ISR' },
+      sat:  { bg: 'rgba(99,102,241,0.1)',  border: 'rgba(99,102,241,0.3)',  color: '#818cf8', label: 'SAT' },
+      tip:  { bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.3)',   color: '#22c55e', label: 'TIP' },
+    };
+    const widget = document.createElement('div');
+    widget.id = 'mp-fiscal-widget';
+    widget.className = 'bg-surface-card border border-surface-border rounded-xl p-5 mt-6';
+    widget.innerHTML = `
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-zinc-200 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-md bg-accent-indigo/15 border border-accent-indigo/30 flex items-center justify-center text-accent-indigo">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </span>
+          Calendario fiscal MX
+        </h3>
+        <span class="text-[10px] text-zinc-500 uppercase tracking-wider">Próximas fechas clave</span>
+      </div>
+      <div class="space-y-2">
+        ${fechas.map(f => {
+          const c = tipoColor[f.tipo] || tipoColor.tip;
+          const mesNombre = f.fecha.toLocaleDateString('es-MX', { month: 'short' });
+          return `
+            <div class="flex items-center gap-3 p-3 bg-zinc-900/40 border border-surface-border rounded-lg">
+              <div class="shrink-0 w-12 text-center">
+                <div class="text-[9px] uppercase tracking-wider text-zinc-500">${mesNombre}</div>
+                <div class="text-xl font-bold text-zinc-100 tabular leading-none">${f.dia}</div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${c.bg};color:${c.color};border:1px solid ${c.border};">${c.label}</span>
+                  <p class="text-xs font-semibold text-zinc-100 truncate">${f.titulo}</p>
+                </div>
+                <p class="text-[11px] text-zinc-500 leading-snug">${f.desc}</p>
+              </div>
+              <div class="shrink-0 text-right">
+                <p class="text-[10px] uppercase tracking-wider text-zinc-500">en</p>
+                <p class="text-sm font-semibold text-zinc-200 tabular">${f.diasFaltan}d</p>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <p class="text-[10px] text-zinc-600 mt-3 italic text-center">Recordatorios genéricos. No constituyen asesoría fiscal. Consulta a tu contador.</p>
+    `;
+    host.appendChild(widget);
+  }
+  // Watch for vista-transacciones becoming visible
+  const _fiscalObserver = new MutationObserver(() => {
+    const t = document.getElementById('vista-transacciones');
+    if (t && !t.classList.contains('hidden')) _renderFiscalWidget();
+  });
+  window.addEventListener('load', () => {
+    const t = document.getElementById('vista-transacciones');
+    if (t) _fiscalObserver.observe(t, { attributes: true, attributeFilter: ['class'] });
+  });
+
+  // ============================================================
+  // 11. AFORE BENCHMARK — compara tu portafolio vs AFORE típica
+  // ============================================================
+  // SIEFOREs CONSAR rendimientos histórico aproximado (10y real):
+  //   SB10 (≥60 años):    5.5% real
+  //   SB55 (55-59):       6.0% real
+  //   SB60 (60-64):       6.8% real
+  //   SB65 (45-54):       7.5% real
+  //   SB70 (40-44):       8.2% real
+  //   SB75 (35-39):       8.8% real
+  //   SB80 (30-34):       9.2% real
+  //   SB85 (25-29):       9.5% real
+  //   SB90 (≤25):         9.8% real
+  const AFORE_BENCHMARKS = {
+    'SB10': { edad: '≥60 años', retorno: 5.5, vol: 4.5 },
+    'SB55': { edad: '55-59',    retorno: 6.0, vol: 5.5 },
+    'SB60': { edad: '60-64',    retorno: 6.8, vol: 7.0 },
+    'SB65': { edad: '45-54',    retorno: 7.5, vol: 8.5 },
+    'SB70': { edad: '40-44',    retorno: 8.2, vol: 10.0 },
+    'SB75': { edad: '35-39',    retorno: 8.8, vol: 11.5 },
+    'SB80': { edad: '30-34',    retorno: 9.2, vol: 12.5 },
+    'SB85': { edad: '25-29',    retorno: 9.5, vol: 13.5 },
+    'SB90': { edad: '≤25 años', retorno: 9.8, vol: 14.5 },
+  };
+  window.compararAfore = function(retornoPortafolio) {
+    // Encuentra la SIEFORE más cercana al retorno del portafolio
+    const sf = Object.entries(AFORE_BENCHMARKS).map(([k, v]) => ({
+      siefore: k, edad: v.edad, retorno: v.retorno, vol: v.vol,
+      diff: retornoPortafolio - v.retorno,
+    }));
+    return sf;
+  };
+
+  // ============================================================
+  // 12. GLOSARIO INTERACTIVO — modal con definiciones clave
+  // ============================================================
+  const GLOSARIO = [
+    { termino: 'Sharpe ratio',       def: 'Rendimiento por unidad de riesgo. Si tu portafolio gana 12% y la tasa libre de riesgo es 9.5%, dividido entre tu volatilidad. >1 es bueno, >2 es excelente.' },
+    { termino: 'Sortino ratio',      def: 'Como Sharpe pero solo cuenta volatilidad "mala" (caídas). Más justo que Sharpe porque las subidas no son malas.' },
+    { termino: 'Drawdown',           def: 'Caída desde un máximo histórico. Si tu portafolio iba en $100 y bajó a $75, tienes drawdown de -25%.' },
+    { termino: 'Volatilidad',        def: 'Qué tanto sube y baja tu portafolio. Medida con desviación estándar de rendimientos anuales.' },
+    { termino: 'Markowitz',          def: 'Modelo matemático que calcula la mezcla óptima de acciones para maximizar retorno por unidad de riesgo. Premio Nobel 1990.' },
+    { termino: 'Frontera eficiente', def: 'Conjunto de portafolios donde, para cada nivel de riesgo, no existe otro portafolio con mayor retorno esperado.' },
+    { termino: 'Correlación',        def: 'Qué tanto se mueven dos acciones juntas. 1 = perfectamente sincronizadas, 0 = independientes, -1 = opuestas.' },
+    { termino: 'Beta',               def: 'Cuánto se mueve una acción respecto al mercado. β=1 igual que el mercado, β=2 doble de volátil, β=0.5 mitad.' },
+    { termino: 'P/E ratio',          def: 'Precio sobre utilidades. Cuánto pagas por cada peso de utilidad. >25 es caro, <15 es barato (depende del sector).' },
+    { termino: 'EV/EBITDA',          def: 'Como P/E pero considera deuda. Múltiplo de valoración popular. <10 generalmente atractivo.' },
+    { termino: 'P/S ratio',          def: 'Precio sobre ventas. Para empresas sin utilidades. <1 muy barato, >10 caro.' },
+    { termino: 'ROE',                def: 'Retorno sobre capital. Cuánto genera la empresa por cada peso invertido. >15% es bueno, >25% excepcional.' },
+    { termino: 'FCF',                def: 'Free Cash Flow. Efectivo libre tras gastos operativos y capex. Lo que la empresa realmente genera para sus accionistas.' },
+    { termino: 'Tax-loss harvesting', def: 'Vender posiciones perdedoras para realizar la pérdida y deducirla del ISR de tus ganancias. Estrategia legal.' },
+    { termino: 'ISR (México)',       def: 'Impuesto sobre la renta. En enajenación de acciones es 10% sobre la utilidad neta del ejercicio (art. 129 LISR).' },
+    { termino: 'Rebalanceo',         def: 'Volver a las proporciones objetivo cuando los precios las cambian. Vendes lo que subió, compras lo que bajó.' },
+    { termino: 'DCA',                def: 'Dollar Cost Averaging. Invertir un monto fijo periódicamente sin importar el precio. Reduce el riesgo de timing.' },
+    { termino: 'Monte Carlo',        def: 'Simulación que corre 3,000+ escenarios futuros con variaciones aleatorias para estimar probabilidades realistas de tu meta.' },
+    { termino: 'CETES',              def: 'Certificados de la Tesorería. Deuda gubernamental MX a 28/91/182/364 días. La tasa libre de riesgo en MX.' },
+    { termino: 'FIBRA',              def: 'Fideicomiso de inversión en bienes raíces. Cotizan en bolsa y distribuyen al menos 95% de su flujo a inversionistas.' },
+    { termino: 'AFORE',              def: 'Administradora de Fondos para el Retiro. SIEFOREs invierten por edad del trabajador.' },
+    { termino: 'NAFTRAC',            def: 'ETF que replica el IPC mexicano. Forma más eficiente de tener "todo México" en una sola posición.' },
+    { termino: 'SPY / VOO',          def: 'ETFs que replican el S&P 500. La forma más simple de tener "todo Estados Unidos" en una posición.' },
+  ];
+  window.abrirGlosario = function() {
+    if (document.getElementById('mp-gloss-modal')) return;
+    const html = `
+      <div id="mp-gloss-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+        <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;">
+          <div style="position:sticky;top:0;background:#0a0a0b;border-bottom:1px solid #2a2a2f;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <h2 style="margin:0;font-size:18px;font-weight:600;color:#f4f4f5;">Glosario financiero</h2>
+              <p style="margin:2px 0 0;font-size:11px;color:#71717a;">${GLOSARIO.length} términos en español plano</p>
+            </div>
+            <button onclick="document.getElementById('mp-gloss-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;line-height:1;">×</button>
+          </div>
+          <div style="padding:8px 24px 24px;">
+            <input type="text" id="mp-gloss-search" placeholder="Filtrar términos..." style="width:100%;background:#161616;border:1px solid #2a2a2f;color:#e5e7eb;padding:10px 14px;border-radius:8px;font-size:13px;margin:12px 0 16px;outline:none;">
+            <div id="mp-gloss-list">
+              ${GLOSARIO.map(item => `
+                <div class="gloss-item" style="border-bottom:1px solid #1f1f24;padding:12px 0;">
+                  <p style="margin:0 0 4px;font-weight:600;font-size:13px;color:#22c55e;">${item.termino}</p>
+                  <p style="margin:0;font-size:12px;color:#a1a1aa;line-height:1.55;">${item.def}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.getElementById('mp-gloss-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'mp-gloss-modal') e.target.remove();
+    });
+    document.getElementById('mp-gloss-search').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      document.querySelectorAll('.gloss-item').forEach(el => {
+        const t = el.textContent.toLowerCase();
+        el.style.display = t.includes(q) ? '' : 'none';
+      });
+    });
+  };
+
 })();

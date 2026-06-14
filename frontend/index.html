@@ -983,12 +983,20 @@
           Stress test
         </h3>
         <select id="st-escenario" class="bg-zinc-900 border border-zinc-700 text-zinc-100 text-xs rounded-md px-2 py-1 focus:outline-none focus:border-accent-red">
-          <option value="covid_2020" selected>COVID Crash (Mar 2020)</option>
-          <option value="lehman_2008">Crisis Financiera 2008</option>
-          <option value="dotcom_2000">Punto-com 2000</option>
-          <option value="rate_shock">Shock de tasas (+200bp)</option>
-          <option value="inflacion_alta">Inflación 2022</option>
-          <option value="peso_collapse">Crisis del peso (-30%)</option>
+          <optgroup label="Crisis globales">
+            <option value="covid_2020" selected>COVID Crash (Mar 2020)</option>
+            <option value="lehman_2008">Crisis Financiera 2008</option>
+            <option value="dotcom_2000">Punto-com 2000</option>
+            <option value="rate_shock">Shock de tasas (+200bp)</option>
+            <option value="inflacion_alta">Inflación 2022</option>
+          </optgroup>
+          <optgroup label="México 🇲🇽">
+            <option value="peso_collapse">Crisis del peso (-30%)</option>
+            <option value="amlo_2018">Elección 2018 / NAIM</option>
+            <option value="covid_mx_2020">COVID en México (2020)</option>
+            <option value="elecciones_2024">Súper mayoría 2024</option>
+            <option value="aranceles_trump">Aranceles Trump a MX</option>
+          </optgroup>
         </select>
       </div>
       <p class="text-[11px] text-zinc-500 mb-3">¿Qué pasaría con tu portafolio HOY si esto se repite?</p>
@@ -2675,6 +2683,7 @@ python3 backend/app.py</pre>
         <a href="/terminos" class="text-zinc-400 hover:text-zinc-200 transition">Términos</a>
         <a href="/privacidad" class="text-zinc-400 hover:text-zinc-200 transition">Privacidad</a>
         <button onclick="window.abrirFAQ && window.abrirFAQ()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">FAQ</button>
+        <button onclick="window.abrirGlosario && window.abrirGlosario()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Glosario</button>
         <a href="mailto:soporte@miportafolio.app" class="text-zinc-400 hover:text-zinc-200 transition">Soporte</a>
       </div>
       <div class="text-zinc-600 leading-relaxed max-w-md text-right">
