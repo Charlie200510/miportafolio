@@ -347,4 +347,185 @@
     _iniciarTour();
   };
 
+  // ============================================================
+  // 6. SPLASH SCREEN — visible al primer load (~1.2 seg)
+  // ============================================================
+  const splashCSS = `
+    #mp-splash {
+      position: fixed; inset: 0; z-index: 10000;
+      background: radial-gradient(ellipse at center, #0d1f15 0%, #050807 70%);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px;
+      animation: mpSplashOut .5s ease-in .9s forwards;
+    }
+    @keyframes mpSplashOut { to { opacity: 0; pointer-events: none; visibility: hidden; } }
+    #mp-splash img {
+      width: 80px; height: 80px; border-radius: 18px;
+      box-shadow: 0 0 60px rgba(34,197,94,0.5);
+      animation: mpSplashLogo .6s cubic-bezier(.18,.95,.32,1) both;
+    }
+    @keyframes mpSplashLogo {
+      from { opacity: 0; transform: scale(.6); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    #mp-splash .mp-splash-name {
+      font-family: 'Outfit', 'Inter', sans-serif; font-weight: 700;
+      font-size: 22px; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 0%, #22c55e 60%, #6ee7b7 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: mpSplashName .5s ease-out .25s both;
+    }
+    @keyframes mpSplashName { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    #mp-splash .mp-splash-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+      animation: mpSplashDot 1s ease-in-out infinite;
+      box-shadow: 0 0 12px rgba(34,197,94,0.8);
+    }
+    @keyframes mpSplashDot { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+  `;
+  const splashStyle = document.createElement('style');
+  splashStyle.textContent = splashCSS;
+  document.head.appendChild(splashStyle);
+  function _showSplash() {
+    if (document.getElementById('mp-splash')) return;
+    const splash = document.createElement('div');
+    splash.id = 'mp-splash';
+    splash.innerHTML = `
+      <img src="/static/logo.png" alt="Mi Portafolio" />
+      <div class="mp-splash-name">Mi Portafolio</div>
+      <div class="mp-splash-dot"></div>
+    `;
+    document.body.appendChild(splash);
+    // Auto-remove tras animación
+    setTimeout(() => splash.remove(), 1800);
+  }
+  // Solo mostrar splash al PRIMER load (no en SPA-like reloads)
+  if (!sessionStorage.getItem('mp.splashShown')) {
+    _showSplash();
+    try { sessionStorage.setItem('mp.splashShown', '1'); } catch {}
+  }
+
+  // ============================================================
+  // 7. ANIMACIÓN DE TRANSICIÓN ENTRE VISTAS
+  // ============================================================
+  const transCSS = `
+    @keyframes mpViewFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    main[id^="vista-"]:not(.hidden) {
+      animation: mpViewFadeIn .35s cubic-bezier(.16,.95,.3,1) both;
+    }
+  `;
+  const transStyle = document.createElement('style');
+  transStyle.textContent = transCSS;
+  document.head.appendChild(transStyle);
+
+  // ============================================================
+  // 8. STREAK COUNTER — cuenta días que entras a la app
+  // ============================================================
+  const STREAK_KEY = 'mp.streak.v1';
+  function _updateStreak() {
+    const hoy = new Date().toISOString().slice(0, 10);
+    let data = {};
+    try { data = JSON.parse(localStorage.getItem(STREAK_KEY) || '{}'); } catch {}
+    if (data.last === hoy) return data;  // ya contado hoy
+    const ayer = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (data.last === ayer) {
+      data.count = (data.count || 1) + 1;
+    } else {
+      data.count = 1;  // reset, perdió la racha
+    }
+    data.last = hoy;
+    try { localStorage.setItem(STREAK_KEY, JSON.stringify(data)); } catch {}
+    return data;
+  }
+  function _renderStreakWidget() {
+    const data = _updateStreak();
+    if (data.count < 2) return;  // solo se ve a partir del día 2
+    // Insertar widget al lado del logo
+    const host = document.querySelector('header .flex.items-center.gap-3');
+    if (!host || document.getElementById('mp-streak-widget')) return;
+    const widget = document.createElement('div');
+    widget.id = 'mp-streak-widget';
+    widget.title = `Llevas ${data.count} días seguidos checando tu portafolio. Sigue así.`;
+    widget.style.cssText = `
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; margin-left: 8px;
+      background: linear-gradient(135deg, rgba(251,146,60,0.15), rgba(245,158,11,0.1));
+      border: 1px solid rgba(251,146,60,0.3);
+      border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+      color: #fb923c;
+    `;
+    widget.innerHTML = `<span style="font-size:13px;">🔥</span><span>${data.count}d</span>`;
+    host.appendChild(widget);
+  }
+  // Defer hasta que header exista
+  window.addEventListener('load', () => setTimeout(_renderStreakWidget, 100));
+
+  // ============================================================
+  // 9. FAQ MODAL — window.abrirFAQ()
+  // ============================================================
+  const FAQ_DATA = [
+    {
+      q: '¿Mi Portafolio ejecuta compras o ventas reales?',
+      a: 'No. Mi Portafolio es una herramienta de análisis. Compras y vendes en tu broker (GBM, Kuspit, Hapi, Bursanet, Charles Schwab...) y aquí registras lo que ya hiciste. Esto nos permite enfocarnos 100% en darte mejores números, sin conflictos de interés.',
+    },
+    {
+      q: '¿Mis datos están seguros?',
+      a: 'Sí. Tu portafolio se guarda localmente en tu navegador (localStorage), no en nuestros servidores externos. Solo el snapshot mínimo necesario para alertas automáticas se sincroniza al backend, sin guardar credenciales bancarias.',
+    },
+    {
+      q: '¿Funciona con acciones extranjeras?',
+      a: 'Sí. Tenemos cobertura de NYSE, NASDAQ, BMV mexicana, FTSE 100, DAX, Nikkei, Hang Seng, NSE India, Bovespa Brasil, ASX Australia y más — además de 200+ criptomonedas.',
+    },
+    {
+      q: '¿Cuánto cuesta?',
+      a: 'Plan free completo para validar (sin tarjeta). Plan premium $79 MXN/mes — todas las funciones incluidas. Cancela en un click cuando quieras, sin permanencia.',
+    },
+    {
+      q: '¿Esto es asesoría de inversión?',
+      a: 'No. Mi Portafolio NO es asesor financiero registrado ante CNBV. Es herramienta de análisis con fines educativos. Las decisiones de inversión son responsabilidad del usuario.',
+    },
+    {
+      q: '¿De dónde vienen los datos?',
+      a: 'Yahoo Finance para precios y fundamentales, Banxico para CETES y TIIE, BMV para FIBRAS mexicanas. Datos delayed (no real-time), suficientes para análisis de mediano-largo plazo.',
+    },
+    {
+      q: '¿Por qué a veces la app tarda en cargar?',
+      a: 'Estamos en plan free de hosting — el servidor "duerme" tras 15 min sin tráfico. La primera carga después tarda ~30 segundos en despertar. Una vez activa, va rápida.',
+    },
+  ];
+  window.abrirFAQ = function() {
+    if (document.getElementById('mp-faq-modal')) return;
+    const html = `
+      <div id="mp-faq-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+        <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;max-width:640px;width:100%;max-height:85vh;overflow-y:auto;">
+          <div style="position:sticky;top:0;background:#0a0a0b;border-bottom:1px solid #2a2a2f;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;">
+            <h2 style="margin:0;font-size:18px;font-weight:600;color:#f4f4f5;">Preguntas frecuentes</h2>
+            <button onclick="document.getElementById('mp-faq-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;line-height:1;">×</button>
+          </div>
+          <div style="padding:8px 24px 24px;">
+            ${FAQ_DATA.map(item => `
+              <details style="border-bottom:1px solid #1f1f24;padding:14px 0;">
+                <summary style="cursor:pointer;font-weight:500;font-size:14px;color:#e5e7eb;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+                  <span>${item.q}</span>
+                  <span style="color:#22c55e;font-size:18px;font-weight:300;">+</span>
+                </summary>
+                <p style="margin:10px 0 0;font-size:13px;color:#a1a1aa;line-height:1.6;">${item.a}</p>
+              </details>
+            `).join('')}
+            <p style="margin-top:24px;padding-top:16px;border-top:1px solid #1f1f24;font-size:11px;color:#71717a;text-align:center;">
+              ¿Otra duda? Escríbenos a <a href="mailto:soporte@miportafolio.app" style="color:#22c55e;">soporte@miportafolio.app</a>
+            </p>
+          </div>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.getElementById('mp-faq-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'mp-faq-modal') e.target.remove();
+    });
+  };
+
 })();
