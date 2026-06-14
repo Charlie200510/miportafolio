@@ -160,6 +160,200 @@
         transition: box-shadow .3s;
       }
     }
+
+    /* ====================================================================
+       MOBILE POLISH — overhaul de espaciado/tamaños para que se sienta
+       como app nativa en lugar de "web responsive". Solo aplica < 768px.
+       ==================================================================== */
+    @media (max-width: 767px) {
+      /* --- Base: tap feedback nativo y safe areas iOS --- */
+      html {
+        -webkit-tap-highlight-color: rgba(34, 197, 94, 0.15);
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        padding-left:  env(safe-area-inset-left,  0);
+        padding-right: env(safe-area-inset-right, 0);
+      }
+      /* Botones y links: active state con scale (feedback táctil nativo) */
+      button, a, [role="button"], .nav-tab {
+        -webkit-tap-highlight-color: transparent;
+      }
+      button:active, a:active, [role="button"]:active, .nav-tab:active {
+        transform: scale(0.97);
+        transition: transform .08s;
+      }
+
+      /* --- Inputs: 48px+ alto y 16px font-size (evita zoom iOS) --- */
+      input[type="text"], input[type="email"], input[type="tel"],
+      input[type="number"], input[type="search"], input[type="password"],
+      input[type="date"], input[type="url"], select, textarea {
+        font-size: 16px !important;
+        min-height: 44px;
+        padding: 10px 12px;
+        border-radius: 10px;
+      }
+      textarea { min-height: 80px; }
+      /* Inputs especiales para teclados móviles inteligentes */
+      input[inputmode="decimal"], input[inputmode="numeric"] {
+        font-size: 16px !important;
+      }
+
+      /* --- Botones touch-friendly (44px+ alto) --- */
+      button:not(.mp-toast-close):not(#mp-tour-close-x):not(.mpm-icon-btn):not(.nav-tab),
+      .btn, [type="submit"], [type="button"] {
+        min-height: 44px;
+      }
+      /* Tab nav: más alto y con scroll horizontal suave */
+      .nav-tab {
+        min-height: 48px !important;
+        font-size: 13px !important;
+        padding: 10px 14px !important;
+        scroll-snap-align: start;
+      }
+      /* Contenedor de tabs: scroll horizontal sin scrollbar */
+      nav, [class*="nav-"], header [class*="flex"] {
+        scrollbar-width: none;
+      }
+      nav::-webkit-scrollbar, [class*="nav-"]::-webkit-scrollbar {
+        display: none;
+      }
+
+      /* --- Padding mobile-first en cards --- */
+      .bg-surface-card {
+        padding: 14px !important;
+        border-radius: 12px !important;
+      }
+      .bg-surface-card.p-3, .bg-surface-card.p-3\\.5 {
+        padding: 12px !important;
+      }
+      .bg-surface-card.p-6, .bg-surface-card.p-8 {
+        padding: 16px !important;
+      }
+
+      /* --- Grids: gap reducido y stack más temprano --- */
+      .grid.gap-3 { gap: 8px !important; }
+      .grid.gap-4 { gap: 10px !important; }
+      .grid.gap-5, .grid.gap-6 { gap: 12px !important; }
+
+      /* --- Tipografía: jerarquía más legible en pantalla chica --- */
+      body {
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      h1, .text-3xl, .text-4xl { font-size: 22px !important; line-height: 1.2 !important; }
+      h2, .text-2xl { font-size: 19px !important; line-height: 1.25 !important; }
+      h3, .text-xl  { font-size: 16px !important; line-height: 1.3 !important; }
+      .text-lg      { font-size: 15px !important; }
+      .text-sm      { font-size: 13px !important; }
+      .text-xs      { font-size: 12px !important; }
+      .text-\\[10px\\], .text-\\[11px\\] { font-size: 11px !important; }
+      /* Tabular numbers (KPIs): más grandes para destacar */
+      .tabular.text-3xl, .text-3xl.tabular { font-size: 26px !important; }
+      .tabular.text-2xl, .text-2xl.tabular { font-size: 22px !important; }
+
+      /* --- Spacings entre secciones --- */
+      main, .container, section {
+        padding-left:  14px !important;
+        padding-right: 14px !important;
+      }
+      section + section { margin-top: 16px !important; }
+      .mt-10 { margin-top: 18px !important; }
+      .mt-8  { margin-top: 14px !important; }
+      .my-8  { margin-top: 14px !important; margin-bottom: 14px !important; }
+
+      /* --- Header principal sticky con sombra al scroll --- */
+      header.sticky, header[class*="sticky"] {
+        padding: 10px 14px !important;
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        background: rgba(10, 10, 11, 0.85) !important;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+
+      /* --- Tablas: scroll horizontal con shadow indicator --- */
+      .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+      }
+      table { font-size: 12px !important; }
+      th, td { padding: 8px 10px !important; white-space: nowrap; }
+
+      /* --- Modales fullscreen en mobile (los que aún no lo son) --- */
+      .fixed.inset-0 > div:not(#mp-tour-mobile):not(#mp-splash) {
+        max-height: calc(100vh - env(safe-area-inset-top, 0) - env(safe-area-inset-bottom, 0) - 32px);
+        max-width: calc(100vw - 24px) !important;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* --- Footer: padding reducido + safe area bottom --- */
+      footer {
+        padding-left:  14px !important;
+        padding-right: 14px !important;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0)) !important;
+        font-size: 11px !important;
+      }
+      footer .flex.items-center.gap-3 { flex-wrap: wrap; gap: 8px !important; }
+      footer .text-right { text-align: left !important; }
+
+      /* --- Toast: posicionado bottom con safe area --- */
+      #mp-toast-host {
+        bottom: calc(20px + env(safe-area-inset-bottom, 0)) !important;
+        left: 12px !important; right: 12px !important;
+        top: auto !important;
+      }
+      #mp-toast-host > div {
+        max-width: none !important;
+        width: 100% !important;
+      }
+
+      /* --- Reducir animaciones que se sienten lentas en mobile --- */
+      *, *::before, *::after {
+        animation-duration: 0.25s !important;
+        transition-duration: 0.18s !important;
+      }
+
+      /* --- Pull-to-refresh disable en iOS (la app tiene su propio refresh) --- */
+      html, body {
+        overscroll-behavior-y: contain;
+      }
+
+      /* --- Botones del banner demo / CTAs principales: más grandes --- */
+      .bg-accent-green, [class*="bg-accent-"] {
+        min-height: 44px;
+      }
+      /* Excepción: badges y spans pequeños */
+      span.bg-accent-green, span[class*="bg-accent-"],
+      .text-\\[10px\\].bg-accent-green, .text-\\[11px\\].bg-accent-green {
+        min-height: auto !important;
+      }
+
+      /* --- Headers de sección con menos space-y excesivo --- */
+      .space-y-6 > * + * { margin-top: 14px !important; }
+      .space-y-8 > * + * { margin-top: 16px !important; }
+      .space-y-10 > * + * { margin-top: 18px !important; }
+
+      /* --- Inputs de búsqueda: ícono visible, padding correcto --- */
+      input[type="search"], input[placeholder*="uscar"], input[placeholder*="iltrar"] {
+        padding-left: 12px;
+      }
+    }
+
+    /* ====================================================================
+       MOBILE EXTRA SMALL (< 380px) — iPhones SE/Mini
+       ==================================================================== */
+    @media (max-width: 379px) {
+      body { font-size: 13.5px; }
+      h1, .text-3xl, .text-4xl { font-size: 20px !important; }
+      h2, .text-2xl { font-size: 17px !important; }
+      .bg-surface-card { padding: 12px !important; }
+      main, .container, section {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+      }
+      .nav-tab { font-size: 12px !important; padding: 8px 10px !important; }
+    }
   `;
   const style = document.createElement('style');
   style.id = 'mp-ux-helpers-styles';
