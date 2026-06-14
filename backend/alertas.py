@@ -6,22 +6,23 @@ Tipos de alerta soportadas:
   2. Movimientos de precio: caídas o subidas >Y% en una sesión.
   3. Reporte semanal: resumen empaquetado de métricas y P&L.
 
-El envío usa SMTP (configurable por env vars). Si no hay SMTP configurado,
-devolvemos el cuerpo generado pero no disparamos el correo — útil para
-preview del cliente o para integrarlo con otro transport (SendGrid,
-Resend, etc.) desde el mismo email_html.
-
-Env vars:
-  SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
-  (SMTP_PORT por default 587, STARTTLS)
+Transports soportados (en orden de preferencia):
+  1. Resend (recomendado): API simple, 100 emails/día gratis.
+     Env vars: RESEND_API_KEY, RESEND_FROM (ej. "Mi Portafolio <alerts@miportafolio.uk>")
+  2. SMTP (Gmail, Outlook, etc.): fallback si no hay RESEND_API_KEY.
+     Env vars: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+     (SMTP_PORT por default 587, STARTTLS)
 """
 
 from __future__ import annotations
 
 import html
+import json
 import os
 import smtplib
 import ssl
+import urllib.request
+import urllib.error
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -40,14 +41,26 @@ def _smtp_config() -> Dict[str, Any]:
     }
 
 
-def estado_configuracion() -> Dict[str, Any]:
-    cfg = _smtp_config()
-    disponible = bool(cfg["host"] and cfg["user"] and cfg["pw"] and cfg["from"])
+def _resend_config() -> Dict[str, Any]:
     return {
-        "disponible": disponible,
-        "host":       cfg["host"],
-        "from":       cfg["from"],
-        "faltantes":  [k for k in ("host", "user", "pw", "from") if not cfg.get(k)],
+        "api_key": os.environ.get("RESEND_API_KEY"),
+        "from":    os.environ.get("RESEND_FROM") or "Mi Portafolio <onboarding@resend.dev>",
+    }
+
+
+def estado_configuracion() -> Dict[str, Any]:
+    resend = _resend_config()
+    smtp   = _smtp_config()
+    resend_ok = bool(resend["api_key"])
+    smtp_ok   = bool(smtp["host"] and smtp["user"] and smtp["pw"] and smtp["from"])
+    transport = "resend" if resend_ok else ("smtp" if smtp_ok else None)
+    return {
+        "disponible": resend_ok or smtp_ok,
+        "transport":  transport,
+        "host":       smtp["host"],
+        "from":       resend["from"] if resend_ok else smtp["from"],
+        "faltantes":  [] if (resend_ok or smtp_ok) else
+                      ["RESEND_API_KEY (recomendado)", "o SMTP_HOST/USER/PASS/FROM"],
     }
 
 
@@ -338,7 +351,43 @@ def render_reporte_semanal(
     return subject, _html_base("Resumen semanal", cuerpo)
 
 
-# ---- Envío SMTP -------------------------------------------------------------
+# ---- Envío vía Resend (recomendado) ----------------------------------------
+
+def _enviar_resend(destinatario: str, subject: str, html_body: str, reply_to: Optional[str] = None) -> Dict[str, Any]:
+    cfg = _resend_config()
+    if not cfg["api_key"]:
+        raise ValueError("RESEND_API_KEY no configurado en variables de entorno.")
+
+    payload: Dict[str, Any] = {
+        "from":    cfg["from"],
+        "to":      [destinatario],
+        "subject": subject,
+        "html":    html_body,
+    }
+    if reply_to:
+        payload["reply_to"] = reply_to
+
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {cfg['api_key']}",
+            "Content-Type":  "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            body = resp.read().decode("utf-8")
+            data = json.loads(body) if body else {}
+            return {"ok": True, "enviado_a": destinatario, "subject": subject,
+                    "transport": "resend", "id": data.get("id")}
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")[:500]
+        raise RuntimeError(f"Resend HTTP {e.code}: {err_body}") from e
+
+
+# ---- Envío SMTP (fallback) -------------------------------------------------
 
 def _enviar_smtp(destinatario: str, subject: str, html_body: str, reply_to: Optional[str] = None) -> Dict[str, Any]:
     cfg = _smtp_config()
@@ -361,12 +410,19 @@ def _enviar_smtp(destinatario: str, subject: str, html_body: str, reply_to: Opti
         server.login(cfg["user"], cfg["pw"])
         server.sendmail(cfg["from"], [destinatario], msg.as_string())
 
-    return {"ok": True, "enviado_a": destinatario, "subject": subject}
+    return {"ok": True, "enviado_a": destinatario, "subject": subject, "transport": "smtp"}
+
+
+def _enviar(destinatario: str, subject: str, html_body: str, reply_to: Optional[str] = None) -> Dict[str, Any]:
+    """Despacha al transport disponible: Resend tiene preferencia, SMTP es fallback."""
+    if _resend_config()["api_key"]:
+        return _enviar_resend(destinatario, subject, html_body, reply_to=reply_to)
+    return _enviar_smtp(destinatario, subject, html_body, reply_to=reply_to)
 
 
 def enviar_correo(destinatario: str, subject: str, html_body: str, reply_to: Optional[str] = None) -> Dict[str, Any]:
     """Wrapper publico para que otros modulos (auth, pagos) manden correos transaccionales."""
-    return _enviar_smtp(destinatario, subject, html_body, reply_to=reply_to)
+    return _enviar(destinatario, subject, html_body, reply_to=reply_to)
 
 
 def enviar_alerta(
@@ -413,7 +469,7 @@ def enviar_alerta(
     if dry_run:
         return {"ok": True, "dry_run": True, "subject": subject, "html": html_body}
 
-    res = _enviar_smtp(destinatario, subject, html_body)
+    res = _enviar(destinatario, subject, html_body)
     res["subject"] = subject
     res["tipo"] = tipo
     res["fecha"] = datetime.now().isoformat(timespec="seconds")
@@ -421,7 +477,7 @@ def enviar_alerta(
 
 
 if __name__ == "__main__":
-    print("Estado SMTP:", estado_configuracion())
+    print("Estado email:", estado_configuracion())
     # Dry run de drift
     res = enviar_alerta(
         tipo="drift",
