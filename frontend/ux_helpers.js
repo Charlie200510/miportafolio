@@ -341,6 +341,152 @@
     }
 
     /* ====================================================================
+       MOBILE POLISH ROUND 2 — fixes específicos a estructura existente
+       ==================================================================== */
+    @media (max-width: 767px) {
+      /* --- HEADER PRINCIPAL: compacto, no roba espacio --- */
+      header.sticky {
+        padding: 8px 12px !important;
+      }
+      /* Logo: 28px en lugar de 40px */
+      header img[alt="Mi Portafolio"], header img[alt*="Portafolio"] {
+        width: 30px !important;
+        height: 30px !important;
+        border-radius: 8px !important;
+      }
+      /* Ocultar el subtítulo "Análisis de inversión" en mobile (espacio precioso) */
+      header h1 + p { display: none !important; }
+      /* Título del header más compacto */
+      header h1 {
+        font-size: 14px !important;
+        line-height: 1 !important;
+      }
+      /* Selector de portafolio: sin border-left feo, más compacto */
+      header .border-l { border-left: none !important; padding-left: 4px !important; margin-left: 4px !important; }
+      header #port-selector-btn {
+        padding: 6px 8px !important;
+        font-size: 12px !important;
+      }
+      /* Ocultar nombre largo del portafolio en mobile (queda el avatar) */
+      header #port-active-nombre {
+        max-width: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-block;
+        font-size: 12px;
+      }
+      /* Botón ? de ayuda: más compacto */
+      header button[onclick*="iniciarTour"], header button[title*="utorial"] {
+        padding: 6px !important;
+        min-width: 32px;
+      }
+
+      /* --- NAV TABS: forzar 1 línea con scroll horizontal --- */
+      nav.sticky > div {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+      }
+      nav.sticky > div::-webkit-scrollbar { display: none; }
+      nav.sticky .hidden.sm\\:block { display: none !important; } /* Divider vertical: oculto */
+      .nav-tab {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        padding: 8px 12px !important;
+        font-size: 12.5px !important;
+        min-height: 44px !important;
+      }
+
+      /* --- SECTIONS: padding lateral consistente --- */
+      .max-w-7xl {
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+      }
+      section.max-w-7xl, main > section {
+        padding-top: 12px !important;
+        padding-bottom: 12px !important;
+      }
+
+      /* --- GRIDS de tickers: 1 columna full-width en mobile --- */
+      #pick-curado-lista,
+      #universo-lista,
+      #perfiles-grid {
+        grid-template-columns: 1fr !important;
+      }
+      /* Cards de tickers más altas y picables */
+      #pick-curado-lista > *,
+      #universo-lista > * {
+        min-height: 52px !important;
+        padding: 10px 12px !important;
+      }
+
+      /* --- KPI grids (grid-cols-2) ya está bien en mobile, solo gap --- */
+      .grid.grid-cols-2 { gap: 8px !important; }
+      /* En pantallas MUY chicas (<360px) hasta los KPIs van apilados */
+      @media (max-width: 359px) {
+        .grid.grid-cols-2 { grid-template-columns: 1fr !important; }
+      }
+
+      /* --- "TU PORTAFOLIO" card: más compacta + botón visible siempre --- */
+      [class*="bg-surface-card"]:has(#pick-resumen-count),
+      [class*="bg-surface-card"]:has([id*="pick-resumen"]) {
+        position: sticky;
+        bottom: 0;
+        z-index: 20;
+        margin-left: -14px;
+        margin-right: -14px;
+        border-radius: 14px 14px 0 0;
+        border-bottom: none;
+        padding: 12px 14px !important;
+        background: rgba(17, 17, 20, 0.95) !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 -10px 30px -10px rgba(0,0,0,0.6);
+      }
+
+      /* --- Botones disabled: que se vea mejor su estado disabled --- */
+      button:disabled {
+        opacity: 0.5 !important;
+      }
+
+      /* --- Textos descriptivos largos: line-clamp en mobile para no robar espacio --- */
+      section p.text-xs.text-zinc-500,
+      section p.text-\\[11px\\].text-zinc-500,
+      section p.text-zinc-600.text-\\[11px\\] {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      /* --- Headers de sección (h2, h3): margen reducido --- */
+      h1, h2, h3 { margin-bottom: 8px !important; }
+      h1 + p, h2 + p, h3 + p { margin-top: 4px !important; }
+
+      /* --- Filtros buttons (Todas/Top/MX/US/Cripto): tamaño consistente --- */
+      [class*="filter-btn"], .pick-filtro, .nav-filter {
+        min-height: 36px !important;
+        padding: 8px 12px !important;
+        font-size: 12.5px !important;
+        white-space: nowrap;
+      }
+
+      /* --- Search inputs (lupa + texto): más prominentes --- */
+      input[placeholder*="uscar"],
+      input[id="pick-buscar"], input[id="universo-buscar"] {
+        font-size: 16px !important;
+        padding: 12px 14px 12px 38px !important;
+        min-height: 48px !important;
+        background-position: 12px center !important;
+      }
+    }
+
+    /* ====================================================================
        MOBILE EXTRA SMALL (< 380px) — iPhones SE/Mini
        ==================================================================== */
     @media (max-width: 379px) {
