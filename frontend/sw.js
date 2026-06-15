@@ -6,7 +6,7 @@
 */
 // IMPORTANTE: Bumpear esta versión cada vez que cambies JS/CSS críticos
 // para forzar invalidación del cache en todos los usuarios.
-const VERSION = 'mp-v1.2.1';
+const VERSION = 'mp-v1.2.2';
 const SHELL_CACHE  = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const ASSETS_CACHE = `${VERSION}-assets`;
@@ -94,3 +94,45 @@ async function staleWhileRevalidate(request, cacheName) {
     .catch(() => cached);
   return cached || fetchPromise;
 }
+
+
+// ============================================================
+//  WEB PUSH NOTIFICATIONS
+// ============================================================
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { title: 'Mi Portafolio', body: event.data ? event.data.text() : '' };
+  }
+  const title = data.title || 'Mi Portafolio';
+  const options = {
+    body:    data.body || '',
+    icon:    data.icon || '/static/logo.png',
+    badge:   data.badge || '/static/logo.png',
+    tag:     data.tag || 'miportafolio',
+    data:    { url: data.url || '/' },
+    vibrate: [100, 50, 100],
+    requireInteraction: false,
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // Si hay una ventana abierta de la app, enfócala
+      for (const c of clients) {
+        if (c.url.includes(self.location.host) && 'focus' in c) {
+          c.navigate(url);
+          return c.focus();
+        }
+      }
+      // Si no, abre una nueva
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
+  );
+});

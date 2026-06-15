@@ -342,9 +342,9 @@ def api_cron_dispatch(tipo):
         return jsonify({"error": "unauthorized"}), 401
 
     tipo = (tipo or "").strip().lower()
-    if tipo not in ("drift", "precio", "semanal", "periodico"):
+    if tipo not in ("drift", "precio", "semanal", "periodico", "newsletter", "newsletter_semanal"):
         return jsonify({"error": f"tipo desconocido: {tipo}",
-                        "validos": ["drift", "precio", "semanal", "periodico"]}), 400
+                        "validos": ["drift", "precio", "semanal", "periodico", "newsletter"]}), 400
 
     # Verificar que existe el snapshot del usuario (escrito por el frontend)
     snap_path = _Path_cron(__file__).parent / "portafolio_snapshot.json"
@@ -1424,6 +1424,126 @@ def api_brokers_mx():
     if _brokers is None:
         return jsonify({"error": "brokers no cargado"}), 500
     return jsonify({"brokers": _brokers.listar_brokers()})
+
+
+@app.route("/api/push/public-key", methods=["GET"])
+def api_push_public_key():
+    """Devuelve la VAPID public key (necesaria para PushManager.subscribe)."""
+    try:
+        import push as _push
+        return jsonify({
+            "ok":           _push.vapid_disponible(),
+            "public_key":   _push.vapid_public_key(),
+            "disponible":   _push.vapid_disponible(),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/push/subscribe", methods=["POST"])
+def api_push_subscribe():
+    """Body: {email, subscription} → guarda la suscripción del browser."""
+    try:
+        import push as _push
+        body = request.get_json(silent=True) or {}
+        email = (body.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            return jsonify({"ok": False, "error": "email requerido"}), 400
+        sub = body.get("subscription") or {}
+        ua = request.headers.get("User-Agent", "")[:200]
+        res = _push.guardar_suscripcion(email, sub, ua)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"subscribe fallo: {e}"}), 500
+
+
+@app.route("/api/push/unsubscribe", methods=["POST"])
+def api_push_unsubscribe():
+    """Body: {email, endpoint} → marca la suscripción como inactiva."""
+    try:
+        import push as _push
+        body = request.get_json(silent=True) or {}
+        email = (body.get("email") or "").strip().lower()
+        endpoint = body.get("endpoint")
+        if not email or not endpoint:
+            return jsonify({"ok": False, "error": "email y endpoint requeridos"}), 400
+        ok = _push.eliminar_suscripcion(email, endpoint)
+        return jsonify({"ok": ok})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"unsubscribe fallo: {e}"}), 500
+
+
+@app.route("/api/push/test", methods=["POST"])
+def api_push_test():
+    """Body: {email, titulo?, body?} → manda push de prueba."""
+    try:
+        import push as _push
+        body = request.get_json(silent=True) or {}
+        email = (body.get("email") or "").strip().lower()
+        if not email:
+            return jsonify({"ok": False, "error": "email requerido"}), 400
+        res = _push.enviar_notificacion(
+            email=email,
+            titulo=body.get("titulo") or "🚀 Push funcionando",
+            body=body.get("body") or "Tu Mi Portafolio puede mandarte notificaciones ahora.",
+            url=body.get("url") or "/",
+        )
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"push test fallo: {e}"}), 500
+
+
+@app.route("/api/backups", methods=["GET", "POST"])
+def api_backups():
+    """Cloud backups del portafolio.
+    POST {email, snapshot, nombre?, automatico?} → crea backup
+    GET ?email=... → lista metadata de backups"""
+    try:
+        import backups as _bk
+        if request.method == "POST":
+            body = request.get_json(silent=True) or {}
+            email = (body.get("email") or "").strip().lower()
+            if not email or "@" not in email:
+                return jsonify({"ok": False, "error": "email requerido"}), 400
+            snap = body.get("snapshot") or {}
+            res = _bk.crear_backup(
+                email=email,
+                snapshot=snap,
+                nombre=body.get("nombre"),
+                automatico=bool(body.get("automatico", False)),
+            )
+            # Limpiar viejos automáticamente
+            try: _bk.limpiar_antiguos(email)
+            except Exception: pass
+            return jsonify({"ok": True, **res})
+        else:
+            email = (request.args.get("email") or "").strip().lower()
+            if not email or "@" not in email:
+                return jsonify({"ok": False, "error": "email requerido"}), 400
+            backups = _bk.listar_backups(email, limit=30)
+            return jsonify({"ok": True, "total": len(backups), "backups": backups})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"backup fallo: {e}"}), 500
+
+
+@app.route("/api/backups/<backup_id>", methods=["GET", "DELETE"])
+def api_backup_single(backup_id):
+    """GET → devuelve snapshot completo. DELETE → elimina backup."""
+    try:
+        import backups as _bk
+        email = (request.args.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            return jsonify({"ok": False, "error": "email requerido"}), 400
+        if request.method == "DELETE":
+            ok = _bk.eliminar_backup(backup_id, email)
+            return jsonify({"ok": ok})
+        else:
+            data = _bk.obtener_backup(backup_id, email)
+            if not data:
+                return jsonify({"ok": False, "error": "backup no encontrado"}), 404
+            return jsonify({"ok": True, **data})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"backup op fallo: {e}"}), 500
 
 
 @app.route("/api/alertas/evaluar-reglas", methods=["POST"])

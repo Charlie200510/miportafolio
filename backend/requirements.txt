@@ -29,3 +29,7 @@ Flask-Limiter>=3.5
 
 # Variables de entorno
 python-dotenv>=1.0
+
+# Web Push notifications (iOS 16.4+, Android, Desktop)
+pywebpush>=2.0
+cryptography>=42.0

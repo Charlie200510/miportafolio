@@ -125,6 +125,39 @@ CREATE TABLE IF NOT EXISTS portafolio_snapshots (
 
 
 -- ============================================================
+--  BACKUPS EN LA NUBE (historial de snapshots por usuario)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS backups_nube (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_email      TEXT NOT NULL,                   -- email del usuario (clave funcional)
+    nombre          TEXT,                            -- nombre opcional del backup ("Antes del rebalanceo Q3")
+    snapshot        JSONB NOT NULL,                  -- tickers + pesos + transacciones + cfg alertas
+    es_automatico   BOOLEAN NOT NULL DEFAULT false,  -- true=cron auto-backup, false=manual del usuario
+    tamano_bytes    INTEGER,                         -- tamaño del JSON serializado
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_backups_email_fecha ON backups_nube(user_email, created_at DESC);
+CREATE INDEX idx_backups_auto ON backups_nube(user_email, es_automatico, created_at DESC);
+
+
+-- ============================================================
+--  PUSH SUBSCRIPTIONS (Web Push API para notifications iOS/Android/desktop)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_email      TEXT NOT NULL,
+    endpoint        TEXT NOT NULL UNIQUE,            -- URL única del navegador
+    p256dh_key      TEXT NOT NULL,                   -- clave pública del cliente
+    auth_key        TEXT NOT NULL,                   -- secret de autenticación
+    user_agent      TEXT,                            -- para identificar el dispositivo
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_used_at    TIMESTAMPTZ,
+    activo          BOOLEAN NOT NULL DEFAULT true
+);
+CREATE INDEX idx_push_email ON push_subscriptions(user_email) WHERE activo = true;
+
+
+-- ============================================================
 --  EVENTOS DE PAGO (auditoría MercadoPago webhooks)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS pagos_eventos (

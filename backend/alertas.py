@@ -439,6 +439,143 @@ def render_periodico_diario(
     return subject, _html_base(f"Periódico · {fecha_hoy.split(',')[0] if ',' in fecha_hoy else fecha_hoy}", cuerpo)
 
 
+def render_newsletter_semanal(
+    nombre: str,
+    resumen: Dict[str, Any],
+    cierres: Dict[str, Any],
+    noticias: List[Dict[str, Any]],
+    posiciones: List[Dict[str, Any]],
+    metricas: Dict[str, Any],
+    top_movers: List[Dict[str, Any]],
+    cetes: Optional[float] = None,
+) -> Tuple[str, str]:
+    """Newsletter semanal premium — más profundo que el periódico diario.
+    Incluye: cierres macro, análisis de portafolio, top movers de tus tickers,
+    contexto mexicano (CETES, FX), 5 titulares destacados."""
+    fecha_hoy = datetime.now().strftime("%A %d de %B").capitalize()
+    semana_num = datetime.now().isocalendar()[1]
+    subject = f"📊 Tu semana en el mercado — Semana {semana_num}"
+
+    # === Sección 1: Resumen macro ===
+    indices = (cierres.get("indices") or [])[:5]
+    filas_macro = ""
+    for idx in indices:
+        cambio_semana = idx.get("cambio_semana_pct") or idx.get("cambio_pct")
+        if not isinstance(cambio_semana, (int, float)):
+            continue
+        color = "#16a34a" if cambio_semana >= 0 else "#dc2626"
+        signo = "+" if cambio_semana >= 0 else ""
+        precio = idx.get("precio_actual")
+        precio_str = f"${precio:,.2f}" if isinstance(precio, (int, float)) else "—"
+        filas_macro += f"""
+        <tr>
+          <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-weight:600;font-size:13px;">{html.escape(idx.get('nombre') or '—')}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-size:12px;color:#71717a;">{precio_str}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:right;color:{color};font-weight:700;font-size:14px;">{signo}{cambio_semana:.2f}%</td>
+        </tr>"""
+
+    # === Sección 2: Performance de tu portafolio ===
+    pnl_semana = metricas.get("pnl_semana_pct")
+    valor_actual = metricas.get("valor_actual")
+    color_pnl = "#16a34a" if (pnl_semana or 0) >= 0 else "#dc2626"
+    signo_pnl = "+" if (pnl_semana or 0) >= 0 else ""
+    pnl_str = f"{signo_pnl}{pnl_semana:.2f}%" if isinstance(pnl_semana, (int, float)) else "—"
+    valor_str = f"${valor_actual:,.0f}" if isinstance(valor_actual, (int, float)) else "—"
+
+    # === Sección 3: Top movers de TUS tickers ===
+    movers_html = ""
+    if top_movers:
+        items_movers = ""
+        for m in top_movers[:5]:
+            cambio = m.get("cambio_pct") or m.get("retorno_semana")
+            if not isinstance(cambio, (int, float)):
+                continue
+            color = "#16a34a" if cambio >= 0 else "#dc2626"
+            signo = "+" if cambio >= 0 else ""
+            items_movers += f"""
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f5f5f5;">
+              <div>
+                <p style="margin:0;font-weight:700;font-size:14px;color:#18181b;">{html.escape(m.get('ticker') or '')}</p>
+                <p style="margin:2px 0 0;font-size:11px;color:#71717a;">{html.escape((m.get('nombre') or '')[:40])}</p>
+              </div>
+              <p style="margin:0;font-weight:700;font-size:16px;color:{color};">{signo}{cambio:.2f}%</p>
+            </div>"""
+        movers_html = f"""
+        <h3 style="margin:24px 0 8px;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">📊 Top movers de tu portafolio</h3>
+        <div>{items_movers}</div>
+        """
+
+    # === Sección 4: Titulares destacados ===
+    titulares_html = ""
+    titulares = resumen.get("titulares") or []
+    if titulares:
+        items_tit = ""
+        for t in titulares[:5]:
+            titulo = (t.get("titulo") or "").strip()
+            url = t.get("url") or "#"
+            prov = t.get("proveedor") or ""
+            items_tit += f"""
+            <div style="padding:12px 0;border-bottom:1px solid #f5f5f5;">
+              <a href="{html.escape(url)}" style="color:#18181b;text-decoration:none;font-weight:600;font-size:13px;line-height:1.4;">{html.escape(titulo)}</a>
+              <p style="margin:4px 0 0;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.05em;">{html.escape(prov)}</p>
+            </div>"""
+        titulares_html = f"""
+        <h3 style="margin:24px 0 8px;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">📰 Lo más relevante de la semana</h3>
+        <div>{items_tit}</div>
+        """
+
+    # === Sección 5: Contexto mexicano ===
+    cetes_html = ""
+    if cetes is not None:
+        cetes_html = f"""
+        <div style="padding:14px;background:linear-gradient(135deg,#fafafa,#f4f4f5);border:1px solid #e4e4e7;border-radius:10px;margin-top:18px;">
+          <p style="margin:0;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">CETES 28 días (referencia MXN)</p>
+          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:#16a34a;font-family:monospace;">{cetes:.2f}%</p>
+          <p style="margin:4px 0 0;font-size:11px;color:#71717a;">Tu tasa libre de riesgo. Tu portafolio debería superarla por al menos {cetes + 2:.1f}% para justificar el riesgo equity.</p>
+        </div>
+        """
+
+    cuerpo = f"""
+    <p style="margin:0 0 4px;font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Semana {semana_num} · {html.escape(fecha_hoy)}</p>
+    <p style="margin:0 0 24px;font-size:16px;line-height:1.55;color:#18181b;">Hola {html.escape(nombre)}, este es tu resumen completo de la semana.</p>
+
+    <div style="background:linear-gradient(135deg,rgba(34,197,94,0.06),rgba(34,197,94,0.02));border:1px solid rgba(34,197,94,0.25);border-radius:14px;padding:20px;margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;">
+        <div>
+          <p style="margin:0;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Tu portafolio esta semana</p>
+          <p style="margin:6px 0 0;font-size:32px;font-weight:800;color:{color_pnl};line-height:1;">{pnl_str}</p>
+        </div>
+        <div style="text-align:right;">
+          <p style="margin:0;font-size:11px;color:#71717a;">Valor actual</p>
+          <p style="margin:2px 0 0;font-size:20px;font-weight:700;color:#18181b;font-family:monospace;">{valor_str}</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin:24px 0 8px;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">🌎 Mercados globales esta semana</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <tbody>{filas_macro or '<tr><td style="padding:14px;color:#71717a;font-size:12px;">Datos no disponibles ahora.</td></tr>'}</tbody>
+    </table>
+
+    {movers_html}
+
+    {titulares_html}
+
+    {cetes_html}
+
+    <div style="margin:32px 0 0;padding:20px;background:#0a0a0b;border-radius:12px;text-align:center;">
+      <p style="margin:0 0 8px;font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Para profundizar</p>
+      <a href="https://miportafolio.uk" style="display:inline-block;padding:12px 24px;background:#22c55e;color:#0a0a0b;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">Abrir Mi Portafolio →</a>
+      <p style="margin:12px 0 0;font-size:11px;color:#a1a1aa;">Backtests, stress tests, AFOREs y todas las herramientas en la app.</p>
+    </div>
+
+    <p style="margin:20px 0 0;font-size:11px;color:#71717a;line-height:1.5;">
+      Datos de Yahoo Finance + Banxico. Esto es información agregada, NO asesoría de inversión.
+    </p>"""
+
+    return subject, _html_base(f"Semana {semana_num} en el mercado", cuerpo)
+
+
 # ---- Envío vía Resend (recomendado) ----------------------------------------
 
 def _enviar_resend(destinatario: str, subject: str, html_body: str, reply_to: Optional[str] = None) -> Dict[str, Any]:
@@ -558,6 +695,17 @@ def enviar_alerta(
             cierres=payload.get("cierres") or {},
             noticias=payload.get("noticias") or [],
             posiciones=payload.get("posiciones") or [],
+        )
+    elif tipo in ("newsletter", "newsletter_semanal"):
+        subject, html_body = render_newsletter_semanal(
+            nombre=nombre,
+            resumen=payload.get("resumen") or {},
+            cierres=payload.get("cierres") or {},
+            noticias=payload.get("noticias") or [],
+            posiciones=payload.get("posiciones") or [],
+            metricas=payload.get("metricas") or {},
+            top_movers=payload.get("top_movers") or [],
+            cetes=payload.get("cetes"),
         )
     else:
         raise ValueError(f"Tipo de alerta desconocido: {tipo!r}")

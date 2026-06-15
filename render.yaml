@@ -47,6 +47,14 @@ services:
         sync: false
       - key: CRON_SECRET
         sync: false             # secret para autenticar /api/cron/<tipo>
+      # Web Push notifications (iOS 16.4+, Android, Desktop)
+      # Generar par con: python3 backend/push.py
+      - key: VAPID_PUBLIC_KEY
+        sync: false             # clave pública (base64url)
+      - key: VAPID_PRIVATE_KEY
+        sync: false             # clave privada (base64url) — NUNCA exponer
+      - key: VAPID_CLAIM_EMAIL
+        value: "mailto:soporte@miportafolio.app"
       - key: MERCADOPAGO_ACCESS_TOKEN
         sync: false
       - key: MERCADOPAGO_PRECIO_MXN

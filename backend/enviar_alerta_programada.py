@@ -133,6 +133,43 @@ def _construir_payload(tipo: str, snap: dict) -> dict:
             "noticias":   noticias,
             "posiciones": posiciones,
         }
+    if tipo in ("newsletter", "newsletter_semanal"):
+        # Newsletter premium semanal — más profundo que el periódico diario
+        try:
+            import periodico as _peri
+            resumen   = _peri.resumen_diario()
+            cierres   = _peri.cierres_indices()
+            tickers   = [p.get("ticker") for p in posiciones if p.get("ticker")]
+            noticias  = _peri.noticias_portafolio(tickers[:10], limite=8) if tickers else []
+        except Exception as e:
+            print(f"warn: no se pudo cargar periodico.py: {e}")
+            resumen, cierres, noticias = {}, {}, []
+        # Top movers de la semana (los 5 tickers con mayor magnitud de cambio)
+        movers = sorted(
+            [p for p in posiciones if isinstance(p.get("cambio_pct"), (int, float))],
+            key=lambda x: abs(x["cambio_pct"]), reverse=True,
+        )[:5]
+        # Tasa CETES referencia
+        cetes_tasa = None
+        try:
+            import renta_fija_mx as _rf
+            data = _rf.cetes_y_fibras() if hasattr(_rf, "cetes_y_fibras") else None
+            if data and data.get("cetes"):
+                for c in data["cetes"]:
+                    if "28" in str(c.get("plazo", "")):
+                        cetes_tasa = c.get("tasa_pct") or c.get("tasa")
+                        break
+        except Exception:
+            pass
+        return {
+            "resumen":    resumen,
+            "cierres":    cierres,
+            "noticias":   noticias,
+            "posiciones": posiciones,
+            "metricas":   snap.get("metricas") or {},
+            "top_movers": movers,
+            "cetes":      cetes_tasa,
+        }
     if tipo in ("semanal", "reporte_semanal"):
         # Top/bottom performers basados en cambio_pct si hay
         ranked = sorted(
