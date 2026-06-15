@@ -3,8 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mi Portafolio · Análisis de Inversión</title>
-  <meta name="description" content="Mi Portafolio — análisis profesional de tu portafolio de inversión con métricas claras en español." />
+
+  <!-- SEO PRIMARY -->
+  <title>Mi Portafolio · Análisis de inversión para mexicanos | miportafolio.uk</title>
+  <meta name="description" content="App educativa para optimizar tu portafolio: Markowitz, Sharpe, ISR mexicano automático, backtests, stress tests, comparativa de AFOREs y brokers MX. Gratis." />
+  <meta name="keywords" content="mi portafolio, portafolio inversión, markowitz mexico, ISR acciones, sharpe ratio, BMV, SIC, retail mexico, AFORE comparativa, calcular impuestos acciones" />
+  <meta name="author" content="Mi Portafolio" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+  <link rel="canonical" href="https://miportafolio.uk/" />
+
   <link rel="icon" type="image/png" href="/static/logo.png" />
   <link rel="apple-touch-icon" href="/static/logo.png" />
   <!-- PWA -->
@@ -15,6 +22,44 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Mi Portafolio" />
   <meta name="format-detection" content="telephone=no" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://miportafolio.uk/" />
+  <meta property="og:title" content="Mi Portafolio · Análisis de inversión para mexicanos" />
+  <meta property="og:description" content="App educativa para optimizar tu portafolio: Markowitz, Sharpe, ISR mexicano, backtests y stress tests. Gratis." />
+  <meta property="og:image" content="https://miportafolio.uk/static/logo.png" />
+  <meta property="og:locale" content="es_MX" />
+  <meta property="og:site_name" content="Mi Portafolio" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Mi Portafolio · Análisis para inversionista mexicano" />
+  <meta name="twitter:description" content="Markowitz, ISR mexicano, AFOREs y mucho más. Gratis." />
+  <meta name="twitter:image" content="https://miportafolio.uk/static/logo.png" />
+
+  <!-- Structured Data: WebApplication -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Mi Portafolio",
+    "url": "https://miportafolio.uk",
+    "description": "Plataforma educativa de análisis de inversión para retail mexicano. Markowitz, ISR mexicano, AFOREs, brokers MX.",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web, iOS, Android",
+    "inLanguage": "es-MX",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "MXN"
+    },
+    "creator": {
+      "@type": "Organization",
+      "name": "Mi Portafolio",
+      "url": "https://miportafolio.uk"
+    }
+  }
+  </script>
 
   <!-- Tailwind vía CDN (dev) -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -2806,6 +2851,7 @@ python3 backend/app.py</pre>
         <button onclick="window.abrirFAQ && window.abrirFAQ()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">FAQ</button>
         <button onclick="window.abrirGlosario && window.abrirGlosario()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Glosario</button>
         <button onclick="window.abrirCursosIndex && window.abrirCursosIndex()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Mini-cursos</button>
+        <a href="/blog" class="text-zinc-400 hover:text-zinc-200 transition">Blog</a>
         <a href="mailto:soporte@miportafolio.app" class="text-zinc-400 hover:text-zinc-200 transition">Soporte</a>
       </div>
       <div class="text-zinc-600 leading-relaxed max-w-md text-right">

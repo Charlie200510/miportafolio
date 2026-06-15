@@ -438,6 +438,25 @@ def pagina_privacidad():
     return send_from_directory(str(FRONTEND_DIR), "privacidad.html")
 
 
+# ── Blog ────────────────────────────────────────────────────────
+@app.route("/blog")
+@app.route("/blog/")
+def blog_index():
+    return send_from_directory(str(FRONTEND_DIR / "blog"), "index.html")
+
+
+@app.route("/blog/<slug>")
+def blog_post(slug):
+    """Sirve un post de blog por slug. Solo permite caracteres seguros."""
+    import re as _re
+    if not _re.match(r"^[a-z0-9-]{1,100}$", slug):
+        abort(404)
+    ruta = FRONTEND_DIR / "blog" / f"{slug}.html"
+    if not ruta.exists():
+        abort(404)
+    return send_from_directory(str(FRONTEND_DIR / "blog"), f"{slug}.html")
+
+
 @app.route("/api/resultados")
 def api_resultados():
     """Devuelve el análisis del portafolio (resultados.json)."""
