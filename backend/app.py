@@ -445,6 +445,12 @@ def blog_index():
     return send_from_directory(str(FRONTEND_DIR / "blog"), "index.html")
 
 
+@app.route("/blog/_styles.css")
+def blog_styles():
+    """CSS compartido para todos los posts del blog."""
+    return send_from_directory(str(FRONTEND_DIR / "blog"), "_styles.css", mimetype="text/css")
+
+
 @app.route("/blog/<slug>")
 def blog_post(slug):
     """Sirve un post de blog por slug. Solo permite caracteres seguros."""

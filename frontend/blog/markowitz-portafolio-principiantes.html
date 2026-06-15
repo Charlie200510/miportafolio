@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qué es Markowitz y cómo aplicarlo a tu portafolio (Guía 2026) | Mi Portafolio</title>
+  <meta name="description" content="Markowitz explicado sin matemáticas complicadas: frontera eficiente, optimización Sharpe, correlación entre activos. Aplica la teoría que ganó el Nobel a tu portafolio real.">
+  <meta name="keywords" content="markowitz portafolio, frontera eficiente, optimización portafolio, sharpe ratio, teoría moderna del portafolio, MPT español, diversificación matemática">
+  <meta name="robots" content="index, follow, max-snippet:-1">
+  <link rel="canonical" href="https://miportafolio.uk/blog/markowitz-portafolio-principiantes">
+  <link rel="icon" type="image/png" href="/static/logo.png">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://miportafolio.uk/blog/markowitz-portafolio-principiantes">
+  <meta property="og:title" content="Qué es Markowitz y cómo aplicarlo a tu portafolio">
+  <meta property="og:description" content="La teoría que ganó el Nobel, explicada sin jerga. Frontera eficiente, Sharpe y correlación.">
+  <meta property="og:image" content="https://miportafolio.uk/static/logo.png">
+  <meta property="og:locale" content="es_MX">
+
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Article",
+    "headline":"Qué es Markowitz y cómo aplicarlo a tu portafolio (Guía 2026)",
+    "datePublished":"2026-06-14T08:00:00-06:00",
+    "image":"https://miportafolio.uk/static/logo.png",
+    "author":{"@type":"Organization","name":"Mi Portafolio","url":"https://miportafolio.uk"},
+    "publisher":{"@type":"Organization","name":"Mi Portafolio","logo":{"@type":"ImageObject","url":"https://miportafolio.uk/static/logo.png"}},
+    "inLanguage":"es-MX"}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+    {"@type":"Question","name":"¿Qué es la teoría de Markowitz?","acceptedAnswer":{"@type":"Answer","text":"Harry Markowitz demostró en 1952 que combinando activos no correlacionados puedes REDUCIR el riesgo total del portafolio sin sacrificar retorno. La idea principal es que el riesgo de un portafolio NO es el promedio de los riesgos individuales — depende de cómo se mueven juntos los activos. Le dieron el Nobel de Economía en 1990."}},
+    {"@type":"Question","name":"¿Qué es la frontera eficiente?","acceptedAnswer":{"@type":"Answer","text":"La frontera eficiente es la línea de portafolios óptimos: para cada nivel de riesgo que aceptes, existe UN portafolio que maximiza el retorno esperado. Cualquier portafolio debajo de esa línea es ineficiente — estás aceptando más riesgo del necesario o ganando menos del posible."}},
+    {"@type":"Question","name":"¿Necesito Excel para aplicar Markowitz?","acceptedAnswer":{"@type":"Answer","text":"No. Calcular Markowitz manualmente con N activos requiere invertir matrices N×N, lo cual es poco práctico a mano. Apps como Mi Portafolio, Portfolio Visualizer o el optimizador de Bloomberg lo calculan automáticamente. Solo necesitas elegir los tickers."}}
+  ]}
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/blog/_styles.css">
+</head>
+<body class="min-h-screen">
+  <header class="border-b border-zinc-800 sticky top-0 bg-zinc-950/80 backdrop-blur z-10">
+    <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2 text-sm font-semibold text-zinc-100 hover:text-emerald-400 transition">
+        <img src="/static/logo.png" alt="Mi Portafolio" class="w-8 h-8 rounded-lg">Mi Portafolio
+      </a>
+      <div class="flex items-center gap-3">
+        <a href="/blog" class="text-xs text-zinc-400 hover:text-zinc-200">← Blog</a>
+        <a href="/" class="text-xs px-4 py-2 rounded-lg bg-emerald-500 text-zinc-950 font-semibold hover:brightness-110 transition">Abrir app</a>
+      </div>
+    </div>
+  </header>
+
+  <article class="max-w-3xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <p class="text-xs uppercase tracking-wider text-orange-400 font-semibold">📐 Teoría</p>
+      <h1 class="display text-3xl sm:text-5xl font-bold text-zinc-100 mt-3 leading-tight">Qué es Markowitz y cómo aplicarlo a tu portafolio</h1>
+      <p class="text-xl text-zinc-400 mt-4 leading-relaxed">La teoría que ganó el Nobel de Economía, explicada sin matemáticas. Aplícala en 10 minutos con un ejemplo real.</p>
+      <div class="flex items-center gap-3 mt-6 text-xs text-zinc-500 border-b border-zinc-800 pb-6">
+        <span>📅 Junio 2026</span><span>·</span><span>⏱ 10 min de lectura</span>
+      </div>
+    </div>
+
+    <div class="prose">
+      <blockquote><strong>TL;DR:</strong> Si combinas activos que NO se mueven juntos (acciones + bonos + oro, por ejemplo), tu portafolio total tiene <em>menos</em> riesgo que el promedio de los riesgos individuales — sin sacrificar retorno. Esa es la magia de Markowitz, y se llama <strong>diversificación matemática</strong>.</blockquote>
+
+      <h2>1. El problema antes de Markowitz</h2>
+      <p>Hasta 1952, "diversificar" significaba "no pongas todos los huevos en una canasta" — intuitivo pero impreciso. Nadie sabía exactamente cuántos huevos poner en cuántas canastas, ni cómo escoger las canastas.</p>
+      <p>Harry Markowitz, un estudiante de doctorado de 25 años en la Universidad de Chicago, se hizo una pregunta sencilla: <em>¿se puede medir matemáticamente cuánto reduce el riesgo agregar otro activo al portafolio?</em></p>
+
+      <h2>2. La idea genial (en 1 párrafo)</h2>
+      <p>Lo que Markowitz demostró es que el riesgo de un portafolio <strong>no es el promedio</strong> de los riesgos individuales. Depende de la <strong>correlación</strong> entre los activos.</p>
+      <p>Si dos acciones se mueven exactamente igual (correlación = 1), combinarlas no reduce nada. Pero si se mueven independientemente (correlación = 0), o aún mejor, en sentido opuesto (correlación = -1), el portafolio combinado tiene <strong>menos volatilidad que cualquiera de las dos por separado</strong>.</p>
+
+      <h2>3. Ejemplo intuitivo: dos negocios opuestos</h2>
+      <p>Imagina que vendes paraguas. Tus ventas son altísimas cuando llueve y bajísimas cuando hace sol. Tu negocio es volátil — depende del clima.</p>
+      <p>Ahora abres un segundo negocio: vendes bloqueador solar. Tus ventas son altas cuando hace sol y bajas cuando llueve. Por sí solo también es volátil.</p>
+      <p>Pero juntos: cada día del año vendes algo (paraguas o bloqueador). Tu ingreso total es <strong>estable</strong>. Eso es Markowitz en acción: dos negocios volátiles individualmente, combinados, son estables porque sus volatilidades se cancelan.</p>
+
+      <h2>4. La frontera eficiente</h2>
+      <p>Markowitz demostró que si tomas todos los posibles portafolios que se pueden armar con un conjunto de activos, y los grafícas en un plano riesgo/retorno, forman una nube. La <strong>línea superior</strong> de esa nube es la <em>frontera eficiente</em>:</p>
+      <ul>
+        <li>Cada punto en la frontera es un portafolio "óptimo" — para ese nivel de riesgo, no hay otro portafolio con más retorno esperado.</li>
+        <li>Cualquier portafolio por debajo de la frontera es <strong>ineficiente</strong>: estás dejando dinero en la mesa.</li>
+        <li>El "punto perfecto" generalmente es donde el ratio retorno/riesgo (Sharpe) es máximo — se llama "tangency portfolio".</li>
+      </ul>
+
+      <h2>5. Qué necesitas para calcularlo</h2>
+      <p>Para correr Markowitz necesitas 3 cosas:</p>
+      <ol>
+        <li><strong>Retorno esperado</strong> de cada activo. Usualmente se aproxima con el promedio histórico (2-5 años de datos).</li>
+        <li><strong>Volatilidad</strong> de cada activo (desviación estándar de los retornos).</li>
+        <li><strong>Matriz de correlación</strong> entre cada par de activos.</li>
+      </ol>
+      <p>Con eso, el algoritmo de optimización (programación cuadrática) calcula los pesos óptimos. Para N activos, eso involucra invertir una matriz N×N — impráctico a mano, trivial en código.</p>
+
+      <h2>6. Ejemplo numérico real</h2>
+      <p>Supongamos que armas un portafolio con 3 activos:</p>
+      <table>
+        <thead><tr><th>Activo</th><th>Retorno anual</th><th>Volatilidad anual</th></tr></thead>
+        <tbody>
+          <tr><td>SPY (S&amp;P 500)</td><td>10%</td><td>17%</td></tr>
+          <tr><td>TLT (Bonos largo plazo USA)</td><td>4%</td><td>12%</td></tr>
+          <tr><td>GLD (Oro)</td><td>6%</td><td>15%</td></tr>
+        </tbody>
+      </table>
+      <p>Las correlaciones aproximadas: SPY-TLT = -0.2 (mueven al revés), SPY-GLD = 0.1 (casi independientes), TLT-GLD = 0.3 (parcialmente correlacionados).</p>
+      <p>Aplicando Markowitz, el portafolio que maximiza Sharpe es aproximadamente:</p>
+      <div class="calc-box">
+        <strong>Pesos óptimos:</strong><br>
+        SPY: 55%<br>
+        TLT: 30%<br>
+        GLD: 15%<br><br>
+        Retorno esperado: 7.5%<br>
+        Volatilidad esperada: 9% (vs 17% del SPY solo)<br>
+        <strong style="color:#34d399;">Sharpe ratio: 0.62 (vs 0.39 del SPY solo)</strong>
+      </div>
+      <p>El portafolio diversificado tiene <strong>menos volatilidad</strong> y <strong>mejor Sharpe</strong> que poner todo en SPY, sacrificando algo de retorno absoluto.</p>
+
+      <h2>7. Las críticas comunes (y por qué importan)</h2>
+      <p>Markowitz no es perfecto. Sus limitaciones:</p>
+      <ul>
+        <li><strong>Usa pasado para predecir futuro:</strong> los retornos esperados se calculan con datos históricos, que pueden no repetirse (ej. los 30 años post-1980 fueron históricamente atípicos).</li>
+        <li><strong>Asume distribución normal:</strong> en realidad los mercados tienen "fat tails" — eventos extremos (crisis 2008, COVID) ocurren más seguido de lo que predice la normal.</li>
+        <li><strong>Sensible a inputs:</strong> cambios pequeños en retornos esperados generan grandes cambios en pesos óptimos. Por eso Black-Litterman lo mejora con priors bayesianos.</li>
+        <li><strong>Ignora costos:</strong> el portafolio óptimo puede requerir tantos rebalanceos que las comisiones se comen el beneficio.</li>
+      </ul>
+      <p>Aún así, Markowitz sigue siendo la <strong>base de TODA la teoría moderna de portafolios</strong>. Modelos más sofisticados (Black-Litterman, factor models, risk parity) son refinamientos, no reemplazos.</p>
+
+      <h2>8. Cómo aplicarlo a tu portafolio mexicano</h2>
+      <p>Los pasos prácticos:</p>
+      <ol>
+        <li><strong>Selecciona 5-15 activos diversos:</strong> mezcla geografía (USA + México + emergentes), tipo (acciones + bonos + commodities + REITs), y tamaño (large cap + small cap). Más diversidad = más beneficio de Markowitz.</li>
+        <li><strong>Carga datos históricos:</strong> mínimo 2 años, idealmente 5-10. Apps como Mi Portafolio descargan automáticamente de Yahoo Finance.</li>
+        <li><strong>Corre la optimización:</strong> obtén los pesos que maximizan tu Sharpe.</li>
+        <li><strong>Aplica restricciones razonables:</strong> ej. ningún activo más del 30% (por si el modelo se equivoca), pesos mínimos 5%, sin shorts.</li>
+        <li><strong>Rebalancea cada 6-12 meses:</strong> los pesos óptimos cambian con los datos. Rebalancear muy seguido genera comisiones; muy poco perds el beneficio.</li>
+      </ol>
+
+      <h2>9. Cuándo NO usar Markowitz</h2>
+      <ul>
+        <li><strong>Portafolio muy chico (&lt;3 activos):</strong> con pocos activos las correlaciones dominan y el modelo da resultados extremos. Mejor diversifica primero.</li>
+        <li><strong>Horizonte muy corto (&lt;1 año):</strong> Markowitz asume retornos esperados a largo plazo. Para trading de corto plazo no aplica.</li>
+        <li><strong>Cuando crees firmemente en un activo:</strong> Markowitz ignora tu convicción. Si tu thesis es "AAPL va a duplicar", Markowitz te dirá que tengas 8% en AAPL — no 50%.</li>
+        <li><strong>En crisis activas:</strong> en mercados que cambian de régimen (ej. inicio COVID 2020), los datos históricos pre-crisis son inútiles. Espera estabilidad para recalibrar.</li>
+      </ul>
+
+      <h2>10. Glosario rápido</h2>
+      <ul>
+        <li><strong>Volatilidad:</strong> std de los retornos. Mide cuánto sube y baja el precio.</li>
+        <li><strong>Correlación:</strong> -1 a +1. Mide si dos activos se mueven juntos.</li>
+        <li><strong>Sharpe ratio:</strong> (retorno - tasa libre de riesgo) / volatilidad. Mide eficiencia.</li>
+        <li><strong>Frontera eficiente:</strong> conjunto de portafolios óptimos.</li>
+        <li><strong>Tangency portfolio:</strong> el punto en la frontera con máximo Sharpe.</li>
+        <li><strong>Risk parity:</strong> variante donde cada activo aporta la misma cantidad de riesgo total (no de capital).</li>
+      </ul>
+
+      <div class="cta-box">
+        <h3>Aplica Markowitz a tu portafolio en 1 click</h3>
+        <p>Mi Portafolio calcula la frontera eficiente y los pesos óptimos de tus tickers automáticamente. Solo elige 3-15 activos.</p>
+        <a href="/">Abrir Mi Portafolio →</a>
+      </div>
+
+      <h2>Disclaimer</h2>
+      <p style="font-size: 14px; color: #71717a;">Esta guía es educativa, no asesoría financiera personalizada. Los modelos matemáticos tienen limitaciones — siempre combina con criterio cualitativo.</p>
+    </div>
+
+    <div class="mt-12 pt-8 border-t border-zinc-800">
+      <p class="text-xs text-zinc-500 mb-3">¿Te sirvió? Compártela:</p>
+      <div class="flex gap-2 flex-wrap">
+        <a href="https://twitter.com/intent/tweet?text=Markowitz%20explicado%20sin%20matem%C3%A1ticas&url=https://miportafolio.uk/blog/markowitz-portafolio-principiantes" target="_blank" class="text-xs px-3 py-2 bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-lg text-zinc-300 transition">𝕏 Twitter</a>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://miportafolio.uk/blog/markowitz-portafolio-principiantes" target="_blank" class="text-xs px-3 py-2 bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-lg text-zinc-300 transition">in LinkedIn</a>
+        <a href="https://api.whatsapp.com/send?text=Markowitz%20explicado:%20https://miportafolio.uk/blog/markowitz-portafolio-principiantes" target="_blank" class="text-xs px-3 py-2 bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-lg text-zinc-300 transition">WhatsApp</a>
+      </div>
+    </div>
+  </article>
+
+  <footer class="border-t border-zinc-800 mt-16 py-8">
+    <div class="max-w-3xl mx-auto px-6 text-xs text-zinc-500 text-center leading-relaxed">
+      <p>Mi Portafolio es una plataforma educativa. NO somos asesor financiero registrado ante CNBV.</p>
+      <p class="mt-2"><a href="/" class="hover:text-zinc-300">Inicio</a> · <a href="/blog" class="hover:text-zinc-300">Blog</a> · <a href="/terminos" class="hover:text-zinc-300">Términos</a> · <a href="/privacidad" class="hover:text-zinc-300">Privacidad</a></p>
+    </div>
+  </footer>
+</body>
+</html>
