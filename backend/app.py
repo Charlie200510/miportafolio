@@ -1238,6 +1238,45 @@ def api_reporte_pdf():
     except Exception:
         pass
 
+    # --- Datos extra para el PDF profesional (todos opcionales) ---
+    # Si el frontend ya envió estos datos en el body, usarlos. Si no, intentar
+    # generarlos a partir del análisis del portafolio.
+    if body.get("comportamiento"):
+        datos["comportamiento"] = body["comportamiento"]
+    if body.get("concentracion"):
+        datos["concentracion"] = body["concentracion"]
+    if body.get("fundamentales"):
+        datos["fundamentales"] = body["fundamentales"]
+    if body.get("fiscal"):
+        datos["fiscal"] = body["fiscal"]
+    if body.get("benchmarks"):
+        datos["benchmarks"] = body["benchmarks"]
+
+    # Si el análisis del portafolio ya generó concentración, también pasarla
+    try:
+        if tickers and _mi_portafolio is not None and "concentracion" not in datos:
+            # Re-extraer del análisis previo si está
+            res_an_again = _mi_portafolio.analizar(list(tickers), dict(pesos) if pesos else None)
+            conc = (res_an_again or {}).get("concentracion") or {}
+            if conc:
+                datos["concentracion"] = {
+                    "por_sector": conc.get("por_sector"),
+                    "por_pais":   conc.get("por_pais"),
+                    "por_moneda": conc.get("por_moneda"),
+                }
+    except Exception:
+        pass
+
+    # Fundamentales agregados si fundamentals.py disponible
+    try:
+        if _fundamentals is not None and tickers and "fundamentales" not in datos:
+            res_fund = _fundamentals.analizar_fundamentales(list(tickers))
+            resumen_fund = (res_fund or {}).get("resumen") or {}
+            if resumen_fund:
+                datos["fundamentales"] = resumen_fund
+    except Exception:
+        pass
+
     try:
         pdf_bytes = _reporte_pdf.generar_reporte(
             datos, mes=mes, anio=anio, nombre_usuario=nombre
