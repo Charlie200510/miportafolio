@@ -599,9 +599,12 @@ def api_buscar_ticker():
     q = (request.args.get("q") or "").strip()
     if len(q) < 2:
         return jsonify([])
+    # Cuántos resultados quiere el cliente
+    limite = int(request.args.get("limite") or 25)
+    limite = max(5, min(50, limite))
 
     try:
-        resultados = _mi_portafolio.buscar_ticker(q, limite=10)
+        resultados = _mi_portafolio.buscar_ticker(q, limite=limite)
         return jsonify(resultados)
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 502
@@ -1605,6 +1608,19 @@ def api_optimizador_fiscal():
         return jsonify(result)
     except Exception as e:
         return jsonify({"ok": False, "error": f"optimizador fallo: {e}"}), 500
+
+
+@app.route("/api/periodico/top-movers", methods=["GET"])
+def api_periodico_top_movers():
+    """Top tickers por ganadores, perdedores y populares del periodo.
+    Query: ?periodo=dia|semana|mes&n=3"""
+    try:
+        import top_movers as _tm
+        periodo = (request.args.get("periodo") or "dia").lower()
+        n = int(request.args.get("n", 3))
+        return jsonify(_tm.top_movers(periodo, n))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"top movers fallo: {e}"}), 500
 
 
 @app.route("/api/deep-dive/<path:ticker>", methods=["GET"])

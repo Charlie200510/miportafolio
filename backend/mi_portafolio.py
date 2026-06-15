@@ -279,8 +279,8 @@ def buscar_ticker(query: str, limite: int = 10) -> list[dict]:
     resultados = []
     for q in (data.get("quotes") or [])[:limite]:
         tipo = (q.get("quoteType") or "").upper()
-        # Nos quedamos solo con acciones, ETFs e índices
-        if tipo not in ("EQUITY", "ETF", "INDEX"):
+        # Aceptamos: acciones, ETFs, índices, criptos, mutual funds, futuros
+        if tipo not in ("EQUITY", "ETF", "INDEX", "CRYPTOCURRENCY", "MUTUALFUND", "FUTURE"):
             continue
         ticker = q.get("symbol")
         if not ticker:

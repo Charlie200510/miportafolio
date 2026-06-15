@@ -1748,13 +1748,13 @@ const Picker = (() => {
     const seq = ++state.yahooSeq;
     $('pick-buscar-status').textContent = 'buscando…';
     try {
-      const res = await fetch('/api/buscar-ticker?q=' + encodeURIComponent(q));
+      const res = await fetch('/api/buscar-ticker?q=' + encodeURIComponent(q) + '&limite=25');
       const body = await res.json();
       if (seq !== state.yahooSeq) return;
       if (!res.ok) throw new Error(body.error || 'fallo Yahoo');
       const curadoSet = new Set(state.universo.map(x => x.ticker));
-      yahooCache = (body || []).filter(x => !curadoSet.has(x.ticker)).slice(0, 8);
-      $('pick-buscar-status').textContent = yahooCache.length ? '' : 'sin coincidencias extra';
+      yahooCache = (body || []).filter(x => !curadoSet.has(x.ticker)).slice(0, 20);
+      $('pick-buscar-status').textContent = yahooCache.length ? `${yahooCache.length} desde Yahoo` : 'sin coincidencias extra';
     } catch (err) {
       yahooCache = [];
       $('pick-buscar-status').textContent = 'Yahoo no respondió';
@@ -2435,12 +2435,96 @@ const Periodico = (() => {
     state.cargando = false;
   }
 
-  function bind() {
-    const btn = $('periodico-refrescar');
-    if (btn) btn.addEventListener('click', () => cargar(true));
+  // ─────────────────────────────────────────────────────────
+  //  Top Movers (ganadores / perdedores / populares)
+  // ─────────────────────────────────────────────────────────
+  let _moversPeriodo = 'dia';
+  async function cargarMovers(periodo) {
+    periodo = periodo || _moversPeriodo;
+    _moversPeriodo = periodo;
+    const grupos = [
+      {id:'mov-ganadores', key:'ganadores', signo:'+', color:'text-accent-green'},
+      {id:'mov-perdedores', key:'perdedores', signo:'',  color:'text-accent-red'},
+      {id:'mov-populares', key:'populares', signo:null, color:'text-accent-blue'},
+    ];
+    grupos.forEach(g => {
+      const el = document.getElementById(g.id);
+      if (el) el.innerHTML = '<div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>';
+    });
+    try {
+      const res = await fetch(`/api/periodico/top-movers?periodo=${periodo}&n=3`);
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || 'Error');
+      const render = (items, color, signo) => {
+        if (!items || !items.length) return '<div class="text-xs text-zinc-500 py-4 text-center">Sin datos</div>';
+        return items.map(t => {
+          const ret = t.retorno_pct;
+          const retColor = ret >= 0 ? 'text-accent-green' : 'text-accent-red';
+          const retSigno = ret >= 0 ? '+' : '';
+          const banderaCls = t.es_mx ? 'bg-accent-green/10 text-accent-green border-accent-green/20'
+                            : t.es_crypto ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                            : 'bg-accent-blue/10 text-accent-blue border-accent-blue/20';
+          const bandera = t.es_mx ? 'MX' : t.es_crypto ? '₿' : 'US';
+          return `<div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-zinc-900/40 hover:bg-zinc-900/70 transition">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${banderaCls} tabular shrink-0">${bandera}</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-[12px] font-semibold text-zinc-100 truncate tabular">${t.ticker}</p>
+                <p class="text-[10px] text-zinc-500 truncate">${(t.nombre || '').slice(0, 28)}</p>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="text-[12px] font-bold tabular ${retColor}">${retSigno}${ret.toFixed(2)}%</p>
+              ${t.precio ? `<p class="text-[9px] text-zinc-500 tabular">$${t.precio.toFixed(2)}</p>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      };
+      const g = document.getElementById('mov-ganadores');
+      const p = document.getElementById('mov-perdedores');
+      const pop = document.getElementById('mov-populares');
+      if (g)   g.innerHTML   = render(d.ganadores);
+      if (p)   p.innerHTML   = render(d.perdedores);
+      if (pop) pop.innerHTML = render(d.populares);
+    } catch (e) {
+      grupos.forEach(g => {
+        const el = document.getElementById(g.id);
+        if (el) el.innerHTML = `<div class="text-xs text-zinc-500 py-4 text-center">Error: ${e.message}</div>`;
+      });
+    }
   }
 
-  return { cargar, bind };
+  function bindMoversToggle() {
+    document.querySelectorAll('.mov-periodo-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const periodo = btn.dataset.movPeriodo;
+        document.querySelectorAll('.mov-periodo-btn').forEach(b => {
+          const activo = b === btn;
+          b.classList.toggle('text-zinc-100', activo);
+          b.classList.toggle('bg-accent-amber/20', activo);
+          b.classList.toggle('ring-1', activo);
+          b.classList.toggle('ring-accent-amber/30', activo);
+          b.classList.toggle('text-zinc-500', !activo);
+        });
+        cargarMovers(periodo);
+      });
+    });
+  }
+
+  function bind() {
+    const btn = $('periodico-refrescar');
+    if (btn) btn.addEventListener('click', () => { cargar(true); cargarMovers(); });
+    bindMoversToggle();
+  }
+
+  // Wrapper de cargar que también carga movers
+  const cargarOriginal = cargar;
+  async function cargarConMovers(forzar = false) {
+    await cargarOriginal(forzar);
+    cargarMovers();
+  }
+
+  return { cargar: cargarConMovers, bind };
 })();
 
 
@@ -7970,6 +8054,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof Brokers !== 'undefined') Brokers.bind();
   if (typeof DeclaracionSat !== 'undefined') DeclaracionSat.bind();
   if (typeof Aportaciones !== 'undefined') Aportaciones.bind();
+
+  // Cargar Periódico como vista default
+  try { Periodico.cargar(); } catch (_) {}
 
   // ── PWA: registrar service worker ───────────────────────────
   if ('serviceWorker' in navigator) {

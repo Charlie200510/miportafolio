@@ -266,19 +266,19 @@
   <nav class="border-b border-surface-border bg-surface/60 backdrop-blur sticky top-[64px] z-30 mp-nav-scroll">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-2 flex-nowrap sm:flex-wrap overflow-x-auto">
 
-      <!-- ── PRIMARIOS (grandes, destacados) ── -->
+      <!-- ── PRIMARIOS (grandes, destacados) — Periódico es el default ── -->
       <div class="flex items-center gap-1">
-        <button data-vista="portafolio" class="nav-tab nav-primary relative px-5 py-3.5 text-sm font-semibold text-zinc-100">
+        <button data-vista="periodico" class="nav-tab nav-primary relative px-5 py-3.5 text-sm font-semibold text-zinc-100">
+          Periódico
+          <span class="nav-indicator absolute bottom-0 left-0 right-0 h-0.5 bg-accent-purple rounded-t-full"></span>
+        </button>
+        <button data-vista="portafolio" class="nav-tab nav-primary relative px-5 py-3.5 text-sm font-semibold text-zinc-500 hover:text-zinc-200 transition">
           Mi portafolio
-          <span class="nav-indicator absolute bottom-0 left-0 right-0 h-0.5 bg-accent-green rounded-t-full"></span>
+          <span class="nav-indicator absolute bottom-0 left-0 right-0 h-0.5 bg-accent-green rounded-t-full hidden"></span>
         </button>
         <button data-vista="analizar" class="nav-tab nav-primary relative px-5 py-3.5 text-sm font-semibold text-zinc-500 hover:text-zinc-200 transition">
           Analizar
           <span class="nav-indicator absolute bottom-0 left-0 right-0 h-0.5 bg-accent-orange rounded-t-full hidden"></span>
-        </button>
-        <button data-vista="periodico" class="nav-tab nav-primary relative px-5 py-3.5 text-sm font-semibold text-zinc-500 hover:text-zinc-200 transition">
-          Periódico
-          <span class="nav-indicator absolute bottom-0 left-0 right-0 h-0.5 bg-accent-purple rounded-t-full hidden"></span>
         </button>
       </div>
 
@@ -291,8 +291,22 @@
           Transacciones e ISR
           <span class="nav-indicator absolute bottom-0 left-0 right-0 h-0.5 bg-accent-teal rounded-t-full hidden"></span>
         </button>
-        <!-- Asistente IA removido (no Anthropic API en plan free) -->
-        <!-- Rebalanceo, Metas, Optimizador y Asistente siguen accesibles vía cards -->
+        <button onclick="window.abrirDeepDive && window.abrirDeepDive()" class="nav-tab nav-secondary relative px-3 py-2.5 text-[11px] font-medium text-blue-400 hover:text-blue-300 transition" title="Análisis profundo de una empresa">
+          🔍 Deep Dive
+        </button>
+        <button onclick="window.abrirOptimizadorFiscal && window.abrirOptimizadorFiscal()" class="nav-tab nav-secondary relative px-3 py-2.5 text-[11px] font-medium text-purple-400 hover:text-purple-300 transition" title="Minimizar ISR mexicano">
+          ⚖ Optimizador fiscal
+        </button>
+        <button onclick="window.abrirScreener && window.abrirScreener()" class="nav-tab nav-secondary relative px-3 py-2.5 text-[11px] font-medium text-orange-400 hover:text-orange-300 transition" title="Filtra tickers por criterios">
+          🔎 Screener
+        </button>
+        <button onclick="window.abrirAlertasAvanzadas && window.abrirAlertasAvanzadas()" class="nav-tab nav-secondary relative px-3 py-2.5 text-[11px] font-medium text-accent-green hover:text-emerald-300 transition" title="Reglas multi-condición">
+          ⚡ Alertas avanzadas
+        </button>
+        <button onclick="window.abrirBackupsNube && window.abrirBackupsNube()" class="nav-tab nav-secondary relative px-3 py-2.5 text-[11px] font-medium text-cyan-400 hover:text-cyan-300 transition" title="Backups en la nube">
+          ☁ Backups
+        </button>
+        <!-- Hidden tabs (accesibles via cards) -->
         <button data-vista="explorador" class="nav-tab nav-secondary nav-hidden hidden" aria-hidden="true"></button>
         <button data-vista="rebalanceo" class="nav-tab nav-secondary nav-hidden hidden" aria-hidden="true"></button>
         <button data-vista="metas" class="nav-tab nav-secondary nav-hidden hidden" aria-hidden="true"></button>
@@ -310,7 +324,7 @@
     </div>
   </nav>
 
-  <main id="vista-portafolio">
+  <main id="vista-portafolio" class="hidden">
 
   <!-- ============================================================ -->
   <!-- ONBOARDING - Picker + editor de pesos                         -->
@@ -1602,7 +1616,7 @@
   <!-- ============================================================ -->
   <!-- VISTA: PERIÓDICO                                              -->
   <!-- ============================================================ -->
-  <main id="vista-periodico" class="hidden">
+  <main id="vista-periodico">
     <!-- Header -->
     <section class="max-w-7xl mx-auto px-6 pt-12 pb-6">
       <div class="flex items-end justify-between flex-wrap gap-4 fade-up">
@@ -1651,6 +1665,55 @@
       </p>
       <div id="periodico-indices" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
         <div class="col-span-full text-xs text-zinc-500 py-6 text-center">Cargando cierres…</div>
+      </div>
+    </section>
+
+    <!-- Top Movers — Ganadores / Perdedores / Populares -->
+    <section class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-3">
+        <div>
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500">
+            <span class="text-accent-amber">●</span> Top movers del mercado
+          </p>
+          <p class="text-[11px] text-zinc-600 mt-1 max-w-2xl leading-snug">
+            Las acciones que más han subido, las que más han caído, y las más populares por capitalización. Datos del universo curado.
+          </p>
+        </div>
+        <div class="inline-flex bg-surface-card border border-surface-border rounded-full p-1">
+          <button data-mov-periodo="dia" class="mov-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-100 bg-accent-amber/20 ring-1 ring-accent-amber/30 font-medium">Día</button>
+          <button data-mov-periodo="semana" class="mov-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-500 hover:text-zinc-200 font-medium">Semana</button>
+          <button data-mov-periodo="mes" class="mov-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-500 hover:text-zinc-200 font-medium">Mes</button>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4" id="periodico-movers">
+        <!-- Ganadores -->
+        <div class="bg-surface-card border border-accent-green/20 rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-[10px] uppercase tracking-wider text-accent-green font-bold">📈 Más subieron</span>
+          </div>
+          <div id="mov-ganadores" class="space-y-2">
+            <div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>
+          </div>
+        </div>
+        <!-- Perdedores -->
+        <div class="bg-surface-card border border-accent-red/20 rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-[10px] uppercase tracking-wider text-accent-red font-bold">📉 Más cayeron</span>
+          </div>
+          <div id="mov-perdedores" class="space-y-2">
+            <div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>
+          </div>
+        </div>
+        <!-- Populares -->
+        <div class="bg-surface-card border border-accent-blue/20 rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-[10px] uppercase tracking-wider text-accent-blue font-bold">⭐ Más populares</span>
+          </div>
+          <div id="mov-populares" class="space-y-2">
+            <div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>
+          </div>
+        </div>
       </div>
     </section>
 
