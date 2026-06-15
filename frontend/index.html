@@ -1824,18 +1824,92 @@
       </div>
     </section>
 
-    <!-- Cierres de índices -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- DASHBOARD DE MERCADOS — estilo Yahoo Finance         -->
+    <!-- ═══════════════════════════════════════════════════ -->
+
+    <!-- Índices USA -->
     <section class="max-w-7xl mx-auto px-6 py-4">
-      <div class="flex items-center gap-2 mb-1">
-        <span class="text-[10px] uppercase tracking-wider text-zinc-500">
-          <span class="text-accent-green">●</span> Cierres del día
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+          <span class="text-accent-green">●</span> Índices Estados Unidos
+        </span>
+        <span class="text-[10px] text-zinc-600 hidden sm:inline">5 días</span>
+      </div>
+      <div id="periodico-indices" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div class="col-span-full text-xs text-zinc-500 py-6 text-center">Cargando cierres…</div>
+      </div>
+    </section>
+
+    <!-- Índices mundiales + Divisas (2 columnas en desktop) -->
+    <section class="max-w-7xl mx-auto px-6 py-4 grid md:grid-cols-2 gap-4">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+            <span class="text-accent-purple">●</span> Índices mundiales
+          </span>
+        </div>
+        <div id="periodico-mundo" class="grid grid-cols-2 gap-2">
+          <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando…</div>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+            <span class="text-accent-amber">●</span> Divisas
+          </span>
+        </div>
+        <div id="periodico-divisas" class="grid grid-cols-2 gap-2">
+          <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Commodities + Tasas/VIX -->
+    <section class="max-w-7xl mx-auto px-6 py-4 grid md:grid-cols-2 gap-4">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+            <span class="text-accent-orange">●</span> Commodities
+          </span>
+        </div>
+        <div id="periodico-commodities" class="grid grid-cols-2 gap-2">
+          <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando…</div>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+            <span class="text-accent-red">●</span> Tasas y volatilidad
+          </span>
+        </div>
+        <div id="periodico-tasas" class="grid grid-cols-3 gap-2">
+          <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Crypto strip -->
+    <section class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+          <span class="text-accent-teal">●</span> Criptomonedas top
         </span>
       </div>
-      <p class="text-[11px] text-zinc-600 mb-3 max-w-2xl leading-snug">
-        Los índices son la "temperatura" del mercado. S&P 500 y NASDAQ representan EE.UU.; IPC/NAFTRAC mide México. Si todos verdes, fue buen día de mercado en general.
-      </p>
-      <div id="periodico-indices" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-        <div class="col-span-full text-xs text-zinc-500 py-6 text-center">Cargando cierres…</div>
+      <div id="periodico-crypto" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando…</div>
+      </div>
+    </section>
+
+    <!-- Heatmap de sectores USA -->
+    <section class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+          <span class="text-accent-indigo">●</span> Sectores USA · performance del día
+        </span>
+      </div>
+      <div id="periodico-sectores" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
+        <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando heatmap…</div>
       </div>
     </section>
 

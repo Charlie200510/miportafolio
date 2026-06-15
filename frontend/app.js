@@ -2314,7 +2314,7 @@ const Periodico = (() => {
     const indices = (data && data.indices) || [];
     if (!indices.length) {
       cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">
-        Sin datos de cierres por ahora. Intenta de nuevo en un momento.
+        Sin datos de cierres por ahora.
       </div>`;
       return;
     }
@@ -2323,24 +2323,125 @@ const Periodico = (() => {
       const color = pos ? 'text-accent-green' : 'text-accent-red';
       const bg = pos ? 'bg-accent-green/5 border-accent-green/20' : 'bg-accent-red/5 border-accent-red/20';
       const signo = pos ? '+' : '';
-      const simbolo = i.moneda === 'MXN' ? '$' : '$';
-      const suf = i.moneda === 'MXN' ? ' MXN' : '';
       return `
-        <div class="rounded-xl border ${bg} p-4 flex flex-col gap-2">
+        <div class="rounded-lg border ${bg} p-3 flex flex-col gap-1">
           <div class="flex items-start justify-between">
             <div>
-              <p class="text-[10px] uppercase tracking-wider text-zinc-500">${escapeHtml(i.etiqueta || '')}</p>
-              <h4 class="text-sm font-semibold text-zinc-100 mt-0.5">${escapeHtml(i.nombre)}</h4>
-            </div>
-            <span class="text-[9px] text-zinc-600">${escapeHtml(i.ticker)}</span>
-          </div>
-          <div class="flex items-end justify-between gap-2">
-            <div>
-              <p class="text-xl font-bold tabular ${color}">${signo}${(i.cambio_pct || 0).toFixed(2)}%</p>
-              <p class="text-[11px] text-zinc-400 tabular">${simbolo}${(i.precio || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${suf}</p>
+              <p class="text-[9px] uppercase tracking-wider text-zinc-500">${escapeHtml(i.etiqueta || '')}</p>
+              <h4 class="text-xs font-semibold text-zinc-100 mt-0.5">${escapeHtml(i.nombre)}</h4>
             </div>
             ${sparklineSVG(i.sparkline, pos)}
           </div>
+          <div>
+            <p class="text-base font-bold tabular ${color}">${signo}${(i.cambio_pct || 0).toFixed(2)}%</p>
+            <p class="text-[10px] text-zinc-500 tabular">$${(i.precio || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // === Render compacto para mundo / divisas / commodities ===
+  function renderGrupoCompacto(contId, items) {
+    const cont = document.getElementById(contId);
+    if (!cont) return;
+    if (!items || !items.length) {
+      cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">Sin datos.</div>`;
+      return;
+    }
+    cont.innerHTML = items.map(i => {
+      const pos = (i.cambio_pct || 0) >= 0;
+      const color = pos ? 'text-accent-green' : 'text-accent-red';
+      const signo = pos ? '+' : '';
+      return `
+        <div class="bg-surface-card border border-surface-border rounded-lg p-3 hover:border-zinc-700 transition">
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <p class="text-[11px] font-semibold text-zinc-100 truncate">${escapeHtml(i.nombre)}</p>
+            <span class="text-[9px] text-zinc-600">${escapeHtml(i.etiqueta || '')}</span>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-[12px] tabular text-zinc-300">${(i.precio || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p class="text-[12px] font-bold tabular ${color}">${signo}${(i.cambio_pct || 0).toFixed(2)}%</p>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // === Render tasas / VIX (formato % directo) ===
+  function renderTasasVol(items) {
+    const cont = document.getElementById('periodico-tasas');
+    if (!cont) return;
+    if (!items || !items.length) {
+      cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">Sin datos.</div>`;
+      return;
+    }
+    cont.innerHTML = items.map(i => {
+      const pos = (i.cambio_pct || 0) >= 0;
+      const color = pos ? 'text-accent-green' : 'text-accent-red';
+      const signo = pos ? '+' : '';
+      const tasa = i.ticker === '^VIX' ? (i.precio || 0).toFixed(2) : (i.precio || 0).toFixed(3);
+      const suf = i.ticker === '^VIX' ? '' : '%';
+      return `
+        <div class="bg-surface-card border border-surface-border rounded-lg p-3">
+          <p class="text-[10px] font-semibold text-zinc-100 truncate">${escapeHtml(i.nombre)}</p>
+          <p class="text-lg font-bold tabular text-zinc-100 mt-1">${tasa}${suf}</p>
+          <p class="text-[10px] tabular ${color}">${signo}${(i.cambio_pct || 0).toFixed(2)}%</p>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // === Render strip de crypto ===
+  function renderCryptoStrip(items) {
+    const cont = document.getElementById('periodico-crypto');
+    if (!cont) return;
+    if (!items || !items.length) {
+      cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">Sin datos crypto.</div>`;
+      return;
+    }
+    cont.innerHTML = items.map(i => {
+      const pos = (i.cambio_pct || 0) >= 0;
+      const color = pos ? 'text-accent-green' : 'text-accent-red';
+      const signo = pos ? '+' : '';
+      const precio = i.precio >= 1000
+        ? `$${(i.precio).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+        : `$${(i.precio || 0).toFixed(2)}`;
+      return `
+        <div class="bg-surface-card border border-surface-border rounded-lg p-3 hover:border-orange-500/30 transition">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-xs font-semibold text-zinc-100 truncate">${escapeHtml(i.nombre)}</p>
+            <span class="text-[9px] font-bold text-orange-400">${escapeHtml(i.etiqueta || '')}</span>
+          </div>
+          <p class="text-sm font-bold tabular text-zinc-100">${precio}</p>
+          <p class="text-[11px] font-bold tabular ${color}">${signo}${(i.cambio_pct || 0).toFixed(2)}%</p>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // === Render heatmap de sectores ===
+  function renderSectoresHeatmap(items) {
+    const cont = document.getElementById('periodico-sectores');
+    if (!cont) return;
+    if (!items || !items.length) {
+      cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">Sin datos sectoriales.</div>`;
+      return;
+    }
+    cont.innerHTML = items.map(i => {
+      const cambio = i.cambio_pct || 0;
+      // Intensidad de color según magnitud
+      const absCambio = Math.min(Math.abs(cambio), 3) / 3;  // 0-1
+      const opacity = 0.15 + absCambio * 0.55;  // 0.15 a 0.7
+      const colorBase = cambio >= 0 ? '34, 197, 94' : '239, 68, 68';
+      const signo = cambio >= 0 ? '+' : '';
+      const textColor = absCambio > 0.5 ? '#fff' : (cambio >= 0 ? '#86efac' : '#fca5a5');
+      return `
+        <div class="rounded-lg p-3 flex flex-col items-center justify-center text-center"
+             style="background: rgba(${colorBase}, ${opacity}); border: 1px solid rgba(${colorBase}, ${opacity + 0.1});">
+          <p class="text-[10px] font-semibold tabular" style="color: ${textColor};">${escapeHtml(i.etiqueta || '')}</p>
+          <p class="text-xs font-medium leading-tight mt-1 truncate w-full" style="color: ${textColor}; opacity: 0.85;">${escapeHtml(i.nombre)}</p>
+          <p class="text-base font-bold tabular mt-1" style="color: ${textColor};">${signo}${cambio.toFixed(2)}%</p>
         </div>
       `;
     }).join('');
@@ -2416,7 +2517,7 @@ const Periodico = (() => {
     const tickers = leerPortafolioGuardado() || [];
     const tareas = [
       fetch('/api/periodico/resumen').then(r => r.json()).catch(e => ({ error: e.message })),
-      fetch('/api/periodico/cierres').then(r => r.json()).catch(e => ({ error: e.message })),
+      fetch('/api/periodico/mercados').then(r => r.json()).catch(e => ({ error: e.message })),
       fetch('/api/periodico/noticias?limite=12').then(r => r.json()).catch(e => ({ error: e.message })),
     ];
     if (tickers.length) {
@@ -2429,16 +2530,23 @@ const Periodico = (() => {
       );
     }
 
-    const [resumen, cierres, top, mis] = await Promise.all(tareas);
+    const [resumen, mercados, top, mis] = await Promise.all(tareas);
 
     renderResumen(resumen);
 
-    if (!cierres || cierres.error) {
+    if (!mercados || mercados.error) {
       $('periodico-indices').innerHTML = `<div class="col-span-full text-xs text-accent-red py-4 text-center">
-        ${escapeHtml((cierres && cierres.error) || 'error al cargar cierres')}
+        ${escapeHtml((mercados && mercados.error) || 'error al cargar mercados')}
       </div>`;
     } else {
-      renderIndices(cierres);
+      // Dashboard nuevo — renderea TODOS los grupos
+      renderIndices({ indices: mercados.indices_us });
+      renderGrupoCompacto('periodico-mundo', mercados.indices_mundo);
+      renderGrupoCompacto('periodico-divisas', mercados.divisas);
+      renderGrupoCompacto('periodico-commodities', mercados.commodities);
+      renderTasasVol(mercados.tasas_vol);
+      renderCryptoStrip(mercados.crypto);
+      renderSectoresHeatmap(mercados.sectores);
     }
 
     if (Array.isArray(top)) renderNoticiasTop(top);

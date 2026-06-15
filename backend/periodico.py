@@ -36,6 +36,62 @@ INDICES = [
     {"ticker": "NAFTRAC.MX", "nombre": "IPC México",     "etiqueta": "México · principales",   "moneda": "MXN"},
 ]
 
+# Índices mundiales
+INDICES_MUNDIALES = [
+    {"ticker": "^GDAXI",    "nombre": "DAX",            "etiqueta": "Alemania",        "moneda": "EUR"},
+    {"ticker": "^FTSE",     "nombre": "FTSE 100",       "etiqueta": "Reino Unido",     "moneda": "GBP"},
+    {"ticker": "^N225",     "nombre": "Nikkei 225",     "etiqueta": "Japón",           "moneda": "JPY"},
+    {"ticker": "^HSI",      "nombre": "Hang Seng",      "etiqueta": "Hong Kong",       "moneda": "HKD"},
+    {"ticker": "^BVSP",     "nombre": "Bovespa",        "etiqueta": "Brasil",          "moneda": "BRL"},
+]
+
+# Divisas
+DIVISAS = [
+    {"ticker": "MXN=X",     "nombre": "USD/MXN",        "etiqueta": "Dólar / Peso",    "moneda": "MXN"},
+    {"ticker": "EURUSD=X",  "nombre": "EUR/USD",        "etiqueta": "Euro / Dólar",    "moneda": "USD"},
+    {"ticker": "GBPUSD=X",  "nombre": "GBP/USD",        "etiqueta": "Libra / Dólar",   "moneda": "USD"},
+    {"ticker": "JPY=X",     "nombre": "USD/JPY",        "etiqueta": "Dólar / Yen",     "moneda": "JPY"},
+]
+
+# Commodities (vía ETFs líquidos)
+COMMODITIES = [
+    {"ticker": "GLD",       "nombre": "Oro",            "etiqueta": "GLD · oz",        "moneda": "USD"},
+    {"ticker": "SLV",       "nombre": "Plata",          "etiqueta": "SLV · oz",        "moneda": "USD"},
+    {"ticker": "USO",       "nombre": "Petróleo WTI",   "etiqueta": "USO · barril",    "moneda": "USD"},
+    {"ticker": "UNG",       "nombre": "Gas natural",    "etiqueta": "UNG · BTU",       "moneda": "USD"},
+]
+
+# Crypto top
+CRYPTO_TOP = [
+    {"ticker": "BTC-USD",   "nombre": "Bitcoin",        "etiqueta": "BTC",             "moneda": "USD"},
+    {"ticker": "ETH-USD",   "nombre": "Ethereum",       "etiqueta": "ETH",             "moneda": "USD"},
+    {"ticker": "BNB-USD",   "nombre": "BNB",            "etiqueta": "BNB",             "moneda": "USD"},
+    {"ticker": "SOL-USD",   "nombre": "Solana",         "etiqueta": "SOL",             "moneda": "USD"},
+    {"ticker": "XRP-USD",   "nombre": "XRP",            "etiqueta": "XRP",             "moneda": "USD"},
+]
+
+# Yields / Tasas / Volatilidad
+TASAS_VOL = [
+    {"ticker": "^TNX",      "nombre": "US 10Y Treasury", "etiqueta": "Yield 10 años", "moneda": "%"},
+    {"ticker": "^IRX",      "nombre": "US 3M Treasury",  "etiqueta": "Yield 3 meses", "moneda": "%"},
+    {"ticker": "^VIX",      "nombre": "VIX",             "etiqueta": "Índice del miedo","moneda": "%"},
+]
+
+# Sectores USA (vía ETFs sectoriales SPDR)
+SECTORES_US = [
+    {"ticker": "XLK",  "nombre": "Tecnología",          "etiqueta": "XLK",             "moneda": "USD"},
+    {"ticker": "XLF",  "nombre": "Financiero",          "etiqueta": "XLF",             "moneda": "USD"},
+    {"ticker": "XLV",  "nombre": "Salud",               "etiqueta": "XLV",             "moneda": "USD"},
+    {"ticker": "XLY",  "nombre": "Consumo discrecional","etiqueta": "XLY",             "moneda": "USD"},
+    {"ticker": "XLP",  "nombre": "Consumo básico",      "etiqueta": "XLP",             "moneda": "USD"},
+    {"ticker": "XLE",  "nombre": "Energía",             "etiqueta": "XLE",             "moneda": "USD"},
+    {"ticker": "XLI",  "nombre": "Industrial",          "etiqueta": "XLI",             "moneda": "USD"},
+    {"ticker": "XLU",  "nombre": "Servicios públicos",  "etiqueta": "XLU",             "moneda": "USD"},
+    {"ticker": "XLB",  "nombre": "Materiales",          "etiqueta": "XLB",             "moneda": "USD"},
+    {"ticker": "XLRE", "nombre": "Bienes raíces",       "etiqueta": "XLRE",            "moneda": "USD"},
+    {"ticker": "XLC",  "nombre": "Comunicación",        "etiqueta": "XLC",             "moneda": "USD"},
+]
+
 # TTL de caches (segundos)
 TTL_CIERRES = 5 * 60         # 5 min
 TTL_NOTICIAS = 10 * 60       # 10 min
@@ -120,6 +176,61 @@ def cierres_indices() -> dict:
         "timestamp": time.time(),
     }
     _cache_set("cierres", data)
+    return data
+
+
+# ------------------------------------------------------------
+# Mercados extendidos: índices mundiales, FX, commodities, crypto, yields, sectores
+# ------------------------------------------------------------
+def mercados_dashboard() -> dict:
+    """Dashboard completo estilo Yahoo Finance Markets Overview.
+    Devuelve TODOS los grupos en una sola request para minimizar llamadas."""
+    cached = _cache_get("mercados_dashboard", TTL_CIERRES)
+    if cached:
+        return cached
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _descargar_grupo(lista):
+        results = []
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            for r in ex.map(_cierre_de, lista):
+                if r is not None:
+                    results.append(r)
+        return results
+
+    # Ejecutar todos los grupos en paralelo
+    with ThreadPoolExecutor(max_workers=7) as ex_outer:
+        fut_us       = ex_outer.submit(_descargar_grupo, INDICES)
+        fut_mundo    = ex_outer.submit(_descargar_grupo, INDICES_MUNDIALES)
+        fut_divisas  = ex_outer.submit(_descargar_grupo, DIVISAS)
+        fut_commod   = ex_outer.submit(_descargar_grupo, COMMODITIES)
+        fut_crypto   = ex_outer.submit(_descargar_grupo, CRYPTO_TOP)
+        fut_tasas    = ex_outer.submit(_descargar_grupo, TASAS_VOL)
+        fut_sectores = ex_outer.submit(_descargar_grupo, SECTORES_US)
+
+        indices_us     = fut_us.result()
+        indices_mundo  = fut_mundo.result()
+        divisas        = fut_divisas.result()
+        commodities    = fut_commod.result()
+        crypto         = fut_crypto.result()
+        tasas_vol      = fut_tasas.result()
+        sectores       = fut_sectores.result()
+
+    # Ordenar sectores por cambio_pct descendente para el heatmap
+    sectores.sort(key=lambda x: x.get("cambio_pct", 0), reverse=True)
+
+    data = {
+        "indices_us":    indices_us,
+        "indices_mundo": indices_mundo,
+        "divisas":       divisas,
+        "commodities":   commodities,
+        "crypto":        crypto,
+        "tasas_vol":     tasas_vol,
+        "sectores":      sectores,
+        "timestamp":     time.time(),
+    }
+    _cache_set("mercados_dashboard", data)
     return data
 
 

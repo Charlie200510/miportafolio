@@ -728,6 +728,18 @@ def api_periodico_cierres():
         return jsonify({"error": f"fallo cierres: {e}"}), 500
 
 
+@app.route("/api/periodico/mercados")
+def api_periodico_mercados():
+    """Dashboard completo estilo Yahoo Markets: índices US + mundo + FX +
+    commodities + crypto + tasas/VIX + sectores. Una sola request."""
+    if _periodico is None:
+        return jsonify({"error": "periodico no cargado"}), 500
+    try:
+        return jsonify(_periodico.mercados_dashboard())
+    except Exception as e:
+        return jsonify({"error": f"fallo mercados: {e}"}), 500
+
+
 @app.route("/api/periodico/resumen")
 def api_periodico_resumen():
     """Brief ejecutivo del día (cierres + top titulares). Cacheado 1h."""
