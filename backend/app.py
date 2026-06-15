@@ -1387,6 +1387,78 @@ def api_brokers_mx():
     return jsonify({"brokers": _brokers.listar_brokers()})
 
 
+@app.route("/api/alertas/evaluar-reglas", methods=["POST"])
+def api_alertas_evaluar_reglas():
+    """Evalúa una lista de reglas multi-condición contra el snapshot + precios.
+    Body: {reglas: [...], precios_actuales?: {...}}
+    Devuelve qué reglas se disparan ahora."""
+    try:
+        import alertas_avanzadas as _aa
+        body = request.get_json(silent=True) or {}
+        reglas = body.get("reglas") or []
+        precios = body.get("precios_actuales") or {}
+        snap_path = _Path_cron(__file__).parent / "portafolio_snapshot.json"
+        snap = {}
+        if snap_path.exists():
+            with open(snap_path, encoding="utf-8") as f:
+                snap = _json_cron.load(f)
+        ctx = _aa.construir_contexto_desde_snapshot(snap, precios)
+        disparadas = _aa.evaluar_reglas(reglas, ctx)
+        return jsonify({
+            "ok":         True,
+            "total":      len(reglas),
+            "disparadas": disparadas,
+            "contexto":   ctx,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"eval reglas fallo: {e}"}), 500
+
+
+@app.route("/api/screener", methods=["POST"])
+def api_screener():
+    """Filtra el universo de tickers por múltiples criterios.
+    Body: {tipo, mercado, sector, pe_min, pe_max, yield_min, yield_max,
+           beta_min, beta_max, market_cap_min, market_cap_max,
+           retorno_1y_min, solo_recomendadas, limit}"""
+    try:
+        import screener as _sc
+        criterios = request.get_json(silent=True) or {}
+        resultados = _sc.filtrar(criterios)
+        return jsonify({"ok": True, "total": len(resultados), "resultados": resultados})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"screener fallo: {e}"}), 500
+
+
+@app.route("/api/optimizador-fiscal", methods=["POST"])
+def api_optimizador_fiscal():
+    """Calcula el plan óptimo de venta para minimizar ISR.
+    Body: {transacciones, precios_actuales, monto_a_vender_mxn, ano_fiscal, perdidas_anteriores?}"""
+    try:
+        import optimizador_fiscal as _of
+        body = request.get_json(silent=True) or {}
+        result = _of.optimizar_venta(
+            transacciones        = body.get("transacciones") or [],
+            precios_actuales     = body.get("precios_actuales") or {},
+            monto_a_vender_mxn   = float(body.get("monto_a_vender_mxn") or 0),
+            ano_fiscal           = int(body.get("ano_fiscal") or 2026),
+            perdidas_anteriores  = float(body.get("perdidas_anteriores") or 0),
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"optimizador fallo: {e}"}), 500
+
+
+@app.route("/api/deep-dive/<path:ticker>", methods=["GET"])
+def api_deep_dive(ticker):
+    """Análisis profundo automático de un ticker BMV (o cualquier ticker).
+    Devuelve métricas + comparativa contra peers mexicanos + narrativa."""
+    try:
+        import deep_dive_bmv as _dd
+        return jsonify(_dd.deep_dive(ticker))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"deep dive fallo: {e}"}), 500
+
+
 @app.route("/api/brokers-mx/comparar/<path:ticker>", methods=["GET"])
 def api_brokers_comparar(ticker):
     if _brokers is None:

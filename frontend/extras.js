@@ -54,15 +54,57 @@
   // shares, precio, [moneda=USD], [tipo=compra], [comision=0], [notas]
   // El parser es flexible — reconoce variantes de nombre de columna.
   const _COLUMN_ALIASES = {
-    ticker:   ['ticker', 'symbol', 'simbolo', 'instrumento', 'emisora', 'clave'],
-    fecha:    ['fecha', 'date', 'fec', 'fecha_op', 'fechaoperacion'],
-    shares:   ['shares', 'titulos', 'titulos_titulares', 'cantidad', 'qty', 'volumen', 'acciones'],
-    precio:   ['precio', 'price', 'precio_unitario', 'precio_compra', 'precio_op'],
-    moneda:   ['moneda', 'currency', 'divisa', 'cur'],
-    tipo:     ['tipo', 'type', 'operacion', 'movimiento'],
-    comision: ['comision', 'comisión', 'fee', 'fees', 'commission'],
-    notas:    ['notas', 'notes', 'descripcion', 'detalle'],
+    ticker:   ['ticker', 'symbol', 'simbolo', 'instrumento', 'emisora', 'clave', 'security', 'activo'],
+    fecha:    ['fecha', 'date', 'fec', 'fecha_op', 'fechaoperacion', 'trade_date', 'settledate', 'settlementdate'],
+    shares:   ['shares', 'titulos', 'titulos_titulares', 'cantidad', 'qty', 'quantity', 'volumen', 'acciones', 'units'],
+    precio:   ['precio', 'price', 'precio_unitario', 'precio_compra', 'precio_op', 'unit_price', 'execprice'],
+    moneda:   ['moneda', 'currency', 'divisa', 'cur', 'curr'],
+    tipo:     ['tipo', 'type', 'operacion', 'movimiento', 'side', 'action', 'transaction_type', 'tipo_op'],
+    comision: ['comision', 'comisión', 'fee', 'fees', 'commission', 'comisiones'],
+    notas:    ['notas', 'notes', 'descripcion', 'detalle', 'description', 'comment'],
   };
+
+  // Presets de detección automática por broker
+  const _BROKER_PRESETS = {
+    'GBM Plus': {
+      detect: (h) => h.some(x => /tipo.*op|fecha.*op|emisora/i.test(x)),
+      hints: 'GBM Plus exporta CSV con columnas: Emisora, Fecha Op., Tipo Op., Cantidad, Precio Op.',
+    },
+    'Kuspit': {
+      detect: (h) => h.some(x => /clave_pizarra|fecha_liquidacion/i.test(x)),
+      hints: 'Kuspit usa: Clave Pizarra, Tipo Movimiento, Fecha Liquidación, Cantidad, Precio',
+    },
+    'Bursanet (Banorte)': {
+      detect: (h) => h.some(x => /num_contrato|emisora.*clave/i.test(x)),
+      hints: 'Bursanet exporta con: Emisora, Movimiento, Fecha, Títulos, Precio Promedio',
+    },
+    'Hapi': {
+      detect: (h) => h.some(x => /asset_id|trade_type.*hapi/i.test(x)),
+      hints: 'Hapi: Asset, Trade Type, Trade Date, Quantity, Price',
+    },
+    'Schwab (US)': {
+      detect: (h) => h.some(x => /symbol/i.test(x)) && h.some(x => /action/i.test(x)),
+      hints: 'Schwab USA: Date, Action, Symbol, Description, Quantity, Price, Fees & Comm',
+    },
+    'Interactive Brokers': {
+      detect: (h) => h.some(x => /^ibkr|tradedate.*ibkr/i.test(x)) || h.some(x => /conid/i.test(x)),
+      hints: 'IBKR Flex Query: Symbol, DateTime, Quantity, TradePrice, IBCommission',
+    },
+    'Genérico': {
+      detect: () => true,  // siempre matchea como fallback
+      hints: 'Columnas mínimas: ticker, fecha (YYYY-MM-DD), shares, precio',
+    },
+  };
+
+  function _detectarBroker(headers) {
+    for (const [nombre, preset] of Object.entries(_BROKER_PRESETS)) {
+      if (nombre === 'Genérico') continue;
+      try {
+        if (preset.detect(headers)) return nombre;
+      } catch {}
+    }
+    return 'Genérico';
+  }
   function _matchColumn(header, alias) {
     const h = (header || '').toLowerCase().trim().replace(/\s+/g, '').replace(/[^a-z]/g, '');
     return alias.some(a => h === a.replace(/[^a-z]/g, ''));
@@ -100,12 +142,15 @@
     };
     const headers = parseLine(lines[0]);
     const map = _detectColumns(headers);
+    const brokerDetectado = _detectarBroker(headers);
     const requiredCols = ['ticker', 'fecha', 'shares', 'precio'];
     const faltantes = requiredCols.filter(c => map[c] === undefined);
     if (faltantes.length) {
-      throw new Error(`Faltan columnas: ${faltantes.join(', ')}. Headers detectados: ${headers.join(' | ')}`);
+      throw new Error(`Faltan columnas: ${faltantes.join(', ')}.\n\nBroker detectado: ${brokerDetectado}\nHeaders: ${headers.join(' | ')}\n\nFormato esperado: ${_BROKER_PRESETS[brokerDetectado].hints}`);
     }
     const txs = [];
+    // Anotar el broker detectado en la primera tx
+    let brokerLogged = false;
     for (let i = 1; i < lines.length; i++) {
       const f = parseLine(lines[i]);
       const ticker = (f[map.ticker] || '').trim().toUpperCase();
@@ -113,14 +158,20 @@
       const shares = parseFloat((f[map.shares] || '').replace(/[^\d.\-]/g, ''));
       const precio = parseFloat((f[map.precio] || '').replace(/[^\d.\-]/g, ''));
       if (!ticker || !fecha || !isFinite(shares) || !isFinite(precio)) continue;
+      const notasOriginal = map.notas !== undefined ? (f[map.notas] || '').trim() : '';
+      // Anotar el broker detectado en cada tx para reporting futuro
+      const notas = brokerLogged ? notasOriginal : (notasOriginal ? `[${brokerDetectado}] ${notasOriginal}` : `Importado de ${brokerDetectado}`);
+      brokerLogged = true;
       txs.push({
         ticker, fecha, shares, precio,
         tipo:     map.tipo !== undefined ? _normalizarTipo(f[map.tipo]) : 'compra',
         moneda:   map.moneda !== undefined ? (f[map.moneda] || 'USD').trim().toUpperCase() : 'USD',
         comision: map.comision !== undefined ? parseFloat((f[map.comision] || '0').replace(/[^\d.\-]/g, '')) || 0 : 0,
-        notas:    map.notas !== undefined ? (f[map.notas] || '').trim() : '',
+        notas,
+        broker:   brokerDetectado,
       });
     }
+    txs._brokerDetectado = brokerDetectado;
     return txs;
   }
   window.importarCSVTransacciones = function() {
@@ -143,7 +194,9 @@
           const existentes = JSON.parse(localStorage.getItem('miPortafolio.transacciones.v1') || '[]');
           const merged = [...existentes, ...txs];
           localStorage.setItem('miPortafolio.transacciones.v1', JSON.stringify(merged));
-          window.toast && window.toast(`Importadas ${txs.length} transacciones. Refrescando...`, 'success', 4000);
+          const brokerInfo = txs._brokerDetectado && txs._brokerDetectado !== 'Genérico'
+            ? ` (broker detectado: ${txs._brokerDetectado})` : '';
+          window.toast && window.toast(`Importadas ${txs.length} transacciones${brokerInfo}. Refrescando...`, 'success', 5000);
           setTimeout(() => location.reload(), 1500);
         } catch (err) {
           alert('Error procesando CSV:\n\n' + err.message + '\n\nFormato esperado: ticker, fecha (YYYY-MM-DD), shares, precio, [tipo=compra], [moneda=USD]');
@@ -165,8 +218,12 @@
             <button onclick="document.getElementById('mp-import-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;">×</button>
           </div>
           <p style="font-size:13px;color:#a1a1aa;line-height:1.6;margin:0 0 16px;">
-            Exporta tus operaciones desde tu broker (GBM, Kuspit, Bursanet, etc.) como CSV y súbelo aquí. El parser detecta automáticamente las columnas comunes.
+            Exporta tus operaciones desde tu broker (GBM, Kuspit, Bursanet, Hapi, Schwab, IBKR, etc.) como CSV y súbelo aquí. El parser <strong style="color:#22c55e;">detecta automáticamente el broker</strong> y mapea las columnas.
           </p>
+          <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:8px;padding:10px 12px;margin-bottom:12px;">
+            <p style="font-size:11px;color:#22c55e;margin:0;font-weight:600;">✓ Brokers reconocidos automáticamente:</p>
+            <p style="font-size:11px;color:#a1a1aa;margin:4px 0 0;line-height:1.5;">GBM Plus · Kuspit · Bursanet (Banorte) · Hapi · Schwab · Interactive Brokers · y cualquier CSV genérico con columnas estándar.</p>
+          </div>
           <div style="background:#161616;border:1px solid #2a2a2f;border-radius:8px;padding:12px;margin-bottom:16px;">
             <p style="font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin:0 0 8px;">Columnas requeridas</p>
             <p style="font-family:monospace;font-size:12px;color:#22c55e;margin:0;line-height:1.7;">

@@ -44,8 +44,18 @@ PERIODOS_PRESET = {
                       "descripcion": "Año más reciente completo."},
     "ultimo_ano":    {"nombre": "Últimos 12 meses", "inicio": None, "fin": None,
                       "descripcion": "Los últimos 252 días hábiles disponibles."},
+    "ultimos_3":     {"nombre": "Últimos 3 años", "inicio": None, "fin": None,
+                      "descripcion": "Los últimos 3 años hábiles (~756 días)."},
+    "ultimos_5":     {"nombre": "Últimos 5 años", "inicio": None, "fin": None,
+                      "descripcion": "Los últimos 5 años hábiles (~1,260 días). Default recomendado."},
+    "ultimos_10":    {"nombre": "Últimos 10 años", "inicio": None, "fin": None,
+                      "descripcion": "Los últimos 10 años hábiles (~2,520 días). Requiere histórico via yfinance."},
+    "ultimos_20":    {"nombre": "Últimos 20 años", "inicio": None, "fin": None,
+                      "descripcion": "Los últimos 20 años (incluye crisis 2008). Solo tickers con historial largo."},
+    "post_2008":     {"nombre": "Post crisis 2008", "inicio": "2009-03-01", "fin": None,
+                      "descripcion": "Desde el fondo de marzo 2009 hasta hoy. El bull market histórico."},
     "completo":      {"nombre": "Historia completa", "inicio": None, "fin": None,
-                      "descripcion": "Toda la historia disponible en el universo (~2 años)."},
+                      "descripcion": "Toda la historia disponible (yfinance fetch on-demand para histórico largo)."},
 }
 
 
@@ -168,7 +178,31 @@ def correr_backtest(tickers: list[str], pesos: dict[str, float],
         fecha_fin = pd.Timestamp(fin)
     elif periodo in PERIODOS_PRESET:
         cfg = PERIODOS_PRESET[periodo]
-        if cfg["inicio"]:
+        # Para periodos largos (>3 años) que el CSV local NO cubre, extender
+        # con datos en vivo de yfinance — esto da hasta 20 años de historia
+        anos_largos = {"ultimos_3": 3, "ultimos_5": 5, "ultimos_10": 10, "ultimos_20": 20}
+        if periodo in anos_largos:
+            try:
+                import yfinance as yf
+                from datetime import date, timedelta
+                anos = anos_largos[periodo]
+                fecha_ini_largo = date.today() - timedelta(days=int(anos * 365.25))
+                # Si el CSV local cubre menos que esto, descargar
+                if len(precios) == 0 or precios.index[0].date() > fecha_ini_largo:
+                    extras = yf.download(tickers, start=fecha_ini_largo.isoformat(),
+                                          progress=False, auto_adjust=True, threads=True)
+                    if extras is not None and not extras.empty:
+                        closes = extras["Close"] if "Close" in extras.columns else extras
+                        if hasattr(closes, "columns"):
+                            # Tomar solo los tickers que sí descargaron data
+                            precios = closes.dropna(how="all").sort_index()
+                        else:
+                            precios = closes.to_frame(name=tickers[0]).dropna()
+                fecha_ini = pd.Timestamp(fecha_ini_largo)
+            except Exception as e:
+                # Fallback: usar lo que haya en el CSV
+                fecha_ini = precios.index[0]
+        elif cfg["inicio"]:
             fecha_ini = pd.Timestamp(cfg["inicio"])
         elif periodo == "ultimo_ano":
             fecha_ini = precios.index[-DIAS_HABILES] if len(precios) > DIAS_HABILES else precios.index[0]
