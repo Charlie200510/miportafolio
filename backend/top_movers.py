@@ -24,9 +24,11 @@ _UNIV_FULL = _BACKEND_DIR / "universo_precios.csv"
 _UNIV_LITE = _BACKEND_DIR / "universo_lite_precios.csv"
 _INFO_PATH = _BACKEND_DIR / "info_activos.json"
 
-# Cache simple en memoria (15 min)
+# Cache en memoria + disco (sobrevive reinicios de Render)
 _CACHE: Dict[str, Any] = {}
-_CACHE_TTL = 15 * 60
+_CACHE_TTL = 30 * 60   # 30 min (los movers cambian poco a poco)
+_CACHE_DIR = _BACKEND_DIR / "_cache_topmovers"
+_CACHE_DIR.mkdir(exist_ok=True)
 
 
 def _cargar_precios() -> Optional[pd.DataFrame]:
@@ -72,9 +74,21 @@ def top_movers(periodo: str = "dia", n: int = 3) -> Dict[str, Any]:
     n: cuántos en cada categoría
     """
     cache_key = f"{periodo}_{n}"
+    # Cache en memoria
     cached = _CACHE.get(cache_key)
     if cached and (time.time() - cached["ts"]) < _CACHE_TTL:
         return cached["data"]
+    # Cache en disco (sobrevive reinicios)
+    disk_path = _CACHE_DIR / f"{cache_key}.json"
+    if disk_path.exists():
+        try:
+            with open(disk_path, encoding="utf-8") as f:
+                d = json.load(f)
+            if d and (time.time() - d.get("_ts", 0)) < _CACHE_TTL:
+                _CACHE[cache_key] = {"ts": d["_ts"], "data": d["data"]}
+                return d["data"]
+        except Exception:
+            pass
 
     dias_map = {"dia": 1, "semana": 5, "mes": 21}
     dias = dias_map.get(periodo, 1)
@@ -143,5 +157,13 @@ def top_movers(periodo: str = "dia", n: int = 3) -> Dict[str, Any]:
         "fecha":      df.index[-1].strftime("%Y-%m-%d") if len(df) else None,
         "universo_size": len(df.columns),
     }
-    _CACHE[cache_key] = {"ts": time.time(), "data": data}
+    ts = time.time()
+    _CACHE[cache_key] = {"ts": ts, "data": data}
+    # Persistir en disco
+    try:
+        disk_path = _CACHE_DIR / f"{cache_key}.json"
+        with open(disk_path, "w", encoding="utf-8") as f:
+            json.dump({"_ts": ts, "data": data}, f, ensure_ascii=False, default=str)
+    except Exception:
+        pass
     return data

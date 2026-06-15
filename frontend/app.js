@@ -2515,31 +2515,30 @@ const Periodico = (() => {
 
     // Lanzamos en paralelo
     const tickers = leerPortafolioGuardado() || [];
-    const tareas = [
-      fetch('/api/periodico/resumen').then(r => r.json()).catch(e => ({ error: e.message })),
-      fetch('/api/periodico/mercados').then(r => r.json()).catch(e => ({ error: e.message })),
-      fetch('/api/periodico/noticias?limite=12').then(r => r.json()).catch(e => ({ error: e.message })),
-    ];
-    if (tickers.length) {
-      tareas.push(
-        fetch('/api/periodico/noticias-portafolio', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tickers }),
-        }).then(r => r.json()).catch(e => ({ error: e.message }))
-      );
-    }
+    // Wrapper seguro: nunca falla por body vacío en iOS Safari
+    const safeJson = async (req) => {
+      try {
+        const r = await req;
+        if (!r) return { error: 'no response' };
+        try { return await r.json(); } catch { return { error: 'respuesta vacía' }; }
+      } catch (e) { return { error: e.message }; }
+    };
 
-    const [resumen, mercados, top, mis] = await Promise.all(tareas);
+    // === RENDERIZADO PROGRESIVO ===
+    // Cada fetch dispara su render apenas llega, sin esperar a los demás.
+    // Esto hace que el periódico se sienta mucho más rápido.
 
-    renderResumen(resumen);
+    // Resumen
+    safeJson(fetch('/api/periodico/resumen')).then(d => renderResumen(d));
 
-    if (!mercados || mercados.error) {
-      $('periodico-indices').innerHTML = `<div class="col-span-full text-xs text-accent-red py-4 text-center">
-        ${escapeHtml((mercados && mercados.error) || 'error al cargar mercados')}
-      </div>`;
-    } else {
-      // Dashboard nuevo — renderea TODOS los grupos
+    // Dashboard de mercados (el más pesado, render por secciones)
+    safeJson(fetch('/api/periodico/mercados')).then(mercados => {
+      if (!mercados || mercados.error) {
+        $('periodico-indices').innerHTML = `<div class="col-span-full text-xs text-accent-red py-4 text-center">
+          ${escapeHtml((mercados && mercados.error) || 'error al cargar mercados')}
+        </div>`;
+        return;
+      }
       renderIndices({ indices: mercados.indices_us });
       renderGrupoCompacto('periodico-mundo', mercados.indices_mundo);
       renderGrupoCompacto('periodico-divisas', mercados.divisas);
@@ -2547,7 +2546,22 @@ const Periodico = (() => {
       renderTasasVol(mercados.tasas_vol);
       renderCryptoStrip(mercados.crypto);
       renderSectoresHeatmap(mercados.sectores);
-    }
+    });
+
+    // Noticias top
+    const topRes = safeJson(fetch('/api/periodico/noticias?limite=12'));
+
+    // Noticias de mi portafolio (solo si tengo tickers)
+    const misRes = tickers.length
+      ? safeJson(fetch('/api/periodico/noticias-portafolio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tickers }),
+        }))
+      : Promise.resolve(null);
+
+    // Awaitamos sólo las noticias porque las usamos sincrónico abajo
+    const [top, mis] = await Promise.all([topRes, misRes]);
 
     if (Array.isArray(top)) renderNoticiasTop(top);
     else renderNoticiasTop([]);
@@ -2580,8 +2594,12 @@ const Periodico = (() => {
     });
     try {
       const res = await fetch(`/api/periodico/top-movers?periodo=${periodo}&n=3`);
-      const d = await res.json();
-      if (!d.ok) throw new Error(d.error || 'Error');
+      // Protección contra body vacío en iOS Safari
+      let d = null;
+      try { d = await res.json(); } catch { d = null; }
+      if (!d) throw new Error('Respuesta vacía del servidor');
+      if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+      if (!d.ok) throw new Error(d.error || 'Error en datos');
       const render = (items, color, signo) => {
         if (!items || !items.length) return '<div class="text-xs text-zinc-500 py-4 text-center">Sin datos</div>';
         return items.map(t => {

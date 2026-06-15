@@ -14,9 +14,11 @@
 # ============================================================
 from __future__ import annotations
 
+import json
 import time
 import threading
 from datetime import date, timedelta
+from pathlib import Path
 
 import yfinance as yf
 import pandas as pd
@@ -92,11 +94,16 @@ SECTORES_US = [
     {"ticker": "XLC",  "nombre": "Comunicación",        "etiqueta": "XLC",             "moneda": "USD"},
 ]
 
-# TTL de caches (segundos)
-TTL_CIERRES = 5 * 60         # 5 min
-TTL_NOTICIAS = 10 * 60       # 10 min
-TTL_NOTICIAS_PORT = 15 * 60  # 15 min
-TTL_RESUMEN = 60 * 60        # 1 hora
+# TTL de caches (segundos) — aumentados para mejor performance
+# Los mercados no se mueven tanto minuto a minuto; 15-30 min es suficiente
+TTL_CIERRES = 15 * 60        # 15 min (antes 5 min)
+TTL_NOTICIAS = 30 * 60       # 30 min (antes 10 min)
+TTL_NOTICIAS_PORT = 30 * 60  # 30 min (antes 15 min)
+TTL_RESUMEN = 2 * 60 * 60    # 2 horas (antes 1 hora)
+
+# Cache persistente en disco (sobrevive reinicios de Render)
+_CACHE_DIR = Path(__file__).parent / "_cache_periodico"
+_CACHE_DIR.mkdir(exist_ok=True)
 
 # Cache thread-safe
 _lock = threading.Lock()
@@ -109,16 +116,42 @@ _cache = {
 
 
 def _cache_get(key, ttl):
+    """Lee primero del cache en memoria. Si expiró pero hay disco, lo carga."""
     with _lock:
         c = _cache.get(key)
-        if c and c["data"] is not None and (time.time() - c["ts"]) < ttl:
+        if c and c.get("data") is not None and (time.time() - c["ts"]) < ttl:
             return c["data"]
+
+    # Fallback: cache en disco (sobrevive reinicios de Render)
+    disk_path = _CACHE_DIR / f"{key}.json"
+    if disk_path.exists():
+        try:
+            with open(disk_path, encoding="utf-8") as f:
+                cached = json.load(f)
+            ts = cached.get("_ts", 0)
+            if (time.time() - ts) < ttl:
+                data = cached.get("data")
+                # Repopular cache en memoria
+                with _lock:
+                    _cache[key] = {"data": data, "ts": ts}
+                return data
+        except Exception:
+            pass
     return None
 
 
 def _cache_set(key, data):
+    """Guarda en memoria Y en disco (best-effort)."""
+    ts = time.time()
     with _lock:
-        _cache[key] = {"data": data, "ts": time.time()}
+        _cache[key] = {"data": data, "ts": ts}
+    # Persistir en disco para sobrevivir reinicios
+    try:
+        disk_path = _CACHE_DIR / f"{key}.json"
+        with open(disk_path, "w", encoding="utf-8") as f:
+            json.dump({"_ts": ts, "data": data}, f, ensure_ascii=False, default=str)
+    except Exception:
+        pass  # No es crítico si falla el disco
 
 
 # ------------------------------------------------------------

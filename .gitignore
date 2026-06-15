@@ -37,6 +37,8 @@ backend/_datos/
 backend/cache_precios/
 backend/sessions/
 backend/users/
+backend/_cache_periodico/
+backend/_cache_topmovers/
 backend/.env.production
 
 # Archivos de IDE
