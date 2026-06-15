@@ -1566,6 +1566,9 @@
         <button data-sub-analizar="screener" class="sub-analizar-btn px-4 py-1.5 text-xs font-medium rounded-full text-zinc-500 hover:text-zinc-200 transition">
           Screener
         </button>
+        <button data-sub-analizar="sml" class="sub-analizar-btn px-4 py-1.5 text-xs font-medium rounded-full text-zinc-500 hover:text-zinc-200 transition">
+          Valoración SML
+        </button>
       </div>
     </div>
 
@@ -1724,6 +1727,60 @@
         </button>
       </div>
       <div id="sc-resultado" class="bg-surface-card border border-surface-border rounded-2xl p-4"></div>
+    </section>
+
+    <!-- Sub-vista: Valoración SML (CAPM) -->
+    <section id="sub-sml" class="hidden max-w-5xl mx-auto px-6 py-8">
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <p class="text-xs font-medium text-accent-teal uppercase tracking-wider">Modelo CAPM</p>
+          <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Valoración por Security Market Line</h2>
+          <p class="text-sm text-zinc-400 mt-2 max-w-2xl">
+            Calcula el retorno que justificaría tu acción según su beta y el riesgo del mercado.
+            Compara con el rendimiento real para saber si está <span class="text-accent-green font-semibold">infravalorada</span>,
+            <span class="text-accent-blue font-semibold">bien valorada</span> o
+            <span class="text-accent-red font-semibold">sobrevalorada</span>.
+          </p>
+        </div>
+      </div>
+      <div class="bg-surface border border-surface-border rounded-2xl p-5 mb-4">
+        <label class="block text-xs uppercase tracking-wider text-zinc-500 mb-2">Ticker a evaluar</label>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input id="sml-input" type="text" placeholder="AAPL · WALMEX.MX · NVDA · GFNORTEO.MX"
+            class="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 uppercase placeholder:text-zinc-600 placeholder:normal-case focus:outline-none focus:border-accent-teal tabular" />
+          <button id="sml-btn"
+            class="bg-accent-teal text-zinc-950 font-semibold text-sm py-2 px-6 rounded-md hover:brightness-110 transition">
+            Calcular SML
+          </button>
+        </div>
+        <p class="text-[10px] text-zinc-600 mt-3 leading-snug">
+          Usa 5 años de retornos mensuales. Benchmark: SPY (USA) o NAFTRAC.MX (acciones .MX).
+          Tasa libre de riesgo: UST 3m (~4.5%) para USD o CETES 28d (~9.5%) para MXN.
+        </p>
+      </div>
+      <div id="sml-resultado" class="space-y-4"></div>
+
+      <!-- Explicación corta -->
+      <details class="mt-6 bg-surface-card/50 border border-surface-border/60 rounded-xl p-4">
+        <summary class="cursor-pointer text-xs font-semibold text-zinc-300">¿Qué es la Security Market Line?</summary>
+        <div class="mt-3 text-[12px] text-zinc-400 leading-relaxed space-y-2">
+          <p>
+            La SML es la línea que predice el retorno esperado de un activo en función de su <strong class="text-zinc-200">beta</strong> (riesgo sistémico vs el mercado) según el modelo CAPM (Capital Asset Pricing Model):
+          </p>
+          <p class="font-mono bg-zinc-900/60 p-3 rounded text-zinc-300 text-[11px]">
+            E(R) = R<sub>f</sub> + β × (R<sub>m</sub> − R<sub>f</sub>)
+          </p>
+          <p>
+            Si el retorno real es <strong class="text-accent-green">mayor</strong> al que SML predice, la acción tiene <strong>alpha positivo</strong> — está pagando más rendimiento del que justifica su riesgo. Infravalorada por el modelo.
+          </p>
+          <p>
+            Si es <strong class="text-accent-red">menor</strong>, la acción tiene alpha negativo y se considera sobrevalorada.
+          </p>
+          <p class="text-[11px] text-zinc-600 italic">
+            CAPM tiene supuestos fuertes (mercado eficiente, distribución normal). Combínalo siempre con análisis cualitativo.
+          </p>
+        </div>
+      </details>
     </section>
   </main><!-- /vista-analizar -->
 

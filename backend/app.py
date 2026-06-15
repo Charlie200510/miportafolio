@@ -1610,6 +1610,17 @@ def api_optimizador_fiscal():
         return jsonify({"ok": False, "error": f"optimizador fallo: {e}"}), 500
 
 
+@app.route("/api/sml/<path:ticker>", methods=["GET"])
+def api_sml(ticker):
+    """Evalúa el ticker contra la Security Market Line (CAPM).
+    Devuelve beta, retorno esperado SML, alpha y veredicto."""
+    try:
+        import sml as _sml
+        return jsonify(_sml.evaluar_sml(ticker))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"SML fallo: {e}"}), 500
+
+
 @app.route("/api/periodico/top-movers", methods=["GET"])
 def api_periodico_top_movers():
     """Top tickers por ganadores, perdedores y populares del periodo.

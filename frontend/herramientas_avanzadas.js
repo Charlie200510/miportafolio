@@ -962,12 +962,126 @@
     render();
   };
 
+  // ============================================================
+  //  SML — Valoración CAPM inline
+  // ============================================================
+  window.iniciarSmlInline = function() {
+    const inp = document.getElementById('sml-input');
+    const btn = document.getElementById('sml-btn');
+    const cont = document.getElementById('sml-resultado');
+    if (!inp || !btn || !cont || btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+
+    const ejecutar = async () => {
+      const t = inp.value.trim().toUpperCase();
+      if (!t) return;
+      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:24px;background:#161616;border:1px solid #2a2a2f;border-radius:12px;">Calculando SML para ${t}… (15-30 seg)</p>`;
+      try {
+        const res = await fetch(`/api/sml/${encodeURIComponent(t)}`);
+        const d = await res.json();
+        if (!d.ok) {
+          cont.innerHTML = `<div style="padding:16px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.25);border-radius:12px;">
+            <p style="margin:0;color:#ef4444;font-size:13px;">${d.error || 'Error'}</p>
+          </div>`;
+          return;
+        }
+        cont.innerHTML = _renderSml(d);
+      } catch (e) {
+        cont.innerHTML = `<p style="color:#ef4444;font-size:13px;padding:14px;">Error: ${e.message}</p>`;
+      }
+    };
+    btn.addEventListener('click', ejecutar);
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ejecutar(); } });
+  };
+
+  function _renderSml(d) {
+    const colorMap = {
+      green: { bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.3)', text: '#22c55e' },
+      blue:  { bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.3)', text: '#3b82f6' },
+      red:   { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.3)', text: '#ef4444' },
+    };
+    const c = colorMap[d.veredicto_color] || colorMap.blue;
+    const fmtPct = (v) => v == null ? '—' : (v * 100).toFixed(2) + '%';
+    const fmtPctSigno = (v) => v == null ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
+    const alphaColor = d.alpha >= 0 ? '#22c55e' : '#ef4444';
+
+    return `
+      <!-- Veredicto principal -->
+      <div style="background:${c.bg};border:1px solid ${c.border};border-radius:16px;padding:24px;">
+        <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:${c.text};">Veredicto</p>
+        <h3 style="margin:6px 0 0;font-size:32px;color:#f4f4f5;font-weight:800;letter-spacing:-0.02em;">${d.veredicto}</h3>
+        <p style="margin:10px 0 0;font-size:13px;color:#d4d4d8;line-height:1.6;">${d.interpretacion}</p>
+      </div>
+
+      <!-- KPIs principales -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+        <div style="background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:14px;">
+          <p style="margin:0;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Beta (β)</p>
+          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:#f4f4f5;font-family:monospace;">${d.beta.toFixed(2)}</p>
+          <p style="margin:2px 0 0;font-size:10px;color:#a1a1aa;">${d.clase_beta}</p>
+        </div>
+        <div style="background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:14px;">
+          <p style="margin:0;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Retorno real anual</p>
+          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:${d.retorno_real_anual >= 0 ? '#22c55e' : '#ef4444'};font-family:monospace;">${fmtPctSigno(d.retorno_real_anual)}</p>
+          <p style="margin:2px 0 0;font-size:10px;color:#a1a1aa;">últimos 5 años</p>
+        </div>
+        <div style="background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:14px;">
+          <p style="margin:0;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Esperado por CAPM</p>
+          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:#f4f4f5;font-family:monospace;">${fmtPct(d.retorno_esperado_sml)}</p>
+          <p style="margin:2px 0 0;font-size:10px;color:#a1a1aa;">según su β</p>
+        </div>
+        <div style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:14px;">
+          <p style="margin:0;font-size:10px;color:${c.text};text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Alpha (α)</p>
+          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:${alphaColor};font-family:monospace;">${fmtPctSigno(d.alpha)}</p>
+          <p style="margin:2px 0 0;font-size:10px;color:#a1a1aa;">real − esperado</p>
+        </div>
+      </div>
+
+      <!-- Detalles del cálculo -->
+      <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:12px;padding:16px;">
+        <p style="margin:0 0 10px;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Detalles del cálculo</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:12px;">
+          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
+            <span style="color:#71717a;">Benchmark:</span>
+            <span style="color:#f4f4f5;font-family:monospace;float:right;">${d.benchmark}</span>
+          </div>
+          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
+            <span style="color:#71717a;">Moneda:</span>
+            <span style="color:#f4f4f5;font-family:monospace;float:right;">${d.moneda}</span>
+          </div>
+          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
+            <span style="color:#71717a;">Tasa libre de riesgo:</span>
+            <span style="color:#f4f4f5;font-family:monospace;float:right;">${fmtPct(d.tasa_libre_riesgo)}</span>
+          </div>
+          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
+            <span style="color:#71717a;">Premio del mercado:</span>
+            <span style="color:#f4f4f5;font-family:monospace;float:right;">${fmtPct(d.premio_mercado)}</span>
+          </div>
+          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
+            <span style="color:#71717a;">Retorno mercado (real):</span>
+            <span style="color:#f4f4f5;font-family:monospace;float:right;">${fmtPctSigno(d.retorno_mercado_anual)}</span>
+          </div>
+          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
+            <span style="color:#71717a;">Periodo:</span>
+            <span style="color:#f4f4f5;font-family:monospace;float:right;">${d.periodo}</span>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:6px;font-family:monospace;font-size:11px;color:#a1a1aa;">
+          E(R) = ${(d.tasa_libre_riesgo*100).toFixed(2)}% + ${d.beta.toFixed(2)} × ${(d.premio_mercado*100).toFixed(2)}% = <strong style="color:#f4f4f5;">${(d.retorno_esperado_sml*100).toFixed(2)}%</strong>
+        </div>
+      </div>
+
+      <p style="margin:0;font-size:10px;color:#71717a;text-align:center;font-style:italic;">${d.advertencia}</p>
+    `;
+  }
+
   // Lógica de sub-tabs en vista Analizar
   window.bindSubAnalizar = function() {
     const tabs = document.querySelectorAll('.sub-analizar-btn');
     const secAccion = document.getElementById('sub-una-accion');
     const secDeep = document.getElementById('sub-deep-dive');
     const secScreen = document.getElementById('sub-screener');
+    const secSml = document.getElementById('sub-sml');
     if (!tabs.length) return;
     function activar(sub) {
       tabs.forEach(b => {
@@ -981,8 +1095,10 @@
       if (secAccion) secAccion.classList.toggle('hidden', sub !== 'una-accion');
       if (secDeep)   secDeep.classList.toggle('hidden', sub !== 'deep-dive');
       if (secScreen) secScreen.classList.toggle('hidden', sub !== 'screener');
+      if (secSml)    secSml.classList.toggle('hidden', sub !== 'sml');
       if (sub === 'deep-dive') window.iniciarDeepDiveInline();
       if (sub === 'screener')  window.iniciarScreenerInline();
+      if (sub === 'sml')       window.iniciarSmlInline();
     }
     tabs.forEach(b => b.addEventListener('click', () => activar(b.dataset.subAnalizar)));
   };
