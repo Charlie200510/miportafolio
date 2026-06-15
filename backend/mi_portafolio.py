@@ -35,7 +35,7 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 # TTL del cache de precios: re-descarga si el archivo tiene más de 24h
 CACHE_TTL_SEGUNDOS = 24 * 60 * 60
-DIAS_HISTORIA = 730
+DIAS_HISTORIA = 3650   # 10 años de histórico (antes 730d / 2y)
 
 # Límites del portafolio
 MIN_TICKERS = 2
@@ -86,6 +86,17 @@ def _leer_precios_cache(ticker: str) -> pd.Series | None:
     try:
         s = pd.read_csv(ruta, index_col=0, parse_dates=True).iloc[:, 0]
         s.name = ticker
+        # Invalidar cache si tiene <8 años de historia (queremos 10 años)
+        # Esto fuerza regeneración cuando el cache fue creado con la versión vieja (2y)
+        from datetime import date as _date
+        if len(s) > 0:
+            primer_dia = s.index[0]
+            try:
+                anos_disponibles = (_date.today() - primer_dia.date()).days / 365.25
+                if anos_disponibles < 8:
+                    return None  # cache muy viejo, forzar redownload
+            except Exception:
+                pass
         return s
     except Exception:
         return None

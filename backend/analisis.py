@@ -304,6 +304,67 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
     # ============================================================
     # 8. CONCENTRACIÓN (sector / país / moneda)
     # ============================================================
+    # Mapeo de acciones populares a sectores en español (cuando yfinance no da metadata)
+    _ACCION_MAP = {
+        # Tech US
+        'AAPL':'Tecnología','MSFT':'Tecnología','GOOG':'Tecnología','GOOGL':'Tecnología',
+        'META':'Tecnología','NFLX':'Tecnología','TSLA':'Tecnología','NVDA':'Semiconductores',
+        'AMD':'Semiconductores','INTC':'Semiconductores','TSM':'Semiconductores','AVGO':'Semiconductores',
+        'ORCL':'Tecnología','CRM':'Tecnología','ADBE':'Tecnología','NOW':'Tecnología',
+        'CSCO':'Tecnología','IBM':'Tecnología','SHOP':'Tecnología','PYPL':'Tecnología',
+        # Consumo US
+        'AMZN':'Consumo discrecional','WMT':'Consumo básico','COST':'Consumo básico',
+        'HD':'Consumo discrecional','LOW':'Consumo discrecional','MCD':'Consumo discrecional',
+        'SBUX':'Consumo discrecional','NKE':'Consumo discrecional','KO':'Consumo básico',
+        'PEP':'Consumo básico','PG':'Consumo básico','UL':'Consumo básico',
+        # Financiero US
+        'JPM':'Financiero','BAC':'Financiero','WFC':'Financiero','GS':'Financiero',
+        'MS':'Financiero','C':'Financiero','BLK':'Financiero','V':'Financiero',
+        'MA':'Financiero','AXP':'Financiero','SCHW':'Financiero','BRK-B':'Financiero',
+        # Salud US
+        'JNJ':'Salud','UNH':'Salud','PFE':'Salud','LLY':'Salud','MRK':'Salud',
+        'ABBV':'Salud','TMO':'Salud','ABT':'Salud','MDT':'Salud','BMY':'Salud',
+        # Energía US
+        'XOM':'Energía','CVX':'Energía','COP':'Energía','EOG':'Energía','SLB':'Energía',
+        # Industrial US
+        'BA':'Industrial','CAT':'Industrial','GE':'Industrial','HON':'Industrial',
+        'UPS':'Industrial','FDX':'Industrial','LMT':'Defensa','RTX':'Defensa',
+        # Comunicaciones US
+        'DIS':'Comunicación','T':'Comunicación','VZ':'Comunicación','TMUS':'Comunicación',
+        # BMV México
+        'WALMEX.MX':'Consumo básico','FEMSAUBD.MX':'Consumo básico','GFNORTEO.MX':'Financiero',
+        'AMXB.MX':'Comunicación','CEMEXCPO.MX':'Materiales','GMEXICOB.MX':'Materiales',
+        'BIMBOA.MX':'Consumo básico','GRUMAB.MX':'Consumo básico','LALAB.MX':'Consumo básico',
+        'KIMBERA.MX':'Consumo básico','AC.MX':'Consumo básico','KOFUBL.MX':'Consumo básico',
+        'TLEVISACPO.MX':'Comunicación','MEGACPO.MX':'Comunicación',
+        'GFINBURO.MX':'Financiero','BSMXB.MX':'Financiero','GENTERA.MX':'Financiero',
+        'BBAJIOO.MX':'Financiero','ACTINVRB.MX':'Financiero','RA.MX':'Financiero',
+        'ASURB.MX':'Industrial','GAPB.MX':'Industrial','OMAB.MX':'Industrial',
+        'ORBIA.MX':'Materiales','ALFAA.MX':'Industrial','ALPEKA.MX':'Materiales',
+        'PE&OLES.MX':'Materiales','VISTAA.MX':'Energía','IENOVA.MX':'Energía',
+        'LIVEPOLC-1.MX':'Consumo discrecional','GFAMSAA.MX':'Salud','LAB.MX':'Salud',
+    }
+    # Traducción de sectores yfinance al español
+    _SECTOR_TRAD = {
+        'technology': 'Tecnología',
+        'financial services': 'Financiero',
+        'financial': 'Financiero',
+        'healthcare': 'Salud',
+        'consumer cyclical': 'Consumo discrecional',
+        'consumer defensive': 'Consumo básico',
+        'consumer staples': 'Consumo básico',
+        'communication services': 'Comunicación',
+        'communications': 'Comunicación',
+        'industrials': 'Industrial',
+        'energy': 'Energía',
+        'utilities': 'Servicios públicos',
+        'basic materials': 'Materiales',
+        'materials': 'Materiales',
+        'real estate': 'Bienes raíces',
+        'consumer goods': 'Consumo discrecional',
+        'services': 'Servicios',
+    }
+
     # Mapeo de ETFs conocidos (para no caer en "Desconocido")
     _ETF_MAP = {
         'SPY': {'sector':'ETF Mercado amplio (USA)','pais':'Estados Unidos','moneda':'USD'},
@@ -352,26 +413,43 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
 
     def _inferir(ticker, meta, campo):
         """Devuelve sector/pais/moneda con fallbacks heurísticos:
-        1) metadata real si no es 'Desconocido'
-        2) ETFs conocidos (mapeo manual)
-        3) -USD/-USDT → Criptomonedas
-        4) .MX → BMV / México / MXN
-        5) ETFs por nombre (iShares, Vanguard, etc.) → ETF / Fondo
-        6) default: USA / USD (NYSE/Nasdaq sin sufijo)
+        1) metadata real, traduciendo sectores yfinance al español
+        2) Acciones populares hardcoded (_ACCION_MAP)
+        3) ETFs conocidos (mapeo manual)
+        4) -USD/-USDT → Criptomonedas
+        5) .MX → BMV / México / MXN
+        6) ETFs por nombre (iShares, Vanguard, etc.) → ETF / Fondo
+        7) default: USA / USD (NYSE/Nasdaq sin sufijo)
         """
-        valor = meta.get(campo) if meta else None
-        if valor and valor not in ("Desconocido", "", None, "ETF / Índice"):
-            return valor
         t = (ticker or "").upper()
+        valor = meta.get(campo) if meta else None
+        if valor and valor not in ("Desconocido", "", None, "ETF / Índice", "Unknown", "—"):
+            # Traducir sector yfinance al español si es inglés
+            if campo == "sector":
+                v_lower = str(valor).lower().strip()
+                if v_lower in _SECTOR_TRAD:
+                    return _SECTOR_TRAD[v_lower]
+            return valor
+        # 1) Acciones populares hardcoded
+        if campo == "sector" and t in _ACCION_MAP:
+            return _ACCION_MAP[t]
+        # 2) ETF conocido
         if t in _ETF_MAP:
             return _ETF_MAP[t][campo]
+        # 3) Crypto
         if t.endswith("-USD") or t.endswith("-USDT"):
             return {"sector": "Criptomonedas", "pais": "Global", "moneda": "USD"}[campo]
+        # 4) .MX (acción mexicana)
         if t.endswith(".MX"):
-            return {"sector": "BMV (acción mexicana)", "pais": "México", "moneda": "MXN"}[campo]
+            # País y moneda son obvios; sector usa el mapa de acciones MX
+            if campo == "sector" and t in _ACCION_MAP:
+                return _ACCION_MAP[t]
+            return {"sector": "Acciones mexicanas", "pais": "México", "moneda": "MXN"}[campo]
+        # 5) ETF por keyword
         nombre = (meta.get("nombre", "") if meta else "").lower()
         if any(kw in nombre for kw in _ETF_KEYWORDS):
             return {"sector": "ETF / Fondo", "pais": "Global", "moneda": "USD"}[campo]
+        # 6) Default razonable
         return {"sector": "Otros", "pais": "Estados Unidos", "moneda": "USD"}[campo]
 
     def _agrupar_por(campo):

@@ -331,6 +331,18 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
                 bench = _benchmark_para(ticker)
                 beta = _calcular_beta(ticker, benchmark=bench)
 
+        # --- Fallback para PEG: si no viene, calcular = PE / earnings_growth ---
+        if peg is None and pe_trailing is not None and pe_trailing > 0:
+            eg = _safe_float(info.get("earningsGrowth"))
+            if eg is not None and eg > 0:
+                peg = round(pe_trailing / (eg * 100), 2)
+
+        # --- Fallback para P/B: calcular = precio / bookValue ---
+        if pb is None:
+            book_value = _safe_float(info.get("bookValue"))
+            if book_value and book_value > 0 and precio:
+                pb = round(precio / book_value, 2)
+
         dividend_yield = _safe_float(info.get("dividendYield"))
         # yfinance a veces regresa el yield como fracción (0.025) y a veces como % (2.5). Normalizar:
         if dividend_yield is not None and dividend_yield > 1:
@@ -348,12 +360,38 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
         earn_growth = _safe_float(info.get("earningsGrowth"))
 
         roe = _safe_float(info.get("returnOnEquity"))
+        # Fallback: ROE = netIncome / totalEquity si vienen ambos
+        if roe is None:
+            ni = _safe_float(info.get("netIncomeToCommon"))
+            te = _safe_float(info.get("totalStockholderEquity"))
+            if ni and te and te > 0:
+                roe = round(ni / te, 4)
+
         margenes = {
             "bruto":     _safe_float(info.get("grossMargins")),
             "operativo": _safe_float(info.get("operatingMargins")),
             "neto":      _safe_float(info.get("profitMargins")),
         }
+        # Fallback: margen neto = netIncome / totalRevenue
+        if margenes["neto"] is None:
+            ni = _safe_float(info.get("netIncomeToCommon"))
+            rev = _safe_float(info.get("totalRevenue"))
+            if ni and rev and rev > 0:
+                margenes["neto"] = round(ni / rev, 4)
+        # Fallback: margen operativo = ebitda / revenue
+        if margenes["operativo"] is None:
+            ebitda = _safe_float(info.get("ebitda"))
+            rev = _safe_float(info.get("totalRevenue"))
+            if ebitda and rev and rev > 0:
+                margenes["operativo"] = round(ebitda / rev, 4)
+
         deuda_equity = _safe_float(info.get("debtToEquity"))
+        # Fallback: debt/equity = totalDebt / totalStockholderEquity
+        if deuda_equity is None:
+            td = _safe_float(info.get("totalDebt"))
+            te = _safe_float(info.get("totalStockholderEquity"))
+            if td and te and te > 0:
+                deuda_equity = round(td / te * 100, 2)  # yfinance reporta como x100
 
         proximas_earnings = None
         try:

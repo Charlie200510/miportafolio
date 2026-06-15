@@ -226,8 +226,8 @@ SP500_FALLBACK = SP500_RECOMENDADAS
 # ============================================================
 # 6. CONFIG DE DESCARGA
 # ============================================================
-DIAS_HISTORIA = 730
-MIN_DIAS = 126            # ~6 meses de historia
+DIAS_HISTORIA = 3650      # 10 años de histórico (antes 2y/730d)
+MIN_DIAS = 126            # ~6 meses de historia mínima para entrar al universo
 MAX_DIAS_SIN_COTIZAR = 7  # último precio debe ser ≤ 7 días atrás
 CHUNK_SIZE = 200          # tickers por llamada yfinance.download
 PAUSA_ENTRE_CHUNKS = 1.0  # segundos
