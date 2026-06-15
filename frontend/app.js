@@ -384,16 +384,35 @@ function renderHero(data) {
     : 'Tu portafolio';
   $('hero-subtitulo').textContent = activos.join(' · ');
 
-  // Retorno total (hero)
-  const rt = p.rendimiento_total_pct;
+  // Retorno del último año (en hero, NO el total)
+  // Si la serie de tiempo tiene los datos, calculamos el retorno de los últimos 252 días hábiles.
+  // Como fallback, usamos rendimiento_anualizado_pct (el del periodo completo anualizado).
+  let retorno1y = p.rendimiento_1y_pct;
+  if (retorno1y == null && data.serie_tiempo && Array.isArray(data.serie_tiempo.portafolio_pct)) {
+    const serie = data.serie_tiempo.portafolio_pct;
+    if (serie.length >= 252) {
+      // serie está en % acumulado desde día 0
+      const final = serie[serie.length - 1];
+      const hace1y = serie[serie.length - 252];
+      // (1 + final/100) / (1 + hace1y/100) - 1
+      const ratio_final = 1 + final / 100;
+      const ratio_inicial = 1 + hace1y / 100;
+      retorno1y = (ratio_final / ratio_inicial - 1) * 100;
+    } else if (serie.length > 0) {
+      retorno1y = serie[serie.length - 1];
+    }
+  }
+  if (retorno1y == null) retorno1y = p.rendimiento_anualizado_pct;
   const heroEl = $('hero-retorno');
-  heroEl.textContent = fmtPct(rt);
-  heroEl.className = `text-4xl sm:text-5xl font-bold tabular mt-1 ${claseColor(rt)}`;
+  heroEl.textContent = fmtPct(retorno1y);
+  heroEl.className = `text-4xl sm:text-5xl font-bold tabular mt-1 ${claseColor(retorno1y)}`;
 
-  // Período (años aproximados)
-  if (m.dias_observados) {
-    const anios = (m.dias_observados / 252).toFixed(1);
-    $('hero-periodo').textContent = `Últimos ~${anios} años`;
+  // Período: siempre últimos 12 meses
+  if (m.dias_observados && m.dias_observados < 252) {
+    const meses = Math.round(m.dias_observados / 21);
+    $('hero-periodo').textContent = `Últimos ~${meses} meses`;
+  } else {
+    $('hero-periodo').textContent = `Últimos 12 meses`;
   }
 
   // KPIs

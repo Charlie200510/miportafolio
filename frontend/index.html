@@ -291,21 +291,6 @@
           Transacciones e ISR
           <span class="nav-indicator absolute bottom-0 left-0 right-0 h-0.5 bg-accent-teal rounded-t-full hidden"></span>
         </button>
-        <button onclick="window.abrirDeepDive && window.abrirDeepDive()" class="nav-tab nav-secondary relative px-3 py-2.5 text-[11px] font-medium text-blue-400 hover:text-blue-300 transition" title="Análisis profundo de una empresa">
-          🔍 Deep Dive
-        </button>
-        <button onclick="window.abrirOptimizadorFiscal && window.abrirOptimizadorFiscal()" class="nav-tab nav-secondary relative px-3 py-2.5 text-[11px] font-medium text-purple-400 hover:text-purple-300 transition" title="Minimizar ISR mexicano">
-          ⚖ Optimizador fiscal
-        </button>
-        <button onclick="window.abrirScreener && window.abrirScreener()" class="nav-tab nav-secondary relative px-3 py-2.5 text-[11px] font-medium text-orange-400 hover:text-orange-300 transition" title="Filtra tickers por criterios">
-          🔎 Screener
-        </button>
-        <button onclick="window.abrirAlertasAvanzadas && window.abrirAlertasAvanzadas()" class="nav-tab nav-secondary relative px-3 py-2.5 text-[11px] font-medium text-accent-green hover:text-emerald-300 transition" title="Reglas multi-condición">
-          ⚡ Alertas avanzadas
-        </button>
-        <button onclick="window.abrirBackupsNube && window.abrirBackupsNube()" class="nav-tab nav-secondary relative px-3 py-2.5 text-[11px] font-medium text-cyan-400 hover:text-cyan-300 transition" title="Backups en la nube">
-          ☁ Backups
-        </button>
         <!-- Hidden tabs (accesibles via cards) -->
         <button data-vista="explorador" class="nav-tab nav-secondary nav-hidden hidden" aria-hidden="true"></button>
         <button data-vista="rebalanceo" class="nav-tab nav-secondary nav-hidden hidden" aria-hidden="true"></button>
@@ -537,9 +522,9 @@
           <p class="text-sm text-zinc-400 mt-1" id="hero-subtitulo">Cargando análisis…</p>
         </div>
         <div class="text-right">
-          <p class="text-xs text-zinc-500 uppercase tracking-wider">Rendimiento total</p>
+          <p class="text-xs text-zinc-500 uppercase tracking-wider">Rendimiento último año</p>
           <p class="text-4xl sm:text-5xl font-bold tabular mt-1" id="hero-retorno">—</p>
-          <p class="text-xs text-zinc-500 mt-1" id="hero-periodo">—</p>
+          <p class="text-xs text-zinc-500 mt-1" id="hero-periodo">12 meses</p>
         </div>
       </div>
 
@@ -1282,6 +1267,41 @@
         </div>
         <iframe id="al-preview-iframe" class="w-full bg-white" style="height: 520px;"></iframe>
       </div>
+
+      <!-- ALERTAS AVANZADAS (multi-condición) -->
+      <div class="mt-6 pt-6 border-t border-surface-border">
+        <div class="flex items-start justify-between flex-wrap gap-2 mb-3">
+          <div>
+            <h3 class="text-sm font-semibold text-zinc-100">Alertas avanzadas</h3>
+            <p class="text-[11px] text-zinc-500 mt-1 max-w-2xl leading-relaxed">
+              Reglas custom multi-condición tipo "NVDA cae &lt;100 Y el VIX &gt;25". Se evalúan junto con las alertas automáticas.
+            </p>
+          </div>
+          <button id="aa-inline-crear" class="text-[11px] bg-accent-green/15 text-accent-green border border-accent-green/30 px-3 py-1.5 rounded-md hover:bg-accent-green/20 transition font-medium">
+            + Nueva regla
+          </button>
+        </div>
+        <div id="aa-inline-cont" class="mt-2"></div>
+      </div>
+
+      <!-- BACKUPS EN LA NUBE -->
+      <div class="mt-6 pt-6 border-t border-surface-border">
+        <div class="flex items-start justify-between flex-wrap gap-2 mb-3">
+          <div>
+            <h3 class="text-sm font-semibold text-zinc-100">Backups en la nube</h3>
+            <p class="text-[11px] text-zinc-500 mt-1 max-w-2xl leading-relaxed">
+              Guarda snapshots de tu portafolio para restaurar si pierdes el navegador o quieres revertir cambios. Identificados por tu email.
+            </p>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2 mb-3">
+          <input id="bk-inline-nombre" type="text" placeholder="Nombre del backup (opcional)" class="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-accent-blue" />
+          <button id="bk-inline-crear" class="text-[11px] bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-4 py-2 rounded-md hover:bg-cyan-500/20 transition font-medium">
+            + Crear backup
+          </button>
+        </div>
+        <div id="bk-inline-cont" class="mt-2"></div>
+      </div>
     </div>
   </section>
 
@@ -1535,13 +1555,19 @@
   <!-- ============================================================ -->
   <main id="vista-analizar" class="hidden">
     <section class="max-w-5xl mx-auto px-6 py-8">
-      <!-- Sub-nav: Una acción / Optimizador -->
-      <div class="inline-flex items-center gap-1 p-1 rounded-full bg-zinc-900/60 border border-surface-border mb-6">
-        <button data-vista="analizar" class="nav-tab px-4 py-1.5 text-xs font-medium rounded-full text-zinc-100 bg-accent-orange/15 ring-1 ring-accent-orange/40 transition" id="subnav-una-accion">
+      <!-- Sub-nav: Una acción / Optimizador / Deep Dive / Screener -->
+      <div class="inline-flex items-center gap-1 p-1 rounded-full bg-zinc-900/60 border border-surface-border mb-6 flex-wrap">
+        <button data-sub-analizar="una-accion" class="sub-analizar-btn px-4 py-1.5 text-xs font-medium rounded-full text-zinc-100 bg-accent-orange/15 ring-1 ring-accent-orange/40 transition">
           Una acción
         </button>
         <button data-vista="explorador" class="nav-tab px-4 py-1.5 text-xs font-medium rounded-full text-zinc-500 hover:text-zinc-200 transition" id="subnav-optimizador">
           Optimizador (varias)
+        </button>
+        <button data-sub-analizar="deep-dive" class="sub-analizar-btn px-4 py-1.5 text-xs font-medium rounded-full text-zinc-500 hover:text-zinc-200 transition">
+          Deep Dive
+        </button>
+        <button data-sub-analizar="screener" class="sub-analizar-btn px-4 py-1.5 text-xs font-medium rounded-full text-zinc-500 hover:text-zinc-200 transition">
+          Screener
         </button>
       </div>
 
@@ -1610,6 +1636,95 @@
 
       <!-- Resultado -->
       <div id="an-resultado" class="hidden space-y-6"></div>
+    </section>
+
+    <!-- Sub-vista: Deep Dive (oculta por default) -->
+    <section id="sub-deep-dive" class="hidden max-w-5xl mx-auto px-6 py-8">
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <p class="text-xs font-medium text-accent-blue uppercase tracking-wider">Análisis profundo</p>
+          <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Deep Dive de empresa</h2>
+          <p class="text-sm text-zinc-400 mt-2 max-w-2xl">
+            Métricas detalladas + comparativa contra peers + narrativa automática. Útil para empresas BMV.
+          </p>
+        </div>
+      </div>
+      <div class="bg-surface border border-surface-border rounded-2xl p-5 mb-4">
+        <label class="block text-xs uppercase tracking-wider text-zinc-500 mb-2">Ticker a analizar</label>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input id="dd-input" type="text" placeholder="WALMEX.MX · AAPL · BIMBOA.MX..."
+            class="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 uppercase placeholder:text-zinc-600 placeholder:normal-case focus:outline-none focus:border-accent-blue tabular" />
+          <button id="dd-btn"
+            class="bg-accent-blue text-white font-semibold text-sm py-2 px-6 rounded-md hover:brightness-110 transition">
+            Analizar
+          </button>
+        </div>
+      </div>
+      <div id="dd-resultado" class="space-y-4"></div>
+    </section>
+
+    <!-- Sub-vista: Screener (oculta por default) -->
+    <section id="sub-screener" class="hidden max-w-5xl mx-auto px-6 py-8">
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <p class="text-xs font-medium text-accent-amber uppercase tracking-wider">Screener</p>
+          <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Filtra el universo</h2>
+          <p class="text-sm text-zinc-400 mt-2 max-w-2xl">
+            Encuentra acciones que cumplan tus criterios: P/E, yield, beta, market cap, sector...
+          </p>
+        </div>
+      </div>
+      <div class="bg-surface border border-surface-border rounded-2xl p-5 mb-4">
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <label class="text-xs text-zinc-500">
+            Tipo
+            <select id="sc-tipo" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 mt-1">
+              <option value="">Todos</option>
+              <option value="acciones">Acciones</option>
+              <option value="etfs">ETFs</option>
+              <option value="crypto">Crypto</option>
+            </select>
+          </label>
+          <label class="text-xs text-zinc-500">
+            Mercado
+            <select id="sc-mercado" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 mt-1">
+              <option value="">Todos</option>
+              <option value="MX">México (BMV)</option>
+              <option value="US">USA</option>
+              <option value="INTL">Internacional</option>
+              <option value="Crypto">Crypto</option>
+            </select>
+          </label>
+          <label class="text-xs text-zinc-500">
+            Sector
+            <input id="sc-sector" type="text" placeholder="Technology, Financial..." class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 mt-1" />
+          </label>
+          <label class="text-xs text-zinc-500">
+            Market cap mín. USD
+            <input id="sc-mc" type="number" placeholder="10000000000" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 tabular mt-1" />
+          </label>
+          <label class="text-xs text-zinc-500">
+            P/E máx.
+            <input id="sc-pemax" type="number" placeholder="25" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 tabular mt-1" />
+          </label>
+          <label class="text-xs text-zinc-500">
+            Yield mín. (%)
+            <input id="sc-ymin" type="number" step="0.5" placeholder="2" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 tabular mt-1" />
+          </label>
+          <label class="text-xs text-zinc-500">
+            Beta máx.
+            <input id="sc-bmax" type="number" step="0.1" placeholder="1.2" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 tabular mt-1" />
+          </label>
+          <label class="text-xs text-zinc-500 flex items-end gap-1.5 pt-4">
+            <input id="sc-reco" type="checkbox" class="accent-emerald-500" />
+            Solo recomendadas
+          </label>
+        </div>
+        <button id="sc-buscar" class="mt-4 bg-accent-amber text-zinc-950 font-semibold text-sm py-2 px-6 rounded-md hover:brightness-110 transition w-full sm:w-auto">
+          Buscar
+        </button>
+      </div>
+      <div id="sc-resultado" class="bg-surface-card border border-surface-border rounded-2xl p-4"></div>
     </section>
   </main><!-- /vista-analizar -->
 
@@ -1690,7 +1805,7 @@
         <!-- Ganadores -->
         <div class="bg-surface-card border border-accent-green/20 rounded-xl p-4">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-[10px] uppercase tracking-wider text-accent-green font-bold">📈 Más subieron</span>
+            <span class="text-[10px] uppercase tracking-wider text-accent-green font-bold">Más subieron</span>
           </div>
           <div id="mov-ganadores" class="space-y-2">
             <div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>
@@ -1699,16 +1814,16 @@
         <!-- Perdedores -->
         <div class="bg-surface-card border border-accent-red/20 rounded-xl p-4">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-[10px] uppercase tracking-wider text-accent-red font-bold">📉 Más cayeron</span>
+            <span class="text-[10px] uppercase tracking-wider text-accent-red font-bold">Más cayeron</span>
           </div>
           <div id="mov-perdedores" class="space-y-2">
             <div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>
           </div>
         </div>
-        <!-- Populares -->
+        <!-- Más activos (mayor volumen × precio) -->
         <div class="bg-surface-card border border-accent-blue/20 rounded-xl p-4">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-[10px] uppercase tracking-wider text-accent-blue font-bold">⭐ Más populares</span>
+            <span class="text-[10px] uppercase tracking-wider text-accent-blue font-bold">Más transacciones</span>
           </div>
           <div id="mov-populares" class="space-y-2">
             <div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>
@@ -2329,6 +2444,43 @@
           </div>
           <div id="sat-resultado" class="hidden mt-5"></div>
           <div id="sat-error" class="hidden mt-3 text-[11px] text-accent-red"></div>
+        </div>
+      </section>
+
+      <!-- OPTIMIZADOR FISCAL INLINE -->
+      <section class="mt-8 border-t border-surface-border pt-8">
+        <div class="bg-gradient-to-br from-accent-purple/5 to-accent-purple/[0.02] border border-accent-purple/20 rounded-xl p-5">
+          <div class="flex items-start justify-between flex-wrap gap-3 mb-4">
+            <div>
+              <h3 class="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-md bg-accent-purple/15 border border-accent-purple/30 flex items-center justify-center text-accent-purple">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                </span>
+                Optimizador fiscal
+              </h3>
+              <p class="text-[11px] text-zinc-500 mt-1 leading-relaxed max-w-2xl">
+                ¿Qué vender para minimizar el ISR del 10%? El algoritmo ordena las ventas (pérdidas primero) para reducir tu base gravable al máximo legal.
+              </p>
+            </div>
+          </div>
+          <div class="grid sm:grid-cols-3 gap-3 mb-4">
+            <label class="text-[11px] text-zinc-500">
+              Monto a liquidar (MXN)
+              <input id="of-monto" type="number" min="100" step="1000" value="50000" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 tabular mt-1 focus:outline-none focus:border-accent-purple" />
+            </label>
+            <label class="text-[11px] text-zinc-500">
+              Año fiscal
+              <input id="of-ano" type="number" min="2020" max="2030" value="2026" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 tabular mt-1 focus:outline-none focus:border-accent-purple" />
+            </label>
+            <label class="text-[11px] text-zinc-500">
+              Pérdidas de años anteriores
+              <input id="of-perdidas" type="number" min="0" step="1000" value="0" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 tabular mt-1 focus:outline-none focus:border-accent-purple" />
+            </label>
+          </div>
+          <button id="of-inline-btn" class="bg-accent-purple text-white font-semibold text-sm py-2 px-6 rounded-md hover:brightness-110 transition">
+            Calcular plan óptimo
+          </button>
+          <div id="of-inline-resultado" class="mt-4"></div>
         </div>
       </section>
 

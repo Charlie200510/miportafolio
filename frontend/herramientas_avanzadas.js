@@ -718,4 +718,296 @@
     });
   };
 
+  // ============================================================
+  //  VERSIONES INLINE (renderean en un container existente,
+  //  sin abrir modal). Usan las mismas funciones de render.
+  // ============================================================
+
+  // Deep Dive inline en la vista Analizar
+  window.iniciarDeepDiveInline = function() {
+    const inp = document.getElementById('dd-input');
+    const btn = document.getElementById('dd-btn');
+    const cont = document.getElementById('dd-resultado');
+    if (!inp || !btn || !cont || btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+    const ejecutar = async () => {
+      const t = inp.value.trim().toUpperCase();
+      if (!t) return;
+      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:24px;background:#161616;border:1px solid #2a2a2f;border-radius:12px;">Analizando ${t}… (15-30 seg)</p>`;
+      try {
+        const res = await fetch(`/api/deep-dive/${encodeURIComponent(t)}`);
+        const d = await res.json();
+        if (!d.ok) {
+          cont.innerHTML = `<p style="color:#ef4444;font-size:13px;padding:14px;">${d.error || 'Error'}</p>`;
+          return;
+        }
+        // Usa la misma función _renderDeepDive del modal pero envuelta en card
+        cont.innerHTML = `<div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;padding:20px;">${_renderDeepDive(d)}</div>`;
+      } catch (e) {
+        cont.innerHTML = `<p style="color:#ef4444;font-size:13px;padding:14px;">Error: ${e.message}</p>`;
+      }
+    };
+    btn.addEventListener('click', ejecutar);
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ejecutar(); } });
+  };
+
+  // Screener inline en la vista Analizar
+  window.iniciarScreenerInline = function() {
+    const btn = document.getElementById('sc-buscar');
+    const cont = document.getElementById('sc-resultado');
+    if (!btn || !cont || btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', async () => {
+      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:20px;">Filtrando…</p>`;
+      const get = id => document.getElementById(id).value.trim();
+      const num = id => { const v = parseFloat(get(id)); return isFinite(v) ? v : null; };
+      const criterios = {
+        tipo:              get('sc-tipo') || undefined,
+        mercado:           get('sc-mercado') || undefined,
+        sector:            get('sc-sector') || undefined,
+        market_cap_min:    num('sc-mc'),
+        pe_max:            num('sc-pemax'),
+        yield_min:         num('sc-ymin') ? num('sc-ymin') / 100 : undefined,
+        beta_max:          num('sc-bmax'),
+        solo_recomendadas: document.getElementById('sc-reco').checked,
+        limit:             50,
+      };
+      Object.keys(criterios).forEach(k => criterios[k] == null && delete criterios[k]);
+      try {
+        const res = await fetch('/api/screener', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(criterios),
+        });
+        const d = await res.json();
+        if (!d.ok) { cont.innerHTML = `<p style="color:#ef4444;">${d.error || 'Error'}</p>`; return; }
+        cont.innerHTML = _renderScreener(d);
+      } catch (e) { cont.innerHTML = `<p style="color:#ef4444;">Error: ${e.message}</p>`; }
+    });
+  };
+
+  // Optimizador fiscal inline en la vista Transacciones
+  window.iniciarOptimizadorInline = function() {
+    const btn = document.getElementById('of-inline-btn');
+    const cont = document.getElementById('of-inline-resultado');
+    if (!btn || !cont || btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', async () => {
+      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:14px;">Calculando…</p>`;
+      try {
+        const txs = JSON.parse(localStorage.getItem('miPortafolio.transacciones.v1') || '[]');
+        if (!txs.length) {
+          cont.innerHTML = `<p style="color:#fb923c;font-size:13px;padding:14px;background:rgba(251,146,60,0.08);border-radius:8px;">Primero registra tus transacciones arriba.</p>`;
+          return;
+        }
+        const precios = {};
+        try {
+          const respUniv = await fetch('/api/universo');
+          const univData = await respUniv.json();
+          (univData.tickers || []).forEach(t => {
+            if (t.ticker && t.precio) precios[t.ticker] = t.precio;
+          });
+        } catch {}
+        const body = {
+          transacciones:       txs,
+          precios_actuales:    precios,
+          monto_a_vender_mxn:  parseFloat(document.getElementById('of-monto').value) || 50000,
+          ano_fiscal:          parseInt(document.getElementById('of-ano').value) || new Date().getFullYear(),
+          perdidas_anteriores: parseFloat(document.getElementById('of-perdidas').value) || 0,
+        };
+        const res = await fetch('/api/optimizador-fiscal', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(body),
+        });
+        const d = await res.json();
+        if (!d.ok) { cont.innerHTML = `<p style="color:#ef4444;">${d.error}</p>`; return; }
+        cont.innerHTML = _renderOptimizador(d);
+      } catch (e) { cont.innerHTML = `<p style="color:#ef4444;">Error: ${e.message}</p>`; }
+    });
+  };
+
+  // Backups inline en la vista de alertas
+  window.iniciarBackupsInline = function() {
+    const cont = document.getElementById('bk-inline-cont');
+    const btnCrear = document.getElementById('bk-inline-crear');
+    if (!cont || !btnCrear || btnCrear.dataset.wired === '1') return;
+    btnCrear.dataset.wired = '1';
+
+    async function recargar() {
+      const email = (localStorage.getItem('miPortafolio.userEmail') || '').trim().toLowerCase();
+      if (!email) {
+        cont.innerHTML = `<p class="text-xs text-zinc-500 py-3">Configura tu email en alertas arriba primero.</p>`;
+        return;
+      }
+      cont.innerHTML = `<p class="text-xs text-zinc-500 py-3 text-center">Cargando…</p>`;
+      try {
+        const res = await fetch(`/api/backups?email=${encodeURIComponent(email)}`);
+        const d = await res.json();
+        if (!d.ok) { cont.innerHTML = `<p class="text-xs text-accent-red">${d.error}</p>`; return; }
+        if (!d.backups || !d.backups.length) {
+          cont.innerHTML = `<p class="text-xs text-zinc-500 py-3 text-center">Sin backups aún. Crea uno arriba.</p>`;
+          return;
+        }
+        cont.innerHTML = d.backups.map(b => {
+          const fecha = new Date(b.created_at).toLocaleString('es-MX', {dateStyle:'short', timeStyle:'short'});
+          const tipo = b.es_automatico ? 'Auto' : 'Manual';
+          const tamano = b.tamano_bytes ? `${(b.tamano_bytes/1024).toFixed(1)} KB` : '';
+          return `<div class="flex items-center justify-between gap-2 p-2.5 bg-zinc-900/40 border border-surface-border rounded-lg mb-1.5">
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-semibold text-zinc-100 truncate">${b.nombre || 'Sin nombre'}</p>
+              <p class="text-[10px] text-zinc-500">${tipo} · ${fecha} · ${tamano}</p>
+            </div>
+            <button data-id="${b.id}" class="bk-rest text-[10px] px-2 py-1 bg-accent-green text-zinc-950 rounded font-semibold">Restaurar</button>
+            <button data-id="${b.id}" class="bk-del text-[10px] px-2 py-1 border border-surface-border text-accent-red rounded">✕</button>
+          </div>`;
+        }).join('');
+        cont.querySelectorAll('.bk-rest').forEach(b => b.addEventListener('click', () => restaurar(b.dataset.id, email)));
+        cont.querySelectorAll('.bk-del').forEach(b => b.addEventListener('click', () => eliminar(b.dataset.id, email)));
+      } catch (e) { cont.innerHTML = `<p class="text-xs text-accent-red">Error: ${e.message}</p>`; }
+    }
+    async function crear() {
+      const email = (localStorage.getItem('miPortafolio.userEmail') || prompt('Tu email:') || '').trim().toLowerCase();
+      if (!email || !email.includes('@')) return;
+      localStorage.setItem('miPortafolio.userEmail', email);
+      const nombre = (document.getElementById('bk-inline-nombre').value || '').trim();
+      const snapshot = {
+        tickers:       JSON.parse(localStorage.getItem('miPortafolio.tickers.v1') || '[]'),
+        pesos:         JSON.parse(localStorage.getItem('miPortafolio.pesos.v1') || '{}'),
+        transacciones: JSON.parse(localStorage.getItem('miPortafolio.transacciones.v1') || '[]'),
+        alertasCfg:    JSON.parse(localStorage.getItem('miPortafolio.alertasCfg.v1') || 'null'),
+        portfolios:    JSON.parse(localStorage.getItem('miPortafolio.portfolios.v2') || 'null'),
+        alertasAvanzadas: JSON.parse(localStorage.getItem('miPortafolio.alertasAvanzadas.v1') || '[]'),
+        fecha:         new Date().toISOString(),
+      };
+      try {
+        const res = await fetch('/api/backups', {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({email, snapshot, nombre, automatico:false})});
+        const d = await res.json();
+        if (d.ok) {
+          window.toast && window.toast(`Backup creado`, 'success');
+          document.getElementById('bk-inline-nombre').value = '';
+          recargar();
+        }
+      } catch (e) { window.toast && window.toast(`Error: ${e.message}`, 'error'); }
+    }
+    async function restaurar(id, email) {
+      if (!confirm('Esto sobreescribirá tu portafolio actual. ¿Continuar?')) return;
+      try {
+        const res = await fetch(`/api/backups/${id}?email=${encodeURIComponent(email)}`);
+        const d = await res.json();
+        if (!d.ok) return;
+        const s = d.snapshot || {};
+        if (s.tickers)        localStorage.setItem('miPortafolio.tickers.v1', JSON.stringify(s.tickers));
+        if (s.pesos)          localStorage.setItem('miPortafolio.pesos.v1', JSON.stringify(s.pesos));
+        if (s.transacciones)  localStorage.setItem('miPortafolio.transacciones.v1', JSON.stringify(s.transacciones));
+        if (s.alertasCfg)     localStorage.setItem('miPortafolio.alertasCfg.v1', JSON.stringify(s.alertasCfg));
+        if (s.portfolios)     localStorage.setItem('miPortafolio.portfolios.v2', JSON.stringify(s.portfolios));
+        if (s.alertasAvanzadas) localStorage.setItem('miPortafolio.alertasAvanzadas.v1', JSON.stringify(s.alertasAvanzadas));
+        window.toast && window.toast('Backup restaurado. Recargando…', 'success', 3000);
+        setTimeout(() => location.reload(), 1500);
+      } catch (e) { window.toast && window.toast(`Error: ${e.message}`, 'error'); }
+    }
+    async function eliminar(id, email) {
+      if (!confirm('¿Eliminar este backup?')) return;
+      try {
+        const res = await fetch(`/api/backups/${id}?email=${encodeURIComponent(email)}`, {method:'DELETE'});
+        if ((await res.json()).ok) recargar();
+      } catch (e) {}
+    }
+    btnCrear.addEventListener('click', crear);
+    recargar();
+  };
+
+  // Alertas avanzadas inline en la vista de alertas
+  window.iniciarAlertasAvanzadasInline = function() {
+    const cont = document.getElementById('aa-inline-cont');
+    const btnCrear = document.getElementById('aa-inline-crear');
+    if (!cont || !btnCrear || btnCrear.dataset.wired === '1') return;
+    btnCrear.dataset.wired = '1';
+
+    function render() {
+      const reglas = JSON.parse(localStorage.getItem('miPortafolio.alertasAvanzadas.v1') || '[]');
+      if (!reglas.length) {
+        cont.innerHTML = `<p class="text-xs text-zinc-500 py-3 text-center">Sin reglas custom. Crea una arriba.</p>`;
+        return;
+      }
+      cont.innerHTML = reglas.map((r, i) => {
+        const condStr = (r.condiciones || []).map(c => `${c.campo} ${c.operador} ${c.valor}`).join(` ${r.operador_logico || 'AND'} `);
+        return `<div class="flex items-center justify-between gap-2 p-2.5 bg-zinc-900/40 border border-surface-border rounded-lg mb-1.5">
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-zinc-100 truncate">${r.nombre || `Regla ${i+1}`}</p>
+            <p class="text-[10px] text-zinc-500 font-mono truncate">${condStr}</p>
+          </div>
+          <button data-idx="${i}" class="aa-del text-[10px] px-2 py-1 border border-surface-border text-accent-red rounded">✕</button>
+        </div>`;
+      }).join('');
+      cont.querySelectorAll('.aa-del').forEach(b => b.addEventListener('click', e => {
+        const i = +e.target.dataset.idx;
+        const r2 = JSON.parse(localStorage.getItem('miPortafolio.alertasAvanzadas.v1') || '[]');
+        r2.splice(i, 1);
+        localStorage.setItem('miPortafolio.alertasAvanzadas.v1', JSON.stringify(r2));
+        render();
+      }));
+    }
+
+    btnCrear.addEventListener('click', () => {
+      window.abrirAlertasAvanzadas();
+      // Después de que cierre el modal, refrescar la lista
+      const checkInterval = setInterval(() => {
+        if (!document.getElementById('mp-herramienta-modal')) {
+          clearInterval(checkInterval);
+          render();
+        }
+      }, 500);
+    });
+    render();
+  };
+
+  // Lógica de sub-tabs en vista Analizar
+  window.bindSubAnalizar = function() {
+    const tabs = document.querySelectorAll('.sub-analizar-btn');
+    const secAccion = document.querySelector('#vista-analizar > section');  // primera section (Una acción)
+    const secDeep = document.getElementById('sub-deep-dive');
+    const secScreen = document.getElementById('sub-screener');
+    if (!tabs.length) return;
+    function activar(sub) {
+      tabs.forEach(b => {
+        const activo = b.dataset.subAnalizar === sub;
+        b.classList.toggle('text-zinc-100', activo);
+        b.classList.toggle('bg-accent-orange/15', activo);
+        b.classList.toggle('ring-1', activo);
+        b.classList.toggle('ring-accent-orange/40', activo);
+        b.classList.toggle('text-zinc-500', !activo);
+      });
+      // Solo la primera section de vista-analizar (Una acción)
+      const allSections = document.querySelectorAll('#vista-analizar > section');
+      if (allSections[0]) allSections[0].classList.toggle('hidden', sub !== 'una-accion');
+      if (secDeep)   secDeep.classList.toggle('hidden', sub !== 'deep-dive');
+      if (secScreen) secScreen.classList.toggle('hidden', sub !== 'screener');
+      if (sub === 'deep-dive') window.iniciarDeepDiveInline();
+      if (sub === 'screener')  window.iniciarScreenerInline();
+    }
+    tabs.forEach(b => b.addEventListener('click', () => activar(b.dataset.subAnalizar)));
+  };
+
+  // Auto-bind al cargar
+  window.addEventListener('load', () => {
+    if (typeof window.bindSubAnalizar === 'function') window.bindSubAnalizar();
+    // Observer para detectar cuando se muestran las vistas
+    const observer = new MutationObserver(() => {
+      const transacciones = document.getElementById('vista-transacciones');
+      const portafolio = document.getElementById('vista-portafolio');
+      if (transacciones && !transacciones.classList.contains('hidden')) {
+        window.iniciarOptimizadorInline && window.iniciarOptimizadorInline();
+      }
+      if (portafolio && !portafolio.classList.contains('hidden')) {
+        window.iniciarBackupsInline && window.iniciarBackupsInline();
+        window.iniciarAlertasAvanzadasInline && window.iniciarAlertasAvanzadasInline();
+      }
+    });
+    ['vista-transacciones', 'vista-portafolio'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el, { attributes: true, attributeFilter: ['class'] });
+    });
+  });
+
 })();

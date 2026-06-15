@@ -107,16 +107,30 @@ def top_movers(periodo: str = "dia", n: int = 3) -> Dict[str, Any]:
     ganadores = [_enriquecer(t, r) for t, r in retornos.head(n).items()]
     # Top N perdedores (más cayeron)
     perdedores = [_enriquecer(t, r) for t, r in retornos.tail(n).iloc[::-1].items()]
-    # Top N "populares" — proxy: las acciones con mayor market cap del universo
-    populares = []
-    populares_candidatos = [
-        (t, info_all.get(t, {}).get("market_cap") or info_all.get(t, {}).get("marketCap") or 0)
-        for t in df.columns if t in info_all
-    ]
-    populares_candidatos.sort(key=lambda x: x[1], reverse=True)
-    for t, _ in populares_candidatos[:n]:
+    # Top N "más activos" — proxy de transacciones = volumen promedio × precio
+    # (valor transado diariamente). Fallback: market_cap si no hay volumen.
+    activos = []
+    activos_candidatos = []
+    for t in df.columns:
+        info_t = info_all.get(t, {})
+        vol = (info_t.get("averageVolume") or
+               info_t.get("average_volume") or
+               info_t.get("volumen_promedio") or 0)
+        precio_t = df[t].iloc[-1] if t in df.columns and not df[t].empty else None
+        valor_transado = 0
+        if vol and precio_t and not pd.isna(precio_t):
+            valor_transado = float(vol) * float(precio_t)
+        else:
+            # Fallback: market cap como proxy de "popularidad"
+            valor_transado = (info_t.get("market_cap") or
+                              info_t.get("marketCap") or 0)
+        activos_candidatos.append((t, valor_transado))
+    activos_candidatos.sort(key=lambda x: x[1], reverse=True)
+    for t, vt in activos_candidatos[:n]:
         if t in retornos.index:
-            populares.append(_enriquecer(t, retornos[t]))
+            item = _enriquecer(t, retornos[t])
+            item["valor_transado"] = round(vt, 0)
+            activos.append(item)
 
     data = {
         "ok":         True,
@@ -124,7 +138,8 @@ def top_movers(periodo: str = "dia", n: int = 3) -> Dict[str, Any]:
         "dias":       dias,
         "ganadores":  ganadores,
         "perdedores": perdedores,
-        "populares":  populares,
+        "populares":  activos,   # alias backward-compat
+        "activos":    activos,
         "fecha":      df.index[-1].strftime("%Y-%m-%d") if len(df) else None,
         "universo_size": len(df.columns),
     }
