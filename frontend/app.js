@@ -3489,7 +3489,7 @@ const Impuestos = (() => {
     if (!cont) return;
     const avisos = data.avisos || [];
     if (!avisos.length) {
-      cont.innerHTML = '<li>Esta es una estimación educativa, no asesoría fiscal.</li>';
+      cont.innerHTML = '<li>Sin avisos fiscales relevantes para este ejercicio.</li>';
       return;
     }
     cont.innerHTML = avisos.map(a => `<li>${escapeHtml(a)}</li>`).join('');
@@ -7544,7 +7544,7 @@ const Analizador = (() => {
             </div>
           `).join('')}
         </div>
-        <p class="text-[10px] text-zinc-600 mt-4 italic">El score 1-100 es determinístico (basado en métricas cuantitativas). Las narrativas son orientativas — no constituyen asesoría de inversión.</p>
+        <p class="text-[10px] text-zinc-600 mt-4 italic">El score 1-100 es determinístico (basado en métricas cuantitativas).</p>
       </div>
     `;
 
@@ -7668,7 +7668,7 @@ const Analizador = (() => {
         </div>
 
         <p class="text-[10px] text-zinc-600 mt-5 italic" style="font-family: 'Inter', sans-serif;">
-          Datos de Yahoo Finance · presentación tipo 10-K resumido · no constituye asesoría
+          Datos de Yahoo Finance · presentación tipo 10-K resumido
         </p>
       </section>
     `;

@@ -303,7 +303,7 @@
           class="inline-flex items-center justify-center w-5 h-5 rounded-full border border-zinc-700 text-zinc-500 hover:text-accent-green hover:border-accent-green/40 transition text-[10px] font-semibold">?</button>
         <div class="flex items-center gap-1.5">
           <span class="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
-          <span>Análisis · no constituye asesoría</span>
+          <span>Datos: Yahoo Finance</span>
         </div>
       </div>
     </div>
@@ -414,7 +414,7 @@
             <h3 class="text-sm font-semibold text-zinc-200 mt-0.5">10 mezclas pre-armadas</h3>
             <p class="text-[11px] text-zinc-600 mt-0.5 leading-snug max-w-lg">Si prefieres arrancar rápido, clic en el perfil más parecido a cómo quieres invertir. Lo puedes editar después.</p>
           </div>
-          <span class="text-[11px] text-zinc-500">Ilustrativos, no asesoría.</span>
+          <span class="text-[11px] text-zinc-500">Pre-armados</span>
         </div>
         <div id="perfiles-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           <div class="col-span-full text-xs text-zinc-500 py-6 text-center">Cargando perfiles…</div>
@@ -596,9 +596,6 @@
       Puntos clave detectados automáticamente sobre tu portafolio — concentración, riesgo, diversificación. Sirve para entender de un vistazo dónde están las oportunidades y las zonas de cuidado.
     </p>
     <div id="insights-grid" class="grid md:grid-cols-2 gap-3 fade-up fade-up-2"></div>
-    <p class="text-[11px] text-zinc-600 mt-3 leading-relaxed">
-      Observaciones históricas basadas en tus datos. No constituyen asesoría de inversión.
-    </p>
   </section>
 
   <!-- ============================================================ -->
@@ -1544,7 +1541,7 @@
       </section>
 
       <p class="mt-6 text-[10px] text-zinc-600 leading-relaxed">
-        Información educativa. Los precios y yields vienen de Yahoo Finance; las tasas CETES se obtienen de Banxico SIE cuando hay token configurado (variable <span class="text-zinc-300">BANXICO_SIE_TOKEN</span>).
+        Los precios y yields vienen de Yahoo Finance; las tasas CETES se obtienen de Banxico SIE cuando hay token configurado (variable <span class="text-zinc-300">BANXICO_SIE_TOKEN</span>).
       </p>
     </section>
 
@@ -1740,7 +1737,7 @@
           <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mt-2">El mercado hoy</h2>
           <p class="text-sm text-zinc-400 mt-3 max-w-2xl leading-relaxed">
             Cierres diarios de los índices principales, noticias top del mercado y titulares
-            relevantes para las acciones que tienes en tu portafolio. Información agregada, no asesoría.
+            relevantes para las acciones que tienes en tu portafolio.
           </p>
         </div>
         <button id="periodico-refrescar"
@@ -2026,11 +2023,6 @@
           <!-- Sugerencia de frecuencia + impuestos -->
           <div id="reb-notas" class="mt-4 space-y-2"></div>
 
-          <!-- Disclaimer legal -->
-          <p class="text-[10px] text-zinc-600 mt-4 leading-relaxed border-t border-surface-border pt-3">
-            Esta herramienta es un cálculo matemático, no asesoría. No considera costos de comisión, spread,
-            liquidez ni tu situación fiscal individual. Ejecutar los trades es decisión tuya y responsabilidad de tu broker.
-          </p>
         </div>
       </section>
 
@@ -2086,7 +2078,7 @@
               Comprar acciones
             </h3>
             <p class="text-[11px] text-zinc-500 mt-1 leading-relaxed max-w-2xl">
-              Mi Portafolio no ejecuta trades (no somos casa de bolsa CNBV). Te orientamos al broker más barato para cada ticker y te abrimos la URL directa — tú ejecutas la compra en tu broker.
+              Te orientamos al broker más barato para cada ticker y te abrimos la URL directa — tú ejecutas la compra en tu broker.
             </p>
           </div>
         </div>
@@ -2403,12 +2395,8 @@
               <div class="flex-1">
                 <h4 class="text-sm font-semibold text-accent-amber mb-2">Lo que debes saber</h4>
                 <ul id="imp-avisos" class="space-y-1.5 text-xs text-zinc-400 leading-relaxed list-disc list-inside">
-                  <li>Esta es una estimación educativa, no asesoría fiscal.</li>
+                  <li>Para tu declaración anual oficial, consulta a un contador público certificado.</li>
                 </ul>
-                <p class="text-[11px] text-zinc-600 mt-3 leading-relaxed">
-                  Para tu declaración anual, consulta a un <span class="text-zinc-400">contador público</span>.
-                  Nosotros te damos el orden y los números; el trámite formal lo hace un profesional.
-                </p>
               </div>
             </div>
           </div>
@@ -3012,11 +3000,6 @@ python3 backend/app.py</pre>
         <span id="asi-ctx-tickers">—</span>
       </div>
 
-      <!-- Disclaimer -->
-      <p class="mt-4 text-[10px] text-zinc-600 leading-relaxed">
-        El asistente no da recomendaciones de compra/venta. La información es educativa y no constituye asesoría de inversión.
-      </p>
-
     </div>
   </main><!-- /vista-asistente -->
 
@@ -3067,13 +3050,6 @@ python3 backend/app.py</pre>
         <button onclick="window.abrirGlosario && window.abrirGlosario()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Glosario</button>
         <button onclick="window.abrirCursosIndex && window.abrirCursosIndex()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Mini-cursos</button>
         <a href="/blog" class="text-zinc-400 hover:text-zinc-200 transition">Blog</a>
-        <span class="text-zinc-700">·</span>
-        <button onclick="window.abrirDeepDive && window.abrirDeepDive()" class="text-blue-400 hover:text-blue-300 transition cursor-pointer font-medium" title="Análisis profundo automático de una empresa (especial BMV)">🔍 Deep Dive</button>
-        <button onclick="window.abrirOptimizadorFiscal && window.abrirOptimizadorFiscal()" class="text-purple-400 hover:text-purple-300 transition cursor-pointer font-medium" title="¿Qué vender para minimizar ISR mexicano?">⚖ Optimizador fiscal</button>
-        <button onclick="window.abrirScreener && window.abrirScreener()" class="text-orange-400 hover:text-orange-300 transition cursor-pointer font-medium" title="Filtra tickers por P/E, yield, beta, etc.">🔎 Screener</button>
-        <button onclick="window.abrirAlertasAvanzadas && window.abrirAlertasAvanzadas()" class="text-accent-green hover:text-emerald-300 transition cursor-pointer font-medium" title="Reglas custom multi-condición">⚡ Alertas avanzadas</button>
-        <button onclick="window.abrirBackupsNube && window.abrirBackupsNube()" class="text-cyan-400 hover:text-cyan-300 transition cursor-pointer font-medium" title="Guarda y restaura snapshots de tu portafolio en la nube">☁ Backups</button>
-        <button onclick="window.abrirConfigPush && window.abrirConfigPush()" class="text-emerald-400 hover:text-emerald-300 transition cursor-pointer font-medium" title="Recibe alertas instantáneas en tu dispositivo">🔔 Push</button>
         <a href="mailto:soporte@miportafolio.app" class="text-zinc-400 hover:text-zinc-200 transition">Soporte</a>
       </div>
       <div class="text-zinc-600 leading-relaxed max-w-md text-right">
