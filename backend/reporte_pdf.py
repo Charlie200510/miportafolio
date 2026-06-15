@@ -446,9 +446,9 @@ def generar_reporte(
     story: List[Any] = []
 
     # ========================================================
-    #  PÁGINA 1 — PORTADA
+    #  PORTADA COMPACTA — todo en la primera página
     # ========================================================
-    story.append(Spacer(1, 4 * cm))
+    story.append(Spacer(1, 1.5 * cm))
 
     # Brand mark
     brand_table = Table([[
@@ -458,33 +458,32 @@ def generar_reporte(
     brand_table.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
     story.append(brand_table)
 
-    story.append(Spacer(1, 5 * cm))
+    story.append(Spacer(1, 2 * cm))
 
-    # Título principal de portada
+    # Título principal
     story.append(Paragraph(
-        "<font size=11 color='#6b7280' face='Helvetica-Bold'>REPORTE DEL PORTAFOLIO</font>",
+        "<font size=10 color='#6b7280' face='Helvetica-Bold'>REPORTE DEL PORTAFOLIO</font>",
         styles["eyebrow"],
     ))
     story.append(Spacer(1, 2 * mm))
-    story.append(Paragraph(f"{mes_nombre}<br/>{anio_n}", styles["title_cover"]))
-    story.append(Spacer(1, 1 * cm))
+    story.append(Paragraph(f"{mes_nombre} {anio_n}", styles["title_cover"]))
+    story.append(Spacer(1, 4 * mm))
 
     # Línea decorativa
-    linea = Table([[""]], colWidths=[8 * cm], rowHeights=[2])
+    linea = Table([[""]], colWidths=[6 * cm], rowHeights=[2])
     linea.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 2, BRAND)]))
     story.append(linea)
-    story.append(Spacer(1, 1 * cm))
+    story.append(Spacer(1, 6 * mm))
 
     # Para usuario
     story.append(Paragraph(
-        f"<font size=12 color='#1f2937'>Preparado para</font><br/>"
-        f"<font size=16 color='#0a0a0b'><b>{nombre_usuario}</b></font>",
+        f"<font size=11 color='#1f2937'>Preparado para</font> "
+        f"<font size=13 color='#0a0a0b'><b>{nombre_usuario}</b></font>",
         styles["body"],
     ))
+    story.append(Spacer(1, 8 * mm))
 
-    story.append(Spacer(1, 1 * cm))
-
-    # KPI principales en portada
+    # KPIs principales en portada
     totales = datos.get("totales") or {}
     valor_actual = totales.get("valor_actual")
     pnl_pct = totales.get("pnl_pct")
@@ -498,19 +497,19 @@ def generar_reporte(
     ]
     story.append(_kpi_row(portada_kpis, n_cols=3))
 
-    story.append(Spacer(1, 4 * cm))
+    # Footer de portada
+    story.append(Spacer(1, 1 * cm))
     story.append(Paragraph(
-        f"<font size=9 color='#6b7280'>Generado automáticamente el {now.strftime('%d de %B de %Y a las %H:%M')}</font>",
+        f"<font size=9 color='#6b7280'>Generado el {now.strftime('%d de %B de %Y a las %H:%M')}</font>",
         styles["muted"],
     ))
 
-    story.append(PageBreak())
-
     # ========================================================
-    #  PÁGINA 2 — ÍNDICE
+    #  ÍNDICE COMPACTO (en la misma página de portada)
     # ========================================================
-    story.append(Paragraph("Índice", styles["h1"]))
-    story.append(Spacer(1, 1 * cm))
+    story.append(Spacer(1, 1.2 * cm))
+    story.append(Paragraph("<font size=9 color='#6b7280' face='Helvetica-Bold'>EN ESTE REPORTE</font>", styles["eyebrow"]))
+    story.append(Spacer(1, 3 * mm))
 
     secciones_disponibles = []
     if datos.get("totales") or datos.get("portafolio_metrics"):
@@ -525,7 +524,7 @@ def generar_reporte(
         secciones_disponibles.append("Fundamentales del portafolio")
     if datos.get("movimientos_mes"):
         secciones_disponibles.append(f"Movimientos de {mes_nombre}")
-    if datos.get("dividendos"):
+    if datos.get("dividendos") and (datos["dividendos"].get("ingreso_anual_estimado") or 0) > 0:
         secciones_disponibles.append("Ingreso pasivo proyectado")
     if datos.get("fiscal"):
         secciones_disponibles.append("Análisis fiscal mexicano")
@@ -534,25 +533,30 @@ def generar_reporte(
     if datos.get("insights"):
         secciones_disponibles.append("Observaciones del periodo")
 
+    # Lista compacta inline en 2 columnas
+    half = (len(secciones_disponibles) + 1) // 2
+    col_a = secciones_disponibles[:half]
+    col_b = secciones_disponibles[half:]
+    while len(col_b) < len(col_a):
+        col_b.append("")
     indice_rows = []
-    for i, sec in enumerate(secciones_disponibles, start=1):
-        indice_rows.append([
-            Paragraph(f"<font size=10 color='#6b7280'><b>{i:02d}</b></font>", styles["body"]),
-            Paragraph(f"<font size=11 color='#0a0a0b'>{sec}</font>", styles["body"]),
-        ])
-    indice_table = Table(indice_rows, colWidths=[1.5 * cm, 14 * cm])
-    indice_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LINEBELOW", (0, 0), (-1, -1), 0.4, BORDER),
-        ("TOPPADDING", (0, 0), (-1, -1), 12),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
-    ]))
-    story.append(indice_table)
+    for i, (a, b) in enumerate(zip(col_a, col_b)):
+        idx_a = f"<font size=9 color='#22c55e'><b>{i+1:02d}.</b></font> <font size=10>{a}</font>" if a else ""
+        idx_b = f"<font size=9 color='#22c55e'><b>{i+1+half:02d}.</b></font> <font size=10>{b}</font>" if b else ""
+        indice_rows.append([Paragraph(idx_a, styles["body"]), Paragraph(idx_b, styles["body"])])
+    if indice_rows:
+        indice_table = Table(indice_rows, colWidths=[8.5 * cm, 8.5 * cm])
+        indice_table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story.append(indice_table)
 
     story.append(PageBreak())
 
     # ========================================================
-    #  PÁGINA 3 — RESUMEN EJECUTIVO
+    #  RESUMEN EJECUTIVO
     # ========================================================
     story.append(Paragraph("01 · Resumen ejecutivo", styles["h1"]))
     story.append(Spacer(1, 4 * mm))
@@ -594,38 +598,39 @@ def generar_reporte(
     story.append(Paragraph(narrativa, styles["body"]))
 
     # ========================================================
-    #  COMPORTAMIENTO ESTADÍSTICO
+    #  COMPORTAMIENTO ESTADÍSTICO (comparte página con resumen)
     # ========================================================
     comp = datos.get("comportamiento")
     if comp:
-        story.append(PageBreak())
-        story.append(Paragraph("02 · Comportamiento estadístico", styles["h1"]))
-        story.append(Paragraph(
-            "Métricas de riesgo y rendimiento que aplican a cualquier tipo de activo "
-            "(acciones, ETFs, crypto). Útil para comparar el portafolio contra benchmarks.",
-            styles["muted"],
-        ))
-        story.append(Spacer(1, 5 * mm))
-        comp_kpis = [
-            {"label": "Volatilidad anual", "value": _fmt_pct_frac(comp.get("volatilidad_anual"), 1)},
-            {"label": "Sharpe", "value": f"{comp.get('sharpe_ratio'):.2f}" if comp.get("sharpe_ratio") is not None else "—"},
-            {"label": "Sortino", "value": f"{comp.get('sortino_ratio'):.2f}" if comp.get("sortino_ratio") is not None else "—"},
-            {"label": "Max DD 1Y", "value": _fmt_pct_frac(comp.get("max_drawdown"), 1), "color": "red"},
-            {"label": "Correlación S&P 500", "value": f"{comp.get('correlacion_sp500'):.2f}" if comp.get("correlacion_sp500") is not None else "—"},
-            {"label": "Retorno 1M", "value": _fmt_pct_frac(comp.get("retorno_1m"), 2),
-             "color": "green" if (comp.get("retorno_1m") or 0) >= 0 else "red"},
-            {"label": "Retorno YTD", "value": _fmt_pct_frac(comp.get("retorno_ytd"), 2),
-             "color": "green" if (comp.get("retorno_ytd") or 0) >= 0 else "red"},
-            {"label": "Retorno 1Y", "value": _fmt_pct_frac(comp.get("retorno_1y"), 2),
-             "color": "green" if (comp.get("retorno_1y") or 0) >= 0 else "red"},
-        ]
-        story.append(_kpi_row(comp_kpis, n_cols=4))
+        # Solo agregar si hay al menos un valor no-null
+        if any(v is not None for v in comp.values()):
+            story.append(Spacer(1, 8 * mm))
+            story.append(Paragraph("02 · Comportamiento estadístico", styles["h2"]))
+            story.append(Paragraph(
+                "Métricas de riesgo y rendimiento que aplican a cualquier tipo de activo.",
+                styles["muted"],
+            ))
+            story.append(Spacer(1, 3 * mm))
+            comp_kpis = [
+                {"label": "Volatilidad anual", "value": _fmt_pct_frac(comp.get("volatilidad_anual"), 1)},
+                {"label": "Sharpe", "value": f"{comp.get('sharpe_ratio'):.2f}" if comp.get("sharpe_ratio") is not None else "—"},
+                {"label": "Sortino", "value": f"{comp.get('sortino_ratio'):.2f}" if comp.get("sortino_ratio") is not None else "—"},
+                {"label": "Max DD 1Y", "value": _fmt_pct_frac(comp.get("max_drawdown"), 1), "color": "red"},
+                {"label": "Correlación S&P 500", "value": f"{comp.get('correlacion_sp500'):.2f}" if comp.get("correlacion_sp500") is not None else "—"},
+                {"label": "Retorno 1M", "value": _fmt_pct_frac(comp.get("retorno_1m"), 2),
+                 "color": "green" if (comp.get("retorno_1m") or 0) >= 0 else "red"},
+                {"label": "Retorno YTD", "value": _fmt_pct_frac(comp.get("retorno_ytd"), 2),
+                 "color": "green" if (comp.get("retorno_ytd") or 0) >= 0 else "red"},
+                {"label": "Retorno 1Y", "value": _fmt_pct_frac(comp.get("retorno_1y"), 2),
+                 "color": "green" if (comp.get("retorno_1y") or 0) >= 0 else "red"},
+            ]
+            story.append(_kpi_row(comp_kpis, n_cols=4))
 
     # ========================================================
-    #  CONCENTRACIÓN
+    #  CONCENTRACIÓN (nueva página solo si hay datos suficientes)
     # ========================================================
     conc = datos.get("concentracion")
-    if conc:
+    if conc and (conc.get("por_sector") or conc.get("por_pais") or conc.get("por_moneda")):
         story.append(PageBreak())
         story.append(Paragraph("03 · Análisis de concentración", styles["h1"]))
         story.append(Paragraph(
@@ -634,42 +639,47 @@ def generar_reporte(
             styles["muted"],
         ))
         if conc.get("por_sector"):
-            story.append(Paragraph("Por sector", styles["h2"]))
+            story.append(Paragraph("Por sector", styles["h3"]))
             story.append(_tabla_distribucion("Sector", conc["por_sector"]))
         if conc.get("por_pais"):
-            story.append(Paragraph("Por país", styles["h2"]))
+            story.append(Paragraph("Por país", styles["h3"]))
             story.append(_tabla_distribucion("País", conc["por_pais"]))
         if conc.get("por_moneda"):
-            story.append(Paragraph("Por moneda", styles["h2"]))
+            story.append(Paragraph("Por moneda", styles["h3"]))
             story.append(_tabla_distribucion("Moneda", conc["por_moneda"]))
 
     # ========================================================
-    #  POSICIONES
+    #  POSICIONES + FUNDAMENTALES (juntos cuando posiciones es chica)
     # ========================================================
     posiciones = datos.get("posiciones") or []
+    fund = datos.get("fundamentales")
+
     if posiciones:
-        story.append(PageBreak())
+        # Page break solo si concentración ocupó espacio
+        if conc:
+            story.append(PageBreak())
+        else:
+            story.append(Spacer(1, 8 * mm))
         story.append(Paragraph(f"04 · Posiciones al cierre", styles["h1"]))
         story.append(Paragraph(
             f"{len(posiciones)} posiciones activas en el portafolio.",
             styles["muted"],
         ))
-        story.append(Spacer(1, 4 * mm))
+        story.append(Spacer(1, 3 * mm))
         story.append(_tabla_posiciones(posiciones))
 
-    # ========================================================
-    #  FUNDAMENTALES
-    # ========================================================
-    fund = datos.get("fundamentales")
-    if fund:
-        story.append(PageBreak())
-        story.append(Paragraph("05 · Fundamentales del portafolio", styles["h1"]))
+    if fund and any(v is not None for v in fund.values() if not isinstance(v, dict)):
+        # Si posiciones es chica (<8), poner fundamentales en la misma página
+        if len(posiciones) >= 10:
+            story.append(PageBreak())
+        else:
+            story.append(Spacer(1, 8 * mm))
+        story.append(Paragraph("05 · Fundamentales del portafolio", styles["h2" if posiciones else "h1"]))
         story.append(Paragraph(
-            "Promedios ponderados de las métricas fundamentales de tus posiciones. "
-            "Útil para entender la calidad y valuación de tu portafolio agregado.",
+            "Promedios de las métricas fundamentales de tus posiciones.",
             styles["muted"],
         ))
-        story.append(Spacer(1, 4 * mm))
+        story.append(Spacer(1, 3 * mm))
         fund_kpis = [
             {"label": "P/E promedio", "value": f"{fund.get('pe_promedio'):.1f}" if fund.get("pe_promedio") is not None else "—"},
             {"label": "P/B promedio", "value": f"{fund.get('pb_promedio'):.2f}" if fund.get("pb_promedio") is not None else "—"},
@@ -677,43 +687,35 @@ def generar_reporte(
             {"label": "Dividend yield", "value": _fmt_pct_frac(fund.get("yield_promedio"), 2), "color": "green"},
             {"label": "Beta promedio", "value": f"{fund.get('beta_promedio'):.2f}" if fund.get("beta_promedio") is not None else "—"},
             {"label": "ROE promedio", "value": _fmt_pct_frac(fund.get("roe_promedio"), 1)},
-            {"label": "Margen neto promedio", "value": _fmt_pct_frac(fund.get("margen_neto_promedio"), 1)},
-            {"label": "Debt/Equity promedio", "value": f"{fund.get('debt_equity_promedio'):.2f}" if fund.get("debt_equity_promedio") is not None else "—"},
+            {"label": "Margen neto", "value": _fmt_pct_frac(fund.get("margen_neto_promedio"), 1)},
+            {"label": "Debt/Equity", "value": f"{fund.get('debt_equity_promedio'):.2f}" if fund.get("debt_equity_promedio") is not None else "—"},
         ]
         story.append(_kpi_row(fund_kpis, n_cols=4))
 
     # ========================================================
-    #  MOVIMIENTOS DEL PERIODO
+    #  MOVIMIENTOS — solo si hay movimientos
     # ========================================================
     movs = datos.get("movimientos_mes") or []
-    story.append(PageBreak())
-    story.append(Paragraph(f"06 · Movimientos de {mes_nombre}", styles["h1"]))
     if movs:
+        story.append(Spacer(1, 8 * mm))
+        story.append(Paragraph(f"06 · Movimientos de {mes_nombre}", styles["h2"]))
         story.append(Paragraph(
             f"{len(movs)} transacciones registradas este mes.",
             styles["muted"],
         ))
-        story.append(Spacer(1, 4 * mm))
+        story.append(Spacer(1, 3 * mm))
         story.append(_tabla_movimientos(movs))
-    else:
-        story.append(Paragraph(
-            "No hubo compras ni ventas registradas durante este mes.",
-            styles["body"],
-        ))
 
     # ========================================================
     #  DIVIDENDOS
     # ========================================================
     div = datos.get("dividendos")
     if div and (div.get("ingreso_anual_estimado") or 0) > 0:
-        story.append(PageBreak())
-        story.append(Paragraph("07 · Ingreso pasivo proyectado", styles["h1"]))
         story.append(Paragraph(
-            "Dividendos esperados con base en los pagos históricos de cada emisora. "
-            "Aproximación — pueden cambiar según la política de cada empresa.",
+            "Dividendos esperados con base en los pagos históricos. Aproximación.",
             styles["muted"],
         ))
-        story.append(Spacer(1, 4 * mm))
+        story.append(Spacer(1, 3 * mm))
         div_kpis = [
             {"label": "Dividendos 12 meses", "value": _fmt_money(div.get("ingreso_anual_estimado")),
              "sub": f"~{_fmt_money(div.get('ingreso_mensual_promedio'))}/mes", "color": "green"},
@@ -731,15 +733,14 @@ def generar_reporte(
     # ========================================================
     fiscal = datos.get("fiscal")
     if fiscal:
-        story.append(PageBreak())
-        story.append(Paragraph("08 · Análisis fiscal mexicano", styles["h1"]))
+        story.append(Spacer(1, 8 * mm))
+        story.append(Paragraph("08 · Análisis fiscal mexicano", styles["h2"]))
         ano_fiscal = fiscal.get("ano") or anio_n
         story.append(Paragraph(
-            f"Cálculo de ISR sobre ganancias de capital del ejercicio {ano_fiscal} "
-            "(Art. 129 LISR — 10% sobre utilidades netas realizadas).",
+            f"ISR ejercicio {ano_fiscal} (Art. 129 LISR — 10% sobre utilidades realizadas).",
             styles["muted"],
         ))
-        story.append(Spacer(1, 4 * mm))
+        story.append(Spacer(1, 3 * mm))
         ganancia_realizada = fiscal.get("ganancia_realizada_ano")
         isr_proyectado = fiscal.get("isr_proyectado")
         perdidas_disp = fiscal.get("perdidas_disponibles", 0)
@@ -789,13 +790,13 @@ def generar_reporte(
     # ========================================================
     bench = datos.get("benchmarks")
     if bench:
-        story.append(PageBreak())
-        story.append(Paragraph("09 · Comparativa vs benchmarks", styles["h1"]))
+        story.append(Spacer(1, 8 * mm))
+        story.append(Paragraph("09 · Comparativa vs benchmarks", styles["h2"]))
         story.append(Paragraph(
-            "Cómo se compara tu portafolio contra los principales índices de referencia.",
+            "Tu portafolio vs los índices de referencia.",
             styles["muted"],
         ))
-        story.append(Spacer(1, 4 * mm))
+        story.append(Spacer(1, 3 * mm))
         story.append(_tabla_comparativa(bench))
 
     # ========================================================
@@ -803,53 +804,36 @@ def generar_reporte(
     # ========================================================
     insights = datos.get("insights") or []
     if insights:
-        story.append(PageBreak())
-        story.append(Paragraph("10 · Observaciones del periodo", styles["h1"]))
+        story.append(Spacer(1, 8 * mm))
+        story.append(Paragraph("10 · Observaciones del periodo", styles["h2"]))
         story.append(Paragraph(
             "Hallazgos automáticos detectados al analizar tu portafolio.",
             styles["muted"],
         ))
-        story.append(Spacer(1, 4 * mm))
+        story.append(Spacer(1, 3 * mm))
         for i in insights[:12]:
             story.append(Paragraph(f"<font color='#22c55e'>●</font> {i}", styles["body"]))
-            story.append(Spacer(1, 2 * mm))
 
     # ========================================================
-    #  DISCLAIMER FINAL
+    #  DISCLAIMER FINAL (compacto al fondo, sin nueva página)
     # ========================================================
-    story.append(PageBreak())
-    story.append(Paragraph("Aviso legal", styles["h1"]))
+    story.append(Spacer(1, 8 * mm))
+    linea_final = Table([[""]], colWidths=[17 * cm], rowHeights=[0.5])
+    linea_final.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.4, BORDER)]))
+    story.append(linea_final)
+    story.append(Spacer(1, 3 * mm))
+    story.append(Paragraph(
+        "<b>Aviso legal.</b> Reporte generado automáticamente con datos de Yahoo Finance. "
+        "Mi Portafolio NO es asesor financiero registrado ante CNBV — toda la información "
+        "es educativa e ilustrativa. Los cálculos fiscales son aproximaciones; para tu "
+        "declaración consulta un contador. El rendimiento histórico no garantiza rendimientos "
+        "futuros. Las decisiones de inversión son responsabilidad del usuario.",
+        styles["muted"],
+    ))
     story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(
-        "Este reporte se generó automáticamente a partir de los datos de tu portafolio "
-        "(tickers y transacciones que registraste) combinados con precios de mercado "
-        "obtenidos de Yahoo Finance.",
-        styles["body"],
-    ))
-    story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph(
-        "<b>Mi Portafolio NO es asesor financiero registrado ante la CNBV.</b> Toda la información "
-        "presentada es educativa e ilustrativa. Las métricas, observaciones y oportunidades "
-        "señaladas no constituyen recomendación específica de compra o venta de valores.",
-        styles["body"],
-    ))
-    story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph(
-        "Los cálculos fiscales son aproximaciones basadas en la Ley del ISR vigente y las "
-        "transacciones que registraste. Para tu declaración anual oficial consulta a un "
-        "contador público certificado.",
-        styles["body"],
-    ))
-    story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph(
-        "El rendimiento histórico no garantiza rendimientos futuros. Las decisiones de "
-        "inversión son responsabilidad exclusiva del usuario.",
-        styles["body"],
-    ))
-    story.append(Spacer(1, 1 * cm))
-    story.append(Paragraph(
-        "<font size=8 color='#6b7280'>Mi Portafolio · miportafolio.uk · "
-        f"Reporte generado el {now.strftime('%d/%m/%Y %H:%M')}</font>",
+        f"<font size=8 color='#6b7280'>Mi Portafolio · miportafolio.uk · "
+        f"Generado {now.strftime('%d/%m/%Y %H:%M')}</font>",
         styles["tiny"],
     ))
 

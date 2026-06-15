@@ -7813,6 +7813,109 @@ function bindExportarPdf() {
         anio:           now.getFullYear(),
         nombre_usuario: 'Charlie',
       };
+
+      // Enriquecer body con datos extras (concentración, fundamentales,
+      // comportamiento estadístico) en paralelo para que el PDF salga
+      // completo. Si alguno falla, simplemente se omite esa sección.
+      btn.innerHTML = 'Recolectando datos…';
+      try {
+        const [resultsRes, fundRes] = await Promise.all([
+          fetch('/api/resultados').then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/fundamentals/portafolio', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({tickers}),
+          }).then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+
+        // Concentración + benchmark + insights (vienen de /api/resultados)
+        if (resultsRes) {
+          if (resultsRes.concentracion) {
+            body.concentracion = {
+              por_sector: resultsRes.concentracion.por_sector,
+              por_pais:   resultsRes.concentracion.por_pais,
+              por_moneda: resultsRes.concentracion.por_moneda,
+            };
+          }
+          if (resultsRes.insights && Array.isArray(resultsRes.insights)) {
+            body.insights = resultsRes.insights
+              .map(i => typeof i === 'string' ? i : (i.mensaje || i.titulo || ''))
+              .filter(Boolean).slice(0, 10);
+          }
+          // Comportamiento estadístico desde portafolio.metricas
+          const pm = resultsRes.portafolio || {};
+          body.comportamiento = {
+            volatilidad_anual:   pm.volatilidad_anual_pct ? pm.volatilidad_anual_pct / 100 : null,
+            sharpe_ratio:        pm.sharpe_ratio,
+            sortino_ratio:       pm.sortino_ratio,
+            max_drawdown:        pm.max_drawdown_pct ? pm.max_drawdown_pct / 100 : null,
+            correlacion_sp500:   pm.correlacion_sp500,
+            retorno_1m:          pm.retorno_1m,
+            retorno_3m:          pm.retorno_3m,
+            retorno_1y:          pm.rendimiento_anualizado_pct ? pm.rendimiento_anualizado_pct / 100 : null,
+            retorno_ytd:         pm.retorno_ytd,
+          };
+          // Benchmarks vs los principales
+          if (resultsRes.benchmark) {
+            body.benchmarks = [
+              {
+                nombre: pm.nombre_propio || 'Tu portafolio',
+                retorno_pct: pm.rendimiento_anualizado_pct,
+                volatilidad_pct: pm.volatilidad_anual_pct,
+                sharpe: pm.sharpe_ratio,
+                max_dd_pct: pm.max_drawdown_pct,
+              },
+              {
+                nombre: resultsRes.benchmark.nombre || 'Benchmark',
+                retorno_pct: resultsRes.benchmark.retorno_anualizado_pct,
+                volatilidad_pct: resultsRes.benchmark.volatilidad_anual_pct,
+                sharpe: resultsRes.benchmark.sharpe_ratio,
+                max_dd_pct: resultsRes.benchmark.max_drawdown_pct,
+              },
+            ].filter(b => b.retorno_pct !== undefined);
+          }
+        }
+
+        // Fundamentales
+        if (fundRes && fundRes.resumen) {
+          body.fundamentales = fundRes.resumen;
+        }
+
+        // Fiscal MX (calculado en cliente con transacciones)
+        if (txs.length) {
+          const ano = now.getFullYear();
+          let ganancia_realizada = 0;
+          const positions = {};
+          txs.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+          for (const t of txs) {
+            const ticker = (t.ticker||'').toUpperCase();
+            const sh = parseFloat(t.shares)||0, pr = parseFloat(t.precio)||0;
+            if (!ticker || sh<=0 || pr<=0) continue;
+            const tipo = (t.tipo||'compra').toLowerCase();
+            if (!positions[ticker]) positions[ticker] = {sh:0, costo:0};
+            if (tipo.startsWith('c')) {
+              positions[ticker].sh += sh;
+              positions[ticker].costo += sh*pr;
+            } else if (tipo.startsWith('v') && positions[ticker].sh > 0) {
+              const costoPromedio = positions[ticker].costo / positions[ticker].sh;
+              const shVender = Math.min(sh, positions[ticker].sh);
+              const ganancia = shVender * (pr - costoPromedio);
+              if ((t.fecha||'').startsWith(String(ano))) ganancia_realizada += ganancia;
+              positions[ticker].sh -= shVender;
+              positions[ticker].costo -= shVender * costoPromedio;
+            }
+          }
+          body.fiscal = {
+            ano,
+            ganancia_realizada_ano: Math.round(ganancia_realizada * 100) / 100,
+            isr_proyectado: Math.max(0, ganancia_realizada) * 0.10,
+            perdidas_disponibles: 0,
+          };
+        }
+      } catch (e) {
+        console.warn('Algunos datos extras no se pudieron recolectar:', e);
+      }
+
+      btn.innerHTML = 'Generando PDF…';
       const res = await fetch('/api/reporte/pdf', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
