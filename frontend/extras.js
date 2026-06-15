@@ -276,7 +276,8 @@
     try {
       const res = await fetch(`/api/brokers-mx/comparar/${encodeURIComponent(ticker)}?monto=${monto}`);
       const body = await res.json();
-      brokers = Array.isArray(body) ? body : (body.brokers || []);
+      // El backend devuelve {ticker, monto_mxn, comparativa: [...]}
+      brokers = Array.isArray(body) ? body : (body.comparativa || body.brokers || []);
     } catch (e) {
       const cont = document.getElementById('mp-compra-content');
       if (cont) cont.innerHTML = `<p style="color:#ef4444;font-size:13px;">Error: ${e.message}</p>`;
