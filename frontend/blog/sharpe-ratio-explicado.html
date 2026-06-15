@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sharpe ratio explicado con ejemplos: la métrica que separa al ganador del afortunado | Mi Portafolio</title>
+  <meta name="description" content="Sharpe ratio explicado paso a paso: qué es, cómo se calcula, cuándo es bueno, cuándo NO aplica. Con ejemplos numéricos reales en pesos y dólares.">
+  <meta name="keywords" content="sharpe ratio, qué es sharpe ratio, calcular sharpe ratio, sharpe portafolio, sortino vs sharpe, ratio sharpe español, sharpe ratio mexicano">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://miportafolio.uk/blog/sharpe-ratio-explicado">
+  <link rel="icon" type="image/png" href="/static/logo.png">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://miportafolio.uk/blog/sharpe-ratio-explicado">
+  <meta property="og:title" content="Sharpe ratio explicado con ejemplos">
+  <meta property="og:description" content="La métrica que separa al ganador del afortunado. Cómo se calcula y cuándo importa.">
+  <meta property="og:image" content="https://miportafolio.uk/static/logo.png">
+  <meta property="og:locale" content="es_MX">
+
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Article",
+    "headline":"Sharpe ratio explicado con ejemplos: la métrica que separa al ganador del afortunado",
+    "datePublished":"2026-06-14T08:00:00-06:00",
+    "image":"https://miportafolio.uk/static/logo.png",
+    "author":{"@type":"Organization","name":"Mi Portafolio","url":"https://miportafolio.uk"},
+    "publisher":{"@type":"Organization","name":"Mi Portafolio","logo":{"@type":"ImageObject","url":"https://miportafolio.uk/static/logo.png"}},
+    "inLanguage":"es-MX"}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+    {"@type":"Question","name":"¿Qué es Sharpe ratio?","acceptedAnswer":{"@type":"Answer","text":"Sharpe ratio mide cuánto retorno extra obtienes por cada unidad de riesgo que asumes. La fórmula es: (Retorno del portafolio − Tasa libre de riesgo) / Volatilidad. Un Sharpe > 1 es bueno, > 2 es excelente, < 0 significa que estás perdiendo contra dejarlo en CETES."}},
+    {"@type":"Question","name":"¿Qué Sharpe ratio es bueno?","acceptedAnswer":{"@type":"Answer","text":"En portafolios reales: Sharpe < 0 = malo (peor que CETES); 0-0.5 = mediocre; 0.5-1 = razonable; 1-2 = muy bueno; > 2 = excelente; > 3 = sospechoso (revisa si los datos son correctos o el horizonte es muy corto)."}},
+    {"@type":"Question","name":"¿Cuál es la diferencia entre Sharpe y Sortino?","acceptedAnswer":{"@type":"Answer","text":"Sharpe penaliza TODA la volatilidad (subidas y caídas por igual). Sortino solo penaliza la volatilidad NEGATIVA (las caídas). Sortino es mejor métrica para activos con asimetría como crypto, opciones o estrategias que tienen muchas pequeñas ganancias y pocas pérdidas grandes."}}
+  ]}
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/blog/_styles.css">
+</head>
+<body class="min-h-screen">
+  <header class="border-b border-zinc-800 sticky top-0 bg-zinc-950/80 backdrop-blur z-10">
+    <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2 text-sm font-semibold text-zinc-100 hover:text-emerald-400 transition">
+        <img src="/static/logo.png" alt="Mi Portafolio" class="w-8 h-8 rounded-lg">Mi Portafolio
+      </a>
+      <div class="flex items-center gap-3">
+        <a href="/blog" class="text-xs text-zinc-400 hover:text-zinc-200">← Blog</a>
+        <a href="/" class="text-xs px-4 py-2 rounded-lg bg-emerald-500 text-zinc-950 font-semibold hover:brightness-110 transition">Abrir app</a>
+      </div>
+    </div>
+  </header>
+
+  <article class="max-w-3xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <p class="text-xs uppercase tracking-wider text-orange-400 font-semibold">📐 Métricas</p>
+      <h1 class="display text-3xl sm:text-5xl font-bold text-zinc-100 mt-3 leading-tight">Sharpe ratio explicado con ejemplos</h1>
+      <p class="text-xl text-zinc-400 mt-4 leading-relaxed">La métrica que separa al inversionista hábil del que solo tuvo suerte. Con ejemplos numéricos en pesos.</p>
+      <div class="flex items-center gap-3 mt-6 text-xs text-zinc-500 border-b border-zinc-800 pb-6"><span>📅 Junio 2026</span><span>·</span><span>⏱ 8 min</span></div>
+    </div>
+
+    <div class="prose">
+      <blockquote><strong>TL;DR:</strong> Sharpe ratio = (Tu retorno − CETES) ÷ Tu volatilidad. Mide eficiencia: cuánto ganas por cada unidad de riesgo. &gt;1 es bueno, &gt;2 es excelente, &lt;0 significa que CETES te gana sin riesgo.</blockquote>
+
+      <h2>1. El problema que resuelve</h2>
+      <p>Dos inversionistas se sientan en una mesa a comparar resultados. Pedro ganó 25% el año pasado. María ganó 18%. ¿Quién invirtió mejor?</p>
+      <p>La respuesta intuitiva ("Pedro porque ganó más") es <strong>incorrecta</strong>. Falta información: ¿cuánto riesgo asumió cada uno?</p>
+      <p>Si Pedro logró 25% con un portafolio que tuvo volatilidad de 40% (oscilaciones brutales), y María logró 18% con volatilidad de 12%, María es claramente mejor inversionista. Pedro tuvo suerte. María tuvo skill.</p>
+      <p>El <strong>Sharpe ratio</strong>, creado por William F. Sharpe (Nobel de Economía 1990), es la métrica que captura esa diferencia.</p>
+
+      <h2>2. La fórmula (sin matemáticas)</h2>
+      <div class="calc-box">
+        <strong>Sharpe = (Retorno del portafolio − Tasa libre de riesgo) ÷ Volatilidad</strong>
+      </div>
+      <p>Cada componente:</p>
+      <ul>
+        <li><strong>Retorno del portafolio:</strong> qué tanto ganaste en %. Si pusiste $100 y ahora tienes $112, tu retorno fue 12%.</li>
+        <li><strong>Tasa libre de riesgo:</strong> lo que habrías ganado sin tomar ningún riesgo. En México son los CETES 28 días (~9.5% en 2026). En USA son los Treasuries 3m (~4.5%).</li>
+        <li><strong>Volatilidad:</strong> qué tanto sube y baja tu portafolio (desviación estándar de los retornos). Si todos los meses el portafolio crece exactamente 1%, la volatilidad es 0. Si crece 5% un mes y cae 4% al siguiente, la volatilidad es alta.</li>
+      </ul>
+
+      <h2>3. Ejemplo numérico real con dos portafolios</h2>
+      <p>Asumamos CETES 28d = 9.5% (tasa libre de riesgo en pesos):</p>
+      <table>
+        <thead><tr><th>Portafolio</th><th>Retorno</th><th>Volatilidad</th><th>Sharpe</th></tr></thead>
+        <tbody>
+          <tr><td>A: Todo en NVDA</td><td>+45%</td><td>50%</td><td>(45−9.5)/50 = <strong>0.71</strong></td></tr>
+          <tr><td>B: 60% SPY + 30% TLT + 10% GLD</td><td>+15%</td><td>11%</td><td>(15−9.5)/11 = <strong>0.50</strong></td></tr>
+          <tr><td>C: 100% CETES</td><td>+9.5%</td><td>0%</td><td>(9.5−9.5)/0 = <strong>indefinido (≈0)</strong></td></tr>
+        </tbody>
+      </table>
+      <p>Aunque NVDA ganó MUCHO más en retorno absoluto, su Sharpe es solo 0.71. El portafolio diversificado B tiene Sharpe 0.50 — peor en absoluto pero similar en eficiencia.</p>
+      <p>El truco: si tomaras prestado dinero (margin) para apalancar el portafolio B hasta el mismo nivel de volatilidad del A, ganarías <strong>más retorno con menos drawdowns</strong>. Eso es lo que mide Sharpe: la calidad de cada peso de riesgo asumido.</p>
+
+      <h2>4. Cómo interpretar valores típicos</h2>
+      <table>
+        <thead><tr><th>Sharpe</th><th>Interpretación</th></tr></thead>
+        <tbody>
+          <tr><td>&lt; 0</td><td>Peor que CETES sin riesgo. Algo mal hecho.</td></tr>
+          <tr><td>0 - 0.5</td><td>Mediocre. Tu portafolio rinde menos que la combinación CETES + algo de equity.</td></tr>
+          <tr><td>0.5 - 1.0</td><td>Razonable. Mayoría de portafolios indexados (SPY solo) caen aquí.</td></tr>
+          <tr><td>1.0 - 2.0</td><td>Muy bueno. Bien diversificado y bien asignado.</td></tr>
+          <tr><td>&gt; 2.0</td><td>Excelente. Pocos managers profesionales lo sostienen año tras año.</td></tr>
+          <tr><td>&gt; 3.0</td><td>Sospechoso. Probable: horizonte muy corto, datos curados, o fraude (Madoff tenía Sharpe 4+).</td></tr>
+        </tbody>
+      </table>
+
+      <h2>5. Las trampas de Sharpe</h2>
+      <h3>Trampa 1: Sharpe alto NO significa "seguro"</h3>
+      <p>Un portafolio con 30% volatilidad y 40% retorno tiene Sharpe 1.0. No es seguro — puedes perder 40% en un mal año. Significa solo que el retorno justifica el riesgo asumido.</p>
+
+      <h3>Trampa 2: Penaliza la volatilidad positiva igual que la negativa</h3>
+      <p>Si tu portafolio sube 10% un mes y luego sube 15%, eso es "volatilidad" desde el punto de vista matemático y Sharpe lo penaliza. Pero subir mucho NO es malo. Por eso existe <strong>Sortino ratio</strong>, que solo penaliza las caídas.</p>
+
+      <h3>Trampa 3: Asume distribución normal</h3>
+      <p>Sharpe asume que los retornos siguen una campana de Gauss. En la realidad, los mercados tienen "fat tails": eventos extremos (crisis 2008, COVID 2020) ocurren más seguido de lo que predice la normal. Sharpe subestima el riesgo real en estos casos.</p>
+
+      <h3>Trampa 4: Sensible al horizonte</h3>
+      <p>Sharpe de 1 año puede ser muy distinto del Sharpe de 10 años. Para evaluar un portafolio o un fondo, mira Sharpe de al menos 3-5 años.</p>
+
+      <h2>6. Sharpe vs alternativas</h2>
+      <ul>
+        <li><strong>Sortino ratio:</strong> como Sharpe pero solo penaliza volatilidad negativa. Mejor para activos asimétricos (crypto, opciones).</li>
+        <li><strong>Calmar ratio:</strong> retorno anualizado ÷ max drawdown. Mide tolerancia al peor escenario.</li>
+        <li><strong>Treynor ratio:</strong> usa beta (riesgo sistémico) en vez de volatilidad total. Mejor para portafolios diversificados grandes.</li>
+        <li><strong>Information ratio:</strong> mide retorno EXCESO sobre un benchmark. Útil para evaluar managers activos vs un índice.</li>
+      </ul>
+
+      <h2>7. Cómo mejorar tu Sharpe</h2>
+      <ol>
+        <li><strong>Diversifica:</strong> activos no correlacionados reducen volatilidad total sin sacrificar retorno (efecto Markowitz).</li>
+        <li><strong>Rebalancea:</strong> mantener pesos objetivo automáticamente "vende caro y compra barato".</li>
+        <li><strong>Evita activos de alto riesgo y bajo retorno:</strong> meme stocks, penny stocks, esquemas exóticos.</li>
+        <li><strong>Reduce costos:</strong> comisiones altas drenan retorno sin reducir riesgo.</li>
+        <li><strong>Horizonte largo:</strong> volatilidad de corto plazo se promedia. Sharpe de 10 años suele ser mejor que el de 1 año.</li>
+      </ol>
+
+      <div class="cta-box">
+        <h3>Calcula tu Sharpe automático</h3>
+        <p>Mi Portafolio calcula tu Sharpe ratio (y Sortino, max DD, correlación SP500) automáticamente al subir tu portafolio.</p>
+        <a href="/">Abrir Mi Portafolio →</a>
+      </div>
+
+      <h2>Disclaimer</h2>
+      <p style="font-size: 14px; color: #71717a;">Esta guía es educativa, no asesoría financiera personalizada. Sharpe ratio es una métrica útil pero no completa — combina siempre con criterio cualitativo.</p>
+    </div>
+
+    <div class="mt-12 pt-8 border-t border-zinc-800">
+      <p class="text-xs text-zinc-500 mb-3">¿Te sirvió? Compártela:</p>
+      <div class="flex gap-2 flex-wrap">
+        <a href="https://twitter.com/intent/tweet?text=Sharpe%20ratio%20explicado%20con%20ejemplos&url=https://miportafolio.uk/blog/sharpe-ratio-explicado" target="_blank" class="text-xs px-3 py-2 bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-lg text-zinc-300 transition">𝕏 Twitter</a>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://miportafolio.uk/blog/sharpe-ratio-explicado" target="_blank" class="text-xs px-3 py-2 bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-lg text-zinc-300 transition">in LinkedIn</a>
+        <a href="https://api.whatsapp.com/send?text=Sharpe%20ratio%20explicado:%20https://miportafolio.uk/blog/sharpe-ratio-explicado" target="_blank" class="text-xs px-3 py-2 bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-lg text-zinc-300 transition">WhatsApp</a>
+      </div>
+    </div>
+  </article>
+
+  <footer class="border-t border-zinc-800 mt-16 py-8">
+    <div class="max-w-3xl mx-auto px-6 text-xs text-zinc-500 text-center leading-relaxed">
+      <p>Mi Portafolio es una plataforma educativa. NO somos asesor financiero registrado ante CNBV.</p>
+      <p class="mt-2"><a href="/" class="hover:text-zinc-300">Inicio</a> · <a href="/blog" class="hover:text-zinc-300">Blog</a> · <a href="/terminos" class="hover:text-zinc-300">Términos</a> · <a href="/privacidad" class="hover:text-zinc-300">Privacidad</a></p>
+    </div>
+  </footer>
+</body>
+</html>
