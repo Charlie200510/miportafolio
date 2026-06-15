@@ -965,7 +965,7 @@
   // Lógica de sub-tabs en vista Analizar
   window.bindSubAnalizar = function() {
     const tabs = document.querySelectorAll('.sub-analizar-btn');
-    const secAccion = document.querySelector('#vista-analizar > section');  // primera section (Una acción)
+    const secAccion = document.getElementById('sub-una-accion');
     const secDeep = document.getElementById('sub-deep-dive');
     const secScreen = document.getElementById('sub-screener');
     if (!tabs.length) return;
@@ -978,9 +978,7 @@
         b.classList.toggle('ring-accent-orange/40', activo);
         b.classList.toggle('text-zinc-500', !activo);
       });
-      // Solo la primera section de vista-analizar (Una acción)
-      const allSections = document.querySelectorAll('#vista-analizar > section');
-      if (allSections[0]) allSections[0].classList.toggle('hidden', sub !== 'una-accion');
+      if (secAccion) secAccion.classList.toggle('hidden', sub !== 'una-accion');
       if (secDeep)   secDeep.classList.toggle('hidden', sub !== 'deep-dive');
       if (secScreen) secScreen.classList.toggle('hidden', sub !== 'screener');
       if (sub === 'deep-dive') window.iniciarDeepDiveInline();

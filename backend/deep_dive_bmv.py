@@ -154,11 +154,11 @@ def _narrativa(target: Dict, comp: Dict) -> List[str]:
         v = pe_info["valor"]
         prom = pe_info.get("promedio_sector")
         if v <= 0:
-            obs.append(f"⚠️ {target['nombre']} tiene P/E negativo ({v:.1f}), señal de pérdidas operativas actuales.")
+            obs.append(f"{target['nombre']} tiene P/E negativo ({v:.1f}), señal de pérdidas operativas actuales.")
         elif prom and v < prom * 0.7:
-            obs.append(f"💰 P/E de {v:.1f} es 30%+ más barato que el promedio del sector ({prom:.1f}). Puede ser oportunidad o problema fundamental.")
+            obs.append(f"P/E de {v:.1f} es 30%+ más barato que el promedio del sector ({prom:.1f}). Puede ser oportunidad o problema fundamental.")
         elif prom and v > prom * 1.5:
-            obs.append(f"⚡ P/E de {v:.1f} es 50%+ más caro que el sector ({prom:.1f}). El mercado espera crecimiento superior.")
+            obs.append(f"P/E de {v:.1f} es 50%+ más caro que el sector ({prom:.1f}). El mercado espera crecimiento superior.")
         elif v < 15:
             obs.append(f"P/E de {v:.1f} (bajo): valuación atractiva en términos absolutos.")
         elif v > 30:
@@ -168,17 +168,17 @@ def _narrativa(target: Dict, comp: Dict) -> List[str]:
     if roe_info.get("valor") is not None:
         v = roe_info["valor"]
         if v >= 0.20:
-            obs.append(f"✅ ROE de {v*100:.1f}%: empresa muy rentable sobre el capital propio.")
+            obs.append(f"ROE de {v*100:.1f}%: empresa muy rentable sobre el capital propio.")
         elif v >= 0.15:
             obs.append(f"ROE de {v*100:.1f}%: rentabilidad sólida.")
         elif v < 0.05:
-            obs.append(f"⚠️ ROE de {v*100:.1f}%: rentabilidad débil sobre capital.")
+            obs.append(f"ROE de {v*100:.1f}%: rentabilidad débil sobre capital.")
     # Dividend yield
     dy_info = comp.get("div_yield", {})
     if dy_info.get("valor") is not None:
         v = dy_info["valor"]
         if v > 0.06:
-            obs.append(f"💵 Dividend yield {v*100:.2f}%: distribuye fuerte (vigilar sostenibilidad).")
+            obs.append(f"Dividend yield {v*100:.2f}%: distribuye fuerte (vigilar sostenibilidad).")
         elif v > 0.03:
             obs.append(f"Dividend yield {v*100:.2f}%: paga dividendos razonables.")
         elif v == 0:
@@ -188,11 +188,11 @@ def _narrativa(target: Dict, comp: Dict) -> List[str]:
     if mn_info.get("valor") is not None:
         v = mn_info["valor"]
         if v > 0.20:
-            obs.append(f"✅ Margen neto {v*100:.1f}%: excelente eficiencia operativa.")
+            obs.append(f"Margen neto {v*100:.1f}%: excelente eficiencia operativa.")
         elif v > 0.10:
             obs.append(f"Margen neto {v*100:.1f}%: saludable.")
         elif v < 0.05:
-            obs.append(f"⚠️ Margen neto {v*100:.1f}%: delgado, vulnerable a shocks.")
+            obs.append(f"Margen neto {v*100:.1f}%: delgado, vulnerable a shocks.")
     # Deuda
     de_info = comp.get("debt_equity", {})
     if de_info.get("valor") is not None:
@@ -200,14 +200,14 @@ def _narrativa(target: Dict, comp: Dict) -> List[str]:
         # yfinance reporta debtToEquity multiplicado por 100 normalmente
         v_real = v / 100 if v > 5 else v
         if v_real > 2:
-            obs.append(f"⚠️ Debt/Equity {v_real:.2f}: muy apalancada, sensible a tasas.")
+            obs.append(f"Debt/Equity {v_real:.2f}: muy apalancada, sensible a tasas.")
         elif v_real < 0.3:
-            obs.append(f"✅ Debt/Equity {v_real:.2f}: balance conservador, poco riesgo financiero.")
+            obs.append(f"Debt/Equity {v_real:.2f}: balance conservador, poco riesgo financiero.")
     # Crecimiento
     if target.get("rev_growth") is not None and target["rev_growth"] > 0.10:
-        obs.append(f"📈 Crecimiento de ingresos {target['rev_growth']*100:.1f}% anual: en expansión activa.")
+        obs.append(f"Crecimiento de ingresos {target['rev_growth']*100:.1f}% anual: en expansión activa.")
     elif target.get("rev_growth") is not None and target["rev_growth"] < 0:
-        obs.append(f"📉 Ingresos cayendo {target['rev_growth']*100:.1f}% anual: revisar contexto del sector.")
+        obs.append(f"Ingresos cayendo {abs(target['rev_growth']*100):.1f}% anual: revisar contexto del sector.")
     # Beta
     if target.get("beta") is not None:
         b = target["beta"]
