@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -214,20 +215,36 @@ def score_para_ticker(ticker: str) -> Optional[Dict[str, Any]]:
 # ─────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────
+def _fecha_cdmx() -> str:
+    """Fecha de hoy en CDMX (UTC-6, sin horario de verano desde 2022)."""
+    return (datetime.utcnow() - timedelta(hours=6)).strftime("%Y-%m-%d")
+
+
 def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
-    """Selecciona la acción del día. Cache 24h."""
+    """Selecciona la acción del día. Cambia a la medianoche de CDMX.
+
+    Para que varíe día a día y no repita el mismo ticker dos días seguidos
+    (salvo que domine claramente), el ranking combina el score canónico con un
+    pequeño ajuste por desempeño reciente (últimos 5 días hábiles).
+    """
+    hoy = _fecha_cdmx()
+
+    # Cache válido SOLO si es del mismo día CDMX → cambia a medianoche.
     cached = _CACHE.get("hoy")
-    if not forzar and cached and (time.time() - cached["ts"]) < _CACHE_TTL:
+    if not forzar and cached and cached.get("data", {}).get("fecha") == hoy:
         return cached["data"]
 
     disk_path = _CACHE_DIR / "hoy.json"
-    if not forzar and disk_path.exists():
+    previo_ticker = None
+    if disk_path.exists():
         try:
             with open(disk_path, encoding="utf-8") as f:
                 d = json.load(f)
-            if (time.time() - d.get("_ts", 0)) < _CACHE_TTL:
-                _CACHE["hoy"] = {"ts": d["_ts"], "data": d["data"]}
-                return d["data"]
+            prev_data = d.get("data", {})
+            previo_ticker = (prev_data.get("accion") or {}).get("ticker")
+            if not forzar and prev_data.get("fecha") == hoy:
+                _CACHE["hoy"] = {"ts": d.get("_ts", 0), "data": prev_data}
+                return prev_data
         except Exception:
             pass
 
@@ -259,22 +276,36 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
     if not candidatos:
         return {"ok": False, "error": "No hay candidatos en el universo"}
 
-    puntuados: List[Tuple[int, Dict[str, Any]]] = []
+    # (rank, score, detalles). rank = score + ajuste por momentum reciente (±5 pts).
+    puntuados: List[Tuple[float, int, Dict[str, Any]]] = []
     for ticker in candidatos:
         res = calcular_metricas_y_score(ticker, df_precios, info_all, serie_us, serie_mx)
-        if res is not None:
-            puntuados.append(res)
+        if res is None:
+            continue
+        score_t, det = res
+        serie = df_precios[ticker].dropna()
+        rec5 = float(serie.iloc[-1] / serie.iloc[-6] - 1) if len(serie) >= 6 else 0.0
+        det["retorno_5d_pct"] = round(rec5 * 100, 2)
+        rank = score_t + max(-5.0, min(5.0, rec5 * 100 * 0.5))
+        puntuados.append((rank, score_t, det))
 
     if not puntuados:
         return {"ok": False, "error": "Ningún candidato pudo ser puntuado"}
 
     puntuados.sort(key=lambda x: x[0], reverse=True)
-    score, mejor = puntuados[0]
+
+    # Anti-repetición: no repetir el ticker de ayer salvo que domine (margen ≥ 6).
+    rank0, score, mejor = puntuados[0]
+    if previo_ticker and mejor.get("ticker") == previo_ticker and len(puntuados) > 1:
+        rank1, score1, segundo = puntuados[1]
+        if (rank0 - rank1) < 6.0:
+            score, mejor = score1, segundo
+
     nivel, nivel_color = MC.nivel_para_score(score)
 
     data = {
         "ok":             True,
-        "fecha":          time.strftime("%Y-%m-%d"),
+        "fecha":          hoy,
         "actualizado_ts": int(time.time()),
         "accion":         mejor,
         "nivel":          nivel,
@@ -282,18 +313,11 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
         "score":          score,
         "score_max":      100,
         "candidatos_evaluados": len(puntuados),
-        "top_5":          [d for _, d in puntuados[:5]],
+        "top_5":          [d for _, _, d in puntuados[:5]],
         "metodologia": (
-            "Score canónico (0-100): Alpha SML/CAPM (hasta 30 pts) + Sharpe (10) + "
-            "Fundamentales — PE, ROE, margen, deuda, dividendo (hasta 56 pts) + "
-            "Momentum 3m (10) + Liquidez (5). Beta y alpha calculados con la "
-            "metodología estándar académica: 5 años de retornos mensuales vs SPY "
-            "(o NAFTRAC.MX para acciones .MX). El mismo cálculo se usa en TODAS "
-            "las vistas — la beta que ves aquí es la misma de Analizar."
-        ),
-        "disclaimer": (
-            "Sugerencia algorítmica automatizada, no asesoría financiera. "
-            "Haz tu propio análisis antes de invertir."
+            "Elegida por score canónico (alpha CAPM, Sharpe, fundamentales, "
+            "momentum y liquidez), con un ajuste por desempeño reciente para que "
+            "varíe día a día."
         ),
     }
 

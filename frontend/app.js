@@ -2684,7 +2684,6 @@ const Periodico = (() => {
 
       <p class="text-[10px] text-zinc-600 leading-snug">
         ${escapeHtml(data.metodologia || '')}
-        <span class="block mt-1 italic">${escapeHtml(data.disclaimer || '')}</span>
       </p>
     `;
 

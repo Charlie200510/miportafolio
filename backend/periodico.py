@@ -507,7 +507,7 @@ def resumen_diario() -> dict:
         "clasificacion":    clase,          # {tipo, etiqueta, promedio}
         "resumen_mercado":  texto,          # frase corta con cierres
         "titulares":        titulares,      # lista de {titulo, proveedor, url}
-        "aviso":            "Información agregada de Yahoo Finance. No es asesoría de inversión.",
+        "aviso":            "",
         "timestamp":        time.time(),
     }
     _cache_set("resumen", data)

@@ -6,7 +6,7 @@
 */
 // IMPORTANTE: Bumpear esta versión cada vez que cambies JS/CSS críticos
 // para forzar invalidación del cache en todos los usuarios.
-const VERSION = 'mp-v1.6.2';
+const VERSION = 'mp-v1.6.3';
 const SHELL_CACHE  = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const ASSETS_CACHE = `${VERSION}-assets`;
