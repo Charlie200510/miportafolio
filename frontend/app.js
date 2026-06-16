@@ -1571,7 +1571,7 @@ const PortafolioOptimo = (() => {
   const state = {
     vol: 14,           // volatilidad objetivo (σ anual) en %
     data:  null,
-    cargando: false,
+    reqSeq: 0,         // id de petición: solo se renderiza la MÁS reciente
     debounceTimer: null,
   };
   // Etiqueta según σ (debe coincidir con el backend portafolio_optimo.py)
@@ -1695,13 +1695,13 @@ const PortafolioOptimo = (() => {
   }
 
   async function cargar(vol) {
-    if (state.cargando) return;
-    state.cargando = true;
+    const myReq = ++state.reqSeq;   // marca esta petición como la más reciente
     pintarSkeletons();
     try {
       const r = await fetch(`/api/portafolio-optimo?vol=${vol}`);
       let d = null;
       try { d = await r.json(); } catch { d = null; }
+      if (myReq !== state.reqSeq) return;   // ya llegó una más nueva → descartar ésta
       if (!d) throw new Error('Respuesta vacía');
       if (!d.ok) throw new Error(d.error || 'error');
       state.data = d;
@@ -1710,9 +1710,7 @@ const PortafolioOptimo = (() => {
       pintarComposicion(d);
       pintarBarra(d);
     } catch (e) {
-      pintarError(`No pude generar el portafolio: ${e.message}`);
-    } finally {
-      state.cargando = false;
+      if (myReq === state.reqSeq) pintarError(`No pude generar el portafolio: ${e.message}`);
     }
   }
 
