@@ -1895,17 +1895,26 @@ def api_portafolio_optimo():
 
 @app.route("/api/historico/<ticker>", methods=["GET"])
 def api_historico(ticker):
-    """Serie de cierres de un ticker desde el universo local (sin yfinance).
+    """Serie de cierres de un ticker. Primero del universo local; si no está,
+    cae a Yahoo Finance (universo extendido), como el resto de la app.
     ?rango=1M|3M|6M|1A|5A|MAX  ·  ?puntos=N para muestrear (sparklines)."""
     try:
         import accion_del_dia as _ad
         df = _ad._cargar_precios()
         ticker = (ticker or "").strip().upper()
-        if df is None or ticker not in df.columns:
-            return jsonify({"ok": False, "error": "ticker no encontrado en el universo"}), 404
         rango = (request.args.get("rango") or "1A").upper()
         dias = {"1M": 21, "3M": 63, "6M": 126, "1A": 252, "5A": 252 * 5, "MAX": 10 ** 9}.get(rango, 252)
-        s = df[ticker].dropna().iloc[-dias:]
+        if df is not None and ticker in df.columns:
+            s = df[ticker].dropna().iloc[-dias:]
+        else:
+            # Fallback a Yahoo Finance con reintentos (universo extendido)
+            import sml as _sml
+            period = {"1M": "1mo", "3M": "3mo", "6M": "6mo", "1A": "1y",
+                      "5A": "5y", "MAX": "max"}.get(rango, "1y")
+            s = _sml._descargar_close(ticker, period=period)
+            if s is None or len(s) == 0:
+                return jsonify({"ok": False, "error": "ticker no encontrado en el universo ni en Yahoo"}), 404
+            s = s.dropna()
         # Muestreo opcional para sparklines (menos puntos = payload chico)
         try:
             puntos = int(request.args.get("puntos") or 0)

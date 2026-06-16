@@ -2752,7 +2752,7 @@ window.iniciarComparar = (function () {
             <tbody>${rows}</tbody>
           </table>
         </div>
-        ${faltan.length ? `<p class="text-[11px] text-zinc-500 mt-2">No encontradas en el universo local: <span class="text-zinc-300">${faltan.map(escapeHtml).join(', ')}</span>. Solo se comparan acciones del universo curado (~500).</p>` : ''}`;
+        ${faltan.length ? `<p class="text-[11px] text-zinc-500 mt-2">No pude obtener datos (ni del universo ni de Yahoo Finance): <span class="text-zinc-300">${faltan.map(escapeHtml).join(', ')}</span>. Revisa el ticker.</p>` : ''}`;
     }
   }
 
