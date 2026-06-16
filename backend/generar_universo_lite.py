@@ -1,20 +1,27 @@
 """
-generar_universo_lite.py — Crea versión reducida del universo (~1000 tickers)
-para poder commitearla a git sin exceder los 100MB que permite GitHub.
+generar_universo_lite.py — Crea versión reducida del universo para commitear a git.
 
-Lee universo_precios.csv (130MB+) y universo_info.json y genera:
-  - universo_lite_precios.csv (~10-15MB)
-  - universo_lite_info.json (~500KB)
+Lee el universo (universo_precios.csv completo si existe; si no, el lite previo) y
+genera:
+  - universo_lite_precios.csv  (500 tickers × 5 años diarios → ~15MB)
+  - universo_lite_info.json
 
-Estrategia de selección (~1000 tickers):
-  - Todas las "recomendadas" del universo (S&P top 30 + IPC top 18 + ETFs + cripto top 10)
-  - Todos los IPC mexicanos
-  - Todos los crypto disponibles
-  - Top N del S&P 500 por liquidez (usando precio_actual * volumen aprox)
-  - Una muestra balanceada de internacional
+Estrategia de selección (TARGET_TOTAL = 500):
+  NÚCLEO (siempre se mantiene, mientras quepa):
+    - Benchmarks SPY + NAFTRAC.MX (imprescindibles para métricas canónicas)
+    - Todo lo mexicano (.MX)            → público mexicano es prioritario
+    - Toda la cripto (-USD)
+    - Todas las "recomendadas"
+    - ETFs líderes (sector "ETF / Índice")
+  RELLENO (hasta llegar a 500):
+    - Primero: tickers MÁS USADOS por los usuarios, si existe ticker_usage.json
+      (ranking que produce el endpoint /api/admin/ticker-usage). Así el universo
+      se va sesgando hacia lo que la gente realmente consulta.
+    - Luego: top USA por precio_actual (proxy de blue-chip) para completar.
 
-Para producción (Render) este es el archivo que se usa.
-Para dev local, si existe universo_precios.csv (el completo) se usa ese.
+Ventana temporal: últimos ANIOS años (5). Las métricas canónicas usan 5 años de
+retornos mensuales, así que recortar a 5 años no pierde nada y reduce el archivo
+~a la mitad (carga más rápida en el free tier de Render — 512MB RAM).
 """
 from __future__ import annotations
 
@@ -23,82 +30,131 @@ from pathlib import Path
 
 import pandas as pd
 
-
 BACKEND_DIR = Path(__file__).parent
-FULL_CSV  = BACKEND_DIR / "universo_precios.csv"
-FULL_JSON = BACKEND_DIR / "universo_info.json"
-LITE_CSV  = BACKEND_DIR / "universo_lite_precios.csv"
-LITE_JSON = BACKEND_DIR / "universo_lite_info.json"
+FULL_CSV   = BACKEND_DIR / "universo_precios.csv"
+FULL_JSON  = BACKEND_DIR / "universo_info.json"
+LITE_CSV   = BACKEND_DIR / "universo_lite_precios.csv"
+LITE_JSON  = BACKEND_DIR / "universo_lite_info.json"
+USAGE_JSON = BACKEND_DIR / "ticker_usage.json"   # opcional: ranking por uso real
 
-TARGET_TOTAL = 1000
+TARGET_TOTAL = 500
+ANIOS = 5
+BENCHMARKS = ("SPY", "NAFTRAC.MX")
 
 
-def main():
-    if not FULL_CSV.exists():
-        raise FileNotFoundError(f"No existe {FULL_CSV}. Corre descargar_universo.py primero.")
+def _cargar_usage() -> list[str]:
+    """Lista de tickers ordenada por uso (más usado primero). Vacía si no existe."""
+    if not USAGE_JSON.exists():
+        return []
+    try:
+        data = json.loads(USAGE_JSON.read_text(encoding="utf-8"))
+        # Acepta {"ticker": count, ...} o ["T1","T2",...] o [["T",count],...]
+        if isinstance(data, dict):
+            return [t for t, _ in sorted(data.items(), key=lambda kv: kv[1], reverse=True)]
+        if isinstance(data, list):
+            if data and isinstance(data[0], (list, tuple)):
+                return [t for t, _ in sorted(data, key=lambda x: x[1], reverse=True)]
+            return list(data)
+    except Exception:
+        pass
+    return []
 
-    print(f"Leyendo {FULL_CSV.name}...")
-    precios = pd.read_csv(FULL_CSV, index_col=0, parse_dates=True)
-    info = json.loads(FULL_JSON.read_text(encoding="utf-8"))
-    print(f"  Universo completo: {len(precios.columns)} tickers, {len(precios)} días")
 
-    # Conjunto a mantener
-    mantener = set()
+def seleccionar_tickers(cols: list[str], info: dict, usage: list[str]) -> list[str]:
+    """Devuelve hasta TARGET_TOTAL tickers según la estrategia documentada arriba."""
+    colset = set(cols)
 
-    # 1. Todas las recomendadas
-    recos = [t for t, m in info.items() if m.get("recomendada")]
-    mantener.update(recos)
-    print(f"  + {len(recos)} recomendadas")
+    def en_universo(ts):
+        return [t for t in ts if t in colset]
 
-    # 2. Todo lo mexicano (.MX) — el público mexicano es prioritario
-    mx = [t for t in precios.columns if t.endswith(".MX")]
-    mantener.update(mx)
-    print(f"  + {len(mx)} mexicanas (.MX)")
+    # ── Núcleo (orden = prioridad para recortar si algún día excede 500) ──
+    mantener: list[str] = []
+    vistos: set[str] = set()
 
-    # 3. Toda la cripto
-    crypto = [t for t in precios.columns if t.endswith("-USD")]
-    mantener.update(crypto)
-    print(f"  + {len(crypto)} cripto")
+    def add(ts):
+        for t in ts:
+            if t in colset and t not in vistos:
+                vistos.add(t)
+                mantener.append(t)
 
-    # 4. ETFs líderes (todos los que tienen sector ETF / Índice)
-    etfs = [t for t, m in info.items() if "ETF" in (m.get("sector") or "")]
-    mantener.update(etfs)
-    print(f"  + {len(etfs)} ETFs (acumulado: {len(mantener)})")
+    add([b for b in BENCHMARKS])                                       # benchmarks
+    add(en_universo([t for t in cols if t.endswith(".MX")]))           # mexicanas
+    add([t for t, m in info.items() if m.get("recomendada")])          # recomendadas
+    add([t for t, m in info.items() if "ETF" in (m.get("sector") or "")])  # ETFs
+    add(en_universo([t for t in cols if t.endswith("-USD")]))          # cripto
 
-    # 5. Top USA acciones por precio (proxy de market cap; mejor que random)
-    cuanto_falta = TARGET_TOTAL - len(mantener)
-    if cuanto_falta > 0:
-        us_tickers = [t for t in precios.columns
-                      if t not in mantener
-                      and not t.endswith((".MX", "-USD"))
-                      and "." not in t]  # excluir internacionales
-        # Ordenar por precio_actual (proxy de calidad/blue chip)
-        us_con_precio = sorted(
-            us_tickers,
-            key=lambda t: info.get(t, {}).get("precio_actual", 0) or 0,
-            reverse=True,
-        )
-        top_us = us_con_precio[:cuanto_falta]
-        mantener.update(top_us)
-        print(f"  + {len(top_us)} top USA acciones por precio")
+    # Si el núcleo ya excede el target, recortamos respetando la prioridad de orden.
+    if len(mantener) >= TARGET_TOTAL:
+        return sorted(mantener[:TARGET_TOTAL])
 
-    final = sorted(mantener & set(precios.columns))
-    print(f"\nTickers finales: {len(final)}")
+    # ── Relleno hasta TARGET_TOTAL ──
+    # 1) Por uso real (usuarios). 2) Top USA por precio_actual (proxy blue-chip).
+    add([t for t in usage if not t.endswith(("-USD",))])               # usados (no recripto, ya entró)
 
-    # Generar archivos reducidos
-    precios_lite = precios[final]
+    if len(mantener) < TARGET_TOTAL:
+        us = [t for t in cols
+              if t not in vistos
+              and not t.endswith((".MX", "-USD"))
+              and "." not in t]
+        us.sort(key=lambda t: info.get(t, {}).get("precio_actual", 0) or 0, reverse=True)
+        add(us[: TARGET_TOTAL - len(mantener)])
+
+    return sorted(mantener[:TARGET_TOTAL])
+
+
+def generar(source_csv: Path, source_json: Path):
+    print(f"Leyendo {source_csv.name}...")
+    info = json.loads(source_json.read_text(encoding="utf-8"))
+    cols = list(pd.read_csv(source_csv, index_col=0, nrows=0).columns)
+    print(f"  Universo fuente: {len(cols)} tickers")
+
+    usage = _cargar_usage()
+    if usage:
+        print(f"  Ranking de uso disponible: {len(usage)} tickers (sesga el relleno)")
+
+    final = seleccionar_tickers(cols, info, usage)
+    print(f"  Seleccionados: {len(final)} tickers (target {TARGET_TOTAL})")
+
+    # Leer SOLO las columnas seleccionadas + la de fechas (mucho menos memoria
+    # que cargar el full de 8934 columnas).
+    idx_name = cols_index_name(source_csv)
+    keep = set(final) | {idx_name}
+    precios = pd.read_csv(source_csv, index_col=0, parse_dates=True,
+                          usecols=lambda c: c in keep)
+    precios = precios.sort_index()
+
+    # Recorte a últimos ANIOS años
+    if len(precios):
+        corte = precios.index.max() - pd.DateOffset(years=ANIOS)
+        precios = precios.loc[precios.index >= corte]
+    print(f"  Ventana: {precios.index.min().date()} → {precios.index.max().date()} ({len(precios)} días)")
+
     info_lite = {t: info[t] for t in final if t in info}
 
-    precios_lite.to_csv(LITE_CSV)
+    precios.to_csv(LITE_CSV)
     with open(LITE_JSON, "w", encoding="utf-8") as f:
         json.dump(info_lite, f, indent=2, ensure_ascii=False)
 
-    csv_mb = LITE_CSV.stat().st_size / 1024 / 1024
-    json_kb = LITE_JSON.stat().st_size / 1024
-    print(f"\nGenerados:")
-    print(f"  {LITE_CSV.name}: {csv_mb:.1f} MB")
-    print(f"  {LITE_JSON.name}: {json_kb:.1f} KB")
-    print(f"\nEstos son los que se commitearán a git (la versión completa sigue gitignored).")
+    mb = LITE_CSV.stat().st_size / 1024 / 1024
+    kb = LITE_JSON.stat().st_size / 1024
+    print(f"\nGenerados:\n  {LITE_CSV.name}: {mb:.1f} MB\n  {LITE_JSON.name}: {kb:.1f} KB")
+
+
+def cols_index_name(csv_path: Path) -> str:
+    """Nombre de la primera columna (índice de fechas) del CSV."""
+    head = pd.read_csv(csv_path, nrows=0)
+    return head.columns[0] if len(head.columns) else "Date"
+
+
+def main():
+    # Fuente: el universo completo si existe (dev / tarea semanal), si no el lite previo.
+    if FULL_CSV.exists():
+        generar(FULL_CSV, FULL_JSON)
+    elif LITE_CSV.exists():
+        print("(universo_precios.csv no existe; regenero desde el lite previo)")
+        generar(LITE_CSV, LITE_JSON)
+    else:
+        raise FileNotFoundError("No hay universo_precios.csv ni universo_lite_precios.csv.")
 
 
 if __name__ == "__main__":
