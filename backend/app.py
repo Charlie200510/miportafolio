@@ -355,69 +355,176 @@ def api_keepalive():
     return jsonify({"ok": True, "ts": int(_t.time()), "service": "miportafolio"}), 200
 
 
+# Estado global del warmup (compartido entre request handler y background thread)
+import threading as _threading_warmup
+_warmup_lock = _threading_warmup.Lock()
+_warmup_estado = {
+    "corriendo":       False,
+    "iniciado_ts":     None,
+    "terminado_ts":    None,
+    "duracion_seg":    None,
+    "endpoints_ok":    0,
+    "endpoints_total": 0,
+    "detalle":         {},
+    "ultimo_error":    None,
+}
+
+
+def _ejecutar_warmup_blocking():
+    """Hace TODO el warmup en orden. Llamado en background thread."""
+    import time as _t
+    t0 = _t.time()
+    resultados = {}
+
+    with _warmup_lock:
+        _warmup_estado["corriendo"]    = True
+        _warmup_estado["iniciado_ts"]  = int(t0)
+        _warmup_estado["terminado_ts"] = None
+        _warmup_estado["detalle"]      = {}
+
+    def _paso(nombre, fn):
+        ts_paso = _t.time()
+        try:
+            r = fn()
+            resultados[nombre] = r if isinstance(r, dict) else {"ok": bool(r)}
+        except Exception as e:
+            resultados[nombre] = {"ok": False, "error": str(e)}
+        # Publicar progreso parcial cada paso
+        with _warmup_lock:
+            _warmup_estado["detalle"][nombre] = {
+                **resultados[nombre],
+                "duracion_seg": round(_t.time() - ts_paso, 2),
+            }
+
+    # 1) Resumen del día
+    def _r1():
+        import periodico as _p
+        d = _p.resumen_diario()
+        return {"ok": bool(d), "size": len(str(d))}
+    _paso("resumen", _r1)
+
+    # 2) Mercados (lo más pesado: indices US + mundo + divisas + commodities + tasas + crypto + sectores)
+    def _r2():
+        import periodico as _p
+        d = _p.mercados_dashboard()
+        return {"ok": bool(d), "size": len(str(d or ""))}
+    _paso("mercados", _r2)
+
+    # 3) Noticias top
+    def _r3():
+        import periodico as _p
+        d = _p.noticias_top(12)
+        return {"ok": bool(d), "n": len(d) if d else 0}
+    _paso("noticias", _r3)
+
+    # 4) Top movers — 3 períodos
+    for periodo in ("dia", "semana", "mes"):
+        def _rm(p=periodo):
+            import top_movers as _tm
+            d = _tm.top_movers(p, 3)
+            return {"ok": d.get("ok", False)}
+        _paso(f"movers_{periodo}", _rm)
+
+    # 5) Acción del día
+    def _r5():
+        import accion_del_dia as _ad
+        d = _ad.accion_del_dia()
+        return {
+            "ok":     d.get("ok", False),
+            "ticker": d.get("accion", {}).get("ticker") if d.get("ok") else None,
+        }
+    _paso("accion_dia", _r5)
+
+    # Resumen final
+    elapsed = round(_t.time() - t0, 2)
+    ok_count = sum(1 for r in resultados.values() if r.get("ok"))
+    with _warmup_lock:
+        _warmup_estado["corriendo"]       = False
+        _warmup_estado["terminado_ts"]    = int(_t.time())
+        _warmup_estado["duracion_seg"]    = elapsed
+        _warmup_estado["endpoints_ok"]    = ok_count
+        _warmup_estado["endpoints_total"] = len(resultados)
+
+
+def _lanzar_warmup_background():
+    """Lanza warmup en background si no hay otro corriendo."""
+    with _warmup_lock:
+        if _warmup_estado["corriendo"]:
+            return False
+        _warmup_estado["corriendo"] = True   # claim antes de soltar el lock
+    th = _threading_warmup.Thread(target=_ejecutar_warmup_blocking,
+                                   daemon=True, name="warmup-worker")
+    th.start()
+    return True
+
+
 @app.route("/api/_warmup", methods=["GET", "POST"])
 def api_warmup():
     """Pre-calienta el cache de todos los endpoints pesados del periódico.
-    Disparar cada hora desde cron-job.org → cache siempre fresco.
+
+    Por default es FIRE-AND-FORGET: responde 200 OK en <100ms y ejecuta el
+    warmup en background. Esto evita el timeout de 30s de cron-job.org.
+
+    Pasa ?wait=1 para esperar al resultado (útil para debugging local).
 
     Auth: ?secret=<CRON_SECRET> o Authorization: Bearer <CRON_SECRET>
     """
     if not _check_cron_auth(request):
         return jsonify({"error": "unauthorized"}), 401
 
+    esperar = (request.args.get("wait") or "").lower() in ("1", "true", "yes")
+
+    if esperar:
+        # Modo síncrono (solo para debugging)
+        _ejecutar_warmup_blocking()
+        with _warmup_lock:
+            return jsonify({
+                "ok":              True,
+                "modo":            "sincrono",
+                "endpoints_ok":    _warmup_estado["endpoints_ok"],
+                "endpoints_total": _warmup_estado["endpoints_total"],
+                "duracion_seg":    _warmup_estado["duracion_seg"],
+                "detalle":         _warmup_estado["detalle"],
+            })
+
+    # Modo fire-and-forget (default)
+    lanzado = _lanzar_warmup_background()
+    with _warmup_lock:
+        return jsonify({
+            "ok":        True,
+            "modo":      "background",
+            "lanzado":   lanzado,
+            "ya_corria": not lanzado,
+            "mensaje":   ("Warmup encolado en background — consultar progreso en /api/_warmup/status"
+                          if lanzado else
+                          "Warmup ya estaba corriendo — consultar /api/_warmup/status"),
+        })
+
+
+@app.route("/api/_warmup/status", methods=["GET"])
+def api_warmup_status():
+    """Consulta el estado del último warmup (público — sin secret)."""
+    with _warmup_lock:
+        return jsonify(dict(_warmup_estado))
+
+
+# Lanzar UN warmup al arrancar el server (con delay para no bloquear el boot)
+def _warmup_inicial():
     import time as _t
-    t0 = _t.time()
-    resultados = {}
-
-    # 1) Periódico — resumen + mercados + noticias
+    _t.sleep(5)   # esperar 5s para que el server termine de arrancar
     try:
-        import periodico as _p
-        resumen = _p.resumen_diario()
-        resultados["resumen"] = {"ok": bool(resumen), "size": len(str(resumen))}
+        _ejecutar_warmup_blocking()
+        print("✓ warmup inicial completado")
     except Exception as e:
-        resultados["resumen"] = {"ok": False, "error": str(e)}
+        print(f"⚠ warmup inicial falló: {e}")
 
-    try:
-        import periodico as _p
-        mercados = _p.mercados_dashboard()
-        resultados["mercados"] = {"ok": bool(mercados), "size": len(str(mercados or ""))}
-    except Exception as e:
-        resultados["mercados"] = {"ok": False, "error": str(e)}
 
-    try:
-        import periodico as _p
-        noticias = _p.noticias_top(12)
-        resultados["noticias"] = {"ok": bool(noticias), "n": len(noticias) if noticias else 0}
-    except Exception as e:
-        resultados["noticias"] = {"ok": False, "error": str(e)}
-
-    # 2) Top movers — 3 períodos
-    for periodo in ("dia", "semana", "mes"):
-        try:
-            import top_movers as _tm
-            d = _tm.top_movers(periodo, 3)
-            resultados[f"movers_{periodo}"] = {"ok": d.get("ok", False)}
-        except Exception as e:
-            resultados[f"movers_{periodo}"] = {"ok": False, "error": str(e)}
-
-    # 3) Acción del día
-    try:
-        import accion_del_dia as _ad
-        d = _ad.accion_del_dia()
-        resultados["accion_dia"] = {"ok": d.get("ok", False),
-                                     "ticker": d.get("accion", {}).get("ticker") if d.get("ok") else None}
-    except Exception as e:
-        resultados["accion_dia"] = {"ok": False, "error": str(e)}
-
-    elapsed = round(_t.time() - t0, 2)
-    ok_count = sum(1 for r in resultados.values() if r.get("ok"))
-    return jsonify({
-        "ok":              True,
-        "endpoints_ok":    ok_count,
-        "endpoints_total": len(resultados),
-        "duracion_seg":    elapsed,
-        "detalle":         resultados,
-    })
+try:
+    _threading_warmup.Thread(target=_warmup_inicial, daemon=True,
+                              name="warmup-inicial").start()
+    print("✓ warmup inicial encolado (corre en 5s)")
+except Exception as _e:
+    print(f"⚠ no pude encolar warmup inicial: {_e}")
 
 
 @app.route("/api/cron/<tipo>", methods=["GET", "POST"])
