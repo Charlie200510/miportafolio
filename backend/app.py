@@ -1893,6 +1893,38 @@ def api_portafolio_optimo():
         return jsonify({"ok": False, "error": f"portafolio optimo falló: {e}"}), 500
 
 
+@app.route("/api/historico/<ticker>", methods=["GET"])
+def api_historico(ticker):
+    """Serie de cierres de un ticker desde el universo local (sin yfinance).
+    ?rango=1M|3M|6M|1A|5A|MAX  ·  ?puntos=N para muestrear (sparklines)."""
+    try:
+        import accion_del_dia as _ad
+        df = _ad._cargar_precios()
+        ticker = (ticker or "").strip().upper()
+        if df is None or ticker not in df.columns:
+            return jsonify({"ok": False, "error": "ticker no encontrado en el universo"}), 404
+        rango = (request.args.get("rango") or "1A").upper()
+        dias = {"1M": 21, "3M": 63, "6M": 126, "1A": 252, "5A": 252 * 5, "MAX": 10 ** 9}.get(rango, 252)
+        s = df[ticker].dropna().iloc[-dias:]
+        # Muestreo opcional para sparklines (menos puntos = payload chico)
+        try:
+            puntos = int(request.args.get("puntos") or 0)
+        except ValueError:
+            puntos = 0
+        if puntos and len(s) > puntos:
+            paso = max(1, len(s) // puntos)
+            s = s.iloc[::paso]
+        return jsonify({
+            "ok":      True,
+            "ticker":  ticker,
+            "rango":   rango,
+            "fechas":  [d.strftime("%Y-%m-%d") for d in s.index],
+            "precios": [round(float(v), 4) for v in s.values],
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"histórico falló: {e}"}), 500
+
+
 @app.route("/api/score/<path:ticker>", methods=["GET"])
 def api_score_ticker(ticker):
     """Devuelve el score canónico para UN ticker.

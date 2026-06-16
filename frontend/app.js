@@ -8096,6 +8096,38 @@ const Analizador = (() => {
     })[c] || 'text-zinc-400 border-zinc-700 bg-zinc-900';
   }
 
+  let _chartPrecio = null;
+  async function _renderPrecioChart(ticker, rango) {
+    const cv = $('an-price-canvas');
+    if (!cv || typeof Chart === 'undefined') return;
+    let d = null;
+    try {
+      const r = await fetch(`/api/historico/${encodeURIComponent(ticker)}?rango=${rango}`);
+      d = await r.json();
+    } catch { d = null; }
+    if (!d || !d.ok || !Array.isArray(d.precios) || !d.precios.length) return;
+    if (_chartPrecio) { _chartPrecio.destroy(); _chartPrecio = null; }
+    const sube = d.precios[d.precios.length - 1] >= d.precios[0];
+    const col = sube ? '#22c55e' : '#f43f5e';
+    _chartPrecio = new Chart(cv.getContext('2d'), {
+      type: 'line',
+      data: { labels: d.fechas, datasets: [{
+        data: d.precios, borderColor: col, borderWidth: 1.5,
+        backgroundColor: sube ? 'rgba(34,197,94,0.08)' : 'rgba(244,63,94,0.08)',
+        fill: true, pointRadius: 0, tension: 0.1,
+      }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { ticks: { maxTicksLimit: 6, color: '#71717a', font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        },
+      },
+    });
+  }
+
   function render(d) {
     const cont = $('an-resultado');
     cont.classList.remove('hidden');
@@ -8253,10 +8285,30 @@ const Analizador = (() => {
       </div>
     `;
 
+    // Gráfica de precio interactiva con rangos
+    const chartHTML = `
+      <div class="bg-surface border border-surface-border rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h4 class="text-sm font-semibold text-zinc-200">Precio histórico</h4>
+          <div class="flex gap-1 text-[11px]">
+            ${['1M', '6M', '1A', '5A', 'MAX'].map(r => `<button data-an-rango="${r}" class="an-rango px-2 py-0.5 rounded border border-surface-border ${r === '1A' ? 'text-zinc-200 bg-zinc-900' : 'text-zinc-500 hover:text-zinc-200'}">${r}</button>`).join('')}
+          </div>
+        </div>
+        <div class="h-60"><canvas id="an-price-canvas"></canvas></div>
+      </div>`;
+
     // ddHTML + srHTML removidos (requieren Claude API)
-    cont.innerHTML = headerHTML + peerHTML
+    cont.innerHTML = headerHTML + chartHTML + peerHTML
                    + `<div id="an-dashboard-host"><div class="bg-surface border border-surface-border rounded-2xl p-5 text-center text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando dashboard financiero…</div></div>`;
     cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    _renderPrecioChart(d.ticker, '1A');
+    cont.querySelectorAll('.an-rango').forEach(b => b.addEventListener('click', () => {
+      cont.querySelectorAll('.an-rango').forEach(x => { x.classList.remove('text-zinc-200', 'bg-zinc-900'); x.classList.add('text-zinc-500'); });
+      b.classList.add('text-zinc-200', 'bg-zinc-900'); b.classList.remove('text-zinc-500');
+      _renderPrecioChart(d.ticker, b.dataset.anRango);
+    }));
+
     cargarDashboardFinanciero(d.ticker);
   }
 
