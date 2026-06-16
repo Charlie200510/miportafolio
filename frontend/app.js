@@ -2497,6 +2497,87 @@ const Picker = (() => {
 // ============================================================
 // PERIÓDICO (cierres + noticias)
 // ============================================================
+// ============================================================
+// WATCHLIST (lista de seguimiento) + sparklines
+// ============================================================
+const WATCH_KEY = 'miPortafolio.watchlist.v1';
+function leerWatchlist() {
+  try { const a = JSON.parse(localStorage.getItem(WATCH_KEY) || '[]'); return Array.isArray(a) ? a : []; }
+  catch { return []; }
+}
+function enWatchlist(t) { return leerWatchlist().includes((t || '').toUpperCase()); }
+function toggleWatchlist(t) {
+  t = (t || '').toUpperCase(); if (!t) return false;
+  const a = leerWatchlist(); const i = a.indexOf(t);
+  if (i >= 0) a.splice(i, 1); else a.push(t);
+  try { localStorage.setItem(WATCH_KEY, JSON.stringify(a)); } catch {}
+  return a.includes(t);
+}
+function _sparklineSVG(vals, w = 70, h = 22) {
+  if (!Array.isArray(vals) || vals.length < 2) return '';
+  const min = Math.min(...vals), max = Math.max(...vals), rng = (max - min) || 1;
+  const pts = vals.map((v, i) =>
+    `${(i / (vals.length - 1) * w).toFixed(1)},${(h - (v - min) / rng * (h - 2) - 1).toFixed(1)}`
+  ).join(' ');
+  const col = vals[vals.length - 1] >= vals[0] ? '#22c55e' : '#f43f5e';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+}
+async function renderWatchlist() {
+  const cont = $('periodico-watchlist');
+  if (!cont) return;
+  const tickers = leerWatchlist();
+  if (!tickers.length) {
+    cont.innerHTML = `<p class="text-xs text-zinc-500 p-3 text-center leading-relaxed">Aún no sigues ninguna acción. En <span class="text-zinc-300">Analizar</span>, marca el ☆ junto al ticker para verla aquí con su precio y mini-gráfico.</p>`;
+    return;
+  }
+  let items = [];
+  try {
+    const r = await fetch('/api/watchlist', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tickers }),
+    });
+    const d = await r.json();
+    if (d && d.ok) items = d.items || [];
+  } catch {}
+  if (!items.length) {
+    cont.innerHTML = `<p class="text-xs text-zinc-500 p-3 text-center">No pude cargar tu lista en este momento.</p>`;
+    return;
+  }
+  cont.innerHTML = items.map(it => {
+    const up = (it.cambio_pct || 0) >= 0;
+    const cls = up ? 'text-accent-green' : 'text-accent-red';
+    const sym = it.moneda === 'MXN' ? '$' : 'US$';
+    return `
+      <div class="watch-row flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-zinc-900/50 cursor-pointer" data-ticker="${escapeHtml(it.ticker)}">
+        <div class="min-w-0 flex-1">
+          <p class="text-[13px] font-semibold text-zinc-100 tabular truncate">${escapeHtml(it.ticker)}</p>
+          <p class="text-[10px] text-zinc-500 truncate">${escapeHtml(it.nombre || '')}</p>
+        </div>
+        <div class="shrink-0">${_sparklineSVG(it.spark)}</div>
+        <div class="text-right shrink-0 w-24">
+          <p class="text-[13px] font-bold tabular text-zinc-100">${sym}${(it.precio || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p class="text-[11px] tabular ${cls}">${up ? '+' : ''}${(it.cambio_pct || 0).toFixed(2)}%</p>
+        </div>
+        <button class="watch-quitar text-zinc-600 hover:text-accent-red text-xs px-1 shrink-0" data-quitar="${escapeHtml(it.ticker)}" title="Quitar de seguimiento">✕</button>
+      </div>`;
+  }).join('');
+  cont.querySelectorAll('.watch-row').forEach(row => row.addEventListener('click', (e) => {
+    if (e.target.closest('.watch-quitar')) return;
+    const t = row.dataset.ticker;
+    const tab = document.querySelector('.nav-tab[data-vista="analizar"]');
+    if (tab) tab.click();
+    setTimeout(() => {
+      const inp = $('an-input'); if (inp) inp.value = t;
+      const btn = $('an-btn-analizar'); if (btn) btn.click();
+    }, 120);
+  }));
+  cont.querySelectorAll('.watch-quitar').forEach(b => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleWatchlist(b.dataset.quitar);
+    renderWatchlist();
+  }));
+}
+
 const Periodico = (() => {
   const state = {
     cargadoUnaVez: false,
@@ -2980,6 +3061,9 @@ const Periodico = (() => {
 
     // Acción del día (cache 24h en backend, súper rápido)
     safeJson(fetch('/api/periodico/accion-del-dia')).then(d => renderAccionDia(d));
+
+    // Lista de seguimiento del usuario
+    renderWatchlist();
 
     // Dashboard de mercados (el más pesado, render por secciones)
     safeJson(fetch('/api/periodico/mercados')).then(mercados => {
@@ -8147,7 +8231,9 @@ const Analizador = (() => {
           <div>
             <p class="text-xs uppercase tracking-wider text-zinc-500">${escapeHtml(d.sector || '—')} · ${escapeHtml(d.industria || '—')}</p>
             <h3 class="text-2xl font-semibold text-zinc-100 mt-1">${escapeHtml(d.nombre || d.ticker)}</h3>
-            <p class="text-sm text-zinc-500 font-mono mt-0.5">${escapeHtml(d.ticker)} · ${escapeHtml(moneda)}</p>
+            <p class="text-sm text-zinc-500 font-mono mt-0.5">${escapeHtml(d.ticker)} · ${escapeHtml(moneda)}
+              <button id="an-watch-btn" title="Seguir en tu lista" class="ml-1.5 text-base align-middle ${enWatchlist(d.ticker) ? 'text-accent-amber' : 'text-zinc-600'} hover:text-accent-amber">${enWatchlist(d.ticker) ? '★' : '☆'}</button>
+            </p>
             ${d.precio_actual != null ? `<p class="text-base text-zinc-200 tabular mt-2">Último precio: <span class="font-semibold">${fmtMoney(d.precio_actual, moneda)} ${escapeHtml(moneda)}</span></p>` : ''}
           </div>
           <div class="text-center">
@@ -8308,6 +8394,14 @@ const Analizador = (() => {
       b.classList.add('text-zinc-200', 'bg-zinc-900'); b.classList.remove('text-zinc-500');
       _renderPrecioChart(d.ticker, b.dataset.anRango);
     }));
+
+    const _wb = $('an-watch-btn');
+    if (_wb) _wb.addEventListener('click', () => {
+      const activo = toggleWatchlist(d.ticker);
+      _wb.textContent = activo ? '★' : '☆';
+      _wb.classList.toggle('text-accent-amber', activo);
+      _wb.classList.toggle('text-zinc-600', !activo);
+    });
 
     cargarDashboardFinanciero(d.ticker);
   }

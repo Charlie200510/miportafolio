@@ -1925,6 +1925,44 @@ def api_historico(ticker):
         return jsonify({"ok": False, "error": f"histórico falló: {e}"}), 500
 
 
+@app.route("/api/watchlist", methods=["POST"])
+def api_watchlist():
+    """Datos para la lista de seguimiento: último precio, cambio del día y
+    sparkline (últimos ~30 cierres) — desde el universo local, sin yfinance.
+    Body: {tickers: [...]}."""
+    try:
+        import accion_del_dia as _ad
+        body = request.get_json(silent=True) or {}
+        tickers = [str(t).strip().upper() for t in (body.get("tickers") or []) if t][:50]
+        df = _ad._cargar_precios()
+        info = _ad._cargar_info()
+        out = []
+        if df is not None and tickers:
+            for t in tickers:
+                if t not in df.columns:
+                    continue
+                s = df[t].dropna()
+                if len(s) < 2:
+                    continue
+                precio = float(s.iloc[-1])
+                prev = float(s.iloc[-2])
+                cambio = (precio / prev - 1) * 100 if prev else 0.0
+                sp = s.iloc[-30:]
+                paso = max(1, len(sp) // 20)
+                meta = info.get(t, {})
+                out.append({
+                    "ticker":     t,
+                    "nombre":     meta.get("nombre") or t,
+                    "precio":     round(precio, 2),
+                    "cambio_pct": round(cambio, 2),
+                    "moneda":     meta.get("moneda") or ("MXN" if t.endswith(".MX") else "USD"),
+                    "spark":      [round(float(v), 4) for v in sp.iloc[::paso].values],
+                })
+        return jsonify({"ok": True, "items": out})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"watchlist falló: {e}"}), 500
+
+
 @app.route("/api/score/<path:ticker>", methods=["GET"])
 def api_score_ticker(ticker):
     """Devuelve el score canónico para UN ticker.
