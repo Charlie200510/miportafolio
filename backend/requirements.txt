@@ -4,6 +4,7 @@
 # Core web
 Flask>=3.0,<4.0
 flask-cors>=4.0
+flask-compress>=1.14    # gzip/brotli automático en JSON/HTML (~80% reducción)
 gunicorn>=21.2  # WSGI server para producción
 
 # Análisis cuantitativo

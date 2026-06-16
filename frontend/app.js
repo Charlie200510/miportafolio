@@ -2358,7 +2358,7 @@ const Periodico = (() => {
     ];
 
     cont.innerHTML = `
-      <div class="flex items-start justify-between gap-4 mb-4">
+      <div class="flex items-start justify-between gap-4 mb-4" data-ticker-live="${escapeHtml(a.ticker || '')}">
         <div class="flex items-center gap-3 min-w-0">
           <span class="text-[10px] font-bold px-2 py-1 rounded border tabular shrink-0 ${banderaCls}">${bandera}</span>
           <div class="min-w-0">
@@ -2367,15 +2367,25 @@ const Periodico = (() => {
               <span class="text-[11px] px-2 py-0.5 rounded-full border ${nivelCls}">
                 ${escapeHtml(data.nivel || '')} · ${data.score} pts
               </span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-accent-green/10 text-accent-green border border-accent-green/30 hidden sm:inline-flex items-center gap-1">
+                <span class="w-1 h-1 rounded-full bg-accent-green animate-pulse"></span>
+                LIVE
+              </span>
             </div>
             <p class="text-[13px] text-zinc-400 truncate">${escapeHtml(a.nombre || '')}</p>
             ${a.sector ? `<p class="text-[11px] text-zinc-600">${escapeHtml(a.sector)}${a.industria ? ' · ' + escapeHtml(a.industria) : ''}</p>` : ''}
           </div>
         </div>
-        <button class="accion-dia-analizar text-[11px] text-accent-amber hover:text-zinc-100 border border-accent-amber/30 hover:border-accent-amber/60 rounded-lg px-3 py-1.5 transition shrink-0"
-                data-ticker="${escapeHtml(a.ticker || '')}">
-          Analizar a fondo →
-        </button>
+        <div class="flex items-center gap-2 shrink-0">
+          <div class="text-right">
+            <p data-live-precio class="text-base font-bold tabular text-zinc-100">${a.precio ? moneda + fmtNum(a.precio) : '—'}</p>
+            <p data-live-change class="text-[11px] tabular text-zinc-500">—</p>
+          </div>
+          <button class="accion-dia-analizar text-[11px] text-accent-amber hover:text-zinc-100 border border-accent-amber/30 hover:border-accent-amber/60 rounded-lg px-3 py-1.5 transition"
+                  data-ticker="${escapeHtml(a.ticker || '')}">
+            Analizar →
+          </button>
+        </div>
       </div>
 
       <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
@@ -2840,8 +2850,92 @@ const Periodico = (() => {
 
   function bind() {
     const btn = $('periodico-refrescar');
-    if (btn) btn.addEventListener('click', () => { cargar(true); cargarMovers(); });
+    if (btn) btn.addEventListener('click', () => { cargar(true); cargarMovers(); iniciarPollingLive(true); });
     bindMoversToggle();
+    iniciarPollingLive();
+  }
+
+  // ─────────────────────────────────────────────────────────
+  //  POLLING DE PRECIOS LIVE (cada 30s mientras pestaña visible)
+  // ─────────────────────────────────────────────────────────
+  let _pollingInterval = null;
+  let _pollingActive = false;
+
+  function _tickersVisibles() {
+    // Recoge tickers únicos de las cards renderizadas en el periódico
+    const set = new Set();
+    document.querySelectorAll('[data-ticker-live]').forEach(el => {
+      const t = el.dataset.tickerLive;
+      if (t) set.add(t.toUpperCase());
+    });
+    // Más los del portafolio del usuario para alimentar la card "Acción del día"
+    (leerPortafolioGuardado() || []).forEach(t => set.add(t.toUpperCase()));
+    return Array.from(set).slice(0, 25);  // límite razonable
+  }
+
+  function _pintarPrecio(ticker, data) {
+    if (!data || !data.ok) return;
+    const cls = data.change_pct >= 0 ? 'text-accent-green' : 'text-accent-red';
+    const signo = data.change_pct >= 0 ? '+' : '';
+    const moneda = data.moneda === 'MXN' ? '$' : 'US$';
+    document.querySelectorAll(`[data-ticker-live="${ticker}"]`).forEach(el => {
+      const precioEl = el.querySelector('[data-live-precio]');
+      const changeEl = el.querySelector('[data-live-change]');
+      if (precioEl) {
+        precioEl.textContent = `${moneda}${data.precio.toFixed(2)}`;
+        // Flash sutil al actualizar
+        precioEl.style.transition = 'color .3s';
+        precioEl.style.color = data.change_pct >= 0 ? '#22c55e' : '#f43f5e';
+        setTimeout(() => { precioEl.style.color = ''; }, 600);
+      }
+      if (changeEl) {
+        changeEl.className = `text-[11px] tabular ${cls}`;
+        changeEl.textContent = `${signo}${data.change_pct.toFixed(2)}%`;
+      }
+    });
+  }
+
+  async function _pollPrecios() {
+    if (document.hidden) return;        // pestaña no visible → ahorra
+    const tickers = _tickersVisibles();
+    if (!tickers.length) return;
+    try {
+      const r = await fetch(`/api/precios-live?tickers=${tickers.join(',')}`);
+      let d = null;
+      try { d = await r.json(); } catch { return; }
+      if (!d || !d.ok || !d.precios) return;
+      Object.entries(d.precios).forEach(([t, info]) => _pintarPrecio(t, info));
+
+      // Actualiza el indicador de hora con estatus
+      const hora = $('periodico-hora');
+      if (hora) {
+        const ahora = new Date().toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        const estado = d.mercados_abiertos ? 'LIVE' : 'mercados cerrados';
+        hora.textContent = `Última actualización ${ahora} · ${estado}`;
+      }
+    } catch (_) { /* silencio: polling resiliente */ }
+  }
+
+  function iniciarPollingLive(inmediato = false) {
+    if (_pollingActive) {
+      if (inmediato) _pollPrecios();
+      return;
+    }
+    _pollingActive = true;
+    // Pausa cuando pestaña oculta
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) _pollPrecios();
+    });
+    // Tick cada 30s con mercados abiertos, 2 min con cerrados
+    const tick = () => {
+      _pollPrecios();
+      const nextMs = (new Date().getDay() >= 1 && new Date().getDay() <= 5
+                      && new Date().getHours() >= 8 && new Date().getHours() <= 16)
+                      ? 30_000 : 120_000;
+      _pollingInterval = setTimeout(tick, nextMs);
+    };
+    if (inmediato) tick();
+    else _pollingInterval = setTimeout(tick, 30_000);
   }
 
   // Wrapper de cargar que también carga movers
@@ -2849,6 +2943,8 @@ const Periodico = (() => {
   async function cargarConMovers(forzar = false) {
     await cargarOriginal(forzar);
     cargarMovers();
+    // Arranca el polling después de la carga inicial
+    iniciarPollingLive();
   }
 
   return { cargar: cargarConMovers, bind };

@@ -226,6 +226,21 @@ app = Flask(
     static_url_path="/static",
 )
 
+# ── Compresión gzip/brotli automática (reduce JSON/HTML ~70-85%) ──
+try:
+    from flask_compress import Compress
+    # Configuración: comprimir JSON, HTML, JS, CSS, SVG; mínimo 500 bytes
+    app.config["COMPRESS_MIMETYPES"] = [
+        "application/json", "text/html", "text/css", "text/xml",
+        "application/javascript", "application/xml", "image/svg+xml",
+    ]
+    app.config["COMPRESS_LEVEL"] = 6
+    app.config["COMPRESS_MIN_SIZE"] = 500
+    Compress(app)
+    print("✓ flask-compress activo (gzip/brotli)")
+except Exception as _e:
+    print(f"⚠ flask-compress no disponible: {_e}")
+
 # ── Auto-inicializar schema Postgres al arrancar (idempotente) ──
 # En Render free no hay Shell, así que el schema lo crea el server solo.
 try:
@@ -330,6 +345,79 @@ def _check_cron_auth(req) -> bool:
     if req.args.get("secret") == CRON_SECRET:
         return True
     return False
+
+
+@app.route("/api/_keepalive", methods=["GET", "HEAD"])
+def api_keepalive():
+    """Ping ultra-ligero para evitar que Render free duerma.
+    Llamar cada 10 min desde cron-job.org (sin secret necesario, es read-only)."""
+    import time as _t
+    return jsonify({"ok": True, "ts": int(_t.time()), "service": "miportafolio"}), 200
+
+
+@app.route("/api/_warmup", methods=["GET", "POST"])
+def api_warmup():
+    """Pre-calienta el cache de todos los endpoints pesados del periódico.
+    Disparar cada hora desde cron-job.org → cache siempre fresco.
+
+    Auth: ?secret=<CRON_SECRET> o Authorization: Bearer <CRON_SECRET>
+    """
+    if not _check_cron_auth(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    import time as _t
+    t0 = _t.time()
+    resultados = {}
+
+    # 1) Periódico — resumen + mercados + noticias
+    try:
+        import periodico as _p
+        resumen = _p.resumen_diario()
+        resultados["resumen"] = {"ok": bool(resumen), "size": len(str(resumen))}
+    except Exception as e:
+        resultados["resumen"] = {"ok": False, "error": str(e)}
+
+    try:
+        import periodico as _p
+        mercados = _p.mercados_dashboard()
+        resultados["mercados"] = {"ok": bool(mercados), "size": len(str(mercados or ""))}
+    except Exception as e:
+        resultados["mercados"] = {"ok": False, "error": str(e)}
+
+    try:
+        import periodico as _p
+        noticias = _p.noticias_top(12)
+        resultados["noticias"] = {"ok": bool(noticias), "n": len(noticias) if noticias else 0}
+    except Exception as e:
+        resultados["noticias"] = {"ok": False, "error": str(e)}
+
+    # 2) Top movers — 3 períodos
+    for periodo in ("dia", "semana", "mes"):
+        try:
+            import top_movers as _tm
+            d = _tm.top_movers(periodo, 3)
+            resultados[f"movers_{periodo}"] = {"ok": d.get("ok", False)}
+        except Exception as e:
+            resultados[f"movers_{periodo}"] = {"ok": False, "error": str(e)}
+
+    # 3) Acción del día
+    try:
+        import accion_del_dia as _ad
+        d = _ad.accion_del_dia()
+        resultados["accion_dia"] = {"ok": d.get("ok", False),
+                                     "ticker": d.get("accion", {}).get("ticker") if d.get("ok") else None}
+    except Exception as e:
+        resultados["accion_dia"] = {"ok": False, "error": str(e)}
+
+    elapsed = round(_t.time() - t0, 2)
+    ok_count = sum(1 for r in resultados.values() if r.get("ok"))
+    return jsonify({
+        "ok":              True,
+        "endpoints_ok":    ok_count,
+        "endpoints_total": len(resultados),
+        "duracion_seg":    elapsed,
+        "detalle":         resultados,
+    })
 
 
 @app.route("/api/cron/<tipo>", methods=["GET", "POST"])
@@ -1644,6 +1732,25 @@ def api_periodico_top_movers():
         return jsonify(_tm.top_movers(periodo, n))
     except Exception as e:
         return jsonify({"ok": False, "error": f"top movers fallo: {e}"}), 500
+
+
+@app.route("/api/precios-live", methods=["GET", "POST"])
+def api_precios_live():
+    """Precios cuasi-live para una lista de tickers.
+    GET  ?tickers=AAPL,TSLA,...
+    POST {"tickers": ["AAPL", ...]}
+    Cache 30s con mercados abiertos, 1h con mercados cerrados."""
+    try:
+        import precios_live as _pl
+        if request.method == "POST":
+            body = request.get_json(silent=True) or {}
+            tickers = body.get("tickers") or []
+        else:
+            raw = request.args.get("tickers") or ""
+            tickers = [t for t in raw.split(",") if t.strip()]
+        return jsonify(_pl.precios_live(tickers))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"precios live falló: {e}"}), 500
 
 
 @app.route("/api/periodico/accion-del-dia", methods=["GET"])
