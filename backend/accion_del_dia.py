@@ -26,7 +26,16 @@ import metricas_canonicas as MC
 _BACKEND_DIR = Path(__file__).parent
 _UNIV_FULL = _BACKEND_DIR / "universo_precios.csv"
 _UNIV_LITE = _BACKEND_DIR / "universo_lite_precios.csv"
-_INFO_PATH = _BACKEND_DIR / "info_activos.json"
+# Info del universo. Preferimos el archivo completo (dev) y caemos al lite, que
+# es lo ÚNICO que se despliega en prod. El viejo info_activos.json era un stub
+# de 3 tickers SIN el flag 'recomendada' ni 'sector' -> rompía todo el filtrado.
+_INFO_FULL = _BACKEND_DIR / "universo_info.json"
+_INFO_LITE = _BACKEND_DIR / "universo_lite_info.json"
+_INFO_STUB = _BACKEND_DIR / "info_activos.json"
+
+# Cache en memoria del DataFrame de precios (evita releer ~59MB en cada llamada;
+# lo comparten Acción del Día y Portafolio Óptimo). Invalidado por mtime.
+_PRECIOS_CACHE: Dict[str, Any] = {}
 
 _CACHE: Dict[str, Any] = {}
 _CACHE_TTL = 24 * 60 * 60   # 24 horas
@@ -42,19 +51,26 @@ def _cargar_precios() -> Optional[pd.DataFrame]:
     if not csv.exists():
         return None
     try:
-        return pd.read_csv(csv, index_col=0, parse_dates=True).sort_index()
+        mtime = csv.stat().st_mtime
+        c = _PRECIOS_CACHE.get("df")
+        if c is not None and c["path"] == str(csv) and c["mtime"] == mtime:
+            return c["df"]
+        df = pd.read_csv(csv, index_col=0, parse_dates=True).sort_index()
+        _PRECIOS_CACHE["df"] = {"df": df, "mtime": mtime, "path": str(csv)}
+        return df
     except Exception:
         return None
 
 
 def _cargar_info() -> Dict[str, Any]:
-    if not _INFO_PATH.exists():
-        return {}
-    try:
-        with open(_INFO_PATH, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    for p in (_INFO_FULL, _INFO_LITE, _INFO_STUB):
+        if p.exists():
+            try:
+                with open(p, encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                continue
+    return {}
 
 
 def _es_candidato(ticker: str, info: Dict[str, Any]) -> bool:
@@ -64,6 +80,11 @@ def _es_candidato(ticker: str, info: Dict[str, Any]) -> bool:
         return False
     tipo = (info.get("tipo") or info.get("quoteType") or "").upper()
     if tipo in ("ETF", "MUTUALFUND", "INDEX", "FUTURE", "CRYPTOCURRENCY"):
+        return False
+    # El universo lite marca ETFs/índices en 'sector' (p.ej. "ETF / Índice"),
+    # no en 'tipo'. Acción del Día debe ser una ACCIÓN, así que los excluimos.
+    sector = (info.get("sector") or "").upper()
+    if "ETF" in sector or "INDICE" in sector or "ÍNDICE" in sector:
         return False
     nombre = (info.get("nombre") or "").upper()
     if any(k in nombre for k in ("ETF", "FUND", "TRUST", "INDEX")):
@@ -220,11 +241,20 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
     if serie_us is None and serie_mx is None:
         return {"ok": False, "error": "Benchmarks (SPY/NAFTRAC.MX) no disponibles"}
 
+    # Pool acotado: solo tickers 'recomendada' (set curado de ~120). Antes se
+    # recorrían los ~1000 del universo -> ~34s, reventaba el timeout del free
+    # tier. Si el info no trae el flag (stub viejo), caemos al universo filtrado.
+    hay_recomendadas = any(
+        isinstance(v, dict) and v.get("recomendada") for v in info_all.values()
+    )
     candidatos = []
     for t in df_precios.columns:
         info = info_all.get(t, {})
-        if _es_candidato(t, info):
-            candidatos.append(t)
+        if not _es_candidato(t, info):
+            continue
+        if hay_recomendadas and not info.get("recomendada"):
+            continue
+        candidatos.append(t)
 
     if not candidatos:
         return {"ok": False, "error": "No hay candidatos en el universo"}

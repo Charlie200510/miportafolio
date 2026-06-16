@@ -435,6 +435,15 @@ def _ejecutar_warmup_blocking():
         }
     _paso("accion_dia", _r5)
 
+    # 6) Portafolio óptimo nivel 5 (el default que el frontend carga al abrir).
+    #    Calienta también el cache en memoria del DataFrame de precios, que
+    #    comparten Acción del Día y el optimizador.
+    def _r6():
+        import portafolio_optimo as _po
+        d = _po.portafolio_optimo(nivel_riesgo=5)
+        return {"ok": d.get("ok", False), "n": len(d.get("acciones", [])) if d.get("ok") else 0}
+    _paso("portafolio_optimo_5", _r6)
+
     # Resumen final
     elapsed = round(_t.time() - t0, 2)
     ok_count = sum(1 for r in resultados.values() if r.get("ok"))

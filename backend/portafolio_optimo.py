@@ -39,7 +39,11 @@ import metricas_canonicas as MC
 _BACKEND_DIR = Path(__file__).parent
 _UNIV_FULL = _BACKEND_DIR / "universo_precios.csv"
 _UNIV_LITE = _BACKEND_DIR / "universo_lite_precios.csv"
-_INFO_PATH = _BACKEND_DIR / "info_activos.json"
+# Ver nota en accion_del_dia.py: el stub info_activos.json no trae 'recomendada'
+# ni 'sector'. Preferimos universo_info.json (dev) y caemos al lite (prod).
+_INFO_FULL = _BACKEND_DIR / "universo_info.json"
+_INFO_LITE = _BACKEND_DIR / "universo_lite_info.json"
+_INFO_STUB = _BACKEND_DIR / "info_activos.json"
 
 _CACHE: Dict[str, Any] = {}
 _CACHE_TTL = 6 * 60 * 60   # 6 horas (matriz de covarianzas no cambia rápido)
@@ -78,23 +82,30 @@ NIVELES = {
 # Carga de datos
 # ─────────────────────────────────────────────────────────
 def _cargar_precios() -> Optional[pd.DataFrame]:
-    csv = _UNIV_FULL if _UNIV_FULL.exists() else _UNIV_LITE
-    if not csv.exists():
-        return None
+    # Reusa el DataFrame ya cacheado por accion_del_dia (misma fuente), para no
+    # tener dos copias de ~29MB en memoria — importa en el free tier (512MB).
     try:
-        return pd.read_csv(csv, index_col=0, parse_dates=True).sort_index()
+        import accion_del_dia as _ad
+        return _ad._cargar_precios()
     except Exception:
-        return None
+        csv = _UNIV_FULL if _UNIV_FULL.exists() else _UNIV_LITE
+        if not csv.exists():
+            return None
+        try:
+            return pd.read_csv(csv, index_col=0, parse_dates=True).sort_index()
+        except Exception:
+            return None
 
 
 def _cargar_info() -> Dict[str, Any]:
-    if not _INFO_PATH.exists():
-        return {}
-    try:
-        with open(_INFO_PATH, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    for p in (_INFO_FULL, _INFO_LITE, _INFO_STUB):
+        if p.exists():
+            try:
+                with open(p, encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                continue
+    return {}
 
 
 def _liquidez_diaria(info: Dict[str, Any], precio: Optional[float]) -> float:
@@ -127,30 +138,33 @@ def _seleccionar_candidatos(
     serie_us = df_precios["SPY"] if "SPY" in df_precios.columns else None
     serie_mx = df_precios["NAFTRAC.MX"] if "NAFTRAC.MX" in df_precios.columns else None
 
+    hay_recomendadas = any(
+        isinstance(v, dict) and v.get("recomendada") for v in info_all.values()
+    )
+
     for t in df_precios.columns:
         info = info_all.get(t, {})
-        # Filtros básicos: liquidez mínima
-        precio = float(df_precios[t].dropna().iloc[-1]) if df_precios[t].dropna().size else 0
-        liq = _liquidez_diaria(info, precio)
-        if liq < 5_000_000:    # < $5M diarios
+        # Filtro de calidad: solo 'recomendada' (set curado ~120). Reemplaza el
+        # viejo filtro de liquidez, que dependía de averageVolume/market_cap —
+        # campos ausentes en el universo lite, por lo que descartaba TODO y el
+        # optimizador se quedaba sin candidatos (no devolvía portafolio).
+        if hay_recomendadas and not info.get("recomendada"):
             continue
-        # Excluir crypto, ETFs, fondos
+        # Excluir crypto, fondos, índices, futuros. Los ETFs SÍ se permiten: los
+        # niveles conservadores los necesitan para bajar la volatilidad objetivo.
         tipo = (info.get("tipo") or info.get("quoteType") or "").upper()
         if tipo in ("CRYPTOCURRENCY", "MUTUALFUND", "INDEX", "FUTURE"):
             continue
         if MC.es_crypto(t):
             continue
-        # Si nivel ≥7 (agresivo), permitimos ETFs growth/tech para concentrar
-        # Si nivel ≤4 (conservador), preferimos ETFs amplios (SPY, NAFTRAC, dividend ETFs)
-        if nivel <= 4 and tipo != "ETF" and not (info.get("dividend_yield") or 0) > 0.015:
-            # En conservador no excluyo nada pero los priorizo abajo
-            pass
 
         # Score canónico
         res = _ad.calcular_metricas_y_score(t, df_precios, info_all, serie_us, serie_mx)
         if res is None:
             continue
         score, _ = res
+        precio = float(df_precios[t].dropna().iloc[-1]) if df_precios[t].dropna().size else 0
+        liq = _liquidez_diaria(info, precio)
         candidatos.append((t, score, liq))
 
     # Ranking final: ajustar el peso del score por nivel
