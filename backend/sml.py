@@ -183,12 +183,38 @@ def _veredicto_desde_canon(canon: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+_SML_CACHE: Dict[str, Any] = {}
+_SML_TTL = 6 * 60 * 60   # 6h — beta/alpha no cambian rápido
+
+
+def _descargar_close(ticker: str, period: str = "5y", intentos: int = 3) -> Optional[pd.Series]:
+    """Descarga la serie de cierres con reintentos + backoff.
+
+    Yahoo devuelve 429 ('too many requests') con frecuencia desde IPs
+    compartidas como las de Render. El backoff da margen a que se libere el
+    límite en vez de fallar al primer intento.
+    """
+    import time as _t
+    import yfinance as _yf
+    for i in range(intentos):
+        try:
+            hist = _yf.Ticker(ticker).history(period=period, auto_adjust=True)
+            if hist is not None and not hist.empty and "Close" in hist.columns:
+                s = hist["Close"].dropna()
+                if len(s):
+                    return s
+        except Exception:
+            pass
+        _t.sleep(1.5 * (i + 1))   # 1.5s, 3s, 4.5s
+    return None
+
+
 def evaluar_sml(ticker: str) -> Dict[str, Any]:
     """Evalúa el ticker contra la Security Market Line del CAPM.
 
     Usa metricas_canonicas como única fuente de verdad. Si el ticker está
     en el universo local, no descarga (instantáneo). Si no, descarga vía
-    yfinance pero usa LA MISMA fórmula que el resto de las vistas.
+    yfinance (con reintentos y cache) usando LA MISMA fórmula que el resto.
     """
     ticker = (ticker or "").strip().upper()
     if not ticker:
@@ -203,6 +229,13 @@ def evaluar_sml(ticker: str) -> Dict[str, Any]:
             ),
         }
 
+    # Cache (sobre todo para el path de descarga, que es el caro y el que se
+    # topa con el rate-limit de Yahoo).
+    import time as _t
+    hit = _SML_CACHE.get(ticker)
+    if hit and (_t.time() - hit["ts"]) < _SML_TTL:
+        return hit["data"]
+
     # Path rápido: si el ticker está en el universo local, usa el bundle canónico
     try:
         import accion_del_dia as _ad
@@ -212,35 +245,41 @@ def evaluar_sml(ticker: str) -> Dict[str, Any]:
     except Exception:
         pass
 
-    # Fallback: descarga vía yfinance y calcula con metricas_canonicas
+    # Fallback: el ticker no está en el universo local → descargar de yfinance.
     import metricas_canonicas as _MC
-    import pandas as _pd
 
     benchmark = _MC.benchmark_para(ticker)
-    moneda = _MC.moneda_para(ticker)
-    rf = _MC.rf_para(ticker)
 
-    # Descargar precios diarios (no retornos)
+    # El benchmark (SPY / NAFTRAC.MX) SÍ vive en el universo local: lo leemos de
+    # ahí en lugar de descargarlo, ahorrando una llamada a Yahoo (menos 429).
+    serie_m = None
     try:
-        import yfinance as _yf
-        hist_t = _yf.Ticker(ticker).history(period="5y", auto_adjust=True)
-        hist_m = _yf.Ticker(benchmark).history(period="5y", auto_adjust=True)
-        if hist_t.empty or hist_m.empty:
-            return {"ok": False, "error": f"Sin datos históricos para {ticker} o benchmark."}
-        serie_t = hist_t["Close"].dropna()
-        serie_m = hist_m["Close"].dropna()
-    except Exception as e:
-        return {"ok": False, "error": f"Error descargando datos: {e}"}
+        import accion_del_dia as _ad
+        df_local = _ad._cargar_precios()
+        if df_local is not None and benchmark in df_local.columns:
+            serie_m = df_local[benchmark].dropna()
+    except Exception:
+        serie_m = None
+    if serie_m is None or serie_m.empty:
+        serie_m = _descargar_close(benchmark)
+
+    serie_t = _descargar_close(ticker)
+
+    if serie_t is None or serie_t.empty:
+        return {"ok": False, "error": (
+            "Yahoo Finance está limitando las descargas ahora mismo "
+            "(demasiadas solicitudes). Espera ~1 minuto y vuelve a intentar.")}
+    if serie_m is None or serie_m.empty:
+        return {"ok": False, "error": "No pude obtener el benchmark para comparar."}
 
     metricas = _MC.calcular_metricas(ticker, serie_t, serie_m)
     if metricas is None:
         return {"ok": False, "error": "No se pudieron calcular métricas (poca historia)."}
 
-    # Construir bundle con shape de canon para reusar el veredicto
     canon = {
         "ticker":                ticker,
         "benchmark":             benchmark,
-        "moneda":                moneda,
+        "moneda":                _MC.moneda_para(ticker),
         "beta":                  metricas["beta"],
         "alpha_anualizado":      metricas["alpha_anualizado"],
         "retorno_real_anual":    metricas["retorno_real_anual"],
@@ -248,4 +287,6 @@ def evaluar_sml(ticker: str) -> Dict[str, Any]:
         "tasa_libre_riesgo":     metricas["tasa_libre_riesgo"],
         "premio_mercado":        metricas["premio_mercado"],
     }
-    return _veredicto_desde_canon(canon)
+    res = _veredicto_desde_canon(canon)
+    _SML_CACHE[ticker] = {"ts": _t.time(), "data": res}
+    return res
