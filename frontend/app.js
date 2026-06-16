@@ -6310,10 +6310,32 @@ const PortfolioManager = (() => {
   function _colorFromId(id) {
     return COLORS.find(c => c.id === id) || COLORS[0];
   }
-  function _avatarHTML(nombre, colorId, sizeClass = 'w-6 h-6 text-[11px]') {
-    const c = _colorFromId(colorId);
-    const initial = (nombre || 'P').trim().charAt(0).toUpperCase();
-    return `<span class="inline-flex items-center justify-center ${sizeClass} rounded-md font-semibold text-white shrink-0" style="background:${c.gradient};">${initial}</span>`;
+  // ── Avatares de animalitos (estilo Netflix) ──
+  // Cada portafolio guarda un `animal`. Reemplazan al viejo color+inicial.
+  const ANIMALS = [
+    { id: 'zorro', name: 'Zorro', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#ea580c"/><path d="M15 33 18 12 33 27Z" fill="#fb923c"/><path d="M49 33 46 12 31 27Z" fill="#fb923c"/><path d="M19 27 20 17 27 25Z" fill="#7c2d12"/><path d="M45 27 44 17 37 25Z" fill="#7c2d12"/><path d="M32 22c10 0 15 8 15 16 0 9-7 15-15 15s-15-6-15-15c0-8 5-16 15-16Z" fill="#fb923c"/><path d="M32 37c6 0 11 4 11 10 0 4-5 8-11 8s-11-4-11-8c0-6 5-10 11-10Z" fill="#fff7ed"/><circle cx="25" cy="36" r="2.8" fill="#1c1917"/><circle cx="39" cy="36" r="2.8" fill="#1c1917"/><path d="M32 45l3.5 3-3.5 2.5-3.5-2.5Z" fill="#1c1917"/></svg>` },
+    { id: 'panda', name: 'Panda', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#64748b"/><circle cx="20" cy="20" r="8" fill="#1c1917"/><circle cx="44" cy="20" r="8" fill="#1c1917"/><circle cx="32" cy="36" r="18" fill="#f8fafc"/><ellipse cx="24" cy="33" rx="5" ry="6.5" fill="#1c1917" transform="rotate(-18 24 33)"/><ellipse cx="40" cy="33" rx="5" ry="6.5" fill="#1c1917" transform="rotate(18 40 33)"/><circle cx="24" cy="34" r="2" fill="#f8fafc"/><circle cx="40" cy="34" r="2" fill="#f8fafc"/><ellipse cx="32" cy="42" rx="3" ry="2.2" fill="#1c1917"/></svg>` },
+    { id: 'leon', name: 'León', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#b45309"/><g fill="#d97706"><circle cx="32" cy="13" r="4.5"/><circle cx="13" cy="22" r="4.5"/><circle cx="51" cy="22" r="4.5"/><circle cx="13" cy="46" r="4.5"/><circle cx="51" cy="46" r="4.5"/><circle cx="32" cy="55" r="4.5"/></g><circle cx="32" cy="34" r="19" fill="#f59e0b"/><circle cx="32" cy="34" r="13" fill="#fcd34d"/><circle cx="26" cy="32" r="2.4" fill="#1c1917"/><circle cx="38" cy="32" r="2.4" fill="#1c1917"/><path d="M32 36l3 3h-6Z" fill="#7c2d12"/><path d="M32 39c0 3 3 3 4 1M32 39c0 3-3 3-4 1" stroke="#7c2d12" stroke-width="1.3" fill="none"/></svg>` },
+    { id: 'tigre', name: 'Tigre', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#c2410c"/><path d="M18 22 16 12 26 20Z" fill="#fb923c"/><path d="M46 22 48 12 38 20Z" fill="#fb923c"/><circle cx="32" cy="34" r="18" fill="#fb923c"/><path d="M32 16v8M22 18l2 7M42 18l-2 7" stroke="#1c1917" stroke-width="2.2" stroke-linecap="round"/><path d="M15 32l6 2M49 32l-6 2" stroke="#1c1917" stroke-width="2.2" stroke-linecap="round"/><path d="M32 38c6 0 9 3 9 7 0 4-4 6-9 6s-9-2-9-6c0-4 3-7 9-7Z" fill="#fff7ed"/><circle cx="26" cy="33" r="2.6" fill="#1c1917"/><circle cx="38" cy="33" r="2.6" fill="#1c1917"/><path d="M32 43l3 2.5-3 2-3-2Z" fill="#1c1917"/></svg>` },
+    { id: 'koala', name: 'Koala', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#475569"/><circle cx="15" cy="24" r="9" fill="#94a3b8"/><circle cx="49" cy="24" r="9" fill="#94a3b8"/><circle cx="15" cy="24" r="4.5" fill="#f9a8d4"/><circle cx="49" cy="24" r="4.5" fill="#f9a8d4"/><circle cx="32" cy="36" r="16" fill="#cbd5e1"/><circle cx="25" cy="34" r="2.6" fill="#1c1917"/><circle cx="39" cy="34" r="2.6" fill="#1c1917"/><path d="M32 38c4 0 7 3 7 6 0 3-3 5-7 5s-7-2-7-5c0-3 3-6 7-6Z" fill="#334155"/></svg>` },
+    { id: 'buho', name: 'Búho', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#7c3aed"/><path d="M16 20 20 10 26 20Z" fill="#a78bfa"/><path d="M48 20 44 10 38 20Z" fill="#a78bfa"/><path d="M32 16c12 0 18 9 18 19 0 11-8 18-18 18s-18-7-18-18c0-10 6-19 18-19Z" fill="#a78bfa"/><circle cx="24" cy="32" r="8" fill="#f8fafc"/><circle cx="40" cy="32" r="8" fill="#f8fafc"/><circle cx="24" cy="32" r="3.6" fill="#1c1917"/><circle cx="40" cy="32" r="3.6" fill="#1c1917"/><path d="M32 38l4 5h-8Z" fill="#f59e0b"/></svg>` },
+    { id: 'pinguino', name: 'Pingüino', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#0ea5e9"/><ellipse cx="32" cy="36" rx="17" ry="20" fill="#1f2937"/><ellipse cx="32" cy="40" rx="11" ry="15" fill="#f8fafc"/><circle cx="26" cy="27" r="3.6" fill="#f8fafc"/><circle cx="38" cy="27" r="3.6" fill="#f8fafc"/><circle cx="26" cy="27" r="1.8" fill="#1f2937"/><circle cx="38" cy="27" r="1.8" fill="#1f2937"/><path d="M32 31l5 3-5 3-5-3Z" fill="#f59e0b"/></svg>` },
+    { id: 'conejo', name: 'Conejo', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#ec4899"/><rect x="22" y="6" width="8" height="26" rx="4" fill="#f8fafc"/><rect x="34" y="6" width="8" height="26" rx="4" fill="#f8fafc"/><rect x="24" y="9" width="4" height="20" rx="2" fill="#f9a8d4"/><rect x="36" y="9" width="4" height="20" rx="2" fill="#f9a8d4"/><circle cx="32" cy="40" r="15" fill="#f8fafc"/><circle cx="26" cy="38" r="2.4" fill="#1c1917"/><circle cx="38" cy="38" r="2.4" fill="#1c1917"/><path d="M32 43l2.5 2-2.5 2-2.5-2Z" fill="#f472b6"/></svg>` },
+    { id: 'rana', name: 'Rana', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#16a34a"/><path d="M32 24c12 0 18 7 18 15 0 9-8 14-18 14s-18-5-18-14c0-8 6-15 18-15Z" fill="#4ade80"/><circle cx="22" cy="20" r="9" fill="#4ade80"/><circle cx="42" cy="20" r="9" fill="#4ade80"/><circle cx="22" cy="19" r="4.2" fill="#f8fafc"/><circle cx="42" cy="19" r="4.2" fill="#f8fafc"/><circle cx="22" cy="20" r="2" fill="#1c1917"/><circle cx="42" cy="20" r="2" fill="#1c1917"/><path d="M22 41c4 5 16 5 20 0" stroke="#15803d" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>` },
+    { id: 'gato', name: 'Gato', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#6366f1"/><path d="M16 18 18 38 32 28Z" fill="#c7d2fe"/><path d="M48 18 46 38 32 28Z" fill="#c7d2fe"/><path d="M20 24 21 34 28 28Z" fill="#a5b4fc"/><path d="M44 24 43 34 36 28Z" fill="#a5b4fc"/><circle cx="32" cy="38" r="16" fill="#c7d2fe"/><path d="M25 35c1.5-2 4-2 5 0M34 35c1.5-2 4-2 5 0" stroke="#312e81" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M32 41l2.5 2-2.5 2-2.5-2Z" fill="#f472b6"/><path d="M28 42h-8M36 42h8" stroke="#a5b4fc" stroke-width="1.2" stroke-linecap="round"/></svg>` },
+  ];
+  function _animalFromId(id) { return ANIMALS.find(a => a.id === id) || ANIMALS[0]; }
+  function _animalParaPortafolio(p) {
+    if (p && p.animal) return p.animal;
+    // Migración desde el viejo `color` (ambas listas son de 10 → mapeo por índice)
+    if (p && p.color) {
+      const idx = COLORS.findIndex(c => c.id === p.color);
+      if (idx >= 0) return ANIMALS[idx].id;
+    }
+    return ANIMALS[0].id;
+  }
+  function _avatarHTML(animalId, sizeClass = 'w-6 h-6') {
+    return `<span class="inline-flex items-center justify-center ${sizeClass} rounded-lg overflow-hidden shrink-0">${_animalFromId(animalId).svg}</span>`;
   }
 
   function leerMeta() {
@@ -6326,15 +6348,16 @@ const PortfolioManager = (() => {
       };
       guardarMeta(raw);
     }
-    // Migración: si existe `emoji` en algún portfolio, convertir a `color` por default
+    // Migración: asegurar color (legacy) y un animal (avatar nuevo) por portafolio
     Object.values(raw.portfolios).forEach(p => {
       if (!p.color) p.color = 'green';
+      if (!p.animal) p.animal = _animalParaPortafolio(p);
     });
     return raw;
   }
   function guardarMeta(d) { try { localStorage.setItem(META_KEY, JSON.stringify(d)); } catch {} }
   function activoId() { return leerMeta().activo; }
-  function activoData() { const m = leerMeta(); return m.portfolios[m.activo] || { nombre: 'Principal', emoji: '📊' }; }
+  function activoData() { const m = leerMeta(); return m.portfolios[m.activo] || { nombre: 'Principal', animal: 'zorro' }; }
 
   function _snapshotActual() {
     return {
@@ -6371,13 +6394,13 @@ const PortfolioManager = (() => {
     guardarMeta(m);
     location.reload();
   }
-  function crear(nombre, colorId) {
+  function crear(nombre, animalId) {
     nombre = (nombre || '').trim().slice(0, 30);
     if (!nombre) return null;
     const id = 'p_' + Date.now().toString(36);
     const m = leerMeta();
     _persistirHaciaId(m.activo);
-    m.portfolios[id] = { nombre, color: colorId || 'green', creado: new Date().toISOString() };
+    m.portfolios[id] = { nombre, animal: animalId || ANIMALS[0].id, creado: new Date().toISOString() };
     m.activo = id;
     guardarMeta(m);
     _aplicarSnapshot({ tickers: '[]', pesos: '{}', txs: '[]' });
@@ -6402,9 +6425,9 @@ const PortfolioManager = (() => {
     const a = activoData();
     const av = $('port-active-avatar');
     if (av) {
-      const c = _colorFromId(a.color);
-      av.style.background = c.gradient;
-      av.textContent = (a.nombre || 'P').trim().charAt(0).toUpperCase();
+      av.style.background = 'none';
+      av.classList.add('overflow-hidden');
+      av.innerHTML = _animalFromId(_animalParaPortafolio(a)).svg;
     }
     if ($('port-active-nombre')) $('port-active-nombre').textContent = a.nombre || 'Principal';
   }
@@ -6415,7 +6438,7 @@ const PortfolioManager = (() => {
       return `
         <div class="flex items-center justify-between rounded-md hover:bg-zinc-900 group ${act ? 'bg-accent-green/10' : ''}">
           <button data-port-id="${id}" class="port-switch flex-1 text-left flex items-center gap-2 px-2 py-1.5 text-xs ${act ? 'text-accent-green font-semibold' : 'text-zinc-200'}">
-            ${_avatarHTML(p.nombre, p.color, 'w-5 h-5 text-[10px]')}
+            ${_avatarHTML(_animalParaPortafolio(p), 'w-5 h-5')}
             <span class="truncate">${escapeHtml(p.nombre)}</span>
             ${act ? '<span class="ml-auto text-[10px]">activo</span>' : ''}
           </button>
@@ -6443,9 +6466,9 @@ const PortfolioManager = (() => {
           <p class="text-xs text-zinc-500 mt-1 mb-4">Sepáralo por objetivo: Retiro, Trading, Hijos, etc.</p>
           <label class="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">Nombre</label>
           <input id="port-nombre-input" type="text" maxlength="30" placeholder="Ej. Retiro" class="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-accent-green mb-4" />
-          <label class="text-[10px] uppercase tracking-wider text-zinc-500 block mb-2">Color del avatar</label>
-          <div id="port-color-grid" class="grid grid-cols-5 gap-2 mb-4">
-            ${COLORS.map((c,i) => `<button type="button" data-color="${c.id}" class="port-color w-10 h-10 rounded-md transition relative ${i===0?'ring-2 ring-white/80 ring-offset-2 ring-offset-zinc-900':''}" style="background:${c.gradient};" title="${c.name}"></button>`).join('')}
+          <label class="text-[10px] uppercase tracking-wider text-zinc-500 block mb-2">Elige tu avatar</label>
+          <div id="port-animal-grid" class="grid grid-cols-5 gap-2 mb-4">
+            ${ANIMALS.map((a,i) => `<button type="button" data-animal="${a.id}" class="port-animal w-full aspect-square rounded-lg overflow-hidden transition ${i===0?'ring-2 ring-white/90 ring-offset-2 ring-offset-zinc-900':'opacity-70 hover:opacity-100'}" title="${a.name}">${a.svg}</button>`).join('')}
           </div>
           <div class="flex gap-2 justify-end">
             <button id="port-crear-cancelar" class="text-xs px-3 py-1.5 rounded-md text-zinc-400 hover:text-zinc-200">Cancelar</button>
@@ -6454,19 +6477,19 @@ const PortfolioManager = (() => {
         </div>
       </div>`;
     document.body.insertAdjacentHTML('beforeend', html);
-    let colorSel = COLORS[0].id;
-    document.querySelectorAll('.port-color').forEach(b => {
+    let animalSel = ANIMALS[0].id;
+    document.querySelectorAll('.port-animal').forEach(b => {
       b.addEventListener('click', () => {
-        document.querySelectorAll('.port-color').forEach(x => x.classList.remove('ring-2','ring-white/80','ring-offset-2','ring-offset-zinc-900'));
-        b.classList.add('ring-2','ring-white/80','ring-offset-2','ring-offset-zinc-900');
-        colorSel = b.dataset.color;
+        document.querySelectorAll('.port-animal').forEach(x => { x.classList.remove('ring-2','ring-white/90','ring-offset-2','ring-offset-zinc-900'); x.classList.add('opacity-70'); });
+        b.classList.add('ring-2','ring-white/90','ring-offset-2','ring-offset-zinc-900'); b.classList.remove('opacity-70');
+        animalSel = b.dataset.animal;
       });
     });
     $('port-crear-cancelar').addEventListener('click', () => $('port-crear-modal').remove());
     $('port-crear-modal').addEventListener('click', (e) => { if (e.target.id==='port-crear-modal') $('port-crear-modal').remove(); });
     $('port-crear-ok').addEventListener('click', () => {
       const n = $('port-nombre-input').value;
-      if (n.trim()) crear(n, colorSel);
+      if (n.trim()) crear(n, animalSel);
     });
     setTimeout(() => $('port-nombre-input').focus(), 100);
   }
