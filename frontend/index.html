@@ -407,27 +407,84 @@
         </div>
       </div>
 
-      <!-- Divider + Perfiles sugeridos (DESPUÉS del picker) -->
+      <!-- Divider + Portafolio óptimo por nivel de riesgo -->
       <div class="flex items-center gap-3 mt-10 mb-5">
         <div class="flex-1 border-t border-surface-border"></div>
-        <span class="text-[10px] uppercase tracking-wider text-zinc-600">o empieza con un perfil pre-armado</span>
+        <span class="text-[10px] uppercase tracking-wider text-zinc-600">o deja que generemos un portafolio óptimo para tu nivel de riesgo</span>
         <div class="flex-1 border-t border-surface-border"></div>
       </div>
 
       <div class="fade-up">
-        <div id="perfiles-header" class="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div class="flex items-start justify-between mb-3 flex-wrap gap-2">
           <div>
             <p class="text-[10px] uppercase tracking-wider text-zinc-500">
-              <span class="text-accent-purple">●</span> Perfiles sugeridos
+              <span class="text-accent-amber">●</span> Portafolio óptimo
             </p>
-            <h3 class="text-sm font-semibold text-zinc-200 mt-0.5">10 mezclas pre-armadas</h3>
-            <p class="text-[11px] text-zinc-600 mt-0.5 leading-snug max-w-lg">Si prefieres arrancar rápido, clic en el perfil más parecido a cómo quieres invertir. Lo puedes editar después.</p>
+            <h3 class="text-sm font-semibold text-zinc-200 mt-0.5">Mezcla generada automáticamente</h3>
+            <p class="text-[11px] text-zinc-600 mt-0.5 leading-snug max-w-lg">
+              Optimización mean-variance (Markowitz): combinamos las mejores acciones del universo
+              para maximizar Sharpe al nivel de riesgo que elijas, eliminando riesgo idiosincrático
+              mediante diversificación.
+            </p>
           </div>
-          <span class="text-[11px] text-zinc-500">Pre-armados</span>
+          <span class="text-[11px] text-accent-amber border border-accent-amber/30 bg-accent-amber/10 rounded-md px-2 py-0.5">Optimizado</span>
         </div>
-        <div id="perfiles-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-          <div class="col-span-full text-xs text-zinc-500 py-6 text-center">Cargando perfiles…</div>
+
+        <div id="portafolio-optimo-card"
+             class="bg-surface-card border border-surface-border rounded-2xl p-5 sm:p-6">
+          <!-- Slider de riesgo -->
+          <div class="mb-5">
+            <div class="flex items-center justify-between mb-2">
+              <label for="po-slider" class="text-[12px] text-zinc-400 font-semibold">Tu nivel de riesgo</label>
+              <span id="po-nivel-label" class="text-[13px] font-bold text-accent-amber tabular">5 · Balanceado</span>
+            </div>
+            <input id="po-slider" type="range" min="1" max="10" value="5" step="1"
+                   class="w-full h-2 rounded-full bg-zinc-800 accent-accent-amber cursor-pointer">
+            <div class="flex justify-between text-[10px] text-zinc-600 mt-1.5 tabular">
+              <span>1 Conservador</span>
+              <span>5 Balanceado</span>
+              <span>10 Agresivo</span>
+            </div>
+            <p id="po-descripcion" class="text-[11px] text-zinc-500 mt-3"></p>
+          </div>
+
+          <!-- Métricas del portafolio -->
+          <div id="po-metricas" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+            <!-- llenado por JS con bbgSkel mientras carga -->
+          </div>
+
+          <!-- Composición -->
+          <div class="mb-4">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Composición sugerida</p>
+              <span id="po-n-acciones" class="text-[11px] text-zinc-600"></span>
+            </div>
+            <div id="po-composicion" class="space-y-1.5"></div>
+          </div>
+
+          <!-- Barra apilada visual -->
+          <div class="mb-4">
+            <div id="po-barra-apilada" class="flex h-3 rounded-full overflow-hidden bg-zinc-900"></div>
+          </div>
+
+          <!-- Acciones -->
+          <div class="flex flex-wrap items-center gap-2 pt-3 border-t border-surface-border">
+            <button id="po-usar"
+                    class="text-[12px] font-semibold text-zinc-950 bg-accent-amber hover:bg-accent-amber/90 rounded-lg px-4 py-2 transition">
+              Usar este portafolio
+            </button>
+            <button id="po-regenerar"
+                    class="text-[12px] text-zinc-300 border border-surface-border hover:border-zinc-600 rounded-lg px-3 py-2 transition">
+              ↻ Regenerar
+            </button>
+            <span class="text-[10px] text-zinc-600 ml-auto">Markowitz · max Sharpe · vol objetivo</span>
+          </div>
+
+          <p id="po-metodologia" class="text-[10px] text-zinc-600 mt-3 leading-snug"></p>
         </div>
+
+        <!-- Compatibilidad: dejamos perfiles-grid escondido por si algún código viejo lo busca -->
+        <div id="perfiles-grid" class="hidden"></div>
       </div>
     </section>
 

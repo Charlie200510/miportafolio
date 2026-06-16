@@ -1,6 +1,12 @@
 """
 sml.py — Security Market Line (CAPM) para valorar acciones.
 
+⚠️ Esta vista USA metricas_canonicas para los cálculos de beta/alpha de
+modo que el número coincida EXACTAMENTE con lo que ve el usuario en
+Acción del Día y Analizar. Solo agrega la narrativa Infravalorada /
+Bien valorada / Sobrevalorada encima.
+
+
 Aplica el modelo CAPM clásico:
 
     E(R_i) = R_f + β_i × (E(R_m) - R_f)
@@ -120,8 +126,70 @@ def _beta(retornos_activo: pd.Series, retornos_mercado: pd.Series) -> Optional[f
         return None
 
 
+def _veredicto_desde_canon(canon: Dict[str, Any]) -> Dict[str, Any]:
+    """Construye el output SML desde el bundle canónico."""
+    beta = canon["beta"]
+    alpha = canon["alpha_anualizado"]
+    r_real = canon["retorno_real_anual"]
+    r_esp = canon["retorno_esperado_capm"]
+
+    margen = max(0.02, 0.015 * abs(beta))
+    if alpha > margen:
+        veredicto, color = "Infravalorada", "green"
+        interp = (f"El retorno real anualizado ({r_real*100:.1f}%) supera al esperado "
+                  f"por CAPM ({r_esp*100:.1f}%) en {alpha*100:+.1f} puntos. "
+                  f"Está pagando más rendimiento del que justifica su riesgo sistémico, "
+                  f"lo que el modelo interpreta como posible oportunidad.")
+    elif alpha < -margen:
+        veredicto, color = "Sobrevalorada", "red"
+        interp = (f"El retorno real anualizado ({r_real*100:.1f}%) es menor al esperado "
+                  f"por CAPM ({r_esp*100:.1f}%) por {abs(alpha)*100:.1f} puntos. "
+                  f"Está pagando menos rendimiento del que demandaría su riesgo.")
+    else:
+        veredicto, color = "Bien valorada", "blue"
+        interp = (f"El retorno real ({r_real*100:.1f}%) está alineado con lo que CAPM "
+                  f"predice para su beta ({beta:.2f}). En equilibrio según el modelo.")
+
+    if abs(beta) < 0.7:
+        clase_beta = "Defensiva (β < 0.7)"
+    elif abs(beta) < 1.2:
+        clase_beta = "Mercado (β ≈ 1)"
+    elif abs(beta) < 1.6:
+        clase_beta = "Agresiva (β > 1.2)"
+    else:
+        clase_beta = "Muy volátil (β > 1.6)"
+
+    return {
+        "ok":                    True,
+        "ticker":                canon["ticker"],
+        "benchmark":             canon["benchmark"],
+        "moneda":                canon["moneda"],
+        "periodo":               "5 años de retornos mensuales",
+        "tasa_libre_riesgo":     canon["tasa_libre_riesgo"],
+        "premio_mercado":        canon["premio_mercado"],
+        "beta":                  beta,
+        "clase_beta":            clase_beta,
+        "retorno_real_anual":    r_real,
+        "retorno_esperado_sml":  r_esp,
+        "alpha":                 alpha,
+        "veredicto":             veredicto,
+        "veredicto_color":       color,
+        "interpretacion":        interp,
+        "advertencia": (
+            "El modelo CAPM/SML es una herramienta cuantitativa con supuestos fuertes "
+            "(mercado eficiente, distribución normal, beta estable). Combínalo siempre "
+            "con análisis cualitativo de la empresa."
+        ),
+    }
+
+
 def evaluar_sml(ticker: str) -> Dict[str, Any]:
-    """Evalúa el ticker contra la Security Market Line del CAPM."""
+    """Evalúa el ticker contra la Security Market Line del CAPM.
+
+    Usa metricas_canonicas como única fuente de verdad. Si el ticker está
+    en el universo local, no descarga (instantáneo). Si no, descarga vía
+    yfinance pero usa LA MISMA fórmula que el resto de las vistas.
+    """
     ticker = (ticker or "").strip().upper()
     if not ticker:
         return {"ok": False, "error": "Ticker vacío"}
@@ -135,98 +203,49 @@ def evaluar_sml(ticker: str) -> Dict[str, Any]:
             ),
         }
 
-    benchmark = _benchmark_para(ticker)
-    rf = _rf_para(ticker)
-    moneda = "MXN" if ticker.endswith(".MX") else "USD"
+    # Path rápido: si el ticker está en el universo local, usa el bundle canónico
+    try:
+        import accion_del_dia as _ad
+        canon = _ad.score_para_ticker(ticker)
+        if canon and canon.get("beta") is not None:
+            return _veredicto_desde_canon(canon)
+    except Exception:
+        pass
 
-    # Descargar retornos del activo y del benchmark
-    retornos_activo = _descargar_retornos(ticker, "5y")
-    retornos_mercado = _descargar_retornos(benchmark, "5y")
+    # Fallback: descarga vía yfinance y calcula con metricas_canonicas
+    import metricas_canonicas as _MC
+    import pandas as _pd
 
-    if retornos_activo is None:
-        return {"ok": False, "error": f"No se pudo obtener histórico de {ticker} (mínimo 12 meses)."}
-    if retornos_mercado is None:
-        return {"ok": False, "error": f"No se pudo obtener histórico del benchmark ({benchmark})."}
+    benchmark = _MC.benchmark_para(ticker)
+    moneda = _MC.moneda_para(ticker)
+    rf = _MC.rf_para(ticker)
 
-    # Cálculos
-    beta = _beta(retornos_activo, retornos_mercado)
-    if beta is None:
-        return {"ok": False, "error": "No se pudo calcular beta (insuficientes datos comunes)."}
+    # Descargar precios diarios (no retornos)
+    try:
+        import yfinance as _yf
+        hist_t = _yf.Ticker(ticker).history(period="5y", auto_adjust=True)
+        hist_m = _yf.Ticker(benchmark).history(period="5y", auto_adjust=True)
+        if hist_t.empty or hist_m.empty:
+            return {"ok": False, "error": f"Sin datos históricos para {ticker} o benchmark."}
+        serie_t = hist_t["Close"].dropna()
+        serie_m = hist_m["Close"].dropna()
+    except Exception as e:
+        return {"ok": False, "error": f"Error descargando datos: {e}"}
 
-    retorno_real_anual = _retorno_anualizado(retornos_activo)
-    retorno_mercado_anual = _retorno_anualizado(retornos_mercado)
+    metricas = _MC.calcular_metricas(ticker, serie_t, serie_m)
+    if metricas is None:
+        return {"ok": False, "error": "No se pudieron calcular métricas (poca historia)."}
 
-    # Premio de mercado: histórico observado o el default
-    if retorno_mercado_anual is not None:
-        premio_mercado = max(0.01, retorno_mercado_anual - rf)
-    else:
-        premio_mercado = _premio_mercado_para(ticker)
-
-    # SML — retorno esperado según riesgo sistémico
-    retorno_esperado_sml = rf + beta * premio_mercado
-
-    # Alpha (de Jensen) — retorno real menos esperado
-    alpha = (retorno_real_anual or 0) - retorno_esperado_sml
-
-    # Veredicto basado en alpha anualizado
-    # Margen aumenta con beta: activos más volátiles tienen más ruido
-    margen = max(0.02, 0.015 * abs(beta))
-    if alpha > margen:
-        veredicto = "Infravalorada"
-        veredicto_color = "green"
-        interpretacion = (
-            f"El retorno real anualizado ({retorno_real_anual*100:.1f}%) supera al esperado "
-            f"por CAPM ({retorno_esperado_sml*100:.1f}%) en {alpha*100:+.1f} puntos. "
-            f"Eso significa que está pagando más rendimiento del que justifica su riesgo sistémico, "
-            f"lo que el modelo interpreta como una posible oportunidad."
-        )
-    elif alpha < -margen:
-        veredicto = "Sobrevalorada"
-        veredicto_color = "red"
-        interpretacion = (
-            f"El retorno real anualizado ({retorno_real_anual*100:.1f}%) es menor al esperado "
-            f"por CAPM ({retorno_esperado_sml*100:.1f}%) por {abs(alpha)*100:.1f} puntos. "
-            f"Está pagando menos rendimiento del que demandaría su riesgo, "
-            f"lo que el modelo interpreta como cara para su perfil."
-        )
-    else:
-        veredicto = "Bien valorada"
-        veredicto_color = "blue"
-        interpretacion = (
-            f"El retorno real ({retorno_real_anual*100:.1f}%) está alineado con lo que CAPM "
-            f"predice para su beta ({beta:.2f}). En equilibrio según el modelo."
-        )
-
-    # Clasificación de beta
-    if beta < 0.7:
-        clase_beta = "Defensiva (β < 0.7)"
-    elif beta < 1.2:
-        clase_beta = "Mercado (β ≈ 1)"
-    elif beta < 1.6:
-        clase_beta = "Agresiva (β > 1.2)"
-    else:
-        clase_beta = "Muy volátil (β > 1.6)"
-
-    return {
-        "ok":                True,
-        "ticker":            ticker,
-        "benchmark":         benchmark,
-        "moneda":            moneda,
-        "periodo":           "5 años de retornos mensuales",
-        "tasa_libre_riesgo": round(rf, 4),
-        "premio_mercado":    round(premio_mercado, 4),
-        "beta":              round(beta, 3),
-        "clase_beta":        clase_beta,
-        "retorno_mercado_anual": round(retorno_mercado_anual or 0, 4),
-        "retorno_real_anual":    round(retorno_real_anual or 0, 4),
-        "retorno_esperado_sml":  round(retorno_esperado_sml, 4),
-        "alpha":             round(alpha, 4),
-        "veredicto":         veredicto,
-        "veredicto_color":   veredicto_color,
-        "interpretacion":    interpretacion,
-        "advertencia": (
-            "El modelo CAPM/SML es una herramienta cuantitativa con supuestos fuertes "
-            "(mercado eficiente, distribución normal, beta estable). Combínalo siempre "
-            "con análisis cualitativo de la empresa."
-        ),
+    # Construir bundle con shape de canon para reusar el veredicto
+    canon = {
+        "ticker":                ticker,
+        "benchmark":             benchmark,
+        "moneda":                moneda,
+        "beta":                  metricas["beta"],
+        "alpha_anualizado":      metricas["alpha_anualizado"],
+        "retorno_real_anual":    metricas["retorno_real_anual"],
+        "retorno_esperado_capm": metricas["retorno_esperado_capm"],
+        "tasa_libre_riesgo":     metricas["tasa_libre_riesgo"],
+        "premio_mercado":        metricas["premio_mercado"],
     }
+    return _veredicto_desde_canon(canon)

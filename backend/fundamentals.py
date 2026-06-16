@@ -297,7 +297,19 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
         pe_forward  = _safe_float(info.get("forwardPE"))
         pb = _safe_float(info.get("priceToBook"))
         peg = _safe_float(info.get("pegRatio"))
-        beta = _safe_float(info.get("beta"))
+        # Beta canónica: misma que muestran Acción del Día / SML / Deep Dive
+        # Si el ticker está en el universo local, sale instantáneo.
+        beta = None
+        try:
+            import accion_del_dia as _ad
+            canon = _ad.score_para_ticker(ticker)
+            if canon and canon.get("beta") is not None:
+                beta = canon["beta"]
+        except Exception:
+            beta = None
+        # Si no está en el universo, usar el valor de yfinance.info como aproximación
+        if beta is None:
+            beta = _safe_float(info.get("beta"))
 
         # --- Fallbacks para PE ---
         # 1) Si no hay trailing pero sí EPS trailing y precio, calcular manual

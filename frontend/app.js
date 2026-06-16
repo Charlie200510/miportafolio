@@ -1525,6 +1525,204 @@ const Explorador = (() => {
 })();
 
 // ============================================================
+// PORTAFOLIO ÓPTIMO: slider de riesgo (1-10) + Markowitz optimization
+//  - Reemplaza los 10 perfiles pre-armados
+//  - Llama a /api/portafolio-optimo?nivel=N (cache backend 6h)
+//  - Permite al usuario "Usar este portafolio" → carga en Mi Portafolio
+// ============================================================
+const PortafolioOptimo = (() => {
+  const state = {
+    nivel: 5,
+    data:  null,
+    cargando: false,
+    debounceTimer: null,
+  };
+
+  const NIVELES_LABELS = {
+    1:'Conservador', 2:'Conservador+', 3:'Moderado bajo', 4:'Moderado',
+    5:'Balanceado',  6:'Balanceado+',  7:'Crecimiento',   8:'Crecimiento+',
+    9:'Agresivo',    10:'Muy agresivo',
+  };
+
+  // Colores rotativos para la barra apilada (más distinguibles que random)
+  const PALETA = [
+    '#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#f43f5e',
+    '#06b6d4', '#84cc16', '#ec4899', '#8b5cf6', '#14b8a6',
+    '#f97316', '#0ea5e9',
+  ];
+
+  function pintarSkeletons() {
+    const S = window.bbgSkel;
+    if (!S) return;
+    const mets = document.getElementById('po-metricas');
+    if (mets) {
+      mets.innerHTML = Array.from({length:4}, () => `
+        <div class="bg-zinc-900/40 rounded-lg p-3">
+          ${S.line('60%','sm')}${S.line('80%','lg')}
+        </div>
+      `).join('');
+    }
+    const comp = document.getElementById('po-composicion');
+    if (comp) {
+      comp.innerHTML = Array.from({length:5}, () => `
+        <div class="flex items-center gap-3 p-2 rounded-lg bg-zinc-900/30">
+          ${S.line('40px','sm')}<div class="flex-1">${S.line('70%','sm')}</div>${S.line('45px','sm')}
+        </div>
+      `).join('');
+    }
+  }
+
+  function pintarMetricas(d) {
+    const c = document.getElementById('po-metricas');
+    if (!c) return;
+    const pct = (v) => v == null ? '—' : `${(v*100).toFixed(1)}%`;
+    const metricas = [
+      { label: 'Retorno esperado', valor: pct(d.retorno_esperado),
+        cls: d.retorno_esperado > 0 ? 'text-accent-green' : 'text-accent-red' },
+      { label: 'Volatilidad',      valor: pct(d.volatilidad_anual) },
+      { label: 'Sharpe',           valor: d.sharpe.toFixed(2),
+        cls: d.sharpe > 1 ? 'text-accent-green' : d.sharpe > 0.5 ? 'text-accent-blue' : 'text-zinc-300' },
+      { label: 'Diversificación',  valor: `${d.diversificacion_pct.toFixed(0)}%` },
+    ];
+    c.innerHTML = metricas.map(m => `
+      <div class="bg-zinc-900/40 rounded-lg p-3">
+        <p class="text-[10px] text-zinc-500 uppercase tracking-wider">${m.label}</p>
+        <p class="text-[15px] font-bold tabular ${m.cls || 'text-zinc-100'}">${m.valor}</p>
+      </div>
+    `).join('');
+  }
+
+  function pintarComposicion(d) {
+    const cont = document.getElementById('po-composicion');
+    const nEl  = document.getElementById('po-n-acciones');
+    if (!cont) return;
+    if (nEl) {
+      const cash = d.peso_cash > 0.005 ? ` + ${(d.peso_cash*100).toFixed(1)}% cash` : '';
+      nEl.textContent = `${d.n_acciones} acciones${cash}`;
+    }
+    cont.innerHTML = d.acciones.map((a, i) => {
+      const color = PALETA[i % PALETA.length];
+      const bandera = a.es_mx ? 'MX' : 'US';
+      const banderaCls = a.es_mx ? 'bg-accent-green/10 text-accent-green border-accent-green/30'
+                                  : 'bg-accent-blue/10 text-accent-blue border-accent-blue/30';
+      return `
+        <div class="flex items-center gap-3 p-2 rounded-lg bg-zinc-900/40 hover:bg-zinc-900/70 transition">
+          <span style="background:${color}" class="w-1 h-8 rounded-full shrink-0"></span>
+          <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${banderaCls} tabular shrink-0">${bandera}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-[13px] font-semibold text-zinc-100 truncate tabular">${a.ticker}</p>
+            <p class="text-[10px] text-zinc-500 truncate">${(a.nombre || '').slice(0,40)}</p>
+          </div>
+          <div class="text-right shrink-0">
+            <p class="text-[14px] font-bold text-zinc-100 tabular">${a.peso_pct.toFixed(1)}%</p>
+            ${a.precio ? `<p class="text-[10px] text-zinc-500 tabular">${a.es_mx?'$':'US$'}${a.precio.toFixed(2)}</p>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function pintarBarra(d) {
+    const cont = document.getElementById('po-barra-apilada');
+    if (!cont) return;
+    cont.innerHTML = d.acciones.map((a,i) => {
+      const color = PALETA[i % PALETA.length];
+      return `<div style="width:${a.peso*100}%;background:${color}" title="${a.ticker} ${a.peso_pct.toFixed(1)}%"></div>`;
+    }).join('') + (d.peso_cash > 0.005
+      ? `<div style="width:${d.peso_cash*100}%;background:#3f3f46" title="Cash ${(d.peso_cash*100).toFixed(1)}%"></div>`
+      : '');
+  }
+
+  function pintarLabels(nivel, etiqueta, descripcion, metodologia) {
+    const lbl = document.getElementById('po-nivel-label');
+    if (lbl) lbl.textContent = `${nivel} · ${etiqueta || NIVELES_LABELS[nivel] || ''}`;
+    const desc = document.getElementById('po-descripcion');
+    if (desc) desc.textContent = descripcion || '';
+    const meto = document.getElementById('po-metodologia');
+    if (meto) meto.textContent = metodologia || '';
+  }
+
+  function pintarError(msg) {
+    const c = document.getElementById('po-metricas');
+    if (c) c.innerHTML = `<div class="col-span-full text-xs text-accent-red py-4 text-center">${msg}</div>`;
+    const comp = document.getElementById('po-composicion');
+    if (comp) comp.innerHTML = '';
+    const barra = document.getElementById('po-barra-apilada');
+    if (barra) barra.innerHTML = '';
+  }
+
+  async function cargar(nivel) {
+    if (state.cargando) return;
+    state.cargando = true;
+    pintarSkeletons();
+    try {
+      const r = await fetch(`/api/portafolio-optimo?nivel=${nivel}`);
+      let d = null;
+      try { d = await r.json(); } catch { d = null; }
+      if (!d) throw new Error('Respuesta vacía');
+      if (!d.ok) throw new Error(d.error || 'error');
+      state.data = d;
+      pintarLabels(d.nivel, d.etiqueta, d.descripcion, d.metodologia);
+      pintarMetricas(d);
+      pintarComposicion(d);
+      pintarBarra(d);
+    } catch (e) {
+      pintarError(`No pude generar el portafolio: ${e.message}`);
+    } finally {
+      state.cargando = false;
+    }
+  }
+
+  function debounceCargar(nivel) {
+    clearTimeout(state.debounceTimer);
+    state.debounceTimer = setTimeout(() => cargar(nivel), 350);
+  }
+
+  function bind() {
+    const slider = document.getElementById('po-slider');
+    if (slider) {
+      slider.addEventListener('input', (e) => {
+        state.nivel = parseInt(e.target.value, 10) || 5;
+        // Label se actualiza inmediato
+        const lbl = document.getElementById('po-nivel-label');
+        if (lbl) lbl.textContent = `${state.nivel} · ${NIVELES_LABELS[state.nivel]}`;
+        // Cargar con debounce
+        debounceCargar(state.nivel);
+      });
+    }
+    const regen = document.getElementById('po-regenerar');
+    if (regen) regen.addEventListener('click', () => {
+      fetch(`/api/portafolio-optimo?nivel=${state.nivel}&forzar=1`).then(() => cargar(state.nivel));
+    });
+    const usar = document.getElementById('po-usar');
+    if (usar) usar.addEventListener('click', () => {
+      if (!state.data || !state.data.acciones) return;
+      // Cargar en el picker (selección + pesos)
+      try {
+        const tickers = state.data.acciones.map(a => ({
+          ticker: a.ticker, nombre: a.nombre, peso: a.peso_pct,
+          moneda: a.es_mx ? 'MXN' : 'USD', precio: a.precio,
+        }));
+        // Si existe el Picker, lo precargamos
+        if (typeof Picker !== 'undefined' && Picker.cargarDesdeOptimo) {
+          Picker.cargarDesdeOptimo(tickers);
+        } else {
+          // Fallback: localStorage
+          localStorage.setItem('mp.portafolioOptimoPropuesto', JSON.stringify(tickers));
+        }
+        if (window.toast) window.toast.success(`Portafolio óptimo cargado: ${tickers.length} acciones`);
+      } catch (e) {
+        if (window.toast) window.toast.error('No pude cargar el portafolio');
+      }
+    });
+    // Carga inicial al nivel 5
+    cargar(5);
+  }
+
+  return { bind, cargar };
+})();
+
+// ============================================================
 // PICKER: onboarding de "Mi portafolio" (paso 1 tickers + paso 2 pesos)
 //  - Lista del universo completo (S&P 500 + IPC) con precio y ⭐ recomendadas
 //  - Buscador con fallback a Yahoo Finance (cualquier ticker)
@@ -2212,7 +2410,32 @@ const Picker = (() => {
     if (!perfilesCache.length) cargarPerfiles();
   }
 
-  return { cargar, bind, resetYPrecargar, refrescarPrecios, cargarPerfiles };
+  // Carga un portafolio óptimo generado por Markowitz directamente al picker
+  // tickersConPesos: [{ticker, nombre, peso, moneda, precio}]
+  function cargarDesdeOptimo(tickersConPesos) {
+    state.seleccionados.clear();
+    state.pesos.clear();
+    tickersConPesos.forEach(t => {
+      state.seleccionados.set(t.ticker, {
+        ticker: t.ticker,
+        nombre: t.nombre,
+        moneda: t.moneda,
+        precio: t.precio,
+        recomendada: true,
+      });
+      state.pesos.set(t.ticker, t.peso);
+    });
+    mostrarPaso('pesos');     // saltar directo al paso 2
+    if (typeof renderPesos === 'function') renderPesos();
+    if (typeof renderSeleccion === 'function') renderSeleccion();
+    // Scroll suave al paso de pesos
+    setTimeout(() => {
+      const pasoPesos = document.getElementById('paso-pesos');
+      if (pasoPesos) pasoPesos.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 100);
+  }
+
+  return { cargar, bind, resetYPrecargar, refrescarPrecios, cargarPerfiles, cargarDesdeOptimo };
 })();
 
 // ============================================================
@@ -8455,6 +8678,7 @@ function bindExportarPdf() {
 document.addEventListener('DOMContentLoaded', () => {
   PortfolioManager.bind();   // primero: fija el portafolio activo
   Picker.bind();       // bind antes de init — init puede llamar cargar()
+  if (typeof PortafolioOptimo !== 'undefined') PortafolioOptimo.bind();
   init();
   CetesBench.bind();
   bindNav();

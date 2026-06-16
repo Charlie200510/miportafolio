@@ -1860,6 +1860,33 @@ def api_precios_live():
         return jsonify({"ok": False, "error": f"precios live falló: {e}"}), 500
 
 
+@app.route("/api/portafolio-optimo", methods=["GET"])
+def api_portafolio_optimo():
+    """Genera portafolio óptimo Markowitz para nivel de riesgo (1-10).
+    ?nivel=5 → balanceado. Cache 6h."""
+    try:
+        import portafolio_optimo as _po
+        nivel = int(request.args.get("nivel") or 5)
+        forzar = (request.args.get("forzar") or "").lower() in ("1", "true", "yes")
+        return jsonify(_po.portafolio_optimo(nivel_riesgo=nivel, forzar=forzar))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"portafolio optimo falló: {e}"}), 500
+
+
+@app.route("/api/score/<path:ticker>", methods=["GET"])
+def api_score_ticker(ticker):
+    """Devuelve el score canónico para UN ticker.
+    Misma metodología que se usa en Acción del Día → coincide siempre."""
+    try:
+        import accion_del_dia as _ad
+        d = _ad.score_para_ticker((ticker or "").strip().upper())
+        if d is None:
+            return jsonify({"ok": False, "error": f"No se pudo puntuar {ticker} (sin historia o fuera del universo)"})
+        return jsonify({"ok": True, **d})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"score falló: {e}"}), 500
+
+
 @app.route("/api/periodico/accion-del-dia", methods=["GET"])
 def api_periodico_accion_del_dia():
     """Selecciona la "Acción del día" con score compuesto:

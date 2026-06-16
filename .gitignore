@@ -41,6 +41,7 @@ backend/_cache_periodico/
 backend/_cache_topmovers/
 backend/_cache_accion_dia/
 backend/_cache_precios_live/
+backend/_cache_portafolio_optimo/
 backend/.env.production
 
 # Archivos de IDE
