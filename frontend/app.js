@@ -3368,10 +3368,35 @@ const Periodico = (() => {
     });
   }
 
+  async function cargarSectores(periodo) {
+    try {
+      const r = await fetch(`/api/periodico/sectores?periodo=${periodo || 'dia'}`);
+      const d = await r.json();
+      if (d && d.ok && Array.isArray(d.sectores)) renderSectoresHeatmap(d.sectores);
+    } catch {}
+  }
+  function bindSectoresToggle() {
+    document.querySelectorAll('.sec-periodo-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const periodo = btn.dataset.secPeriodo;
+        document.querySelectorAll('.sec-periodo-btn').forEach(b => {
+          const activo = b === btn;
+          b.classList.toggle('text-zinc-100', activo);
+          b.classList.toggle('bg-accent-indigo/20', activo);
+          b.classList.toggle('ring-1', activo);
+          b.classList.toggle('ring-accent-indigo/30', activo);
+          b.classList.toggle('text-zinc-500', !activo);
+        });
+        cargarSectores(periodo);
+      });
+    });
+  }
+
   function bind() {
     const btn = $('periodico-refrescar');
     if (btn) btn.addEventListener('click', () => { cargar(true); cargarMovers(); iniciarPollingLive(true); });
     bindMoversToggle();
+    bindSectoresToggle();
     iniciarPollingLive();
   }
 
@@ -8133,6 +8158,8 @@ const Analizador = (() => {
     cargado:    false,
     filtro:     'todas',
     busqueda:   '',
+    scoreMap:   null,
+    ordenScore: false,
   };
   let inicializado = false;
 
@@ -8161,6 +8188,26 @@ const Analizador = (() => {
         });
         renderUniverso();
       });
+    });
+
+    // Orden por score (mayor a menor) — usa /api/ranking
+    const ordenBtn = document.getElementById('an-orden-score');
+    if (ordenBtn) ordenBtn.addEventListener('click', async () => {
+      estado.ordenScore = !estado.ordenScore;
+      ['text-zinc-100', 'bg-accent-amber/15', 'ring-1', 'ring-accent-amber/30'].forEach(c => ordenBtn.classList.toggle(c, estado.ordenScore));
+      ordenBtn.classList.toggle('text-zinc-500', !estado.ordenScore);
+      if (estado.ordenScore && !estado.scoreMap) {
+        const prev = ordenBtn.textContent;
+        ordenBtn.textContent = 'Cargando…';
+        try {
+          const r = await fetch('/api/ranking?n=300');
+          const d = await r.json();
+          estado.scoreMap = {};
+          (d.items || []).forEach(it => { estado.scoreMap[it.ticker] = it.score; });
+        } catch {}
+        ordenBtn.textContent = prev;
+      }
+      renderUniverso();
     });
 
     // Buscador del universo
@@ -8248,6 +8295,9 @@ const Analizador = (() => {
     if (!cont) return;
     if (!estado.universo.length) return;
     const lista = filtrarUniverso();
+    if (estado.ordenScore && estado.scoreMap) {
+      lista.sort((a, b) => (estado.scoreMap[b.ticker] ?? -1) - (estado.scoreMap[a.ticker] ?? -1));
+    }
     if (!lista.length) {
       cont.innerHTML = `<div class="col-span-full text-center text-xs text-zinc-500 py-6">Sin resultados.</div>`;
       return;
@@ -8272,6 +8322,7 @@ const Analizador = (() => {
             <p class="text-xs font-mono text-zinc-100 truncate">${escapeHtml(t.ticker)}${t.recomendada ? ' <span class="text-amber-400">★</span>' : ''}</p>
             <p class="text-[10px] text-zinc-500 truncate">${escapeHtml(t.nombre || '')}</p>
           </div>
+          ${(estado.ordenScore && estado.scoreMap && estado.scoreMap[t.ticker] != null) ? `<span class="text-[11px] font-bold tabular px-1.5 py-0.5 rounded bg-accent-amber/15 text-accent-amber shrink-0">${estado.scoreMap[t.ticker]}</span>` : ''}
         </button>
       `;
     }).join('');
@@ -8390,7 +8441,7 @@ const Analizador = (() => {
             <p class="text-xs uppercase tracking-wider text-zinc-500">${escapeHtml(d.sector || '—')} · ${escapeHtml(d.industria || '—')}</p>
             <h3 class="text-2xl font-semibold text-zinc-100 mt-1">${escapeHtml(d.nombre || d.ticker)}</h3>
             <p class="text-sm text-zinc-500 font-mono mt-0.5">${escapeHtml(d.ticker)} · ${escapeHtml(moneda)}
-              <button id="an-watch-btn" title="Seguir en tu lista" class="ml-1.5 text-base align-middle ${enWatchlist(d.ticker) ? 'text-accent-amber' : 'text-zinc-600'} hover:text-accent-amber">${enWatchlist(d.ticker) ? '★' : '☆'}</button>
+              <button id="an-watch-btn" title="Seguir en tu lista" class="ml-2 text-2xl align-middle leading-none ${enWatchlist(d.ticker) ? 'text-accent-amber' : 'text-zinc-600'} hover:text-accent-amber">${enWatchlist(d.ticker) ? '★' : '☆'}</button>
             </p>
             ${d.precio_actual != null ? `<p class="text-base text-zinc-200 tabular mt-2">Último precio: <span class="font-semibold">${fmtMoney(d.precio_actual, moneda)} ${escapeHtml(moneda)}</span></p>` : ''}
           </div>
@@ -8575,7 +8626,7 @@ const Analizador = (() => {
       const data = await res.json();
       if (!res.ok || !data.ok || !data.tiene_datos) {
         host.innerHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5 text-xs text-zinc-500 text-center">
-          Estados financieros no disponibles para ${escapeHtml(ticker)}. (Típico para ETFs, cripto y ADRs internacionales.)
+          Estados financieros no disponibles para ${escapeHtml(ticker)}. Yahoo Finance no publica estados completos para muchas emisoras de la BMV (.MX), ETFs, cripto ni varios ADRs internacionales.
         </div>`;
         return;
       }

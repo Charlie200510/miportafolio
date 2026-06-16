@@ -283,6 +283,26 @@ def score_compuesto(
     if 0.7 <= abs(beta) <= 1.3:
         score += 5
 
+    # === Riesgo total / volatilidad (integra el análisis de riesgo) ===
+    # Premia calidad de baja volatilidad y castiga nombres híper-especulativos,
+    # algo que Sharpe solo no captura del todo.
+    vol = metricas.get("volatilidad_anual")
+    if vol is not None:
+        if vol < 0.25:
+            score += 4
+            razones.append(f"Volatilidad contenida ({vol*100:.0f}%)")
+        elif vol > 0.70:
+            score -= 8
+            razones.append(f"Volatilidad muy alta ({vol*100:.0f}%) — especulativa")
+        elif vol > 0.50:
+            score -= 4
+
+    # === Confiabilidad del cálculo (más datos = alpha más creíble) ===
+    nobs = metricas.get("n_observaciones_beta") or 0
+    if nobs and nobs < 36 and alpha > 0.05:
+        # Con menos de 3 años de historia, no sobre-premiar el alpha alto.
+        score -= 6
+
     # === Fundamentales ===
     pe  = f.get("pe")
     roe = f.get("roe")

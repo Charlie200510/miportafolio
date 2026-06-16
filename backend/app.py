@@ -1925,6 +1925,49 @@ def api_historico(ticker):
         return jsonify({"ok": False, "error": f"histórico falló: {e}"}), 500
 
 
+@app.route("/api/ranking", methods=["GET"])
+def api_ranking():
+    """Universo curado ordenado por score canónico (mayor a menor)."""
+    try:
+        import accion_del_dia as _ad
+        n = int(request.args.get("n") or 60)
+        return jsonify({"ok": True, "items": _ad.ranking(n=n)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"ranking falló: {e}"}), 500
+
+
+@app.route("/api/periodico/sectores", methods=["GET"])
+def api_periodico_sectores():
+    """Performance de los sectores USA (ETFs SPDR) sobre el periodo pedido,
+    calculada desde el universo local. ?periodo=dia|semana|mes|anio."""
+    try:
+        import accion_del_dia as _ad
+        import periodico as _p
+        periodo = (request.args.get("periodo") or "dia").lower()
+        dias = {"dia": 1, "semana": 5, "mes": 21, "anio": 252}.get(periodo, 1)
+        df = _ad._cargar_precios()
+        out = []
+        if df is not None:
+            for s in _p.SECTORES_US:
+                t = s["ticker"]
+                if t not in df.columns:
+                    continue
+                serie = df[t].dropna()
+                if len(serie) < dias + 1:
+                    continue
+                cambio = (float(serie.iloc[-1]) / float(serie.iloc[-dias - 1]) - 1) * 100
+                out.append({
+                    "ticker":     t,
+                    "nombre":     s["nombre"],
+                    "etiqueta":   s["etiqueta"],
+                    "cambio_pct": round(cambio, 2),
+                })
+        out.sort(key=lambda x: x["cambio_pct"], reverse=True)
+        return jsonify({"ok": True, "periodo": periodo, "sectores": out})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"sectores falló: {e}"}), 500
+
+
 @app.route("/api/watchlist", methods=["POST"])
 def api_watchlist():
     """Datos para la lista de seguimiento: último precio, cambio del día y

@@ -90,7 +90,7 @@ def top_movers(periodo: str = "dia", n: int = 3) -> Dict[str, Any]:
         except Exception:
             pass
 
-    dias_map = {"dia": 1, "semana": 5, "mes": 21}
+    dias_map = {"dia": 1, "semana": 5, "mes": 21, "anio": 252}
     dias = dias_map.get(periodo, 1)
 
     df = _cargar_precios()

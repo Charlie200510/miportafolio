@@ -123,6 +123,19 @@ def obtener_dashboard(ticker: str) -> dict[str, Any]:
             try: income = tk.financials
             except Exception: pass
 
+        # Último recurso: estados trimestrales (algunas emisoras solo los traen así)
+        def _vacio(x):
+            return x is None or getattr(x, "empty", True)
+        if _vacio(income):
+            try: income = tk.quarterly_income_stmt
+            except Exception: pass
+        if _vacio(cashflow):
+            try: cashflow = tk.quarterly_cashflow
+            except Exception: pass
+        if _vacio(balance):
+            try: balance = tk.quarterly_balance_sheet
+            except Exception: pass
+
         # ── Income statement ─────────────────────────────────────
         revenue_d   = _to_yearly_dict(_row(income, "Total Revenue", "TotalRevenue", "Revenue", "Operating Revenue"))
         gross_d     = _to_yearly_dict(_row(income, "Gross Profit"))

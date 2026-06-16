@@ -330,3 +330,40 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
         pass
 
     return data
+
+
+_RANKING_CACHE: Dict[str, Any] = {}
+def ranking(n: int = 60) -> List[Dict[str, Any]]:
+    """Universo curado rankeado por score canónico (mayor a menor).
+    Cache por día CDMX. Lo usa Analizar para ordenar de mayor a menor score."""
+    hoy = _fecha_cdmx()
+    c = _RANKING_CACHE.get("r")
+    if c and c.get("fecha") == hoy:
+        return c["data"][:n]
+    df = _cargar_precios()
+    if df is None or df.empty:
+        return []
+    info_all = _cargar_info()
+    serie_us = df["SPY"] if "SPY" in df.columns else None
+    serie_mx = df["NAFTRAC.MX"] if "NAFTRAC.MX" in df.columns else None
+    hay_rec = any(isinstance(v, dict) and v.get("recomendada") for v in info_all.values())
+    out = []
+    for t in df.columns:
+        info = info_all.get(t, {})
+        if not _es_candidato(t, info):
+            continue
+        if hay_rec and not info.get("recomendada"):
+            continue
+        res = calcular_metricas_y_score(t, df, info_all, serie_us, serie_mx)
+        if res is None:
+            continue
+        score, det = res
+        out.append({
+            "ticker":  det["ticker"], "nombre": det.get("nombre"), "sector": det.get("sector"),
+            "score":   score, "beta": det.get("beta"), "sharpe": det.get("sharpe"),
+            "alpha_anualizado": det.get("alpha_anualizado"), "precio": det.get("precio"),
+            "es_mx":   det.get("es_mx"),
+        })
+    out.sort(key=lambda x: x["score"], reverse=True)
+    _RANKING_CACHE["r"] = {"fecha": hoy, "data": out}
+    return out[:n]
