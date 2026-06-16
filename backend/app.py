@@ -1646,6 +1646,18 @@ def api_periodico_top_movers():
         return jsonify({"ok": False, "error": f"top movers fallo: {e}"}), 500
 
 
+@app.route("/api/periodico/accion-del-dia", methods=["GET"])
+def api_periodico_accion_del_dia():
+    """Selecciona la "Acción del día" con score compuesto:
+    SML alpha + fundamentales + momentum + liquidez. Cache 24h."""
+    try:
+        import accion_del_dia as _ad
+        forzar = (request.args.get("forzar") or "").lower() in ("1", "true", "yes")
+        return jsonify(_ad.accion_del_dia(forzar=forzar))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"acción del día falló: {e}"}), 500
+
+
 @app.route("/api/deep-dive/<path:ticker>", methods=["GET"])
 def api_deep_dive(ticker):
     """Análisis profundo automático de un ticker BMV (o cualquier ticker).

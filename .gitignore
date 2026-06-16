@@ -39,6 +39,7 @@ backend/sessions/
 backend/users/
 backend/_cache_periodico/
 backend/_cache_topmovers/
+backend/_cache_accion_dia/
 backend/.env.production
 
 # Archivos de IDE

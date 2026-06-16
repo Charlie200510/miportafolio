@@ -64,21 +64,67 @@
       transform: translateX(-50%) translateY(-2px);
     }
 
-    /* ── 3. SKELETON LOADERS ── */
-    @keyframes mpSkeletonPulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+    /* ── 3. SKELETON LOADERS estilo Bloomberg ── */
+    @keyframes mpSkeletonShimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
     }
-    .mp-skeleton {
-      background: linear-gradient(90deg, #1a1a1c 0%, #2a2a2f 50%, #1a1a1c 100%);
+    .bbg-skel {
+      background: linear-gradient(
+        90deg,
+        rgba(255,255,255,0.04) 0%,
+        rgba(255,255,255,0.10) 50%,
+        rgba(255,255,255,0.04) 100%
+      );
       background-size: 200% 100%;
-      animation: mpSkeletonShimmer 1.4s linear infinite;
+      animation: mpSkeletonShimmer 1.6s ease-in-out infinite;
+      border-radius: 4px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .bbg-skel-line { display: block; height: 10px; margin: 6px 0; border-radius: 3px; }
+    .bbg-skel-line.lg { height: 14px; }
+    .bbg-skel-line.sm { height: 8px; }
+    .bbg-skel-pill { display:inline-block; width: 56px; height: 18px; border-radius: 9px; }
+
+    /* Card skeleton — caja con borde tenue + líneas internas */
+    .bbg-skel-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex; flex-direction: column; gap: 6px;
+      min-height: 86px;
+    }
+    .bbg-skel-card .bbg-skel-line { margin: 4px 0; }
+
+    /* Tile compacto para mercados / divisas / commodities */
+    .bbg-skel-tile {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 4px;
+      min-height: 64px;
+    }
+
+    /* Bloomberg ticker tape — barra horizontal estilo cinta */
+    .bbg-tape {
+      display:flex; gap: 18px; overflow: hidden;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+    }
+    .bbg-tape .bbg-skel-line { margin: 0; }
+
+    /* Compatibilidad con el viejo .mp-skeleton */
+    .mp-skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.04) 100%);
+      background-size: 200% 100%;
+      animation: mpSkeletonShimmer 1.6s ease-in-out infinite;
       border-radius: 6px;
       display: inline-block;
-    }
-    @keyframes mpSkeletonShimmer {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
     }
 
     /* ── 4. TUTORIAL OVERLAY ── */
@@ -558,6 +604,54 @@
   // ============================================================
   window.skeleton = function(width = '100%', height = '16px') {
     return `<span class="mp-skeleton" style="width:${width}; height:${height};"></span>`;
+  };
+
+  // ============================================================
+  // Bloomberg-style skeletons (window.bbgSkel.*)
+  // ============================================================
+  window.bbgSkel = {
+    // Línea de texto (block)
+    line(width = '100%', cls = '') {
+      return `<span class="bbg-skel bbg-skel-line ${cls}" style="width:${width};"></span>`;
+    },
+    // Pill / chip (badge de retorno %)
+    pill(width = '52px') {
+      return `<span class="bbg-skel bbg-skel-pill" style="width:${width};"></span>`;
+    },
+    // Tile compacto (ETF / divisa / commodity)
+    tile() {
+      return `<div class="bbg-skel-tile">
+        <span class="bbg-skel bbg-skel-line sm" style="width:50%"></span>
+        <span class="bbg-skel bbg-skel-line lg" style="width:80%"></span>
+        <span class="bbg-skel bbg-skel-line sm" style="width:35%"></span>
+      </div>`;
+    },
+    // Card grande con título + 3 líneas de detalle
+    card() {
+      return `<div class="bbg-skel-card">
+        <span class="bbg-skel bbg-skel-line lg" style="width:60%"></span>
+        <span class="bbg-skel bbg-skel-line" style="width:90%"></span>
+        <span class="bbg-skel bbg-skel-line" style="width:75%"></span>
+        <span class="bbg-skel bbg-skel-line sm" style="width:45%"></span>
+      </div>`;
+    },
+    // Grid de N tiles
+    tileGrid(n = 6, cols = 3) {
+      const tiles = Array.from({length:n}, () => this.tile()).join('');
+      return `<div class="grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr));gap:10px">${tiles}</div>`;
+    },
+    // Cinta horizontal estilo ticker tape
+    tape(n = 5) {
+      const items = Array.from({length:n}, () => `
+        <span class="bbg-skel bbg-skel-line lg" style="width:90px"></span>
+      `).join('');
+      return `<div class="bbg-tape">${items}</div>`;
+    },
+    // Llena un contenedor con un grid de N tiles
+    fillTiles(elOrId, n = 6, cols = 3) {
+      const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
+      if (el) el.innerHTML = this.tileGrid(n, cols);
+    },
   };
 
   // ============================================================

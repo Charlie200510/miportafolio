@@ -2309,6 +2309,120 @@ const Periodico = (() => {
     if (aviso) aviso.textContent = data.aviso || '';
   }
 
+  function renderAccionDia(data) {
+    const cont = $('periodico-accion-dia');
+    if (!cont) return;
+
+    if (!data || data.error || !data.ok) {
+      cont.innerHTML = `<p class="text-xs text-zinc-500 py-4 text-center">
+        ${escapeHtml((data && data.error) || 'No disponible ahora mismo.')}
+      </p>`;
+      return;
+    }
+
+    const a = data.accion || {};
+    const nivelMap = {
+      green: 'text-accent-green bg-accent-green/10 border-accent-green/30',
+      blue:  'text-accent-blue bg-accent-blue/10 border-accent-blue/30',
+      amber: 'text-accent-amber bg-accent-amber/10 border-accent-amber/30',
+      zinc:  'text-zinc-400 bg-zinc-900 border-surface-border',
+    };
+    const nivelCls = nivelMap[data.nivel_color] || nivelMap.zinc;
+
+    const bandera = a.es_mx ? 'MX' : 'US';
+    const banderaCls = a.es_mx
+      ? 'bg-accent-green/10 text-accent-green border-accent-green/30'
+      : 'bg-accent-blue/10 text-accent-blue border-accent-blue/30';
+
+    // Razones como chips
+    const razones = (a.razones || []).map(r =>
+      `<span class="text-[11px] px-2 py-1 rounded-md bg-zinc-900/60 border border-surface-border text-zinc-300">
+         ${escapeHtml(r)}
+       </span>`
+    ).join('');
+
+    // Métricas clave en grid
+    const fmtPct = (v) => v == null ? '—' : `${(v*100).toFixed(1)}%`;
+    const fmtNum = (v, d=2) => v == null ? '—' : Number(v).toFixed(d);
+    const moneda = a.moneda === 'MXN' ? '$' : 'US$';
+
+    const metricas = [
+      { label: 'Precio',  valor: a.precio ? `${moneda}${fmtNum(a.precio)}` : '—' },
+      { label: 'Alpha SML', valor: fmtPct(a.alpha_anualizado),
+        cls: (a.alpha_anualizado||0) > 0 ? 'text-accent-green' : 'text-accent-red' },
+      { label: 'Beta',    valor: fmtNum(a.beta) },
+      { label: 'Momentum 3m', valor: fmtPct(a.momentum_3m),
+        cls: (a.momentum_3m||0) > 0 ? 'text-accent-green' : 'text-accent-red' },
+      { label: 'P/E',     valor: a.pe ? fmtNum(a.pe) : '—' },
+      { label: 'ROE',     valor: fmtPct(a.roe) },
+    ];
+
+    cont.innerHTML = `
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="text-[10px] font-bold px-2 py-1 rounded border tabular shrink-0 ${banderaCls}">${bandera}</span>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-2xl sm:text-3xl font-bold text-zinc-50 tabular">${escapeHtml(a.ticker || '')}</span>
+              <span class="text-[11px] px-2 py-0.5 rounded-full border ${nivelCls}">
+                ${escapeHtml(data.nivel || '')} · ${data.score} pts
+              </span>
+            </div>
+            <p class="text-[13px] text-zinc-400 truncate">${escapeHtml(a.nombre || '')}</p>
+            ${a.sector ? `<p class="text-[11px] text-zinc-600">${escapeHtml(a.sector)}${a.industria ? ' · ' + escapeHtml(a.industria) : ''}</p>` : ''}
+          </div>
+        </div>
+        <button class="accion-dia-analizar text-[11px] text-accent-amber hover:text-zinc-100 border border-accent-amber/30 hover:border-accent-amber/60 rounded-lg px-3 py-1.5 transition shrink-0"
+                data-ticker="${escapeHtml(a.ticker || '')}">
+          Analizar a fondo →
+        </button>
+      </div>
+
+      <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+        ${metricas.map(m => `
+          <div class="bg-zinc-900/40 rounded-lg px-2 py-2 text-center">
+            <p class="text-[10px] text-zinc-500 uppercase tracking-wider">${m.label}</p>
+            <p class="text-[13px] font-bold tabular ${m.cls || 'text-zinc-100'}">${m.valor}</p>
+          </div>
+        `).join('')}
+      </div>
+
+      ${razones ? `
+        <div class="flex flex-wrap gap-1.5 mb-3">
+          ${razones}
+        </div>
+      ` : ''}
+
+      <p class="text-[10px] text-zinc-600 leading-snug">
+        ${escapeHtml(data.metodologia || '')}
+        <span class="block mt-1 italic">${escapeHtml(data.disclaimer || '')}</span>
+      </p>
+    `;
+
+    // Binding del botón "Analizar a fondo" → lleva a Analizar y rellena el input
+    cont.querySelectorAll('.accion-dia-analizar').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const t = btn.dataset.ticker;
+        if (!t) return;
+        // Cambiar a vista Analizar
+        const tab = document.querySelector('.nav-tab.nav-primary[data-vista="analizar"]');
+        if (tab) tab.click();
+        // Llenar input de ticker
+        setTimeout(() => {
+          const input = document.getElementById('ticker-input') || document.querySelector('input[name="ticker"]');
+          if (input) {
+            input.value = t;
+            input.dispatchEvent(new Event('input', {bubbles:true}));
+            input.dispatchEvent(new Event('change', {bubbles:true}));
+          }
+          // Si hay un botón "Analizar", clickearlo
+          const btnAnalizar = document.getElementById('btn-analizar') || document.querySelector('button[data-action="analizar"]');
+          if (btnAnalizar) btnAnalizar.click();
+        }, 100);
+      });
+    });
+  }
+
   function renderIndices(data) {
     const cont = $('periodico-indices');
     const indices = (data && data.indices) || [];
@@ -2513,6 +2627,51 @@ const Periodico = (() => {
     const hora = $('periodico-hora');
     if (hora) hora.textContent = 'Actualizando…';
 
+    // === SKELETONS estilo Bloomberg mientras carga ===
+    // Pinta inmediatamente cajas animadas para que se sienta vivo, no en blanco.
+    try {
+      const S = window.bbgSkel;
+      if (S) {
+        // Resumen del día (titulares + texto)
+        const resTexto = $('periodico-resumen-texto');
+        if (resTexto && !state.cargadoUnaVez) {
+          resTexto.innerHTML = `${S.line('80%')}${S.line('95%')}${S.line('60%')}`;
+        }
+        const resTitulares = $('periodico-resumen-titulares');
+        if (resTitulares && !state.cargadoUnaVez) {
+          resTitulares.innerHTML = `${S.line('70%')}${S.line('55%')}${S.line('80%')}`;
+        }
+        // Acción del día (card destacada)
+        const accionDia = $('periodico-accion-dia');
+        if (accionDia && !state.cargadoUnaVez) accionDia.innerHTML = S.card();
+        // Tiles de mercado
+        S.fillTiles('periodico-indices',     8, 4);
+        S.fillTiles('periodico-mundo',       6, 3);
+        S.fillTiles('periodico-divisas',     4, 4);
+        S.fillTiles('periodico-commodities', 4, 4);
+        S.fillTiles('periodico-tasas',       3, 3);
+        S.fillTiles('periodico-crypto',      5, 5);
+        S.fillTiles('periodico-sectores',   11, 4);
+        // Noticias
+        const topLista = $('periodico-top-lista');
+        if (topLista && !state.cargadoUnaVez) {
+          topLista.innerHTML = Array.from({length:5}, () => `
+            <div class="bbg-skel-card" style="min-height:60px;flex-direction:column">
+              ${S.line('85%','lg')}${S.line('45%','sm')}
+            </div>
+          `).join('');
+        }
+        const misLista = $('periodico-mis-lista');
+        if (misLista && !state.cargadoUnaVez) {
+          misLista.innerHTML = Array.from({length:3}, () => `
+            <div class="bbg-skel-card" style="min-height:54px;flex-direction:column">
+              ${S.line('80%','lg')}${S.line('40%','sm')}
+            </div>
+          `).join('');
+        }
+      }
+    } catch (_) { /* si no cargó ux_helpers, no problem */ }
+
     // Lanzamos en paralelo
     const tickers = leerPortafolioGuardado() || [];
     // Wrapper seguro: nunca falla por body vacío en iOS Safari
@@ -2530,6 +2689,9 @@ const Periodico = (() => {
 
     // Resumen
     safeJson(fetch('/api/periodico/resumen')).then(d => renderResumen(d));
+
+    // Acción del día (cache 24h en backend, súper rápido)
+    safeJson(fetch('/api/periodico/accion-del-dia')).then(d => renderAccionDia(d));
 
     // Dashboard de mercados (el más pesado, render por secciones)
     safeJson(fetch('/api/periodico/mercados')).then(mercados => {
@@ -2590,7 +2752,27 @@ const Periodico = (() => {
     ];
     grupos.forEach(g => {
       const el = document.getElementById(g.id);
-      if (el) el.innerHTML = '<div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>';
+      if (el) {
+        // Skeleton de 3 filas estilo Bloomberg
+        const S = window.bbgSkel;
+        if (S) {
+          el.innerHTML = Array.from({length:3}, () => `
+            <div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-zinc-900/30">
+              <div class="flex items-center gap-2 flex-1 min-w-0">
+                <span class="bbg-skel" style="width:24px;height:14px;border-radius:3px"></span>
+                <div class="flex-1 min-w-0">
+                  ${S.line('60%','sm')}${S.line('80%','sm')}
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                ${S.line('40px','sm')}
+              </div>
+            </div>
+          `).join('');
+        } else {
+          el.innerHTML = '<div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>';
+        }
+      }
     });
     try {
       const res = await fetch(`/api/periodico/top-movers?periodo=${periodo}&n=3`);
