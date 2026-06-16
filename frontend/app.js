@@ -288,6 +288,31 @@ async function init() {
   await analizarYRender(tickers, pesos);
 }
 
+function renderRiesgoAvanzado(data) {
+  const ra = data && data.riesgo_avanzado;
+  const sec = $('seccion-riesgo');
+  const grid = $('riesgo-avanzado-grid');
+  if (!sec || !grid) return;
+  if (!ra) { sec.classList.add('hidden'); return; }
+  const pct = v => v == null ? '—' : `${v.toFixed(2)}%`;
+  const num = v => v == null ? '—' : v.toFixed(2);
+  const tiles = [
+    { label: 'VaR 95% · 1 día', val: pct(ra.var_95_1d_pct), cls: 'text-accent-amber', hint: 'Pérdida que no deberías exceder en un día malo (19 de cada 20 días).' },
+    { label: 'VaR 99% · 1 día', val: pct(ra.var_99_1d_pct), cls: 'text-accent-red', hint: 'Pérdida máxima esperada en un día muy malo (99% de confianza).' },
+    { label: 'CVaR 95%', val: pct(ra.cvar_95_1d_pct), cls: 'text-accent-red', hint: 'Pérdida promedio en el peor 5% de los días (riesgo de cola).' },
+    { label: 'Sortino', val: num(ra.sortino), cls: (ra.sortino > 1 ? 'text-accent-green' : 'text-zinc-100'), hint: 'Como Sharpe pero solo castiga las caídas. Arriba de 1 es bueno.' },
+    { label: 'Calmar', val: num(ra.calmar), cls: (ra.calmar > 1 ? 'text-accent-green' : 'text-zinc-100'), hint: 'Retorno anual ÷ peor caída histórica. Más alto, mejor.' },
+    { label: 'Beta', val: num(ra.beta), cls: 'text-zinc-100', hint: 'Sensibilidad vs el mercado. 1 = igual; mayor a 1 = más volátil.' },
+  ];
+  grid.innerHTML = tiles.map(t => `
+    <div class="bg-zinc-900/40 rounded-lg p-3">
+      <p class="text-[10px] text-zinc-500 uppercase tracking-wider">${t.label}</p>
+      <p class="text-[18px] font-bold tabular ${t.cls}">${t.val}</p>
+      <p class="text-[10px] text-zinc-600 mt-1 leading-snug">${t.hint}</p>
+    </div>`).join('');
+  sec.classList.remove('hidden');
+}
+
 async function analizarYRender(tickers, pesos /* dict opcional */) {
   mostrarDashboard();
   // Estado de carga en hero
@@ -340,6 +365,7 @@ async function analizarYRender(tickers, pesos /* dict opcional */) {
   renderTablaActivos(data, info);
   renderCorrelaciones(data);
   renderConcentracion(data, info);
+  renderRiesgoAvanzado(data);
 
   // Fundamentales (async, no bloquea)
   if (typeof Fundamentales !== 'undefined') {

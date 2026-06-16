@@ -49,6 +49,50 @@ def calcular_max_drawdown(serie_precios):
     return float(drawdown.min())
 
 
+def metricas_riesgo_avanzado(rend_port, rend_bench=None):
+    """Métricas de riesgo 'pro' calculadas con los retornos que ya tenemos.
+
+    - VaR 95/99 (1 día, histórico): pérdida que NO deberías exceder en un día
+      malo con 95%/99% de confianza.
+    - CVaR 95 (Expected Shortfall): pérdida promedio en el peor 5% de los días.
+    - Sortino: como Sharpe pero solo penaliza la volatilidad a la baja.
+    - Calmar: retorno anual / peor caída (max drawdown).
+    - Beta: sensibilidad del portafolio vs el benchmark.
+    """
+    r = rend_port.dropna()
+    if len(r) < 30:
+        return None
+    arr = r.values
+    var95 = max(0.0, -float(np.percentile(arr, 5)) * 100)
+    var99 = max(0.0, -float(np.percentile(arr, 1)) * 100)
+    cola = arr[arr <= np.percentile(arr, 5)]
+    cvar95 = max(0.0, -float(cola.mean()) * 100) if len(cola) else var95
+
+    ann_ret = float(r.mean()) * DIAS_HABILES
+    neg = r[r < 0]
+    downside = float(neg.std()) * np.sqrt(DIAS_HABILES) if len(neg) > 1 else 0.0
+    sortino = (ann_ret - TASA_LIBRE_RIESGO) / downside if downside > 0 else None
+
+    serie_val = (1 + r).cumprod()
+    max_dd_frac = float((serie_val / serie_val.cummax() - 1).min())
+    calmar = ann_ret / abs(max_dd_frac) if max_dd_frac < 0 else None
+
+    beta = None
+    if rend_bench is not None:
+        df2 = pd.concat([r, rend_bench.dropna()], axis=1, join="inner").dropna()
+        if len(df2) > 30 and float(df2.iloc[:, 1].var()) > 0:
+            beta = float(df2.iloc[:, 0].cov(df2.iloc[:, 1]) / df2.iloc[:, 1].var())
+
+    return {
+        "var_95_1d_pct":  round(var95, 2),
+        "var_99_1d_pct":  round(var99, 2),
+        "cvar_95_1d_pct": round(cvar95, 2),
+        "sortino":        round(sortino, 2) if sortino is not None else None,
+        "calmar":         round(calmar, 2) if calmar is not None else None,
+        "beta":           round(beta, 2) if beta is not None else None,
+    }
+
+
 def serie_a_lista_json_safe(serie, decimales=4):
     """
     Convierte una Series de pandas a lista compatible con JSON.
@@ -502,6 +546,12 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
         * np.sqrt(DIAS_HABILES) * 100
     )
 
+    # 9e. Riesgo avanzado (VaR/CVaR/Sortino/Calmar/beta)
+    riesgo_avanzado = metricas_riesgo_avanzado(
+        rend_diarios_port,
+        valor_bench.pct_change() if valor_bench is not None else None,
+    )
+
     # 9d. Rendimiento acumulado del benchmark (si existe)
     if valor_bench is not None:
         rend_acum_bench = (valor_bench - 1) * 100
@@ -548,6 +598,7 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
         "benchmark": benchmark_info,
         "concentracion": concentracion,
         "series_tiempo": series_tiempo,
+        "riesgo_avanzado": riesgo_avanzado,
     }
     return resultados
 
