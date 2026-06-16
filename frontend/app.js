@@ -208,11 +208,26 @@ function _destroyChart(id) {
 }
 
 // --- mostrar onboarding vs dashboard ---------------------------------------
+// Selector de dos caminos en el onboarding: chooser → 'manual' | 'auto'
+function _onbModo(m) {
+  const ch = $('onboarding-chooser'), man = $('modo-manual'), aut = $('modo-auto');
+  if (!ch || !man || !aut) return;
+  ch.classList.toggle('hidden', m !== 'chooser');
+  man.classList.toggle('hidden', m !== 'manual');
+  aut.classList.toggle('hidden', m !== 'auto');
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#chooser-auto')) _onbModo('auto');
+  else if (e.target.closest('#chooser-manual')) _onbModo('manual');
+  else if (e.target.closest('.onboarding-volver')) _onbModo('chooser');
+});
+
 function mostrarOnboarding() {
   $('portafolio-onboarding').classList.remove('hidden');
   $('portafolio-dashboard').classList.add('hidden');
   $('btn-editar-portafolio').classList.add('hidden');
   $('btn-exportar-pdf')?.classList.add('hidden');
+  _onbModo('chooser');
 }
 
 function mostrarDashboard() {
@@ -8571,6 +8586,7 @@ function bindEditar() {
   btn.addEventListener('click', () => {
     const actuales = leerPortafolioGuardado() || [];
     mostrarOnboarding();
+    _onbModo('manual');
     Picker.resetYPrecargar(actuales);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });

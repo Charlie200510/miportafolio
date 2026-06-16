@@ -324,7 +324,32 @@
 
     <!-- PASO 1 · elegir tickers ------------------------------------ -->
     <section id="paso-tickers" class="max-w-6xl mx-auto px-6 pt-12 pb-6">
+      <!-- CHOOSER: dos caminos para armar el portafolio -->
+      <div id="onboarding-chooser" class="max-w-3xl mx-auto fade-up">
+        <div class="text-center mb-7">
+          <h2 class="text-3xl sm:text-4xl font-bold tracking-tight">Arma tu portafolio</h2>
+          <p class="text-sm text-zinc-400 mt-3">Elige cómo quieres empezar. Puedes cambiar de método cuando quieras.</p>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <button id="chooser-auto" class="text-left bg-surface-card border border-surface-border hover:border-accent-amber/60 rounded-2xl p-6 transition group">
+            <div class="w-11 h-11 rounded-xl bg-accent-amber/10 border border-accent-amber/30 flex items-center justify-center mb-4 text-accent-amber text-xl">⚡</div>
+            <h3 class="text-base font-semibold text-zinc-100">Automático</h3>
+            <p class="text-[13px] text-zinc-400 mt-1.5 leading-snug">Eliges tu nivel de riesgo (volatilidad) y te armamos la mezcla óptima con Markowitz. Lo más rápido.</p>
+            <span class="inline-block mt-4 text-[12px] font-semibold text-accent-amber group-hover:underline">Elegir por riesgo →</span>
+          </button>
+          <button id="chooser-manual" class="text-left bg-surface-card border border-surface-border hover:border-accent-green/60 rounded-2xl p-6 transition group">
+            <div class="w-11 h-11 rounded-xl bg-accent-green/10 border border-accent-green/30 flex items-center justify-center mb-4 text-accent-green text-xl">✓</div>
+            <h3 class="text-base font-semibold text-zinc-100">Manual</h3>
+            <p class="text-[13px] text-zinc-400 mt-1.5 leading-snug">Eliges tú mismo las acciones (2 a 20) y ajustas los pesos. Control total.</p>
+            <span class="inline-block mt-4 text-[12px] font-semibold text-accent-green group-hover:underline">Elegir acciones →</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- MODO MANUAL -->
+      <div id="modo-manual" class="hidden">
       <div class="text-center mb-6 fade-up">
+        <button class="onboarding-volver text-[11px] text-zinc-500 hover:text-zinc-200 mb-3">← Cambiar método</button>
         <p class="text-xs font-medium text-accent-green uppercase tracking-wider">Paso 1 de 2</p>
         <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mt-2">Elige tus acciones</h2>
         <p class="text-sm text-zinc-400 mt-3 max-w-2xl mx-auto leading-relaxed">
@@ -403,11 +428,12 @@
         </div>
       </div>
 
-      <!-- Divider + Portafolio óptimo por nivel de riesgo -->
-      <div class="flex items-center gap-3 mt-10 mb-5">
-        <div class="flex-1 border-t border-surface-border"></div>
-        <span class="text-[10px] uppercase tracking-wider text-zinc-600">o deja que generemos un portafolio óptimo para tu nivel de riesgo</span>
-        <div class="flex-1 border-t border-surface-border"></div>
+      </div><!-- /modo-manual -->
+
+      <!-- MODO AUTOMÁTICO -->
+      <div id="modo-auto" class="hidden">
+      <div class="max-w-3xl mx-auto mb-3 fade-up">
+        <button class="onboarding-volver text-[11px] text-zinc-500 hover:text-zinc-200">← Cambiar método</button>
       </div>
 
       <div class="fade-up">
@@ -482,6 +508,7 @@
         <!-- Compatibilidad: dejamos perfiles-grid escondido por si algún código viejo lo busca -->
         <div id="perfiles-grid" class="hidden"></div>
       </div>
+      </div><!-- /modo-auto -->
     </section>
 
     <!-- PASO 2 · ajustar pesos ------------------------------------- -->
