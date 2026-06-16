@@ -11,7 +11,8 @@ gunicorn>=21.2  # WSGI server para producción
 numpy>=1.26,<3.0
 pandas>=2.1
 scipy>=1.11
-yfinance>=0.2.40
+yfinance>=0.2.59       # versiones modernas resuelven el "crumb" de Yahoo vía curl_cffi
+curl_cffi>=0.7         # impersona un navegador real → evita el 401 "Invalid Crumb" de Yahoo
 
 # HTTP cliente
 requests>=2.31
