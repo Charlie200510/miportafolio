@@ -70,11 +70,22 @@ const claseColor = (v) => {
 
 const $ = (id) => document.getElementById(id);
 
-// Defaults de Chart.js para tema oscuro
-Chart.defaults.color = '#a1a1aa';
-Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
-Chart.defaults.font.family = "Inter, ui-sans-serif, system-ui, sans-serif";
-Chart.defaults.font.size = 11;
+// Defaults de Chart.js para tema oscuro.
+// OJO: Chart.js carga con `defer` (ver index.html), asi que puede NO estar
+// definido cuando app.js se evalua. Sin la guarda, esta linea lanzaba
+// "Cannot set properties of undefined (setting 'color')", lo que abortaba TODA
+// la evaluacion de app.js -> no se registraba el DOMContentLoaded -> ningun
+// boton se enlazaba -> SPA congelado. Aplicamos de forma guardada y de nuevo
+// en 'load', cuando el script diferido ya ejecuto.
+function _aplicarChartDefaults() {
+  if (typeof Chart === 'undefined' || !Chart.defaults) return;
+  Chart.defaults.color = '#a1a1aa';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
+  Chart.defaults.font.family = "Inter, ui-sans-serif, system-ui, sans-serif";
+  Chart.defaults.font.size = 11;
+}
+_aplicarChartDefaults();
+window.addEventListener('load', _aplicarChartDefaults);
 
 // --- persistencia del portafolio del usuario --------------------------------
 // v2: guarda tickers + pesos (fracciones que suman 1). Retrocompatible con v1.
