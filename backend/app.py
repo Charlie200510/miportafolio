@@ -1363,26 +1363,34 @@ def api_reporte_pdf():
 
     datos: dict = {}
 
-    # Métricas del portafolio
-    try:
-        if tickers and _mi_portafolio is not None:
-            res_an = _mi_portafolio.analizar(list(tickers), dict(pesos) if pesos else None)
-            port = (res_an or {}).get("portafolio") or {}
-            if port:
-                datos["portafolio_metrics"] = {
-                    "rendimiento_anualizado_pct": port.get("rendimiento_anualizado_pct"),
-                    "volatilidad_anual_pct":      port.get("volatilidad_anual_pct"),
-                    "sharpe_ratio":               port.get("sharpe_ratio"),
-                }
-            # Insights del portafolio si vienen
-            ins = (res_an or {}).get("insights") or []
-            if ins:
-                datos["insights"] = [
-                    i.get("mensaje") if isinstance(i, dict) else str(i)
-                    for i in ins if i
-                ][:8]
-    except Exception:
-        pass
+    # Métricas + insights: preferir lo que el frontend YA mandó (evita re-descargar
+    # de yfinance, que es lento/frágil y colgaba el endpoint). Recalcular solo si falta.
+    if body.get("portafolio_metrics"):
+        datos["portafolio_metrics"] = body["portafolio_metrics"]
+    if body.get("insights"):
+        datos["insights"] = [
+            (i.get("mensaje") if isinstance(i, dict) else str(i)) for i in body["insights"] if i
+        ][:12]
+    if "portafolio_metrics" not in datos:
+        try:
+            if tickers and _mi_portafolio is not None:
+                res_an = _mi_portafolio.analizar(list(tickers), dict(pesos) if pesos else None)
+                port = (res_an or {}).get("portafolio") or {}
+                if port:
+                    datos["portafolio_metrics"] = {
+                        "rendimiento_anualizado_pct": port.get("rendimiento_anualizado_pct"),
+                        "volatilidad_anual_pct":      port.get("volatilidad_anual_pct"),
+                        "sharpe_ratio":               port.get("sharpe_ratio"),
+                    }
+                if "insights" not in datos:
+                    ins = (res_an or {}).get("insights") or []
+                    if ins:
+                        datos["insights"] = [
+                            i.get("mensaje") if isinstance(i, dict) else str(i)
+                            for i in ins if i
+                        ][:8]
+        except Exception:
+            pass
 
     # Totales y posiciones desde transacciones
     try:

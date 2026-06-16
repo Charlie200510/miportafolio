@@ -190,9 +190,10 @@ def _kpi_card(label: str, value: str, sub: str = "", color: Optional[colors.Colo
     """Una sola card de KPI."""
     styles = _mk_styles()
     color_val = (color or PRIMARY).hexval()
-    labelP = Paragraph(f"<font size=8 color='#6b7280'><b>{label.upper()}</b></font>", styles["muted"])
-    valueP = Paragraph(f"<font size=17 color='{color_val}'><b>{value}</b></font>", styles["body"])
-    subP   = Paragraph(f"<font size=8 color='#6b7280'>{sub}</font>", styles["muted"]) if sub else Paragraph("", styles["tiny"])
+    _esc = lambda s: str(s).replace("&", "&amp;")
+    labelP = Paragraph(f"<font size=8 color='#6b7280'><b>{_esc(label.upper())}</b></font>", styles["muted"])
+    valueP = Paragraph(f"<font size=17 color='{color_val}'><b>{_esc(value)}</b></font>", styles["body"])
+    subP   = Paragraph(f"<font size=8 color='#6b7280'>{_esc(sub)}</font>", styles["muted"]) if sub else Paragraph("", styles["tiny"])
     return [labelP, Spacer(1, 3), valueP, Spacer(1, 3), subP]
 
 
@@ -448,7 +449,7 @@ def generar_reporte(
     # ========================================================
     #  PORTADA COMPACTA — todo en la primera página
     # ========================================================
-    story.append(Spacer(1, 1.5 * cm))
+    story.append(Spacer(1, 0.5 * cm))
 
     # Brand mark
     brand_table = Table([[
@@ -458,7 +459,7 @@ def generar_reporte(
     brand_table.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
     story.append(brand_table)
 
-    story.append(Spacer(1, 2 * cm))
+    story.append(Spacer(1, 1.3 * cm))
 
     # Título principal
     story.append(Paragraph(
@@ -511,20 +512,23 @@ def generar_reporte(
     story.append(Paragraph("<font size=9 color='#6b7280' face='Helvetica-Bold'>EN ESTE REPORTE</font>", styles["eyebrow"]))
     story.append(Spacer(1, 3 * mm))
 
-    secciones_disponibles = []
-    if datos.get("totales") or datos.get("portafolio_metrics"):
-        secciones_disponibles.append("Resumen ejecutivo")
-    if datos.get("comportamiento"):
+    _comp = datos.get("comportamiento") or {}
+    _conc = datos.get("concentracion") or {}
+    _fund = datos.get("fundamentales") or {}
+    _div  = datos.get("dividendos") or {}
+    # Mismas condiciones EXACTAS que usa el cuerpo, para que la numeración cuadre.
+    secciones_disponibles = ["Resumen ejecutivo"]
+    if _comp and any(v is not None for v in _comp.values()):
         secciones_disponibles.append("Comportamiento estadístico")
-    if datos.get("concentracion"):
+    if _conc.get("por_sector") or _conc.get("por_pais") or _conc.get("por_moneda"):
         secciones_disponibles.append("Análisis de concentración")
     if datos.get("posiciones"):
         secciones_disponibles.append("Posiciones al cierre")
-    if datos.get("fundamentales"):
+    if _fund and any(v is not None for v in _fund.values() if not isinstance(v, dict)):
         secciones_disponibles.append("Fundamentales del portafolio")
     if datos.get("movimientos_mes"):
         secciones_disponibles.append(f"Movimientos de {mes_nombre}")
-    if datos.get("dividendos") and (datos["dividendos"].get("ingreso_anual_estimado") or 0) > 0:
+    if (_div.get("ingreso_anual_estimado") or 0) > 0:
         secciones_disponibles.append("Ingreso pasivo proyectado")
     if datos.get("fiscal"):
         secciones_disponibles.append("Análisis fiscal mexicano")
@@ -532,6 +536,13 @@ def generar_reporte(
         secciones_disponibles.append("Comparativa vs benchmarks")
     if datos.get("insights"):
         secciones_disponibles.append("Observaciones del periodo")
+
+    def _sn(nombre):
+        """Número de sección (alineado con el índice). 00 si no está."""
+        try:
+            return f"{secciones_disponibles.index(nombre) + 1:02d}"
+        except ValueError:
+            return "00"
 
     # Lista compacta inline en 2 columnas
     half = (len(secciones_disponibles) + 1) // 2
@@ -558,7 +569,7 @@ def generar_reporte(
     # ========================================================
     #  RESUMEN EJECUTIVO
     # ========================================================
-    story.append(Paragraph("01 · Resumen ejecutivo", styles["h1"]))
+    story.append(Paragraph(f"{_sn('Resumen ejecutivo')} · Resumen ejecutivo", styles["h1"]))
     story.append(Spacer(1, 4 * mm))
 
     pnl_abs   = totales.get("pnl_absoluto")
@@ -605,34 +616,38 @@ def generar_reporte(
         # Solo agregar si hay al menos un valor no-null
         if any(v is not None for v in comp.values()):
             story.append(Spacer(1, 8 * mm))
-            story.append(Paragraph("02 · Comportamiento estadístico", styles["h2"]))
+            story.append(Paragraph(f"{_sn('Comportamiento estadístico')} · Comportamiento estadístico", styles["h2"]))
             story.append(Paragraph(
                 "Métricas de riesgo y rendimiento que aplican a cualquier tipo de activo.",
                 styles["muted"],
             ))
             story.append(Spacer(1, 3 * mm))
-            comp_kpis = [
-                {"label": "Volatilidad anual", "value": _fmt_pct_frac(comp.get("volatilidad_anual"), 1)},
-                {"label": "Sharpe", "value": f"{comp.get('sharpe_ratio'):.2f}" if comp.get("sharpe_ratio") is not None else "—"},
-                {"label": "Sortino", "value": f"{comp.get('sortino_ratio'):.2f}" if comp.get("sortino_ratio") is not None else "—"},
-                {"label": "Max DD 1Y", "value": _fmt_pct_frac(comp.get("max_drawdown"), 1), "color": "red"},
-                {"label": "Correlación S&P 500", "value": f"{comp.get('correlacion_sp500'):.2f}" if comp.get("correlacion_sp500") is not None else "—"},
-                {"label": "Retorno 1M", "value": _fmt_pct_frac(comp.get("retorno_1m"), 2),
-                 "color": "green" if (comp.get("retorno_1m") or 0) >= 0 else "red"},
-                {"label": "Retorno YTD", "value": _fmt_pct_frac(comp.get("retorno_ytd"), 2),
-                 "color": "green" if (comp.get("retorno_ytd") or 0) >= 0 else "red"},
-                {"label": "Retorno 1Y", "value": _fmt_pct_frac(comp.get("retorno_1y"), 2),
-                 "color": "green" if (comp.get("retorno_1y") or 0) >= 0 else "red"},
-            ]
-            story.append(_kpi_row(comp_kpis, n_cols=4))
+            comp_kpis = []
+            if comp.get("volatilidad_anual") is not None:
+                comp_kpis.append({"label": "Volatilidad anual", "value": _fmt_pct_frac(comp["volatilidad_anual"], 1)})
+            if comp.get("sharpe_ratio") is not None:
+                comp_kpis.append({"label": "Sharpe", "value": f"{comp['sharpe_ratio']:.2f}"})
+            if comp.get("sortino_ratio") is not None:
+                comp_kpis.append({"label": "Sortino", "value": f"{comp['sortino_ratio']:.2f}"})
+            if comp.get("max_drawdown") is not None:
+                comp_kpis.append({"label": "Max DD 1Y", "value": _fmt_pct_frac(comp["max_drawdown"], 1), "color": "red"})
+            if comp.get("correlacion_sp500") is not None:
+                comp_kpis.append({"label": "Correlación S&P 500", "value": f"{comp['correlacion_sp500']:.2f}"})
+            for lab, key in [("Retorno 1M", "retorno_1m"), ("Retorno YTD", "retorno_ytd"), ("Retorno 1Y", "retorno_1y")]:
+                v = comp.get(key)
+                if v is not None:
+                    comp_kpis.append({"label": lab, "value": _fmt_pct_frac(v, 2), "color": "green" if v >= 0 else "red"})
+            if comp_kpis:
+                _nc = 3 if len(comp_kpis) in (3, 5, 6) else min(4, len(comp_kpis))
+                story.append(_kpi_row(comp_kpis, n_cols=_nc))
 
     # ========================================================
     #  CONCENTRACIÓN (nueva página solo si hay datos suficientes)
     # ========================================================
     conc = datos.get("concentracion")
     if conc and (conc.get("por_sector") or conc.get("por_pais") or conc.get("por_moneda")):
-        story.append(PageBreak())
-        story.append(Paragraph("03 · Análisis de concentración", styles["h1"]))
+        story.append(Spacer(1, 8 * mm))
+        story.append(Paragraph(f"{_sn('Análisis de concentración')} · Análisis de concentración", styles["h2"]))
         story.append(Paragraph(
             "Cómo se distribuye el peso de tu portafolio. Concentraciones &gt;40% en un solo "
             "sector/país sugieren revisar diversificación.",
@@ -655,12 +670,8 @@ def generar_reporte(
     fund = datos.get("fundamentales")
 
     if posiciones:
-        # Page break solo si concentración ocupó espacio
-        if conc:
-            story.append(PageBreak())
-        else:
-            story.append(Spacer(1, 8 * mm))
-        story.append(Paragraph(f"04 · Posiciones al cierre", styles["h1"]))
+        story.append(Spacer(1, 8 * mm))
+        story.append(Paragraph(f"{_sn('Posiciones al cierre')} · Posiciones al cierre", styles["h2"]))
         story.append(Paragraph(
             f"{len(posiciones)} posiciones activas en el portafolio.",
             styles["muted"],
@@ -670,27 +681,32 @@ def generar_reporte(
 
     if fund and any(v is not None for v in fund.values() if not isinstance(v, dict)):
         # Si posiciones es chica (<8), poner fundamentales en la misma página
-        if len(posiciones) >= 10:
-            story.append(PageBreak())
-        else:
-            story.append(Spacer(1, 8 * mm))
-        story.append(Paragraph("05 · Fundamentales del portafolio", styles["h2" if posiciones else "h1"]))
+        story.append(Spacer(1, 8 * mm))
+        story.append(Paragraph(f"{_sn('Fundamentales del portafolio')} · Fundamentales del portafolio", styles["h2"]))
         story.append(Paragraph(
-            "Promedios de las métricas fundamentales de tus posiciones.",
+            "Promedios de las métricas fundamentales de tus posiciones (solo las disponibles).",
             styles["muted"],
         ))
         story.append(Spacer(1, 3 * mm))
-        fund_kpis = [
-            {"label": "P/E promedio", "value": f"{fund.get('pe_promedio'):.1f}" if fund.get("pe_promedio") is not None else "—"},
-            {"label": "P/B promedio", "value": f"{fund.get('pb_promedio'):.2f}" if fund.get("pb_promedio") is not None else "—"},
-            {"label": "PEG promedio", "value": f"{fund.get('peg_promedio'):.2f}" if fund.get("peg_promedio") is not None else "—"},
-            {"label": "Dividend yield", "value": _fmt_pct_frac(fund.get("yield_promedio"), 2), "color": "green"},
-            {"label": "Beta promedio", "value": f"{fund.get('beta_promedio'):.2f}" if fund.get("beta_promedio") is not None else "—"},
-            {"label": "ROE promedio", "value": _fmt_pct_frac(fund.get("roe_promedio"), 1)},
-            {"label": "Margen neto", "value": _fmt_pct_frac(fund.get("margen_neto_promedio"), 1)},
-            {"label": "Debt/Equity", "value": f"{fund.get('debt_equity_promedio'):.2f}" if fund.get("debt_equity_promedio") is not None else "—"},
-        ]
-        story.append(_kpi_row(fund_kpis, n_cols=4))
+        fund_kpis = []
+        if fund.get("pe_promedio") is not None:
+            fund_kpis.append({"label": "P/E promedio", "value": f"{fund['pe_promedio']:.1f}"})
+        if fund.get("pb_promedio") is not None:
+            fund_kpis.append({"label": "P/B promedio", "value": f"{fund['pb_promedio']:.2f}"})
+        if fund.get("peg_promedio") is not None:
+            fund_kpis.append({"label": "PEG promedio", "value": f"{fund['peg_promedio']:.2f}"})
+        if fund.get("yield_promedio") is not None:
+            fund_kpis.append({"label": "Dividend yield", "value": _fmt_pct_frac(fund["yield_promedio"], 2), "color": "green"})
+        if fund.get("beta_promedio") is not None:
+            fund_kpis.append({"label": "Beta promedio", "value": f"{fund['beta_promedio']:.2f}"})
+        if fund.get("roe_promedio") is not None:
+            fund_kpis.append({"label": "ROE promedio", "value": _fmt_pct_frac(fund["roe_promedio"], 1)})
+        if fund.get("margen_neto_promedio") is not None:
+            fund_kpis.append({"label": "Margen neto", "value": _fmt_pct_frac(fund["margen_neto_promedio"], 1)})
+        if fund.get("debt_equity_promedio") is not None:
+            fund_kpis.append({"label": "Debt/Equity", "value": f"{fund['debt_equity_promedio']:.2f}"})
+        if fund_kpis:
+            story.append(_kpi_row(fund_kpis, n_cols=min(4, len(fund_kpis))))
 
     # ========================================================
     #  MOVIMIENTOS — solo si hay movimientos
@@ -698,7 +714,7 @@ def generar_reporte(
     movs = datos.get("movimientos_mes") or []
     if movs:
         story.append(Spacer(1, 8 * mm))
-        story.append(Paragraph(f"06 · Movimientos de {mes_nombre}", styles["h2"]))
+        story.append(Paragraph(f"{_sn('Movimientos de ' + mes_nombre)} · Movimientos de {mes_nombre}", styles["h2"]))
         story.append(Paragraph(
             f"{len(movs)} transacciones registradas este mes.",
             styles["muted"],
@@ -711,6 +727,8 @@ def generar_reporte(
     # ========================================================
     div = datos.get("dividendos")
     if div and (div.get("ingreso_anual_estimado") or 0) > 0:
+        story.append(Spacer(1, 8 * mm))
+        story.append(Paragraph(f"{_sn('Ingreso pasivo proyectado')} · Ingreso pasivo proyectado", styles["h2"]))
         story.append(Paragraph(
             "Dividendos esperados con base en los pagos históricos. Aproximación.",
             styles["muted"],
@@ -734,7 +752,7 @@ def generar_reporte(
     fiscal = datos.get("fiscal")
     if fiscal:
         story.append(Spacer(1, 8 * mm))
-        story.append(Paragraph("08 · Análisis fiscal mexicano", styles["h2"]))
+        story.append(Paragraph(f"{_sn('Análisis fiscal mexicano')} · Análisis fiscal mexicano", styles["h2"]))
         ano_fiscal = fiscal.get("ano") or anio_n
         story.append(Paragraph(
             f"ISR ejercicio {ano_fiscal} (Art. 129 LISR — 10% sobre utilidades realizadas).",
@@ -791,7 +809,7 @@ def generar_reporte(
     bench = datos.get("benchmarks")
     if bench:
         story.append(Spacer(1, 8 * mm))
-        story.append(Paragraph("09 · Comparativa vs benchmarks", styles["h2"]))
+        story.append(Paragraph(f"{_sn('Comparativa vs benchmarks')} · Comparativa vs benchmarks", styles["h2"]))
         story.append(Paragraph(
             "Tu portafolio vs los índices de referencia.",
             styles["muted"],
@@ -805,7 +823,7 @@ def generar_reporte(
     insights = datos.get("insights") or []
     if insights:
         story.append(Spacer(1, 8 * mm))
-        story.append(Paragraph("10 · Observaciones del periodo", styles["h2"]))
+        story.append(Paragraph(f"{_sn('Observaciones del periodo')} · Observaciones del periodo", styles["h2"]))
         story.append(Paragraph(
             "Hallazgos automáticos detectados al analizar tu portafolio.",
             styles["muted"],

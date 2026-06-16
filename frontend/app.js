@@ -8653,6 +8653,12 @@ function bindExportarPdf() {
           }
           // Comportamiento estadístico desde portafolio.metricas
           const pm = resultsRes.portafolio || {};
+          body.portafolio_metrics = {
+            rendimiento_anualizado_pct: pm.rendimiento_anualizado_pct,
+            volatilidad_anual_pct:      pm.volatilidad_anual_pct,
+            sharpe_ratio:               pm.sharpe_ratio,
+            max_drawdown_pct:           pm.max_drawdown_pct,
+          };
           body.comportamiento = {
             volatilidad_anual:   pm.volatilidad_anual_pct ? pm.volatilidad_anual_pct / 100 : null,
             sharpe_ratio:        pm.sharpe_ratio,
