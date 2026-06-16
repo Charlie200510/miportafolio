@@ -2578,6 +2578,123 @@ async function renderWatchlist() {
   }));
 }
 
+// ============================================================
+// COMPARAR ACCIONES (overlay precio base 100 + métricas lado a lado)
+// ============================================================
+window.iniciarComparar = (function () {
+  let inited = false;
+  const PAL = ['#38bdf8', '#22c55e', '#a78bfa', '#f59e0b'];
+  const state = { tickers: [], rango: '1A', chart: null };
+
+  function chips() {
+    const c = $('cmp-chips'); if (!c) return;
+    c.innerHTML = state.tickers.map((t, i) => `
+      <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border tabular" style="border-color:${PAL[i]}66;color:${PAL[i]}">
+        ${escapeHtml(t)}<button data-cmp-del="${escapeHtml(t)}" class="cmp-del hover:text-accent-red ml-0.5">✕</button>
+      </span>`).join('');
+    c.querySelectorAll('.cmp-del').forEach(b => b.addEventListener('click', () => quitar(b.dataset.cmpDel)));
+  }
+  function agregar(t) {
+    t = (t || '').trim().toUpperCase();
+    if (!t || state.tickers.includes(t) || state.tickers.length >= 4) return;
+    state.tickers.push(t); chips(); comparar();
+  }
+  function quitar(t) { state.tickers = state.tickers.filter(x => x !== t); chips(); comparar(); }
+
+  async function comparar() {
+    const vacio = $('cmp-vacio'), cv = $('cmp-canvas'), tabla = $('cmp-tabla');
+    if (state.tickers.length < 2) {
+      if (state.chart) { state.chart.destroy(); state.chart = null; }
+      if (vacio) vacio.classList.remove('hidden');
+      if (tabla) tabla.innerHTML = '';
+      return;
+    }
+    const datos = await Promise.all(state.tickers.map(async t => {
+      const [h, s] = await Promise.all([
+        fetch(`/api/historico/${encodeURIComponent(t)}?rango=${state.rango}`).then(r => r.json()).catch(() => null),
+        fetch(`/api/score/${encodeURIComponent(t)}`).then(r => r.json()).catch(() => null),
+      ]);
+      return { t, h, s };
+    }));
+    const validos = datos.filter(d => d.h && d.h.ok && Array.isArray(d.h.precios) && d.h.precios.length > 1);
+    if (validos.length < 2) {
+      if (state.chart) { state.chart.destroy(); state.chart = null; }
+      if (vacio) vacio.classList.remove('hidden');
+      if (tabla) tabla.innerHTML = `<p class="text-xs text-zinc-500 text-center py-4">No encontré datos suficientes para esos tickers en el universo.</p>`;
+      return;
+    }
+    if (vacio) vacio.classList.add('hidden');
+    const L = Math.min(...validos.map(d => d.h.precios.length));
+    const labels = validos[0].h.fechas.slice(-L);
+    const datasets = validos.map(d => {
+      const serie = d.h.precios.slice(-L);
+      const base = serie[0] || 1;
+      const col = PAL[state.tickers.indexOf(d.t)] || '#38bdf8';
+      return { label: d.t, data: serie.map(v => v / base * 100), borderColor: col, borderWidth: 1.5, pointRadius: 0, tension: 0.1, fill: false };
+    });
+    if (cv && typeof Chart !== 'undefined') {
+      if (state.chart) state.chart.destroy();
+      state.chart = new Chart(cv.getContext('2d'), {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#a1a1aa', boxWidth: 10, font: { size: 11 } } }, tooltip: { mode: 'index', intersect: false } },
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: { ticks: { maxTicksLimit: 6, color: '#71717a', font: { size: 10 } }, grid: { display: false } },
+            y: { ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Base 100', color: '#71717a', font: { size: 10 } } },
+          },
+        },
+      });
+    }
+    if (tabla) {
+      const pct = v => (v == null || isNaN(v)) ? '—' : `${(v * 100).toFixed(1)}%`;
+      const num = v => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(2);
+      const rows = validos.map(d => {
+        const col = PAL[state.tickers.indexOf(d.t)] || '#38bdf8';
+        const serie = d.h.precios.slice(-L);
+        const ret = serie[serie.length - 1] / serie[0] - 1;
+        const sc = (d.s && d.s.ok) ? d.s : {};
+        return `<tr class="border-t border-surface-border">
+          <td class="py-2 pr-2"><span class="inline-block w-2 h-2 rounded-full align-middle mr-2" style="background:${col}"></span><span class="font-semibold tabular text-zinc-100">${escapeHtml(d.t)}</span></td>
+          <td class="text-right tabular ${ret >= 0 ? 'text-accent-green' : 'text-accent-red'}">${(ret * 100).toFixed(1)}%</td>
+          <td class="text-right tabular text-zinc-300">${pct(sc.volatilidad_anual)}</td>
+          <td class="text-right tabular text-zinc-300">${num(sc.sharpe)}</td>
+          <td class="text-right tabular text-zinc-300">${num(sc.beta)}</td>
+          <td class="text-right tabular font-semibold text-zinc-100">${sc.score != null ? Math.round(sc.score) : '—'}</td>
+        </tr>`;
+      }).join('');
+      tabla.innerHTML = `
+        <div class="bg-surface-card border border-surface-border rounded-xl p-4 overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead><tr class="text-zinc-500 text-left">
+              <th class="py-1">Ticker</th><th class="text-right">Retorno ${state.rango}</th><th class="text-right">Volatilidad</th><th class="text-right">Sharpe</th><th class="text-right">Beta</th><th class="text-right">Score</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+  }
+
+  return function () {
+    if (inited) { comparar(); return; }
+    inited = true;
+    const add = $('cmp-add'), inp = $('cmp-input');
+    if (add) add.addEventListener('click', () => { agregar(inp.value); inp.value = ''; });
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') { agregar(inp.value); inp.value = ''; } });
+    document.querySelectorAll('.cmp-rango').forEach(b => b.addEventListener('click', () => {
+      state.rango = b.dataset.cmpRango;
+      document.querySelectorAll('.cmp-rango').forEach(x => { x.classList.remove('text-zinc-200', 'bg-zinc-900'); x.classList.add('text-zinc-500'); });
+      b.classList.add('text-zinc-200', 'bg-zinc-900'); b.classList.remove('text-zinc-500');
+      comparar();
+    }));
+    try { (leerPortafolioGuardado() || []).slice(0, 2).forEach(t => agregar(t)); } catch {}
+    chips();
+    if (state.tickers.length < 2) comparar();
+  };
+})();
+
 const Periodico = (() => {
   const state = {
     cargadoUnaVez: false,

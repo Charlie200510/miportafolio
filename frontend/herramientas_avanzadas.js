@@ -1082,6 +1082,7 @@
     const secDeep = document.getElementById('sub-deep-dive');
     const secScreen = document.getElementById('sub-screener');
     const secSml = document.getElementById('sub-sml');
+    const secComparar = document.getElementById('sub-comparar');
     if (!tabs.length) return;
     function activar(sub) {
       tabs.forEach(b => {
@@ -1096,9 +1097,11 @@
       if (secDeep)   secDeep.classList.toggle('hidden', sub !== 'deep-dive');
       if (secScreen) secScreen.classList.toggle('hidden', sub !== 'screener');
       if (secSml)    secSml.classList.toggle('hidden', sub !== 'sml');
+      if (secComparar) secComparar.classList.toggle('hidden', sub !== 'comparar');
       if (sub === 'deep-dive') window.iniciarDeepDiveInline();
       if (sub === 'screener')  window.iniciarScreenerInline();
       if (sub === 'sml')       window.iniciarSmlInline();
+      if (sub === 'comparar' && typeof window.iniciarComparar === 'function') window.iniciarComparar();
     }
     tabs.forEach(b => b.addEventListener('click', () => activar(b.dataset.subAnalizar)));
   };

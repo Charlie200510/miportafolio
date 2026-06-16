@@ -1673,8 +1673,36 @@
         <button data-sub-analizar="sml" class="sub-analizar-btn px-4 py-1.5 text-xs font-medium rounded-full text-zinc-500 hover:text-zinc-200 transition">
           Valoración SML
         </button>
+        <button data-sub-analizar="comparar" class="sub-analizar-btn px-4 py-1.5 text-xs font-medium rounded-full text-zinc-500 hover:text-zinc-200 transition">
+          Comparar
+        </button>
       </div>
     </div>
+
+    <!-- SUB-VISTA: COMPARAR ACCIONES -->
+    <section id="sub-comparar" class="hidden max-w-5xl mx-auto px-6 py-8">
+      <div class="mb-5">
+        <h2 class="text-2xl font-bold tracking-tight">Comparar acciones</h2>
+        <p class="text-sm text-zinc-400 mt-2">Agrega de 2 a 4 tickers para comparar su precio (base 100) y sus métricas lado a lado.</p>
+      </div>
+      <div class="flex items-center gap-2 mb-3 flex-wrap">
+        <input id="cmp-input" type="text" placeholder="Ticker (ej. AAPL, NVDA, WALMEX.MX)"
+          class="flex-1 min-w-[180px] bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-accent-orange" />
+        <button id="cmp-add" class="text-xs px-3 py-2 rounded-md bg-accent-orange/15 text-accent-orange border border-accent-orange/40 hover:brightness-110">+ Agregar</button>
+      </div>
+      <div id="cmp-chips" class="flex flex-wrap gap-1.5 mb-4"></div>
+      <div id="cmp-rangos" class="flex gap-1 text-[11px] mb-3">
+        <button data-cmp-rango="1M" class="cmp-rango px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">1M</button>
+        <button data-cmp-rango="6M" class="cmp-rango px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">6M</button>
+        <button data-cmp-rango="1A" class="cmp-rango px-2 py-0.5 rounded border border-surface-border text-zinc-200 bg-zinc-900">1A</button>
+        <button data-cmp-rango="5A" class="cmp-rango px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">5A</button>
+      </div>
+      <div class="bg-surface-card border border-surface-border rounded-xl p-4 mb-4">
+        <div class="h-72"><canvas id="cmp-canvas"></canvas></div>
+        <p id="cmp-vacio" class="text-xs text-zinc-500 text-center py-8">Agrega al menos 2 tickers para comparar.</p>
+      </div>
+      <div id="cmp-tabla"></div>
+    </section>
 
     <section id="sub-una-accion" class="max-w-5xl mx-auto px-6 pt-2 pb-8">
       <div class="flex items-start justify-between gap-4 mb-6">
