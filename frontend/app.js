@@ -2626,6 +2626,42 @@ window.iniciarComparar = (function () {
   let inited = false;
   const PAL = ['#38bdf8', '#22c55e', '#a78bfa', '#f59e0b'];
   const state = { tickers: [], rango: '1A', chart: null };
+  let universo = [];
+  async function _cargarUniverso() {
+    if (universo.length) return;
+    try {
+      const r = await fetch('/api/universo');
+      const b = await r.json();
+      if (b && Array.isArray(b.tickers)) universo = b.tickers;
+    } catch {}
+  }
+  function _resolver(q) {
+    q = (q || '').trim().toUpperCase();
+    if (!q) return null;
+    if (universo.some(u => u.ticker === q)) return q;       // ya es ticker válido
+    const m = universo.find(u => (u.nombre || '').toUpperCase().includes(q));
+    return m ? m.ticker : q;                                // nombre → ticker, o tal cual
+  }
+  function _renderSug(q) {
+    const box = document.getElementById('cmp-sug'); if (!box) return;
+    q = (q || '').trim().toLowerCase();
+    if (q.length < 1 || !universo.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+    const ms = universo.filter(u =>
+      u.ticker.toLowerCase().startsWith(q) || (u.nombre || '').toLowerCase().includes(q)
+    ).slice(0, 7);
+    if (!ms.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+    box.innerHTML = ms.map(u => `
+      <button data-sug-tk="${escapeHtml(u.ticker)}" class="cmp-sug-item w-full text-left px-3 py-2 hover:bg-zinc-900/70 flex items-center gap-2">
+        <span class="text-xs font-mono text-zinc-100 shrink-0">${escapeHtml(u.ticker)}</span>
+        <span class="text-[10px] text-zinc-500 truncate">${escapeHtml(u.nombre || '')}</span>
+      </button>`).join('');
+    box.classList.remove('hidden');
+    box.querySelectorAll('.cmp-sug-item').forEach(b => b.addEventListener('click', () => {
+      agregar(b.dataset.sugTk);
+      const inp = $('cmp-input'); if (inp) inp.value = '';
+      box.classList.add('hidden'); box.innerHTML = '';
+    }));
+  }
 
   function chips() {
     const c = $('cmp-chips'); if (!c) return;
@@ -2636,7 +2672,7 @@ window.iniciarComparar = (function () {
     c.querySelectorAll('.cmp-del').forEach(b => b.addEventListener('click', () => quitar(b.dataset.cmpDel)));
   }
   function agregar(t) {
-    t = (t || '').trim().toUpperCase();
+    t = _resolver(t);
     if (!t || state.tickers.includes(t) || state.tickers.length >= 4) return;
     state.tickers.push(t); chips(); comparar();
   }
@@ -2706,6 +2742,7 @@ window.iniciarComparar = (function () {
           <td class="text-right tabular font-semibold text-zinc-100">${sc.score != null ? Math.round(sc.score) : '—'}</td>
         </tr>`;
       }).join('');
+      const faltan = state.tickers.filter(t => !validos.some(v => v.t === t));
       tabla.innerHTML = `
         <div class="bg-surface-card border border-surface-border rounded-xl p-4 overflow-x-auto">
           <table class="w-full text-xs">
@@ -2714,16 +2751,22 @@ window.iniciarComparar = (function () {
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
-        </div>`;
+        </div>
+        ${faltan.length ? `<p class="text-[11px] text-zinc-500 mt-2">No encontradas en el universo local: <span class="text-zinc-300">${faltan.map(escapeHtml).join(', ')}</span>. Solo se comparan acciones del universo curado (~500).</p>` : ''}`;
     }
   }
 
   return function () {
     if (inited) { comparar(); return; }
     inited = true;
+    _cargarUniverso();
     const add = $('cmp-add'), inp = $('cmp-input');
-    if (add) add.addEventListener('click', () => { agregar(inp.value); inp.value = ''; });
-    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') { agregar(inp.value); inp.value = ''; } });
+    if (add) add.addEventListener('click', () => { agregar(inp.value); inp.value = ''; _renderSug(''); });
+    if (inp) {
+      inp.addEventListener('input', () => _renderSug(inp.value));
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { agregar(inp.value); inp.value = ''; _renderSug(''); } });
+      inp.addEventListener('blur', () => setTimeout(() => _renderSug(''), 150));
+    }
     document.querySelectorAll('.cmp-rango').forEach(b => b.addEventListener('click', () => {
       state.rango = b.dataset.cmpRango;
       document.querySelectorAll('.cmp-rango').forEach(x => { x.classList.remove('text-zinc-200', 'bg-zinc-900'); x.classList.add('text-zinc-500'); });
@@ -8319,7 +8362,7 @@ const Analizador = (() => {
         <button data-an-tk="${escapeHtml(t.ticker)}" class="an-tk text-left p-2.5 rounded-lg border border-surface-border bg-zinc-900/40 hover:border-accent-orange hover:bg-accent-orange/5 transition flex items-center gap-2.5">
           <span class="text-[9px] px-1.5 py-0.5 rounded border ${flagCls} font-mono shrink-0">${flag}</span>
           <div class="min-w-0 flex-1">
-            <p class="text-xs font-mono text-zinc-100 truncate">${escapeHtml(t.ticker)}${t.recomendada ? ' <span class="text-amber-400">★</span>' : ''}</p>
+            <p class="text-xs font-mono text-zinc-100 truncate">${escapeHtml(t.ticker)}</p>
             <p class="text-[10px] text-zinc-500 truncate">${escapeHtml(t.nombre || '')}</p>
           </div>
           ${(estado.ordenScore && estado.scoreMap && estado.scoreMap[t.ticker] != null) ? `<span class="text-[11px] font-bold tabular px-1.5 py-0.5 rounded bg-accent-amber/15 text-accent-amber shrink-0">${estado.scoreMap[t.ticker]}</span>` : ''}

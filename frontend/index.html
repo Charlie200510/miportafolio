@@ -1693,8 +1693,13 @@
         <p class="text-sm text-zinc-400 mt-2">Agrega de 2 a 4 tickers para comparar su precio (base 100) y sus métricas lado a lado.</p>
       </div>
       <div class="flex items-center gap-2 mb-3 flex-wrap">
-        <input id="cmp-input" type="text" placeholder="Ticker (ej. AAPL, NVDA, WALMEX.MX)"
-          class="flex-1 min-w-[180px] bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-accent-orange" />
+        <div class="relative flex-1 min-w-[180px]">
+          <input id="cmp-input" type="text" placeholder="Ticker o nombre (ej. Apple, NVDA, WALMEX.MX)"
+            autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false"
+            style="text-transform:uppercase"
+            class="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 placeholder:normal-case focus:outline-none focus:border-accent-orange" />
+          <div id="cmp-sug" class="hidden absolute z-20 left-0 right-0 mt-1 bg-surface-card border border-surface-border rounded-md shadow-lg max-h-56 overflow-y-auto"></div>
+        </div>
         <button id="cmp-add" class="text-xs px-3 py-2 rounded-md bg-accent-orange/15 text-accent-orange border border-accent-orange/40 hover:brightness-110">+ Agregar</button>
       </div>
       <div id="cmp-chips" class="flex flex-wrap gap-1.5 mb-4"></div>
