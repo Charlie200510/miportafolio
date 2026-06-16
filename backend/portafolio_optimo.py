@@ -280,12 +280,36 @@ def _optimizar_markowitz(
 # ─────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────
-def portafolio_optimo(nivel_riesgo: int = 5, forzar: bool = False) -> Dict[str, Any]:
-    """Genera el portafolio óptimo para el nivel de riesgo indicado (1-10)."""
-    nivel = max(1, min(10, int(nivel_riesgo)))
+def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = None,
+                      forzar: bool = False) -> Dict[str, Any]:
+    """Genera el portafolio óptimo.
 
-    # Cache
-    cache_key = f"nivel_{nivel}"
+    Dos modos:
+      - vol_objetivo: volatilidad objetivo (σ anual) — el modo "pro" del slider.
+        Acepta 14 o 0.14; se clampa a 5%–35%. El nº de acciones se interpola.
+      - nivel_riesgo (1-10): modo legacy mapeado en NIVELES.
+    """
+    if vol_objetivo is not None:
+        v = float(vol_objetivo)
+        if v > 1:
+            v = v / 100.0                       # acepta "14" o "0.14"
+        v = max(0.05, min(0.35, v))             # clamp 5%–35%
+        n_acc = max(8, min(12, int(round(12 - (v - 0.06) / 0.22 * 4))))
+        etiqueta = ("Conservador" if v < 0.09 else "Moderado" if v < 0.13
+                    else "Balanceado" if v < 0.17 else "Crecimiento" if v < 0.22
+                    else "Agresivo")
+        params = {
+            "vol_objetivo": v, "n_acciones": n_acc, "etiqueta": etiqueta,
+            "descripcion": f"Objetivo de volatilidad ~{v*100:.0f}% anual (desviación estándar σ).",
+        }
+        max_peso = 0.25 if v >= 0.20 else 0.15
+        nivel = max(1, min(10, int(round((v - 0.06) / 0.22 * 9 + 1))))
+        cache_key = f"vol_{int(round(v * 100))}"
+    else:
+        nivel = max(1, min(10, int(nivel_riesgo)))
+        params = NIVELES[nivel]
+        max_peso = 0.25 if nivel >= 8 else 0.15
+        cache_key = f"nivel_{nivel}"
     cached = _CACHE.get(cache_key)
     if not forzar and cached and (time.time() - cached["ts"]) < _CACHE_TTL:
         return cached["data"]
@@ -301,7 +325,6 @@ def portafolio_optimo(nivel_riesgo: int = 5, forzar: bool = False) -> Dict[str, 
         except Exception:
             pass
 
-    params = NIVELES[nivel]
     df_precios = _cargar_precios()
     if df_precios is None or df_precios.empty:
         return {"ok": False, "error": "Universo no disponible"}
@@ -334,7 +357,7 @@ def portafolio_optimo(nivel_riesgo: int = 5, forzar: bool = False) -> Dict[str, 
         df_rets,
         vol_objetivo_anual=params["vol_objetivo"],
         rf_anual=rf,
-        max_peso=0.25 if nivel >= 8 else 0.15,   # agresivo permite más concentración
+        max_peso=max_peso,   # agresivo permite más concentración
     )
     if resultado is None:
         return {"ok": False, "error": "Optimizador no convergió"}

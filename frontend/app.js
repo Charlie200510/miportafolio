@@ -1543,11 +1543,16 @@ const Explorador = (() => {
 // ============================================================
 const PortafolioOptimo = (() => {
   const state = {
-    nivel: 5,
+    vol: 14,           // volatilidad objetivo (σ anual) en %
     data:  null,
     cargando: false,
     debounceTimer: null,
   };
+  // Etiqueta según σ (debe coincidir con el backend portafolio_optimo.py)
+  function _etiquetaVol(v) {
+    return v < 9 ? 'Conservador' : v < 13 ? 'Moderado'
+         : v < 17 ? 'Balanceado' : v < 22 ? 'Crecimiento' : 'Agresivo';
+  }
 
   const NIVELES_LABELS = {
     1:'Conservador', 2:'Conservador+', 3:'Moderado bajo', 4:'Moderado',
@@ -1644,9 +1649,10 @@ const PortafolioOptimo = (() => {
       : '');
   }
 
-  function pintarLabels(nivel, etiqueta, descripcion, metodologia) {
+  function pintarLabels(volFrac, etiqueta, descripcion, metodologia) {
     const lbl = document.getElementById('po-nivel-label');
-    if (lbl) lbl.textContent = `${nivel} · ${etiqueta || NIVELES_LABELS[nivel] || ''}`;
+    const pct = Math.round((volFrac || 0) * 100);
+    if (lbl) lbl.textContent = `${pct}% · ${etiqueta || _etiquetaVol(pct)}`;
     const desc = document.getElementById('po-descripcion');
     if (desc) desc.textContent = descripcion || '';
     const meto = document.getElementById('po-metodologia');
@@ -1662,18 +1668,18 @@ const PortafolioOptimo = (() => {
     if (barra) barra.innerHTML = '';
   }
 
-  async function cargar(nivel) {
+  async function cargar(vol) {
     if (state.cargando) return;
     state.cargando = true;
     pintarSkeletons();
     try {
-      const r = await fetch(`/api/portafolio-optimo?nivel=${nivel}`);
+      const r = await fetch(`/api/portafolio-optimo?vol=${vol}`);
       let d = null;
       try { d = await r.json(); } catch { d = null; }
       if (!d) throw new Error('Respuesta vacía');
       if (!d.ok) throw new Error(d.error || 'error');
       state.data = d;
-      pintarLabels(d.nivel, d.etiqueta, d.descripcion, d.metodologia);
+      pintarLabels(d.vol_objetivo, d.etiqueta, d.descripcion, d.metodologia);
       pintarMetricas(d);
       pintarComposicion(d);
       pintarBarra(d);
@@ -1684,21 +1690,21 @@ const PortafolioOptimo = (() => {
     }
   }
 
-  function debounceCargar(nivel) {
+  function debounceCargar(vol) {
     clearTimeout(state.debounceTimer);
-    state.debounceTimer = setTimeout(() => cargar(nivel), 350);
+    state.debounceTimer = setTimeout(() => cargar(vol), 350);
   }
 
   function bind() {
     const slider = document.getElementById('po-slider');
     if (slider) {
       slider.addEventListener('input', (e) => {
-        state.nivel = parseInt(e.target.value, 10) || 5;
+        state.vol = parseInt(e.target.value, 10) || 14;
         // Label se actualiza inmediato
         const lbl = document.getElementById('po-nivel-label');
-        if (lbl) lbl.textContent = `${state.nivel} · ${NIVELES_LABELS[state.nivel]}`;
+        if (lbl) lbl.textContent = `${state.vol}% · ${_etiquetaVol(state.vol)}`;
         // Cargar con debounce
-        debounceCargar(state.nivel);
+        debounceCargar(state.vol);
       });
     }
     const regen = document.getElementById('po-regenerar');
@@ -1726,8 +1732,8 @@ const PortafolioOptimo = (() => {
         if (window.toast) window.toast.error('No pude cargar el portafolio');
       }
     });
-    // Carga inicial al nivel 5
-    cargar(5);
+    // Carga inicial a σ 14% (≈ mercado)
+    cargar(14);
   }
 
   return { bind, cargar };

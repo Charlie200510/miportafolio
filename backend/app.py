@@ -1875,8 +1875,11 @@ def api_portafolio_optimo():
     ?nivel=5 → balanceado. Cache 6h."""
     try:
         import portafolio_optimo as _po
-        nivel = int(request.args.get("nivel") or 5)
         forzar = (request.args.get("forzar") or "").lower() in ("1", "true", "yes")
+        vol = request.args.get("vol")
+        if vol not in (None, ""):
+            return jsonify(_po.portafolio_optimo(vol_objetivo=float(vol), forzar=forzar))
+        nivel = int(request.args.get("nivel") or 5)
         return jsonify(_po.portafolio_optimo(nivel_riesgo=nivel, forzar=forzar))
     except Exception as e:
         return jsonify({"ok": False, "error": f"portafolio optimo falló: {e}"}), 500
