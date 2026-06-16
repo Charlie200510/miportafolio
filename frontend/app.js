@@ -1709,6 +1709,46 @@ const PortafolioOptimo = (() => {
     if (barra) barra.innerHTML = '';
   }
 
+  let _frontChart = null;
+  function pintarFrontera(d) {
+    const cv = document.getElementById('po-frontera-canvas');
+    if (!cv || typeof Chart === 'undefined') return;
+    const fr = d && d.frontera;
+    if (!fr || !Array.isArray(fr.curva) || !fr.curva.length) {
+      if (_frontChart) { _frontChart.destroy(); _frontChart = null; }
+      return;
+    }
+    if (_frontChart) _frontChart.destroy();
+    const curva = fr.curva.map(p => ({ x: p.vol, y: p.ret }));
+    const activos = (fr.activos || []);
+    const selPts = activos.filter(a => a.sel).map(a => ({ x: a.vol, y: a.ret, ticker: a.ticker }));
+    const otros = activos.filter(a => !a.sel).map(a => ({ x: a.vol, y: a.ret, ticker: a.ticker }));
+    const opt = fr.optimo ? [{ x: fr.optimo.vol, y: fr.optimo.ret }] : [];
+    _frontChart = new Chart(cv.getContext('2d'), {
+      type: 'scatter',
+      data: { datasets: [
+        { type: 'line', label: 'Frontera eficiente', data: curva, borderColor: '#f59e0b', borderWidth: 2, pointRadius: 0, tension: 0.2, fill: false, order: 1 },
+        { label: 'Tu portafolio', data: opt, backgroundColor: '#f59e0b', pointStyle: 'star', radius: 12, borderColor: '#fff', borderWidth: 1, order: 0 },
+        { label: 'En el portafolio', data: selPts, backgroundColor: '#22c55e', radius: 4, order: 2 },
+        { label: 'Otras candidatas', data: otros, backgroundColor: 'rgba(120,120,130,0.45)', radius: 3, order: 3 },
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#a1a1aa', boxWidth: 10, font: { size: 10 }, usePointStyle: true } },
+          tooltip: { callbacks: { label: (ctx) => {
+            const r = ctx.raw; const tk = r.ticker ? r.ticker + ': ' : '';
+            return `${tk}σ ${r.x}% · ret ${r.y}%`;
+          } } },
+        },
+        scales: {
+          x: { title: { display: true, text: 'Volatilidad σ (%)', color: '#71717a', font: { size: 10 } }, ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { title: { display: true, text: 'Retorno esperado (%)', color: '#71717a', font: { size: 10 } }, ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        },
+      },
+    });
+  }
+
   async function cargar(vol) {
     const myReq = ++state.reqSeq;   // marca esta petición como la más reciente
     pintarSkeletons();
@@ -1724,6 +1764,7 @@ const PortafolioOptimo = (() => {
       pintarMetricas(d);
       pintarComposicion(d);
       pintarBarra(d);
+      pintarFrontera(d);
     } catch (e) {
       if (myReq === state.reqSeq) pintarError(`No pude generar el portafolio: ${e.message}`);
     }

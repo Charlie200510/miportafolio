@@ -280,6 +280,53 @@ def _optimizar_markowitz(
 # ─────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────
+def _frontera_eficiente(df_rets, optimo=None, seleccionados=None, n_puntos=40):
+    """Frontera eficiente clásica (cierre analítico de Markowitz; solo numpy).
+
+    Devuelve la curva (vol%, ret% anualizados), los activos individuales como
+    scatter, y el punto del portafolio óptimo — para graficarla estilo libro de
+    texto. No usa scipy (es álgebra lineal con la inversa de la covarianza).
+    """
+    cols = list(df_rets.columns)
+    if len(cols) < 2:
+        return None
+    mu = df_rets.mean().values * 12.0
+    cov = df_rets.cov().values * 12.0
+    try:
+        inv = np.linalg.pinv(cov)
+    except Exception:
+        return None
+    ones = np.ones(len(mu))
+    A = float(ones @ inv @ ones)
+    B = float(ones @ inv @ mu)
+    C = float(mu @ inv @ mu)
+    D = A * C - B * B
+    if A <= 0 or D <= 0:
+        return None
+    r_gmv = B / A                       # retorno del global-minimum-variance
+    lo = min(r_gmv, float(mu.min()))
+    hi = float(mu.max())
+    if hi <= lo:
+        return None
+    curva = []
+    for k in range(n_puntos):
+        r = lo + (hi - lo) * k / (n_puntos - 1)
+        var = (A * r * r - 2 * B * r + C) / D
+        if var > 0:
+            curva.append({"vol": round(float(np.sqrt(var)) * 100, 2), "ret": round(r * 100, 2)})
+    sel = seleccionados or set()
+    activos = [{
+        "ticker": cols[i],
+        "vol":    round(float(np.sqrt(max(cov[i, i], 0.0))) * 100, 2),
+        "ret":    round(float(mu[i]) * 100, 2),
+        "sel":    cols[i] in sel,
+    } for i in range(len(cols))]
+    opt = None
+    if optimo and optimo.get("vol") is not None and optimo.get("ret") is not None:
+        opt = {"vol": round(float(optimo["vol"]) * 100, 2), "ret": round(float(optimo["ret"]) * 100, 2)}
+    return {"curva": curva, "activos": activos, "optimo": opt}
+
+
 def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = None,
                       forzar: bool = False) -> Dict[str, Any]:
     """Genera el portafolio óptimo.
@@ -421,6 +468,16 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
             "Considera tu horizonte, impuestos y situación personal antes de invertir."
         ),
     }
+
+    # 6) Frontera eficiente (para graficar riesgo/retorno; solo numpy)
+    try:
+        data["frontera"] = _frontera_eficiente(
+            df_rets,
+            optimo={"vol": resultado["volatilidad_anual"], "ret": resultado["retorno_esperado"]},
+            seleccionados={a["ticker"] for a in acciones},
+        )
+    except Exception:
+        data["frontera"] = None
 
     ts = time.time()
     _CACHE[cache_key] = {"ts": ts, "data": data}
