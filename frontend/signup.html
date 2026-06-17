@@ -166,7 +166,7 @@
       if (!email) return;
       estado.innerHTML = '<span class="text-zinc-400">Enviando link…</span>';
       try {
-        const r = await fetch('/api/auth/magiclink', {
+        const r = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })

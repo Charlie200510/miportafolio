@@ -2297,6 +2297,7 @@ def api_auth_estado():
 
 
 @app.route("/api/auth/login", methods=["POST"])
+@app.route("/api/auth/magiclink", methods=["POST"])  # alias (lo usa signup.html)
 def api_auth_login():
     if _auth is None:
         return jsonify({"error": "auth no disponible"}), 500
