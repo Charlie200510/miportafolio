@@ -53,7 +53,7 @@ Después en Xcode: ⌘B (build) y ⌘R (run en simulador o iPhone conectado).
 La app iOS hace fetch a las URLs absolutas. La API base se controla por `window.MP_API_BASE` en `frontend/app.js`:
 
 - En **navegador / web**: vacío → llamadas relativas a `/api/...`
-- En **Capacitor iOS**: detecta y usa `https://miportafolio.onrender.com/api/...` (o tu URL de producción)
+- En **Capacitor iOS**: detecta y usa `https://miportafolio.uk/api/...` (o tu URL de producción)
 
 Para desarrollo con backend local:
 1. Levantar Flask: `cd ../backend && python3 app.py`

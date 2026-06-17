@@ -57,7 +57,7 @@ REVENUECAT_ENTITLEMENT    = premium       # (opcional, ya es el default)
 REVENUECAT_WEBHOOK_AUTH   = <un secreto que tú inventes>
 ```
 Y en RevenueCat → Project → Integrations → Webhooks:
-- URL: `https://miportafolio.onrender.com/api/payments/revenuecat/webhook`
+- URL: `https://miportafolio.uk/api/payments/revenuecat/webhook`
 - Authorization header: el mismo valor de `REVENUECAT_WEBHOOK_AUTH`.
 
 (Las de MercadoPago — `MERCADOPAGO_ACCESS_TOKEN`, etc. — son para el cobro web y ya están documentadas en `payments.py`.)

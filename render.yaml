@@ -62,7 +62,7 @@ services:
       - key: MERCADOPAGO_PLAN_NOMBRE
         value: "Mi Portafolio Premium"
       - key: MERCADOPAGO_BACK_URL
-        value: "https://miportafolio.app/static/index.html?paid=1"
+        value: "https://miportafolio.uk/static/index.html?paid=1"
       - key: MERCADOPAGO_WEBHOOK_SECRET
         sync: false
       - key: SENTRY_DSN

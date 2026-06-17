@@ -19,7 +19,7 @@
     if (!nativo) return;
 
     // URL del backend en producción (ajústala si cambias de hosting/dominio)
-    window.MP_API_BASE = 'https://miportafolio.onrender.com';
+    window.MP_API_BASE = 'https://miportafolio.uk';
 
     // API keys PÚBLICAS de RevenueCat (Dashboard → Project → API keys → Public)
     window.MP_REVENUECAT_KEY_IOS     = 'appl_TODO_REEMPLAZAR';
