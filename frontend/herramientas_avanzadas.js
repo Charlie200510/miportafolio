@@ -1090,15 +1090,22 @@
   window.renderDeepDiveEn = async function(ticker, contId) {
     const cont = document.getElementById(contId);
     if (!cont || !ticker) return;
-    cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:18px;">Analizando a fondo…</p>`;
+    cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:18px;">Analizando a fondo… (puede tardar unos segundos)</p>`;
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 35000);
     try {
-      const res = await fetch(`/api/deep-dive/${encodeURIComponent(ticker)}`);
+      const res = await fetch(`/api/deep-dive/${encodeURIComponent(ticker)}`, { signal: ctrl.signal });
+      clearTimeout(to);
       const d = await res.json();
       cont.innerHTML = d.ok
         ? `<div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;padding:20px;">${_renderDeepDive(d)}</div>`
         : `<p style="color:#71717a;font-size:12px;padding:10px;">Deep dive no disponible: ${d.error || ''}</p>`;
     } catch (e) {
-      cont.innerHTML = `<p style="color:#ef4444;font-size:12px;padding:10px;">Error: ${e.message}</p>`;
+      clearTimeout(to);
+      const msg = e.name === 'AbortError'
+        ? 'El deep dive tardó demasiado (Yahoo lento ahora mismo).'
+        : 'Error: ' + e.message;
+      cont.innerHTML = `<p style="color:#71717a;font-size:12px;padding:10px;">${msg} <button onclick="window.renderDeepDiveEn('${ticker}','${contId}')" style="color:#3b82f6;text-decoration:underline;cursor:pointer;">Reintentar</button></p>`;
     }
   };
 
