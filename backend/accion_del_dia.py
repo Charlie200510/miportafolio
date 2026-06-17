@@ -333,11 +333,13 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
 
 
 _RANKING_CACHE: Dict[str, Any] = {}
-def ranking(n: int = 60) -> List[Dict[str, Any]]:
-    """Universo curado rankeado por score canónico (mayor a menor).
-    Cache por día CDMX. Lo usa Analizar para ordenar de mayor a menor score."""
+def ranking(n: int = 60, solo_recomendadas: bool = True) -> List[Dict[str, Any]]:
+    """Universo rankeado por score canónico (mayor a menor). Cache por día CDMX.
+    solo_recomendadas=True → set curado (~120, rápido, para Acción del Día/Analizar).
+    solo_recomendadas=False → universo EXTENDIDO (todas las acciones con precios)."""
     hoy = _fecha_cdmx()
-    c = _RANKING_CACHE.get("r")
+    ck = "r_rec" if solo_recomendadas else "r_all"
+    c = _RANKING_CACHE.get(ck)
     if c and c.get("fecha") == hoy:
         return c["data"][:n]
     df = _cargar_precios()
@@ -352,7 +354,7 @@ def ranking(n: int = 60) -> List[Dict[str, Any]]:
         info = info_all.get(t, {})
         if not _es_candidato(t, info):
             continue
-        if hay_rec and not info.get("recomendada"):
+        if solo_recomendadas and hay_rec and not info.get("recomendada"):
             continue
         res = calcular_metricas_y_score(t, df, info_all, serie_us, serie_mx)
         if res is None:
@@ -365,5 +367,5 @@ def ranking(n: int = 60) -> List[Dict[str, Any]]:
             "es_mx":   det.get("es_mx"),
         })
     out.sort(key=lambda x: x["score"], reverse=True)
-    _RANKING_CACHE["r"] = {"fecha": hoy, "data": out}
+    _RANKING_CACHE[ck] = {"fecha": hoy, "data": out}
     return out[:n]

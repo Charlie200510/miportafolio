@@ -316,31 +316,31 @@
 
   function _renderScreener(d) {
     const filas = (d.resultados || []).map(r => {
-      const mc = r.market_cap ? (r.market_cap >= 1e9 ? `$${(r.market_cap/1e9).toFixed(1)}B` : r.market_cap >= 1e6 ? `$${(r.market_cap/1e6).toFixed(1)}M` : `$${(r.market_cap/1000).toFixed(0)}K`) : '—';
+      const sym = r.moneda === 'MXN' ? '$' : 'US$';
+      const precio = r.precio != null ? `${sym}${Number(r.precio).toLocaleString('en-US',{maximumFractionDigits:2})}` : '—';
+      const score = r.score != null ? `<span style="font-weight:700;color:#f59e0b;">${Math.round(r.score)}</span>` : '—';
       return `<tr>
-        <td style="padding:6px 10px;font-family:monospace;color:#f4f4f5;font-weight:600;font-size:12px;">${r.ticker} ${r.recomendada ? '⭐' : ''}</td>
-        <td style="padding:6px 10px;color:#a1a1aa;font-size:11px;">${r.sector || '—'}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:11px;">${r.pe ? r.pe.toFixed(1) : '—'}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:11px;">${r.yield ? (r.yield * 100).toFixed(2) + '%' : '—'}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:11px;">${r.beta ? r.beta.toFixed(2) : '—'}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:11px;">${mc}</td>
+        <td style="padding:6px 10px;font-family:monospace;color:#f4f4f5;font-weight:600;font-size:12px;">${r.ticker}${r.recomendada ? ' ⭐' : ''}</td>
+        <td style="padding:6px 10px;color:#a1a1aa;font-size:11px;">${r.mercado || '—'}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;font-size:12px;">${score}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:11px;">${r.beta != null ? Number(r.beta).toFixed(2) : '—'}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:11px;">${precio}</td>
       </tr>`;
     }).join('');
     return `
-      <p style="font-size:12px;color:#a1a1aa;margin:0 0 8px;">${d.total} resultados (mostrando primeros 50, ordenados por market cap)</p>
+      <p style="font-size:12px;color:#a1a1aa;margin:0 0 8px;">${d.total} resultados (ordenados por score)</p>
       <div style="overflow-x:auto;max-height:400px;overflow-y:auto;-webkit-overflow-scrolling:touch;">
         <table style="width:100%;border-collapse:collapse;background:#0a0a0b;border:1px solid #1a1a1a;border-radius:8px;">
           <thead style="position:sticky;top:0;background:#161616;">
             <tr>
               <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:left;">Ticker</th>
-              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:left;">Sector</th>
-              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">P/E</th>
-              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">Yield</th>
+              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:left;">Mercado</th>
+              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">Score</th>
               <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">Beta</th>
-              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">Market Cap</th>
+              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">Precio</th>
             </tr>
           </thead>
-          <tbody>${filas || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#71717a;">Sin resultados con esos criterios</td></tr>'}</tbody>
+          <tbody>${filas || '<tr><td colspan="5" style="padding:20px;text-align:center;color:#71717a;">Sin resultados con esos criterios</td></tr>'}</tbody>
         </table>
       </div>
     `;
@@ -765,9 +765,7 @@
         tipo:              get('sc-tipo') || undefined,
         mercado:           get('sc-mercado') || undefined,
         sector:            get('sc-sector') || undefined,
-        market_cap_min:    num('sc-mc'),
-        pe_max:            num('sc-pemax'),
-        yield_min:         num('sc-ymin') ? num('sc-ymin') / 100 : undefined,
+        score_min:         num('sc-scoremin'),
         beta_max:          num('sc-bmax'),
         solo_recomendadas: document.getElementById('sc-reco').checked,
         limit:             50,

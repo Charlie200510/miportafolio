@@ -95,7 +95,8 @@ def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
     metr = {}
     try:
         import accion_del_dia as _ad
-        for r in _ad.ranking(n=2000):
+        # Universo EXTENDIDO: puntúa todas las acciones con precios (no solo recomendadas)
+        for r in _ad.ranking(n=5000, solo_recomendadas=False):
             metr[r["ticker"]] = r
     except Exception:
         pass
@@ -135,7 +136,11 @@ def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
         r1y  = info.get("retorno_1y") or info.get("performance_1y")
         score = m.get("score")
 
-        # Los filtros SOLO excluyen cuando el dato existe y queda fuera de rango
+        # Score: si el usuario pide score mínimo, SÍ se exige (sin score = fuera).
+        if criterios.get("score_min") is not None and (score is None or score < criterios["score_min"]):
+            continue
+
+        # Los demás filtros SOLO excluyen cuando el dato existe y queda fuera de rango
         # (si no hay dato, no se descarta — antes esto vaciaba todo el screener).
         if criterios.get("pe_min") is not None and pe is not None and pe < criterios["pe_min"]:
             continue

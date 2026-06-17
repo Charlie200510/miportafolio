@@ -1811,7 +1811,7 @@
           <p class="text-xs font-medium text-accent-amber uppercase tracking-wider">Screener</p>
           <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Filtra el universo</h2>
           <p class="text-sm text-zinc-400 mt-2 max-w-2xl">
-            Encuentra acciones que cumplan tus criterios: P/E, yield, beta, market cap, sector...
+            Encuentra acciones por <span class="text-zinc-300">score</span>, beta, tipo, mercado y sector. El score (0-100) combina alpha CAPM, Sharpe, fundamentales, momentum y riesgo — sobre el universo extendido.
           </p>
         </div>
       </div>
@@ -1841,16 +1841,8 @@
             <input id="sc-sector" type="text" placeholder="Technology, Financial..." class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 mt-1" />
           </label>
           <label class="text-xs text-zinc-500">
-            Market cap mín. USD
-            <input id="sc-mc" type="number" placeholder="10000000000" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 tabular mt-1" />
-          </label>
-          <label class="text-xs text-zinc-500">
-            P/E máx.
-            <input id="sc-pemax" type="number" placeholder="25" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 tabular mt-1" />
-          </label>
-          <label class="text-xs text-zinc-500">
-            Yield mín. (%)
-            <input id="sc-ymin" type="number" step="0.5" placeholder="2" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 tabular mt-1" />
+            Score mín. (0-100)
+            <input id="sc-scoremin" type="number" step="5" placeholder="50" class="block w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 tabular mt-1" />
           </label>
           <label class="text-xs text-zinc-500">
             Beta máx.
