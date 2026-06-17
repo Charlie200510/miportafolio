@@ -2404,6 +2404,46 @@ def api_payments_webhook():
         return jsonify({"error": str(e)}), 500
 
 
+# ------------------------------------------------------------
+# PAGOS in-app (App Store / Google Play) via RevenueCat
+# ------------------------------------------------------------
+@app.route("/api/payments/revenuecat/sync", methods=["POST"])
+def api_payments_revenuecat_sync():
+    """
+    El cliente nativo llama esto tras una compra/restauración. Confirmamos la
+    entitlement de forma SEGURA contra la REST API de RevenueCat (no confiamos
+    en el cliente) y devolvemos si quedó premium.
+    Body: {email?}  (si hay sesión, se usa el email de la sesión)
+    """
+    if _payments is None:
+        return jsonify({"error": "pagos no disponibles"}), 500
+    ses = _sesion_actual()
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or (ses or {}).get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "email requerido (o inicia sesion antes)"}), 400
+    try:
+        return jsonify(_payments.revenuecat_verificar(email))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/payments/revenuecat/webhook", methods=["POST"])
+def api_payments_revenuecat_webhook():
+    if _payments is None:
+        return jsonify({"error": "pagos no disponibles"}), 500
+    raw = request.get_data()
+    try:
+        payload = json.loads(raw.decode("utf-8") or "{}")
+    except Exception:
+        payload = {}
+    headers = {k: v for k, v in request.headers.items()}
+    try:
+        return jsonify(_payments.revenuecat_webhook(headers, payload))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # Landing page publica (marketing) — se sirve en /landing.
 @app.route("/landing")
 def api_landing():

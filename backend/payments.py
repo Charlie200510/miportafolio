@@ -49,6 +49,15 @@ _PLAN_NOMBRE = os.environ.get("MERCADOPAGO_PLAN_NOMBRE", "Mi Portafolio Premium"
 _BACK_URL = os.environ.get("MERCADOPAGO_BACK_URL", "http://localhost:5001/static/index.html?paid=1")
 _WEBHOOK_SECRET = os.environ.get("MERCADOPAGO_WEBHOOK_SECRET")
 
+# --- RevenueCat (compras in-app de App Store / Google Play) ------------------
+# RevenueCat unifica las compras de iOS y Android y nos da una sola "entitlement"
+# llamada 'premium'. La fuente de verdad es server-side: verificamos contra la
+# REST API de RevenueCat con la SECRET key (NUNCA exponer en el frontend).
+_RC_API = "https://api.revenuecat.com/v1"
+_RC_SECRET = os.environ.get("REVENUECAT_SECRET_API_KEY")          # sk_... (server-side)
+_RC_ENTITLEMENT = os.environ.get("REVENUECAT_ENTITLEMENT", "premium")
+_RC_WEBHOOK_AUTH = os.environ.get("REVENUECAT_WEBHOOK_AUTH")       # valor del header Authorization que configuras en el dashboard
+
 
 def _token() -> Optional[str]:
     t = os.environ.get("MERCADOPAGO_ACCESS_TOKEN")
@@ -64,6 +73,8 @@ def estado_configuracion() -> dict[str, Any]:
         "moneda": "MXN",
         "frecuencia": "mensual",
         "trial_dias": 14,
+        "revenuecat_disponible": bool(_RC_SECRET) and requests is not None,
+        "entitlement": _RC_ENTITLEMENT,
     }
 
 
@@ -243,3 +254,100 @@ def procesar_webhook(headers: dict[str, str], raw_body: bytes, payload: dict[str
     _guardar_store(data)
 
     return {"ok": True, "estado": estado_final, "email": email_final, "tipo": tipo}
+
+
+# ============================================================================
+#  REVENUECAT — compras in-app (App Store / Google Play)
+# ============================================================================
+def revenuecat_configurado() -> bool:
+    return bool(_RC_SECRET) and requests is not None
+
+
+def _rc_entitlement_activa(subscriber: dict[str, Any]) -> bool:
+    """True si la entitlement 'premium' del subscriber sigue vigente."""
+    ents = ((subscriber or {}).get("entitlements") or {})
+    ent = ents.get(_RC_ENTITLEMENT) or {}
+    exp = ent.get("expires_date")
+    if not exp:
+        return False
+    # expires_date viene en ISO-8601 UTC, ej "2026-07-15T00:00:00Z".
+    # Una entitlement sin fecha de expiración futura = inactiva.
+    try:
+        from datetime import datetime, timezone
+        dt = datetime.fromisoformat(str(exp).replace("Z", "+00:00"))
+        return dt > datetime.now(timezone.utc)
+    except Exception:
+        # Si no podemos parsear pero existe la entitlement, ser conservadores: activa.
+        return True
+
+
+def revenuecat_verificar(app_user_id: str) -> dict[str, Any]:
+    """
+    Consulta la REST API de RevenueCat (server-side, con SECRET key) para saber si
+    el usuario tiene la entitlement 'premium' activa, y sincroniza el plan local.
+
+    `app_user_id` es el ID con el que el cliente hizo Purchases.logIn(...) —
+    en nuestra app usamos el email del usuario.
+    """
+    email = (app_user_id or "").strip().lower()
+    if not email or "@" not in email:
+        raise ValueError("app_user_id (email) invalido")
+    if not revenuecat_configurado():
+        # Sin SECRET key no podemos verificar de forma segura. No otorgamos premium.
+        return {"ok": False, "error": "revenuecat_no_configurado", "premium": False}
+
+    import urllib.parse
+    url = f"{_RC_API}/subscribers/{urllib.parse.quote(email, safe='')}"
+    resp = requests.get(
+        url,
+        headers={"Authorization": f"Bearer {_RC_SECRET}", "Content-Type": "application/json"},
+        timeout=15,
+    )
+    if resp.status_code >= 400:
+        raise RuntimeError(f"RevenueCat respondio {resp.status_code}: {resp.text[:300]}")
+    subscriber = (resp.json() or {}).get("subscriber") or {}
+    activa = _rc_entitlement_activa(subscriber)
+
+    _auth.actualizar_plan(
+        email,
+        plan="premium" if activa else "trial",
+        estado_pago="activo" if activa else "inactivo",
+    )
+
+    data = _cargar_store()
+    data.setdefault("eventos", []).append({
+        "ts": time.time(), "tipo": "revenuecat_verificar",
+        "email": email, "premium": activa,
+    })
+    _guardar_store(data)
+    return {"ok": True, "premium": activa, "email": email}
+
+
+def revenuecat_webhook(headers: dict[str, str], payload: dict[str, Any]) -> dict[str, Any]:
+    """
+    Webhook server-authoritative de RevenueCat. En el dashboard configuras un
+    header Authorization con un secreto; aqui lo validamos. La verdad final la
+    confirmamos consultando la REST API (revenuecat_verificar) para no confiar
+    ciegamente en el body.
+    """
+    if _RC_WEBHOOK_AUTH:
+        auth = headers.get("Authorization") or headers.get("authorization") or ""
+        if not hmac.compare_digest(auth.strip(), _RC_WEBHOOK_AUTH.strip()):
+            return {"ok": False, "error": "auth_invalida"}
+
+    ev = (payload or {}).get("event") or {}
+    app_user_id = ev.get("app_user_id") or ev.get("original_app_user_id")
+    tipo = ev.get("type", "")
+
+    data = _cargar_store()
+    data.setdefault("eventos", []).append({
+        "ts": time.time(), "tipo": f"rc:{tipo}", "app_user_id": app_user_id,
+    })
+    _guardar_store(data)
+
+    if app_user_id and "@" in str(app_user_id) and revenuecat_configurado():
+        try:
+            return revenuecat_verificar(app_user_id)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+    return {"ok": True, "tipo": tipo}

@@ -1,7 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.miportafolio.ios',
+  // appId = bundle ID (iOS) y applicationId (Android). Es PERMANENTE una vez
+  // publicado en cada tienda, así que lo dejamos neutral para ambas plataformas.
+  appId: 'app.miportafolio',
   appName: 'Mi Portafolio',
   webDir: 'www',
   bundledWebRuntime: false,
@@ -11,6 +13,12 @@ const config: CapacitorConfig = {
     overrideUserAgent: 'MiPortafolio-iOS',
     scheme: 'MiPortafolio',
     limitsNavigationsToAppBoundDomains: false,
+  },
+  android: {
+    backgroundColor: '#0a0a0b',
+    allowMixedContent: false,
+    captureInput: true,
+    webContentsDebuggingEnabled: false,  // poner true solo para depurar en dev
   },
   server: {
     // Modo dev: levantar `python3 backend/app.py` y usar tu IP local + 5001

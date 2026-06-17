@@ -10,14 +10,29 @@ DerivedData/
 *.xcworkspace/xcuserdata/
 xcuserdata/
 
+# Android build artifacts
+android/build/
+android/app/build/
+android/.gradle/
+android/.idea/
+android/local.properties
+android/app/release/
+android/captures/
+*.apk
+*.aab
+
 # Credenciales y firmas (NUNCA committear)
 *.p12
 *.cer
 *.mobileprovision
 *.certSigningRequest
+*.keystore
+*.jks
 ios/App/App/GoogleService-Info.plist
 ios/App/App/RevenueCat.plist
 ios/App/App/PrivateConfig.plist
+android/app/google-services.json
+android/keystore.properties
 
 # Capacitor caché
 .capacitor/

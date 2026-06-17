@@ -1,6 +1,10 @@
-# Mi Portafolio — iOS (Capacitor)
+# Mi Portafolio — App móvil (Capacitor: iOS + Android)
 
-Wrapper iOS de la app web de Mi Portafolio. Comparte 90% del código con `frontend/` (vanilla JS + HTML + CSS) y agrega features nativos.
+Wrapper nativo de la app web de Mi Portafolio. Comparte ~90% del código con `frontend/` (vanilla JS + HTML + CSS) y agrega features nativos.
+
+> 📖 **Guía completa de publicación, cobro híbrido (MercadoPago web + in-app), y checklist de revisión:**
+> ver [`../MOBILE.md`](../MOBILE.md). Este README cubre solo el setup de iOS; para Android usa
+> `npm run cap:add:android` y `npm run cap:open:android`.
 
 ## Pre-requisitos en el Mac
 
