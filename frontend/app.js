@@ -8636,8 +8636,11 @@ const Analizador = (() => {
       </div>`;
 
     // ddHTML + srHTML removidos (requieren Claude API)
+    const smlHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Valoración SML · CAPM</h4><div id="an-sml-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
+    const ddHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Análisis profundo · Deep Dive</h4><div id="an-deepdive-host"></div></div>`;
     cont.innerHTML = headerHTML + chartHTML + peerHTML
-                   + `<div id="an-dashboard-host"><div class="bg-surface border border-surface-border rounded-2xl p-5 text-center text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando dashboard financiero…</div></div>`;
+                   + `<div id="an-dashboard-host"><div class="bg-surface border border-surface-border rounded-2xl p-5 text-center text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando dashboard financiero…</div></div>`
+                   + smlHTML + ddHostHTML;
     cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     _renderPrecioChart(d.ticker, '1A');
@@ -8655,6 +8658,8 @@ const Analizador = (() => {
       _wb.classList.toggle('text-zinc-600', !activo);
     });
 
+    if (window.renderSmlEn) window.renderSmlEn(d.ticker, 'an-sml-host');
+    if (window.renderDeepDiveEn) window.renderDeepDiveEn(d.ticker, 'an-deepdive-host');
     cargarDashboardFinanciero(d.ticker);
   }
 

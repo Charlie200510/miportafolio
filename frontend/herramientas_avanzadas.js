@@ -1075,6 +1075,35 @@
     `;
   }
 
+  // Reusables: mostrar SML y Deep Dive DENTRO de "Analizar una acción"
+  window.renderSmlEn = async function(ticker, contId) {
+    const cont = document.getElementById(contId);
+    if (!cont || !ticker) return;
+    cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:18px;">Calculando valoración SML…</p>`;
+    try {
+      const res = await fetch(`/api/sml/${encodeURIComponent(ticker)}`);
+      const d = await res.json();
+      cont.innerHTML = d.ok ? _renderSml(d)
+        : `<p style="color:#71717a;font-size:12px;padding:10px;">Valoración SML no disponible: ${d.error || ''}</p>`;
+    } catch (e) {
+      cont.innerHTML = `<p style="color:#ef4444;font-size:12px;padding:10px;">Error SML: ${e.message}</p>`;
+    }
+  };
+  window.renderDeepDiveEn = async function(ticker, contId) {
+    const cont = document.getElementById(contId);
+    if (!cont || !ticker) return;
+    cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:18px;">Analizando a fondo…</p>`;
+    try {
+      const res = await fetch(`/api/deep-dive/${encodeURIComponent(ticker)}`);
+      const d = await res.json();
+      cont.innerHTML = d.ok
+        ? `<div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;padding:20px;">${_renderDeepDive(d)}</div>`
+        : `<p style="color:#71717a;font-size:12px;padding:10px;">Deep dive no disponible: ${d.error || ''}</p>`;
+    } catch (e) {
+      cont.innerHTML = `<p style="color:#ef4444;font-size:12px;padding:10px;">Error: ${e.message}</p>`;
+    }
+  };
+
   // Lógica de sub-tabs en vista Analizar
   window.bindSubAnalizar = function() {
     const tabs = document.querySelectorAll('.sub-analizar-btn');
