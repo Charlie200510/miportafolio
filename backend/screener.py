@@ -25,18 +25,22 @@ import json
 
 
 _BACKEND_DIR = Path(__file__).parent
-_INFO_PATH = _BACKEND_DIR / "info_activos.json"
+_INFO_FULL = _BACKEND_DIR / "universo_info.json"
+_INFO_LITE = _BACKEND_DIR / "universo_lite_info.json"
+_INFO_STUB = _BACKEND_DIR / "info_activos.json"
 
 
 def _cargar_info() -> Dict[str, Any]:
-    """Carga el JSON de info_activos generado por descargar_universo.py."""
-    if not _INFO_PATH.exists():
-        return {}
-    try:
-        with open(_INFO_PATH, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    """Info del universo. Preferir el completo (dev) y caer al lite (prod).
+    El viejo info_activos.json era un stub de 3 tickers -> rompía el screener."""
+    for p in (_INFO_FULL, _INFO_LITE, _INFO_STUB):
+        if p.exists():
+            try:
+                with open(p, encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                continue
+    return {}
 
 
 def _detectar_mercado(ticker: str, info: Dict) -> str:
@@ -85,6 +89,17 @@ def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
     if not info_all:
         return []
 
+    # Métricas canónicas (beta / sharpe / score) del set curado, para que el
+    # filtro de beta y el orden por score funcionen. P/E, yield y market cap no
+    # están en el universo, así que esos filtros SOLO aplican cuando el dato existe.
+    metr = {}
+    try:
+        import accion_del_dia as _ad
+        for r in _ad.ranking(n=2000):
+            metr[r["ticker"]] = r
+    except Exception:
+        pass
+
     limit = int(criterios.get("limit", 100))
     resultados = []
 
@@ -92,7 +107,6 @@ def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not isinstance(info, dict):
             continue
 
-        # Detectar tipo y mercado
         mercado = _detectar_mercado(ticker, info)
         es_etf_val = _es_etf(ticker, info)
         es_crypto = mercado == "Crypto"
@@ -104,51 +118,44 @@ def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
         if criterios.get("tipo") == "crypto" and not es_crypto:
             continue
 
-        # Mercado
         if criterios.get("mercado") and mercado != criterios["mercado"]:
             continue
 
-        # Sector
         if criterios.get("sector"):
             s_query = criterios["sector"].lower()
             s_real = (info.get("sector") or "").lower()
             if s_query not in s_real:
                 continue
 
-        # P/E
-        pe = info.get("pe_trailing") or info.get("pe")
-        if criterios.get("pe_min") is not None and (pe is None or pe < criterios["pe_min"]):
+        m = metr.get(ticker, {})
+        pe   = info.get("pe_trailing") or info.get("pe")
+        yld  = info.get("dividend_yield") or info.get("yield")
+        beta = info.get("beta") if info.get("beta") is not None else m.get("beta")
+        mc   = info.get("market_cap") or info.get("marketCap")
+        r1y  = info.get("retorno_1y") or info.get("performance_1y")
+        score = m.get("score")
+
+        # Los filtros SOLO excluyen cuando el dato existe y queda fuera de rango
+        # (si no hay dato, no se descarta — antes esto vaciaba todo el screener).
+        if criterios.get("pe_min") is not None and pe is not None and pe < criterios["pe_min"]:
             continue
-        if criterios.get("pe_max") is not None and (pe is None or pe > criterios["pe_max"]):
+        if criterios.get("pe_max") is not None and pe is not None and pe > criterios["pe_max"]:
+            continue
+        if criterios.get("yield_min") is not None and yld is not None and yld < criterios["yield_min"]:
+            continue
+        if criterios.get("yield_max") is not None and yld is not None and yld > criterios["yield_max"]:
+            continue
+        if criterios.get("beta_min") is not None and beta is not None and beta < criterios["beta_min"]:
+            continue
+        if criterios.get("beta_max") is not None and beta is not None and beta > criterios["beta_max"]:
+            continue
+        if criterios.get("market_cap_min") is not None and mc is not None and mc < criterios["market_cap_min"]:
+            continue
+        if criterios.get("market_cap_max") is not None and mc is not None and mc > criterios["market_cap_max"]:
+            continue
+        if criterios.get("retorno_1y_min") is not None and r1y is not None and r1y < criterios["retorno_1y_min"]:
             continue
 
-        # Yield (fracción)
-        yld = info.get("dividend_yield") or info.get("yield")
-        if criterios.get("yield_min") is not None and (yld is None or yld < criterios["yield_min"]):
-            continue
-        if criterios.get("yield_max") is not None and (yld is None or yld > criterios["yield_max"]):
-            continue
-
-        # Beta
-        beta = info.get("beta")
-        if criterios.get("beta_min") is not None and (beta is None or beta < criterios["beta_min"]):
-            continue
-        if criterios.get("beta_max") is not None and (beta is None or beta > criterios["beta_max"]):
-            continue
-
-        # Market cap
-        mc = info.get("market_cap") or info.get("marketCap")
-        if criterios.get("market_cap_min") is not None and (mc is None or mc < criterios["market_cap_min"]):
-            continue
-        if criterios.get("market_cap_max") is not None and (mc is None or mc > criterios["market_cap_max"]):
-            continue
-
-        # Retorno 1Y
-        r1y = info.get("retorno_1y") or info.get("performance_1y")
-        if criterios.get("retorno_1y_min") is not None and (r1y is None or r1y < criterios["retorno_1y_min"]):
-            continue
-
-        # Recomendadas
         if criterios.get("solo_recomendadas") and not info.get("recomendada"):
             continue
 
@@ -159,15 +166,17 @@ def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
             "mercado":     mercado,
             "pe":          pe,
             "yield":       yld,
-            "beta":        beta,
+            "beta":        round(beta, 2) if isinstance(beta, (int, float)) else beta,
+            "score":       score,
             "market_cap":  mc,
             "retorno_1y":  r1y,
-            "precio":      info.get("precio"),
+            "precio":      info.get("precio_actual") or info.get("precio"),
             "moneda":      info.get("moneda"),
             "es_etf":      es_etf_val,
             "recomendada": bool(info.get("recomendada")),
         })
 
-    # Ordenar por market cap descendente como default (más relevantes primero)
-    resultados.sort(key=lambda x: x.get("market_cap") or 0, reverse=True)
+    # Orden: por score canónico desc (lo más relevante primero), luego market cap.
+    resultados.sort(key=lambda x: (x.get("score") if x.get("score") is not None else -1,
+                                   x.get("market_cap") or 0), reverse=True)
     return resultados[:limit]
