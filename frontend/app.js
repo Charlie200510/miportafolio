@@ -2928,9 +2928,8 @@ const Periodico = (() => {
               <span class="text-[12px] font-bold px-2 py-0.5 rounded-full border ${nivelCls} tabular" title="Score ${data.score}/100 · ${escapeHtml(data.nivel || '')}">
                 ${data.score}
               </span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-accent-green/10 text-accent-green border border-accent-green/30 hidden sm:inline-flex items-center gap-1">
-                <span class="w-1 h-1 rounded-full bg-accent-green animate-pulse"></span>
-                LIVE
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-surface-border hidden sm:inline-flex items-center gap-1" title="Precios con ~15 min de retraso (Yahoo)">
+                ~15 min
               </span>
             </div>
             <p class="text-[13px] text-zinc-400 truncate">${escapeHtml(a.nombre || '')}</p>
@@ -3498,7 +3497,7 @@ const Periodico = (() => {
       const hora = $('periodico-hora');
       if (hora) {
         const ahora = new Date().toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-        const estado = d.mercados_abiertos ? 'LIVE' : 'mercados cerrados';
+        const estado = d.mercados_abiertos ? 'precios ~15 min' : 'mercados cerrados';
         hora.textContent = `Última actualización ${ahora} · ${estado}`;
       }
     } catch (_) { /* silencio: polling resiliente */ }

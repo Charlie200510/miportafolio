@@ -303,6 +303,21 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
 
     nivel, nivel_color = MC.nivel_para_score(score)
 
+    # Enriquecer la acción ganadora con fundamentales en vivo (P/E, ROE, margen)
+    # si el universo aún no los trae. Se cachea junto con el resto del día.
+    try:
+        import fundamentals as _f
+        ft = _f._fundamentals_ticker(mejor.get("ticker", ""))
+        if isinstance(ft, dict):
+            if mejor.get("pe") is None and ft.get("pe_trailing") is not None:
+                mejor["pe"] = ft["pe_trailing"]
+            if mejor.get("roe") is None and ft.get("roe") is not None:
+                mejor["roe"] = ft["roe"]
+            if mejor.get("margen_neto") is None and ft.get("margen_neto") is not None:
+                mejor["margen_neto"] = ft["margen_neto"]
+    except Exception:
+        pass
+
     data = {
         "ok":             True,
         "fecha":          hoy,

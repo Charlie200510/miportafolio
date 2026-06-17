@@ -497,6 +497,16 @@ def _info_de(t: str) -> tuple[str, dict]:
             "industria": i.get("industry") or defaults["industria"],
             "pais":      i.get("country")  or defaults["pais"],
             "moneda":    i.get("currency") or defaults["moneda"],
+            # Fundamentales — de la MISMA llamada .info (sin costo extra). Así
+            # todas las acciones del universo traen P/E, ROE, márgenes, etc.
+            "trailingPE":     i.get("trailingPE") or i.get("forwardPE"),
+            "returnOnEquity": i.get("returnOnEquity"),
+            "profitMargins":  i.get("profitMargins"),
+            "debtToEquity":   i.get("debtToEquity"),
+            "dividendYield":  i.get("dividendYield"),
+            "marketCap":      i.get("marketCap"),
+            "averageVolume":  i.get("averageVolume"),
+            "beta":           i.get("beta"),
         }
     except Exception:
         return t, defaults
