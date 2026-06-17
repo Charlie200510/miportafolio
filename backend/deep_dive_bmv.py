@@ -14,10 +14,18 @@ empresas mexicanas, con peers correctos y contexto local.
 """
 from __future__ import annotations
 
+import threading
+import time
 from typing import Any, Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import yfinance as yf
+
+# Cache de _info por ticker (evita re-pegarle a yfinance y reduce los 429
+# "too many requests" cuando se piden varios peers a la vez).
+_INFO_CACHE: Dict[str, Any] = {}   # ticker -> (timestamp, datos)
+_INFO_TTL = 12 * 3600              # 12 horas
+_INFO_LOCK = threading.Lock()
 
 
 # Mapeo de peers mexicanos por sector (curado, no automatizable confiablemente con yfinance)
@@ -48,10 +56,23 @@ def _safe(x):
 
 
 def _info(ticker: str) -> Dict[str, Any]:
-    """Obtiene info básica + métricas de un ticker."""
+    """Obtiene info básica + métricas de un ticker (cacheado 12h + reintento)."""
+    with _INFO_LOCK:
+        c = _INFO_CACHE.get(ticker)
+        if c and (time.time() - c[0]) < _INFO_TTL:
+            return c[1]
     try:
         t = yf.Ticker(ticker)
-        info = t.info or {}
+        # Reintento corto ante 429 / respuesta vacía
+        info = {}
+        for _intento in range(2):
+            try:
+                info = t.info or {}
+            except Exception:
+                info = {}
+            if info:
+                break
+            time.sleep(0.8)
         fi = t.fast_info
         precio = None
         try:
@@ -60,7 +81,7 @@ def _info(ticker: str) -> Dict[str, Any]:
             pass
         if precio is None:
             precio = _safe(info.get("currentPrice")) or _safe(info.get("regularMarketPrice"))
-        return {
+        out = {
             "ticker":       ticker,
             "nombre":       info.get("shortName") or info.get("longName") or ticker,
             "sector":       info.get("sector") or "Otros",
@@ -89,7 +110,13 @@ def _info(ticker: str) -> Dict[str, Any]:
             "high_52w":     _safe(info.get("fiftyTwoWeekHigh")),
             "low_52w":      _safe(info.get("fiftyTwoWeekLow")),
             "ok":           True,
+            "datos_parciales": not bool(info),
         }
+        # Cachear solo si vino info completa (no cachear respuestas vacías por 429)
+        if info:
+            with _INFO_LOCK:
+                _INFO_CACHE[ticker] = (time.time(), out)
+        return out
     except Exception as e:
         return {"ticker": ticker, "ok": False, "error": str(e)[:120]}
 
@@ -235,7 +262,7 @@ def deep_dive(ticker: str) -> Dict[str, Any]:
     # Obtener peers en paralelo
     peers_tickers = _peers_para_sector(target.get("sector"), ticker)
     peers_data = []
-    with ThreadPoolExecutor(max_workers=6) as ex:
+    with ThreadPoolExecutor(max_workers=3) as ex:
         futs = {ex.submit(_info, p): p for p in peers_tickers}
         for f in as_completed(futs):
             peers_data.append(f.result())
