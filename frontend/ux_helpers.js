@@ -683,9 +683,9 @@
       body: 'Resumen diario de mercados, cierres de tus tickers y noticias relevantes.',
     },
     {
-      selector: '#perfiles-header, #perfiles-grid',
-      title: '10 perfiles pre-armados',
-      body: 'Si no sabes por dónde empezar, click en cualquiera y la app te arma el portafolio óptimo. Edítalo después.',
+      selector: '#onboarding-chooser, #portafolio-optimo-card',
+      title: 'Arma tu portafolio',
+      body: 'Elige "Automático" y mueve el slider a tu nivel de riesgo (volatilidad): te armamos la mezcla óptima con Markowitz. O elige "Manual" para escoger tus acciones tú mismo.',
     },
   ];
 

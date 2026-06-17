@@ -2924,9 +2924,9 @@ const Periodico = (() => {
           <span class="text-[10px] font-bold px-2 py-1 rounded border tabular shrink-0 ${banderaCls}">${bandera}</span>
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-2xl sm:text-3xl font-bold text-zinc-50 tabular">${escapeHtml(a.ticker || '')}</span>
-              <span class="text-[11px] px-2 py-0.5 rounded-full border ${nivelCls}">
-                ${escapeHtml(data.nivel || '')} · ${data.score} pts
+              <span class="text-xl sm:text-3xl font-bold text-zinc-50 tabular">${escapeHtml(a.ticker || '')}</span>
+              <span class="text-[12px] font-bold px-2 py-0.5 rounded-full border ${nivelCls} tabular" title="Score ${data.score}/100 · ${escapeHtml(data.nivel || '')}">
+                ${data.score}
               </span>
               <span class="text-[10px] px-1.5 py-0.5 rounded bg-accent-green/10 text-accent-green border border-accent-green/30 hidden sm:inline-flex items-center gap-1">
                 <span class="w-1 h-1 rounded-full bg-accent-green animate-pulse"></span>
@@ -2938,7 +2938,7 @@ const Periodico = (() => {
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          <div class="text-right">
+          <div class="text-right hidden sm:block">
             <p data-live-precio class="text-base font-bold tabular text-zinc-100">${a.precio ? moneda + fmtNum(a.precio) : '—'}</p>
             <p data-live-change class="text-[11px] tabular text-zinc-500">—</p>
           </div>
@@ -2949,7 +2949,7 @@ const Periodico = (() => {
         </div>
       </div>
 
-      <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
         ${metricas.map(m => `
           <div class="bg-zinc-900/40 rounded-lg px-2 py-2 text-center">
             <p class="text-[10px] text-zinc-500 uppercase tracking-wider">${m.label}</p>
