@@ -24,6 +24,15 @@ _BENCHMARK_CACHE: Dict[str, Tuple[float, Any]] = {}  # ticker -> (timestamp, ser
 _BENCHMARK_TTL = 6 * 3600  # 6 horas
 _BENCHMARK_LOCK = threading.Lock()
 
+# ----------------------------------------------------------------
+# Cache de fundamentales por ticker (evita re-pegarle a yfinance en
+# cada análisis de portafolio y reduce los 429 "too many requests"
+# cuando hay muchas acciones).
+# ----------------------------------------------------------------
+_FUND_CACHE: Dict[str, Tuple[float, Dict[str, Any]]] = {}  # ticker -> (timestamp, datos)
+_FUND_TTL = 12 * 3600  # 12 horas
+_FUND_LOCK = threading.Lock()
+
 
 def _obtener_retornos_benchmark(symbol: str, periodo: str = "1y"):
     """Descarga cierres del benchmark y devuelve serie de retornos diarios.
@@ -267,15 +276,32 @@ def _safe_int(x: Any) -> Optional[int]:
 
 
 def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
-    """Extrae fundamentales para un ticker desde yfinance."""
+    """Extrae fundamentales para un ticker desde yfinance.
+
+    Cachea el resultado OK por 12 h para no re-descargar en cada análisis de
+    portafolio (clave para que P/E, P/B, PEG carguen cuando hay muchas
+    acciones, evitando el rate-limit 429 de Yahoo)."""
+    # 1) Cache hit
+    with _FUND_LOCK:
+        c = _FUND_CACHE.get(ticker)
+        if c and (time.time() - c[0]) < _FUND_TTL:
+            return c[1]
+
     out: Dict[str, Any] = {"ticker": ticker, "ok": False}
     try:
         t = yf.Ticker(ticker)
         info: Dict[str, Any] = {}
-        try:
-            info = t.info or {}
-        except Exception:
-            info = {}
+        # Reintento corto: ante un 429/respuesta vacía, esperar y reintentar
+        # una vez en lugar de fallar (mejora la tasa de éxito con portafolios
+        # grandes).
+        for _intento in range(2):
+            try:
+                info = t.info or {}
+            except Exception:
+                info = {}
+            if info:
+                break
+            time.sleep(0.8)
 
         # Precio actual (preferir fast_info)
         precio: Optional[float] = None
@@ -471,6 +497,11 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
     except Exception as e:
         out["error"] = f"{type(e).__name__}: {e}"
 
+    # Guardar en cache solo si salió bien (no cachear errores transitorios)
+    if out.get("ok"):
+        with _FUND_LOCK:
+            _FUND_CACHE[ticker] = (time.time(), out)
+
     return out
 
 
@@ -484,7 +515,10 @@ def analizar_fundamentales(tickers: List[str]) -> Dict[str, Any]:
         raise ValueError("Máximo 30 tickers por request")
 
     resultados: Dict[str, Dict[str, Any]] = {}
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    # 5 workers en vez de 8: reduce los 429 "too many requests" de Yahoo
+    # cuando el portafolio tiene muchas acciones. La cache de _fundamentals_ticker
+    # hace que recargas posteriores sean instantáneas.
+    with ThreadPoolExecutor(max_workers=5) as ex:
         futuros = {ex.submit(_fundamentals_ticker, t): t for t in tickers}
         for fut in as_completed(futuros):
             t = futuros[fut]
