@@ -3,7 +3,7 @@
 // ============================================================
 //
 //  Regla de negocio:
-//   - WEB  (navegador / PWA): cobro por MercadoPago ($79 MXN/mes, 14 días
+//   - WEB  (navegador / PWA): cobro por MercadoPago ($65 MXN/mes, 14 días
 //     gratis). Usa /api/payments/suscribir y redirige al checkout.
 //   - APP NATIVA (iOS / Android): compra in-app obligatoria por las reglas de
 //     Apple/Google. Usa RevenueCat. La compra se confirma server-side en
@@ -29,7 +29,7 @@
 (function () {
   'use strict';
 
-  const PRECIO_TXT = '$79 MXN/mes';
+  const PRECIO_TXT = '$65 MXN/mes';
   const Caps = window.Capacitor;
 
   function plataforma() {

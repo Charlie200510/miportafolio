@@ -282,6 +282,47 @@ def actualizar_plan(email: str, plan: str, estado_pago: str) -> dict[str, Any]:
         return dict(u)
 
 
+def eliminar_cuenta(email: str) -> dict[str, Any]:
+    """
+    Borra por completo la cuenta del usuario: su registro, todas sus sesiones y
+    sus tokens pendientes. Requisito obligatorio de App Store (Guideline 5.1.1v)
+    y Google Play para apps con creación de cuenta.
+
+    Best-effort también borra sus suscripciones push. La suscripción de pago
+    (MercadoPago / App Store / Google Play) se cancela desde la tienda
+    correspondiente; aquí solo eliminamos los datos en nuestro servidor.
+    """
+    email = (email or "").strip().lower()
+    if not email or "@" not in email:
+        raise ValueError("Email invalido")
+
+    with _LOCK:
+        data = _cargar()
+        usuarios = data.setdefault("usuarios", {})
+        existia = email in usuarios
+        usuarios.pop(email, None)
+        # Borrar sesiones y tokens asociados a ese email
+        data["sesiones"] = {
+            sid: info for sid, info in data.get("sesiones", {}).items()
+            if (info or {}).get("email") != email
+        }
+        data["tokens"] = {
+            tk: info for tk, info in data.get("tokens", {}).items()
+            if (info or {}).get("email") != email
+        }
+        _guardar(data)
+
+    # Best-effort: borrar suscripciones push del usuario
+    try:
+        import push as _push  # type: ignore
+        if hasattr(_push, "eliminar_todas_email"):
+            _push.eliminar_todas_email(email)
+    except Exception:
+        pass
+
+    return {"ok": True, "eliminada": existia, "email": email}
+
+
 def _html_magic_link(email: str, enlace: str) -> str:
     return f"""<!doctype html>
 <html><head><meta charset="utf-8"></head>

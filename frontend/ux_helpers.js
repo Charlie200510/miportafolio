@@ -1162,7 +1162,7 @@
     },
     {
       q: '¿Cuánto cuesta?',
-      a: 'Plan free completo para validar (sin tarjeta). Plan premium $79 MXN/mes — todas las funciones incluidas. Cancela en un click cuando quieras, sin permanencia.',
+      a: 'Pruébala gratis 14 días, sin tarjeta. Después $65 MXN/mes con todas las funciones incluidas. Cancela en un click cuando quieras, sin permanencia.',
     },
     {
       q: '¿Esto es asesoría de inversión?',

@@ -1,5 +1,5 @@
 """
-Integracion de pagos con MercadoPago (plan $79 MXN/mes).
+Integracion de pagos con MercadoPago (plan $65 MXN/mes).
 
 Diseno:
 - Usamos la API de Preapproval (suscripciones recurrentes) de MercadoPago.
@@ -11,7 +11,7 @@ Diseno:
 Env vars:
 - MERCADOPAGO_ACCESS_TOKEN      Access token de produccion o sandbox.
 - MERCADOPAGO_PLAN_NOMBRE       Texto visible en el checkout (default 'Mi Portafolio Premium')
-- MERCADOPAGO_PRECIO_MXN        Monto mensual (default 79.00)
+- MERCADOPAGO_PRECIO_MXN        Monto mensual (default 65.00)
 - MERCADOPAGO_BACK_URL          URL a la que regresa el usuario tras pagar.
 - MERCADOPAGO_WEBHOOK_SECRET    Si esta definido, se valida el header x-signature.
 """
@@ -44,7 +44,7 @@ _DATA_DIR.mkdir(exist_ok=True)
 _STORE_PATH = _DATA_DIR / "pagos.json"
 
 _MP_API = "https://api.mercadopago.com"
-_PRECIO = float(os.environ.get("MERCADOPAGO_PRECIO_MXN", "79.00"))
+_PRECIO = float(os.environ.get("MERCADOPAGO_PRECIO_MXN", "65.00"))
 _PLAN_NOMBRE = os.environ.get("MERCADOPAGO_PLAN_NOMBRE", "Mi Portafolio Premium")
 _BACK_URL = os.environ.get("MERCADOPAGO_BACK_URL", "http://localhost:5001/static/index.html?paid=1")
 _WEBHOOK_SECRET = os.environ.get("MERCADOPAGO_WEBHOOK_SECRET")

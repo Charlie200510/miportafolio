@@ -2,7 +2,7 @@
 
 Guía completa para sacar la app a las dos tiendas con el modelo de cobro **híbrido**:
 
-- **Web (navegador / PWA):** cobro con **MercadoPago** — 14 días gratis, luego $79 MXN/mes.
+- **Web (navegador / PWA):** cobro con **MercadoPago** — 14 días gratis, luego $65 MXN/mes.
 - **App nativa (iOS / Android):** **compra in-app obligatoria** (regla de Apple/Google), gestionada con **RevenueCat**.
 
 La app web NO se reescribe: se "envuelve" con **Capacitor** (carpeta `ios-app/`, que ahora compila **iOS y Android**).
@@ -45,7 +45,7 @@ MPPaywall.requierePremium(() => abrirReportePDF());
 ### b) RevenueCat (gratis hasta ~$2.5k USD/mes de ventas)
 1. Crea cuenta en https://www.revenuecat.com y un proyecto "Mi Portafolio".
 2. Crea una **entitlement** llamada `premium`.
-3. Crea un **producto/offering** de suscripción mensual a $79 MXN, y conéctalo en App Store Connect y Google Play (mismo precio en ambas).
+3. Crea un **producto/offering** de suscripción mensual a $65 MXN, y conéctalo en App Store Connect y Google Play (mismo precio en ambas).
 4. Copia las **Public API keys** (`appl_...` para iOS, `goog_...` para Android) y pégalas en
    `frontend/native-config.js` (reemplaza los `TODO`).
 5. Copia la **Secret API key** (`sk_...`) y ponla como variable de entorno en Render (ver abajo). **NUNCA** la pongas en el frontend.
@@ -118,7 +118,5 @@ botón "Eliminar mi cuenta" en Ajustes. **Avísame y lo implemento** — es ~30 
 
 ## 6. Nota de mensajería (importante)
 
-Tu `landing.html` dice *"free forever… no hay freemium tramposo… yo pago el server"*, pero
-`signup.html` y `terminos.html` ya dicen *"$79 MXN/mes después del trial"*. **Es contradictorio.**
-Antes de lanzar el cobro hay que alinear ese copy para no confundir (ni molestar) a los usuarios.
-Dime cómo quieres posicionarlo y lo ajusto.
+El copy se alineó al modelo **prueba de 14 días → $65 MXN/mes** en landing, signup y términos.
+(Antes el landing decía "free forever", lo cual contradecía el cobro.)

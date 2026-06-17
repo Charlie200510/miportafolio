@@ -366,8 +366,12 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
             tk_upper = ticker.upper()
             es_crypto = ("-USD" in tk_upper) or ("-USDT" in tk_upper) or tk_upper.startswith("X:")
             if not es_crypto:
-                bench = _benchmark_para(ticker)
-                beta = _calcular_beta(ticker, benchmark=bench)
+                # Protegido: un fallo de red aquí NO debe tumbar todo el análisis.
+                try:
+                    bench = _benchmark_para(ticker)
+                    beta = _calcular_beta(ticker, benchmark=bench)
+                except Exception:
+                    beta = None
 
         # --- Fallback para PEG: si no viene, calcular = PE / earnings_growth ---
         if peg is None and pe_trailing is not None and pe_trailing > 0:
@@ -449,8 +453,14 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
         except Exception:
             proximas_earnings = None
 
-        # Métricas de comportamiento (funcionan para crypto, ETFs, stocks)
-        comportamiento = _metricas_comportamiento(ticker)
+        # Métricas de comportamiento (funcionan para crypto, ETFs, stocks).
+        # Protegido: si falla la descarga del historial, seguimos con None.
+        try:
+            comportamiento = _metricas_comportamiento(ticker)
+        except Exception:
+            comportamiento = {k: None for k in (
+                "volatilidad_anual", "sharpe_ratio", "sortino_ratio", "max_drawdown",
+                "correlacion_sp500", "retorno_1m", "retorno_3m", "retorno_1y", "retorno_ytd")}
 
         out.update({
             "ok":                True,
@@ -493,12 +503,38 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
             "margenes":          margenes,
             "debt_to_equity":    deuda_equity,
             "proximas_earnings": proximas_earnings,
+            # True si yfinance no devolvió .info (mostramos lo que se pueda igual)
+            "datos_parciales":   not bool(info),
         })
     except Exception as e:
         out["error"] = f"{type(e).__name__}: {e}"
+        # RESCATE: aunque .info / fundamentales fallen, intentamos al menos las
+        # métricas de comportamiento (solo dependen del historial de precios) y
+        # devolvemos datos PARCIALES en vez de fallar por completo. Así "Analizar"
+        # y "Fundamentales" muestran todo lo que se pueda para cualquier acción.
+        try:
+            comp = _metricas_comportamiento(ticker)
+            if any(v is not None for v in comp.values()):
+                out.update({
+                    "ok":                True,
+                    "datos_parciales":   True,
+                    "nombre":            out.get("nombre") or ticker,
+                    "volatilidad_anual": comp.get("volatilidad_anual"),
+                    "sharpe_ratio":      comp.get("sharpe_ratio"),
+                    "sortino_ratio":     comp.get("sortino_ratio"),
+                    "max_drawdown":      comp.get("max_drawdown"),
+                    "correlacion_sp500": comp.get("correlacion_sp500"),
+                    "retorno_1m":        comp.get("retorno_1m"),
+                    "retorno_3m":        comp.get("retorno_3m"),
+                    "retorno_1y":        comp.get("retorno_1y"),
+                    "retorno_ytd":       comp.get("retorno_ytd"),
+                })
+        except Exception:
+            pass
 
-    # Guardar en cache solo si salió bien (no cachear errores transitorios)
-    if out.get("ok"):
+    # Cachear solo cuando los datos están COMPLETOS (no cachear parciales ni
+    # errores transitorios — así se reintenta la próxima vez).
+    if out.get("ok") and not out.get("datos_parciales"):
         with _FUND_LOCK:
             _FUND_CACHE[ticker] = (time.time(), out)
 
@@ -589,6 +625,43 @@ def analizar_fundamentales(tickers: List[str]) -> Dict[str, Any]:
 
     # Avisos educativos sobre el portafolio
     avisos: List[str] = []
+
+    # --- Explicar métricas faltantes (P/E, P/B, PEG, ROE, margen) ------------
+    # Estas solo aplican a acciones de empresas; no a cripto ni a la mayoría de ETFs.
+    metricas_empresa = [
+        ("pe_promedio", "P/E"), ("pb_promedio", "P/B"), ("peg_promedio", "PEG"),
+        ("roe_promedio", "ROE"), ("margen_neto_promedio", "margen neto"),
+    ]
+    faltantes = [nom for clave, nom in metricas_empresa if resumen[clave] is None]
+    if faltantes:
+        lista = ", ".join(faltantes)
+        if n_stocks == 0:
+            if n_crypto and not n_etf:
+                razon = "solo tienes criptomonedas"
+            elif n_etf and not n_crypto:
+                razon = "solo tienes ETFs"
+            else:
+                razon = "no tienes acciones de empresas individuales (solo cripto y/o ETFs)"
+            avisos.append(
+                f"No se muestra {lista} porque {razon}: esas métricas miden a empresas "
+                f"(utilidades, valor en libros) y no aplican a este tipo de activos. "
+                f"Abajo sí ves volatilidad, Sharpe y rendimientos, que funcionan para todo."
+            )
+        else:
+            avisos.append(
+                f"{lista}: el promedio se calculó solo con las {n_stocks} "
+                f"acción{'es' if n_stocks != 1 else ''} que reportan ese dato; "
+                f"las posiciones sin el dato se ignoraron."
+            )
+    # Si hay cripto mezclada con acciones, aclarar que se ignoró en los ratios.
+    if n_crypto and n_stocks and not faltantes:
+        cripto_txt = "la cripto" if n_crypto == 1 else f"las {n_crypto} cripto"
+        acc_txt = "tu acción" if n_stocks == 1 else f"tus {n_stocks} acciones"
+        avisos.append(
+            f"Se ignoró {cripto_txt} en P/E, P/B y PEG (no tienen utilidades ni valor "
+            f"en libros); esos promedios usan solo {acc_txt}."
+        )
+
     if resumen["pe_promedio"] is not None and resumen["pe_promedio"] > 30:
         avisos.append("El P/E promedio del portafolio está alto. Paga mucho por cada peso de utilidad — típico de empresas con expectativas de crecimiento fuerte.")
     if resumen["yield_promedio"] is not None and resumen["yield_promedio"] > 0.05:

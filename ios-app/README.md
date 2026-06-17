@@ -86,5 +86,5 @@ Para desarrollo con backend local:
 - [ ] Push notifications (drift, alertas) (Sprint 3)
 - [ ] Face ID / Touch ID login (Sprint 3)
 - [ ] Share sheet nativa (Sprint 3)
-- [ ] In-App Purchase $79 MXN/mes (Sprint 4)
+- [ ] In-App Purchase $65 MXN/mes (Sprint 4)
 - [ ] Privacy Manifest (Sprint 5)

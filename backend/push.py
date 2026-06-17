@@ -91,6 +91,18 @@ def eliminar_suscripcion(email: str, endpoint: str) -> bool:
     return n > 0
 
 
+def eliminar_todas_email(email: str) -> int:
+    """Borra (hard delete) todas las suscripciones push de un email.
+    Se usa al eliminar la cuenta del usuario."""
+    if not email:
+        return 0
+    with _db.conn() as c:
+        sql = """DELETE FROM push_subscriptions WHERE user_email = {pl}""".format(
+                 pl="%s" if _db.USING_PG else "?")
+        n = _db.execute(c, sql, (email.lower().strip(),))
+    return n or 0
+
+
 def listar_suscripciones(email: str) -> List[Dict[str, Any]]:
     if not email:
         return []

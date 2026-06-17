@@ -403,12 +403,24 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
 
     # 1. Fundamentales
     fund = _fund._fundamentals_ticker(ticker)
-    if not fund.get("ok"):
+    # Solo fallamos si NO hay absolutamente nada (ni precio, ni nombre, ni
+    # métricas de comportamiento). Si hay aunque sea algo, mostramos lo que se
+    # pueda en vez de devolver un error genérico.
+    tiene_algo = (
+        fund.get("ok")
+        or fund.get("precio_actual") is not None
+        or fund.get("volatilidad_anual") is not None
+        or bool(fund.get("nombre"))
+    )
+    if not tiene_algo:
         return {
             "ticker": ticker,
             "ok":     False,
-            "error":  fund.get("error", "No se pudieron descargar fundamentales."),
+            "error":  fund.get("error", "No se pudieron descargar datos para este ticker. "
+                                        "Verifica el símbolo (ej. AAPL, ALSEA.MX, BTC-USD)."),
         }
+
+    parcial = (not fund.get("ok")) or bool(fund.get("datos_parciales"))
 
     # 2. Peer comparison
     try:
@@ -416,16 +428,32 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
     except Exception as e:
         peer = {"ticker_objetivo": ticker, "peers": [], "filas": [], "error": str(e)}
 
-    # 3. Score determinístico
-    sc = _score(fund, peer)
+    # 3. Score determinístico (protegido: datos parciales no deben tumbarlo)
+    try:
+        sc = _score(fund, peer)
+    except Exception:
+        sc = {"score": None, "veredicto": {}, "componentes": {}, "pesos": {}}
 
     # 4. Narrativas (Claude o fallback)
-    narrativas = _claude_narrativas(ticker, fund)
+    try:
+        narrativas = _claude_narrativas(ticker, fund)
+    except Exception:
+        narrativas = {"deep_dive": {}, "short_report": {}, "fuente": "no_disponible"}
+
+    avisos: List[str] = []
+    if parcial:
+        avisos.append(
+            "Algunos datos fundamentales no están disponibles ahora mismo (la fuente "
+            "no respondió completa). Te mostramos todo lo que sí se pudo obtener; "
+            "vuelve a intentar en un momento para completar el resto."
+        )
 
     return {
         "ticker":           ticker,
         "ok":               True,
-        "nombre":           fund.get("nombre"),
+        "datos_parciales":  parcial,
+        "avisos":           avisos,
+        "nombre":           fund.get("nombre") or ticker,
         "sector":           fund.get("sector"),
         "industria":        fund.get("industria"),
         "moneda":           fund.get("moneda"),

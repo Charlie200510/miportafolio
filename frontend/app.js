@@ -5860,7 +5860,7 @@ const Fundamentales = (() => {
     box.classList.remove('hidden');
     // Helpers de formato
     const _fmtNum   = (v, d=1) => v != null ? v.toFixed(d) : 'N/D';
-    const _fmtPct   = (v, d=2) => v != null ? (v * 100).toFixed(d) + '%' : '0%';
+    const _fmtPct   = (v, d=2) => v != null ? (v * 100).toFixed(d) + '%' : 'N/D';
     const _fmtRatio = v => v != null ? v.toFixed(2) : 'N/D';
     const _fmtPctSig = (v, d=2) => {
       if (v == null) return 'N/D';
@@ -8478,6 +8478,7 @@ const Analizador = (() => {
     // === HEADER + SCORE ===
     const headerHTML = `
       <div class="bg-surface border border-surface-border rounded-2xl p-6">
+        ${(d.avisos && d.avisos.length) ? `<div class="mb-4 rounded-lg border border-accent-amber/30 bg-accent-amber/10 px-3 py-2 text-[12px] text-accent-amber leading-relaxed">${d.avisos.map(a => escapeHtml(a)).join('<br>')}</div>` : ''}
         <div class="flex items-start justify-between flex-wrap gap-4">
           <div>
             <p class="text-xs uppercase tracking-wider text-zinc-500">${escapeHtml(d.sector || '—')} · ${escapeHtml(d.industria || '—')}</p>
@@ -8490,7 +8491,7 @@ const Analizador = (() => {
           <div class="text-center">
             <div class="inline-flex items-center justify-center w-28 h-28 rounded-full border-4 ${verCls} relative">
               <div class="text-center">
-                <p class="text-3xl font-bold tabular leading-none">${Math.round(d.score)}</p>
+                <p class="text-3xl font-bold tabular leading-none">${d.score == null ? '—' : Math.round(d.score)}</p>
                 <p class="text-[9px] uppercase tracking-wider mt-1">/ 100</p>
               </div>
             </div>

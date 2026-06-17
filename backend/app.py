@@ -2347,8 +2347,26 @@ def api_auth_logout():
     return resp
 
 
+@app.route("/api/auth/eliminar-cuenta", methods=["POST", "DELETE"])
+def api_auth_eliminar_cuenta():
+    """Borra la cuenta del usuario autenticado y todos sus datos en el servidor.
+    Requisito de App Store (5.1.1v) y Google Play."""
+    if _auth is None:
+        return jsonify({"error": "auth no disponible"}), 500
+    ses = _sesion_actual()
+    if not ses or not ses.get("email"):
+        return jsonify({"error": "Debes iniciar sesion para borrar tu cuenta."}), 401
+    try:
+        res = _auth.eliminar_cuenta(ses["email"])
+        resp = jsonify(res)
+        resp.set_cookie("session_id", "", max_age=0, path="/")
+        return resp
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ------------------------------------------------------------
-# PAGOS: MercadoPago preapproval ($79 MXN / mes)
+# PAGOS: MercadoPago preapproval ($65 MXN / mes)
 # ------------------------------------------------------------
 @app.route("/api/payments/estado")
 def api_payments_estado():
