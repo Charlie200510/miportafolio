@@ -40,6 +40,15 @@ USAGE_JSON = BACKEND_DIR / "ticker_usage.json"   # opcional: ranking por uso rea
 TARGET_TOTAL = 500
 ANIOS = 5
 BENCHMARKS = ("SPY", "NAFTRAC.MX")
+# Mega-caps / tickers populares que SIEMPRE deben estar en el lite, para que el
+# análisis rápido y local cubra lo que la gente más busca (p.ej. AAPL).
+MUST_INCLUDE = (
+    "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "NVDA", "TSLA", "AVGO",
+    "JPM", "V", "MA", "WMT", "COST", "NFLX", "DIS", "KO", "PEP", "MCD", "NKE",
+    "BAC", "XOM", "CVX", "JNJ", "PG", "HD", "UNH", "ADBE", "CRM", "AMD", "QCOM",
+    "ORCL", "CSCO", "IBM", "INTC", "PYPL", "SBUX", "BA", "T", "VZ", "PFE",
+    "MRK", "ABBV", "LLY", "QQQ", "VOO", "BTC-USD", "ETH-USD",
+)
 
 
 def _cargar_usage() -> list[str]:
@@ -78,6 +87,7 @@ def seleccionar_tickers(cols: list[str], info: dict, usage: list[str]) -> list[s
                 mantener.append(t)
 
     add([b for b in BENCHMARKS])                                       # benchmarks
+    add(en_universo(list(MUST_INCLUDE)))                               # mega-caps populares
     add(en_universo([t for t in cols if t.endswith(".MX")]))           # mexicanas
     add([t for t, m in info.items() if m.get("recomendada")])          # recomendadas
     add([t for t, m in info.items() if "ETF" in (m.get("sector") or "")])  # ETFs

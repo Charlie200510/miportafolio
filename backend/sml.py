@@ -250,20 +250,12 @@ def evaluar_sml(ticker: str) -> Dict[str, Any]:
 
     benchmark = _MC.benchmark_para(ticker)
 
-    # El benchmark (SPY / NAFTRAC.MX) SÍ vive en el universo local: lo leemos de
-    # ahí en lugar de descargarlo, ahorrando una llamada a Yahoo (menos 429).
-    serie_m = None
-    try:
-        import accion_del_dia as _ad
-        df_local = _ad._cargar_precios()
-        if df_local is not None and benchmark in df_local.columns:
-            serie_m = df_local[benchmark].dropna()
-    except Exception:
-        serie_m = None
-    if serie_m is None or serie_m.empty:
-        serie_m = _descargar_close(benchmark)
-
+    # Descargar ticker Y benchmark de la MISMA fuente (yfinance) para que sus
+    # índices de fecha coincidan exactamente. Mezclar yfinance (tz-aware) con el
+    # CSV local (tz-naive) desalineaba las fechas y hacía fallar el cálculo
+    # aunque hubiera años de historia (era el caso de AAPL).
     serie_t = _descargar_close(ticker)
+    serie_m = _descargar_close(benchmark)
 
     if serie_t is None or serie_t.empty:
         return {"ok": False, "error": (

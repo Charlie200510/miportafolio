@@ -1866,7 +1866,7 @@ const Picker = (() => {
       state.cargado = true;
       const n = state.universo.length;
       const recos = state.universo.filter(x => x.recomendada).length;
-      $('pick-curado-meta').textContent = `· ${n} acciones · ⭐ ${recos} destacadas`;
+      $('pick-curado-meta').textContent = `· ${n} acciones`;
       renderCurado('');
       // Auto-refresh de precios en background (no bloqueante)
       // Solo refrescamos los recomendados para no saturar.
@@ -8295,7 +8295,7 @@ const Analizador = (() => {
       estado.cargado = true;
       const recos = estado.universo.filter(x => x.recomendada).length;
       const meta = $('an-univ-meta');
-      if (meta) meta.textContent = `· ${estado.universo.length} acciones · ⭐ ${recos} destacadas`;
+      if (meta) meta.textContent = `· ${estado.universo.length} acciones`;
       renderUniverso();
     } catch (err) {
       // Reintentar hasta 2 veces (cold start de Render)
