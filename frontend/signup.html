@@ -173,6 +173,16 @@
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(data.error || 'Error al enviar.');
+        // Modo debug (sin email configurado): el backend devuelve el link directo
+        if (data.enlace_debug) {
+          estado.innerHTML = `<span class="text-amber-400 font-semibold">Modo prueba:</span> <a href="${data.enlace_debug}" class="text-brand-400 underline break-all">entra con este link</a>`;
+          return;
+        }
+        // Si el correo NO se pudo enviar, mostrar el motivo real (no fingir éxito)
+        if (data.enviado === false) {
+          estado.innerHTML = `<span class="text-red-400">No se pudo enviar el correo.</span> <span class="text-zinc-500 text-[12px]">${(data.detalle || 'revisa la configuración de email').toString()}</span>`;
+          return;
+        }
         estado.innerHTML = `<span class="text-brand-400 font-semibold">✓ Listo.</span> <span class="text-zinc-400">Revisa tu correo (${email}). El link es válido por 15 minutos.</span>`;
       } catch (err) {
         estado.innerHTML = `<span class="text-red-400">${err.message || err}</span>`;
