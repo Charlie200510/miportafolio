@@ -8635,10 +8635,39 @@ const Analizador = (() => {
         <div class="h-60"><canvas id="an-price-canvas"></canvas></div>
       </div>`;
 
+    // Fundamentales clave (incluye FCF derivado de los estados financieros;
+    // se llena aun para acciones .MX donde el resumen de Yahoo viene vacío)
+    const _fundKpis = [
+      ['P/E',           fund.pe_trailing != null ? fmtNum(fund.pe_trailing, 1) : '—'],
+      ['P/B',           fund.pb != null ? fmtNum(fund.pb, 2) : '—'],
+      ['ROE',           fund.roe != null ? fmtPct(fund.roe) : '—'],
+      ['Margen neto',   (fund.margenes && fund.margenes.neto != null) ? fmtPct(fund.margenes.neto) : '—'],
+      ['FCF',           fund.fcf != null ? fmtMoney(fund.fcf, moneda) : '—'],
+      ['FCF yield',     fund.fcf_yield != null ? fmtPct(fund.fcf_yield) : '—'],
+      ['Market cap',    fund.market_cap != null ? fmtMoney(fund.market_cap, moneda) : '—'],
+      ['Deuda/Capital', fund.debt_to_equity != null ? (fmtNum(fund.debt_to_equity, 0) + '%') : '—'],
+    ];
+    const fuenteTxt = fund.fuente_respaldo === 'cache' ? 'caché de respaldo'
+                    : fund.fuente_respaldo === 'alphavantage' ? 'Alpha Vantage (respaldo)'
+                    : null;
+    const fundHTML = `
+      <div class="bg-surface border border-surface-border rounded-2xl p-5">
+        <h4 class="text-sm font-semibold text-zinc-200 mb-3">Fundamentales clave</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          ${_fundKpis.map(([l, v]) => `
+            <div class="bg-zinc-900/40 border border-surface-border rounded-lg p-3">
+              <p class="text-[10px] uppercase tracking-wider text-zinc-500">${l}</p>
+              <p class="text-sm font-semibold text-zinc-100 tabular mt-1">${v}</p>
+            </div>`).join('')}
+        </div>
+        ${fuenteTxt ? `<p class="text-[10px] text-zinc-600 mt-3">Fuente: ${fuenteTxt}.</p>` : ''}
+        <p class="text-[10px] text-zinc-600 mt-2">FCF = flujo operativo − CapEx, calculado de los estados financieros.</p>
+      </div>`;
+
     // ddHTML + srHTML removidos (requieren Claude API)
     const smlHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Valoración SML · CAPM</h4><div id="an-sml-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
     const ddHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Análisis profundo · Deep Dive</h4><p class="text-[11px] text-zinc-500 mb-3">Comparativa contra peers + narrativa. Tarda unos segundos (descarga datos en vivo).</p><div id="an-deepdive-host"><button id="an-dd-load" class="text-[12px] font-semibold text-accent-blue border border-accent-blue/40 hover:bg-accent-blue/10 rounded-lg px-4 py-2 transition">Ver análisis profundo →</button></div></div>`;
-    cont.innerHTML = headerHTML + chartHTML + peerHTML
+    cont.innerHTML = headerHTML + fundHTML + chartHTML + peerHTML
                    + `<div id="an-dashboard-host"><div class="bg-surface border border-surface-border rounded-2xl p-5 text-center text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando dashboard financiero…</div></div>`
                    + smlHTML + ddHostHTML;
     cont.scrollIntoView({ behavior: 'smooth', block: 'start' });

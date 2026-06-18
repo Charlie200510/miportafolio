@@ -280,8 +280,108 @@ def _safe_int(x: Any) -> Optional[int]:
         return None
 
 
-def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
+# ----------------------------------------------------------------
+#  Derivar métricas desde los ESTADOS FINANCIEROS (flujo, resultados,
+#  balance). Útil sobre todo para acciones mexicanas, donde el resumen
+#  (.info con P/E, ROE) viene vacío pero los estados sí están disponibles.
+#  De aquí calculamos FCF (que no existe en .info) y rellenamos ratios.
+# ----------------------------------------------------------------
+_ESTADOS_CACHE: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+_ESTADOS_TTL = 24 * 3600  # 24 h (los estados cambian por trimestre, no a diario)
+_ESTADOS_LOCK = threading.Lock()
+
+
+def _fila_estado(df, *nombres) -> Optional[float]:
+    """Lee el valor más reciente (primera columna) de un renglón del estado,
+    probando varios nombres alternativos por si yfinance cambia las etiquetas."""
+    try:
+        if df is None or getattr(df, "empty", True):
+            return None
+        for n in nombres:
+            if n in df.index:
+                serie = df.loc[n].dropna()
+                if len(serie):
+                    return float(serie.iloc[0])
+    except Exception:
+        return None
+    return None
+
+
+def _derivar_de_estados(ticker: str, market_cap: Optional[float] = None) -> Dict[str, Any]:
+    """Baja los estados financieros de yfinance y deriva métricas.
+    Devuelve un dict con fcf, fcf_yield, roe, margenes, deuda/capital, P/E, P/B.
+    Cacheado 24h. Todo best-effort: si algo falla, ese campo queda en None."""
+    with _ESTADOS_LOCK:
+        c = _ESTADOS_CACHE.get(ticker)
+        if c and (time.time() - c[0]) < _ESTADOS_TTL:
+            return c[1]
+
+    out: Dict[str, Any] = {}
+    try:
+        t = yf.Ticker(ticker)
+        cf = bs = fin = None
+        try: cf = t.cashflow
+        except Exception: cf = None
+        try: fin = t.financials
+        except Exception: fin = None
+        try: bs = t.balance_sheet
+        except Exception: bs = None
+
+        # --- Flujo de efectivo → FCF ---
+        ocf = _fila_estado(cf, "Operating Cash Flow", "Total Cash From Operating Activities",
+                           "Cash Flow From Continuing Operating Activities")
+        capex = _fila_estado(cf, "Capital Expenditure", "Capital Expenditures")
+        fcf = _fila_estado(cf, "Free Cash Flow")
+        if fcf is None and ocf is not None and capex is not None:
+            fcf = ocf + capex          # capex viene NEGATIVO en el estado
+        out["operating_cash_flow"] = ocf
+        out["capex"] = capex
+        out["fcf"] = fcf
+
+        # --- Resultados → utilidad, ventas, márgenes ---
+        ni  = _fila_estado(fin, "Net Income", "Net Income Common Stockholders",
+                           "Net Income From Continuing Operation Net Minority Interest")
+        rev = _fila_estado(fin, "Total Revenue", "Operating Revenue")
+        opi = _fila_estado(fin, "Operating Income", "Operating Income Or Loss", "EBIT")
+        gp  = _fila_estado(fin, "Gross Profit")
+
+        # --- Balance → capital y deuda ---
+        eq  = _fila_estado(bs, "Stockholders Equity", "Total Stockholder Equity", "Common Stock Equity")
+        debt = _fila_estado(bs, "Total Debt")
+        if debt is None:
+            ltd = _fila_estado(bs, "Long Term Debt")
+            cd  = _fila_estado(bs, "Current Debt", "Current Debt And Capital Lease Obligation")
+            if ltd is not None or cd is not None:
+                debt = (ltd or 0.0) + (cd or 0.0)
+
+        out["net_income"] = ni
+        out["total_revenue"] = rev
+        out["stockholders_equity"] = eq
+
+        if ni is not None and rev:        out["margen_neto"] = round(ni / rev, 4)
+        if opi is not None and rev:       out["margen_operativo"] = round(opi / rev, 4)
+        if gp is not None and rev:        out["margen_bruto"] = round(gp / rev, 4)
+        if ni is not None and eq and eq > 0:   out["roe"] = round(ni / eq, 4)
+        if debt is not None and eq and eq > 0:  out["debt_to_equity"] = round(debt / eq * 100, 2)
+
+        # --- Ratios de mercado (requieren market cap) ---
+        if market_cap and market_cap > 0:
+            if ni and ni > 0:   out["pe"] = round(market_cap / ni, 2)
+            if eq and eq > 0:   out["pb"] = round(market_cap / eq, 2)
+            if fcf and fcf != 0: out["fcf_yield"] = round(fcf / market_cap, 4)
+    except Exception:
+        pass
+
+    with _ESTADOS_LOCK:
+        _ESTADOS_CACHE[ticker] = (time.time(), out)
+    return out
+
+
+def _fundamentals_ticker(ticker: str, con_estados: bool = False) -> Dict[str, Any]:
     """Extrae fundamentales para un ticker desde yfinance.
+
+    Si con_estados=True (o si faltan ratios clave), baja los estados financieros
+    y calcula FCF + rellena lo que falte (clave para acciones mexicanas).
 
     Cachea el resultado OK por 12 h para no re-descargar en cada análisis de
     portafolio (clave para que P/E, P/B, PEG carguen cuando hay muchas
@@ -537,11 +637,45 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # Datos COMPLETOS de yfinance → cachear en memoria y persistir como respaldo
+    # Rellenar con ESTADOS FINANCIEROS: FCF (métrica nueva) + ratios faltantes.
+    # Se hace si lo piden (con_estados) o si faltan ratios clave — el caso típico
+    # de las acciones mexicanas, donde el resumen viene vacío pero los estados no.
+    if out.get("ok") and (con_estados
+                          or out.get("pe_trailing") is None
+                          or out.get("pb") is None
+                          or out.get("roe") is None
+                          or (out.get("margenes") or {}).get("neto") is None):
+        try:
+            est = _derivar_de_estados(ticker, out.get("market_cap"))
+            for k in ("fcf", "fcf_yield", "operating_cash_flow", "capex"):
+                if out.get(k) is None and est.get(k) is not None:
+                    out[k] = est[k]
+            if out.get("pe_trailing") is None and est.get("pe") is not None:
+                out["pe_trailing"] = est["pe"]
+                out["pe_trailing_eval"] = _evaluar_pe(est["pe"])
+            if out.get("pb") is None and est.get("pb") is not None:
+                out["pb"] = est["pb"]
+            if out.get("roe") is None and est.get("roe") is not None:
+                out["roe"] = est["roe"]
+            if out.get("debt_to_equity") is None and est.get("debt_to_equity") is not None:
+                out["debt_to_equity"] = est["debt_to_equity"]
+            marg = dict(out.get("margenes") or {})
+            for sub, key in (("neto", "margen_neto"), ("operativo", "margen_operativo"), ("bruto", "margen_bruto")):
+                if marg.get(sub) is None and est.get(key) is not None:
+                    marg[sub] = est[key]
+            out["margenes"] = marg
+        except Exception:
+            pass
+
+    _tiene_fund = (any(out.get(k) is not None for k in ("pe_trailing", "pb", "roe", "fcf"))
+                   or (out.get("margenes") or {}).get("neto") is not None)
+
+    # Datos utilizables de yfinance → cachear y persistir como respaldo
     # (self-healing cache en BD, para servir si Yahoo falla en el futuro).
-    if out.get("ok") and not out.get("datos_parciales"):
-        with _FUND_LOCK:
-            _FUND_CACHE[ticker] = (time.time(), out)
+    if out.get("ok") and (not out.get("datos_parciales") or _tiene_fund):
+        if not out.get("datos_parciales"):
+            with _FUND_LOCK:
+                _FUND_CACHE[ticker] = (time.time(), out)
         if _fallback is not None:
             try:
                 _fallback.guardar_cache(ticker, out)
@@ -549,7 +683,7 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
                 pass
         return out
 
-    # yfinance NO dio datos completos → recurrir a respaldos:
+    # yfinance no dio nada utilizable → recurrir a respaldos:
     #   1) caché en BD (última versión buena; cubre acciones mexicanas)
     #   2) proveedor externo Stooq/Alpha Vantage (solo EE.UU./cripto)
     if _fallback is not None:

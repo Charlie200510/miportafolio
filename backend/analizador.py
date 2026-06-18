@@ -401,8 +401,8 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
 
     ticker = ticker.strip().upper()
 
-    # 1. Fundamentales
-    fund = _fund._fundamentals_ticker(ticker)
+    # 1. Fundamentales (con estados financieros → incluye FCF y rellena ratios)
+    fund = _fund._fundamentals_ticker(ticker, con_estados=True)
     # Solo fallamos si NO hay absolutamente nada (ni precio, ni nombre, ni
     # métricas de comportamiento). Si hay aunque sea algo, mostramos lo que se
     # pueda en vez de devolver un error genérico.
