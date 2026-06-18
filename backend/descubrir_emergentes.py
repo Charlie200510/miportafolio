@@ -73,17 +73,17 @@ def _potencial(fund: dict) -> float:
     return pot
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--n", type=int, default=40, help="tamaño del pool de emergentes")
-    args = ap.parse_args()
-
+def generar_pool(n: int = 40, verbose: bool = True) -> list[str]:
+    """Núcleo reutilizable: selecciona el pool de emergentes desde el caché y lo
+    guarda en la BD. Devuelve la lista de tickers. Lo llama main() y también el
+    prewarm (actualizar_mx_backup.py) al terminar, para que sea 100% automático."""
     import data_fallback as fb
 
     cache = fb.listar_cache_todos()
     if not cache:
-        print("Caché de fundamentales vacío. Corre primero el prewarm. Nada que hacer.")
-        return 0
+        if verbose:
+            print("Caché de fundamentales vacío. Corre primero el prewarm. Nada que hacer.")
+        return []
 
     candidatos = []
     for tk, fund in cache.items():
@@ -99,7 +99,7 @@ def main() -> int:
             candidatos.append((pot, tk, fund.get("nombre"), fund.get("sector")))
 
     candidatos.sort(reverse=True, key=lambda x: x[0])
-    top = candidatos[: args.n]
+    top = candidatos[:n]
     tickers = [tk for _, tk, _, _ in top]
 
     fb.guardar_cache(_CLAVE_POOL, {
@@ -109,10 +109,19 @@ def main() -> int:
         "total_evaluados": len(cache),
     })
 
-    print(f"===== POOL EMERGENTES ({len(tickers)}) =====")
-    for pot, tk, nom, sec in top:
-        print(f"  {pot:5.1f}  {tk:14s} {sec or '—':22s} {nom or ''}")
-    print(f"Guardado en BD bajo '{_CLAVE_POOL}'. Acción del Día ya lo usará.")
+    if verbose:
+        print(f"===== POOL EMERGENTES ({len(tickers)}) =====")
+        for pot, tk, nom, sec in top:
+            print(f"  {pot:5.1f}  {tk:14s} {sec or '—':22s} {nom or ''}")
+        print(f"Guardado en BD bajo '{_CLAVE_POOL}'. Acción del Día ya lo usará.")
+    return tickers
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--n", type=int, default=40, help="tamaño del pool de emergentes")
+    args = ap.parse_args()
+    generar_pool(n=args.n)
     return 0
 
 

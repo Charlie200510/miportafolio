@@ -133,6 +133,16 @@ def main() -> int:
     print(f"  Reporte:     {REPORTE}")
     print(f"  Duración:    {dur:.0f}s")
     print("Los huecos (parcial/sin_datos) son las emisoras candidatas a una fuente oficial (CNBV/XBRL).")
+
+    # Encadenado automático: con el caché recién actualizado, regenerar el pool
+    # de emergentes para la Acción del Día. Así un solo comando hace todo.
+    try:
+        import descubrir_emergentes as _de
+        print("\nRegenerando pool de emergentes con el caché actualizado…")
+        _de.generar_pool(n=40)
+    except Exception as e:
+        print(f"  warn descubrir_emergentes: {e}")
+
     return 0
 
 
