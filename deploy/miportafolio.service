@@ -1,0 +1,16 @@
+# Servicio systemd: mantiene la app prendida y la reinicia sola si se cae.
+# Copiar a /etc/systemd/system/miportafolio.service
+[Unit]
+Description=Mi Portafolio (gunicorn)
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/portafolio-app/backend
+EnvironmentFile=/home/ubuntu/portafolio-app/deploy/.env
+ExecStart=/home/ubuntu/portafolio-app/.venv/bin/gunicorn app:app -c /home/ubuntu/portafolio-app/deploy/gunicorn.conf.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

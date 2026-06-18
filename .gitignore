@@ -1,6 +1,7 @@
 # Credenciales — NUNCA committear
 .env
 backend/.env
+deploy/.env
 *.env.local
 
 # Datos generados (regenerable con descargar_universo.py)

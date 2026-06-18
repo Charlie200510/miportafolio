@@ -1,0 +1,7 @@
+# Caddy = reverse proxy con HTTPS automático (Let's Encrypt, sin certbot).
+# Copiar a /etc/caddy/Caddyfile. Requiere que el DNS de miportafolio.uk ya
+# apunte a la IP de la VM y los puertos 80/443 abiertos.
+miportafolio.uk, www.miportafolio.uk {
+    encode gzip zstd
+    reverse_proxy 127.0.0.1:8000
+}
