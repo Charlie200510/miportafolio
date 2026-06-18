@@ -280,12 +280,70 @@ def _optimizar_markowitz(
 # ─────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────
-def _frontera_eficiente(df_rets, optimo=None, seleccionados=None, n_puntos=40):
-    """Frontera eficiente clásica (cierre analítico de Markowitz; solo numpy).
+def _frontera_eficiente(df_rets, optimo=None, seleccionados=None, n_puntos=28):
+    """Frontera eficiente LONG-ONLY: misma restricción que el portafolio real
+    (sin ventas en corto, pesos ≥ 0), para que el punto óptimo (la estrella)
+    caiga SOBRE la curva y no debajo de una frontera teórica inalcanzable.
 
-    Devuelve la curva (vol%, ret% anualizados), los activos individuales como
-    scatter, y el punto del portafolio óptimo — para graficarla estilo libro de
-    texto. No usa scipy (es álgebra lineal con la inversa de la covarianza).
+    Para cada retorno objetivo, minimiza la varianza con pesos largos que suman 1.
+    Si scipy falla, cae a la frontera analítica clásica.
+    """
+    cols = list(df_rets.columns)
+    n = len(cols)
+    if n < 2:
+        return None
+    mu = df_rets.mean().values * 12.0
+    cov = df_rets.cov().values * 12.0
+
+    curva = []
+    try:
+        from scipy.optimize import minimize
+        rmin, rmax = float(mu.min()), float(mu.max())
+        if rmax > rmin:
+            bounds = [(0.0, 1.0)] * n
+            w0 = np.ones(n) / n
+
+            def _var(w):
+                return float(w @ cov @ w)
+
+            for k in range(n_puntos):
+                r = rmin + (rmax - rmin) * k / (n_puntos - 1)
+                cons = (
+                    {"type": "eq", "fun": lambda w: float(np.sum(w) - 1.0)},
+                    {"type": "eq", "fun": (lambda w, _r=r: float(w @ mu - _r))},
+                )
+                res = minimize(_var, w0, method="SLSQP", bounds=bounds,
+                               constraints=cons, options={"maxiter": 120, "ftol": 1e-8})
+                if res.success:
+                    v = float(np.sqrt(max(_var(res.x), 0.0)))
+                    curva.append({"vol": round(v * 100, 2), "ret": round(r * 100, 2)})
+            # Quedarnos con la parte EFICIENTE (de la mínima varianza hacia arriba)
+            if curva:
+                i_gmv = min(range(len(curva)), key=lambda i: curva[i]["vol"])
+                curva = curva[i_gmv:]
+    except Exception:
+        curva = []
+
+    if not curva:
+        return _frontera_analitica(df_rets, optimo, seleccionados, 40)
+
+    sel = seleccionados or set()
+    activos = [{
+        "ticker": cols[i],
+        "vol":    round(float(np.sqrt(max(cov[i, i], 0.0))) * 100, 2),
+        "ret":    round(float(mu[i]) * 100, 2),
+        "sel":    cols[i] in sel,
+    } for i in range(n)]
+    opt = None
+    if optimo and optimo.get("vol") is not None and optimo.get("ret") is not None:
+        opt = {"vol": round(float(optimo["vol"]) * 100, 2), "ret": round(float(optimo["ret"]) * 100, 2)}
+    return {"curva": curva, "activos": activos, "optimo": opt}
+
+
+def _frontera_analitica(df_rets, optimo=None, seleccionados=None, n_puntos=40):
+    """Frontera eficiente clásica (cierre analítico de Markowitz; solo numpy).
+    Fallback si scipy no está disponible. OJO: permite ventas en corto, así que
+    queda por ENCIMA de lo alcanzable long-only.
     """
     cols = list(df_rets.columns)
     if len(cols) < 2:
