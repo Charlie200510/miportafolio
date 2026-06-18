@@ -33,10 +33,13 @@ REPORTE = DATOS / "mx_backup_reporte.json"
 sys.path.insert(0, str(BACKEND))
 
 
-def _tickers_mx() -> list[str]:
-    """Junta las emisoras .MX del universo completo y del lite (dedupe)."""
+def _tickers(solo_mx: bool = True, lite_only: bool = False) -> list[str]:
+    """Junta tickers del universo (dedupe).
+    solo_mx=True → solo .MX; False → todo el universo.
+    lite_only=True → solo el universo lite (~500, lo que de verdad usa la app)."""
     tickers: set[str] = set()
-    for nombre in ("universo_info.json", "universo_lite_info.json"):
+    fuentes = ("universo_lite_info.json",) if lite_only else ("universo_info.json", "universo_lite_info.json")
+    for nombre in fuentes:
         p = BACKEND / nombre
         if not p.exists():
             continue
@@ -44,8 +47,13 @@ def _tickers_mx() -> list[str]:
             d = json.loads(p.read_text(encoding="utf-8"))
             if isinstance(d, dict):
                 for k in d:
-                    if str(k).upper().endswith(".MX"):
-                        tickers.add(str(k).upper())
+                    ku = str(k).upper()
+                    if solo_mx and not ku.endswith(".MX"):
+                        continue
+                    # crypto/forex no tienen fundamentales tradicionales → omitir
+                    if "-USD" in ku or "-USDT" in ku:
+                        continue
+                    tickers.add(ku)
         except Exception as e:
             print(f"  warn leyendo {nombre}: {e}")
     return sorted(tickers)
@@ -69,6 +77,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pausa", type=float, default=4.0,
                     help="segundos entre cada emisora (más alto = menos rate-limit 429 de Yahoo)")
+    ap.add_argument("--todas", action="store_true",
+                    help="todo el universo (no solo .MX). Ideal corriéndolo desde tu Mac.")
+    ap.add_argument("--lite", action="store_true",
+                    help="con --todas, limita al universo lite (~500, lo que usa la app)")
     args = ap.parse_args()
 
     try:
@@ -77,12 +89,13 @@ def main() -> int:
         print(f"ERROR importando fundamentals: {e}")
         return 1
 
-    tickers = _tickers_mx()
+    tickers = _tickers(solo_mx=not args.todas, lite_only=args.lite)
     if not tickers:
-        print("No se encontraron emisoras .MX en el universo.")
+        print("No se encontraron tickers en el universo.")
         return 0
 
-    print(f"Pre-cargando {len(tickers)} emisoras .MX (pausa {args.pausa}s)…")
+    alcance = ("todo el universo" + (" lite" if args.lite else "")) if args.todas else "emisoras .MX"
+    print(f"Pre-cargando {len(tickers)} tickers ({alcance}, pausa {args.pausa}s)…")
     reporte = {"completo": [], "parcial": [], "sin_datos": []}
     t0 = time.time()
 
