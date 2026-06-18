@@ -546,6 +546,21 @@ def api_cron_dispatch(tipo):
         return jsonify({"error": "unauthorized"}), 401
 
     tipo = (tipo or "").strip().lower()
+
+    # Pre-carga de acciones mexicanas (.MX) al caché de BD. Tarda ~2 min (más que
+    # el timeout HTTP), así que corre en segundo plano y respondemos de inmediato.
+    if tipo in ("prewarm-mx", "prewarm_mx", "mx-backup"):
+        import threading
+        script_mx = _Path_cron(__file__).parent / "actualizar_mx_backup.py"
+        def _run_prewarm():
+            try:
+                _sub_cron.run(["python3", str(script_mx)],
+                              cwd=str(_Path_cron(__file__).parent), timeout=1800)
+            except Exception:
+                pass
+        threading.Thread(target=_run_prewarm, daemon=True).start()
+        return jsonify({"ok": True, "tipo": "prewarm-mx", "status": "iniciado en segundo plano"}), 202
+
     if tipo not in ("drift", "precio", "semanal", "periodico", "newsletter", "newsletter_semanal"):
         return jsonify({"error": f"tipo desconocido: {tipo}",
                         "validos": ["drift", "precio", "semanal", "periodico", "newsletter"]}), 400

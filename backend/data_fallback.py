@@ -202,11 +202,31 @@ def stooq_precio(ticker: str) -> Optional[float]:
 # ----------------------------------------------------------------------------
 #  Entrada principal: recuperar fundamentales cuando yfinance no dio datos
 # ----------------------------------------------------------------------------
+def fuente_oficial_mx(ticker: str) -> Optional[Dict[str, Any]]:
+    """
+    HOOK para una fuente oficial mexicana (CNBV/BMV en XBRL), como último
+    respaldo cuando Yahoo NO cubre una emisora .MX.
+
+    Hoy es un stub que devuelve None (no rompe nada). Cuando el "reporte de
+    huecos" (actualizar_mx_backup.py) muestre qué emisoras importantes faltan,
+    aquí se enchufa el parser de XBRL de la CNBV SOLO para esas. El sitio
+    bmv.com.mx no se puede scrapear server-side (es 100% JavaScript), por eso
+    la fuente correcta son los estados financieros XBRL que las empresas
+    presentan ante la CNBV.
+    """
+    if not (ticker or "").upper().endswith(".MX"):
+        return None
+    # TODO: implementar parser XBRL CNBV para las emisoras del reporte de huecos.
+    return None
+
+
 def recuperar_fundamentales(ticker: str) -> Optional[Dict[str, Any]]:
     """
-    Intenta recuperar fundamentales de respaldo:
-      1) caché en BD (instantáneo, gratis, cubre México)
+    Intenta recuperar fundamentales de respaldo, en orden:
+      1) caché en BD (instantáneo, gratis, cubre México — pre-cargado por
+         actualizar_mx_backup.py)
       2) Alpha Vantage (solo EE.UU./cripto, rate-limited)
+      3) fuente oficial mexicana (CNBV/XBRL) — hook, hoy stub
     Devuelve el dict de fundamentales o None.
     """
     # 1) Caché en BD (última versión buena)
@@ -222,5 +242,10 @@ def recuperar_fundamentales(ticker: str) -> Optional[Dict[str, Any]]:
             if p is not None:
                 ext["precio_actual"] = p
         return ext
+
+    # 3) Último recurso para .MX: fuente oficial (hook listo, hoy vacío)
+    oficial = fuente_oficial_mx(ticker)
+    if oficial and oficial.get("ok"):
+        return oficial
 
     return None
