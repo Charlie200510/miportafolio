@@ -11,10 +11,20 @@ Robusto a tickers sin estados financieros (cripto, ETFs, ADRs raros).
 """
 from __future__ import annotations
 
+import threading
+import time
 from typing import Any, Optional
 
 import pandas as pd
 import yfinance as yf
+
+
+# Cache del dashboard por ticker. Evita re-descargar los estados financieros
+# en cada llamada y, sobre todo, que "Analizar" los baje DOS veces (una para el
+# dashboard y otra para derivar FCF/ratios) → eso disparaba el rate-limit 429.
+_DASH_CACHE: dict[str, tuple[float, dict]] = {}
+_DASH_TTL = 12 * 3600
+_DASH_LOCK = threading.Lock()
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -101,6 +111,11 @@ def obtener_dashboard(ticker: str) -> dict[str, Any]:
     if not ticker:
         raise ValueError("Ticker requerido")
 
+    with _DASH_LOCK:
+        c = _DASH_CACHE.get(ticker)
+        if c and (time.time() - c[0]) < _DASH_TTL:
+            return c[1]
+
     try:
         tk = yf.Ticker(ticker)
         info = tk.info or {}
@@ -154,6 +169,7 @@ def obtener_dashboard(ticker: str) -> dict[str, Any]:
 
         # ── Balance / ROE ────────────────────────────────────────
         equity_d = _to_yearly_dict(_row(balance, "Stockholders Equity", "Total Stockholder Equity", "Common Stock Equity"))
+        debt_d   = _to_yearly_dict(_row(balance, "Total Debt"))
 
         # ROE = net income / equity (usa último FY)
         roe = None
@@ -225,7 +241,7 @@ def obtener_dashboard(ticker: str) -> dict[str, Any]:
             all_anos.update(d.keys())
         fy_actual = max(all_anos) if all_anos else None
 
-        return {
+        resultado = {
             "ok":              True,
             "ticker":          ticker,
             "nombre":          nombre,
@@ -234,7 +250,20 @@ def obtener_dashboard(ticker: str) -> dict[str, Any]:
             "kpis":            kpis,
             "series":          series,
             "tiene_datos":     bool(revenue_d or fcf_d or eps_d),
+            # Valores crudos del último FY (para derivar P/E, P/B, deuda/capital)
+            "net_income_ultimo": _ultimo(net_inc_d),
+            "revenue_ultimo":    _ultimo(revenue_d),
+            "equity_ultimo":     _ultimo(equity_d),
+            "deuda_total_ultimo": _ultimo(debt_d),
+            "margen_neto_ultimo": _ultimo(margen_net_d),
+            "margen_operativo_ultimo": _ultimo(margen_op_d),
+            "roe_ultimo":        roe,
+            "fcf_ultimo":        _ultimo(fcf_d),
+            "market_cap":        _safe_float(info.get("marketCap")),
         }
+        with _DASH_LOCK:
+            _DASH_CACHE[ticker] = (time.time(), resultado)
+        return resultado
     except Exception as e:
         return {"ok": False, "ticker": ticker, "error": f"{type(e).__name__}: {e}"}
 

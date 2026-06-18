@@ -291,26 +291,15 @@ _ESTADOS_TTL = 24 * 3600  # 24 h (los estados cambian por trimestre, no a diario
 _ESTADOS_LOCK = threading.Lock()
 
 
-def _fila_estado(df, *nombres) -> Optional[float]:
-    """Lee el valor más reciente (primera columna) de un renglón del estado,
-    probando varios nombres alternativos por si yfinance cambia las etiquetas."""
-    try:
-        if df is None or getattr(df, "empty", True):
-            return None
-        for n in nombres:
-            if n in df.index:
-                serie = df.loc[n].dropna()
-                if len(serie):
-                    return float(serie.iloc[0])
-    except Exception:
-        return None
-    return None
-
-
 def _derivar_de_estados(ticker: str, market_cap: Optional[float] = None) -> Dict[str, Any]:
-    """Baja los estados financieros de yfinance y deriva métricas.
-    Devuelve un dict con fcf, fcf_yield, roe, margenes, deuda/capital, P/E, P/B.
-    Cacheado 24h. Todo best-effort: si algo falla, ese campo queda en None."""
+    """Deriva FCF, FCF yield, ROE, márgenes, deuda/capital, P/E y P/B a partir de
+    los estados financieros.
+
+    IMPORTANTE: NO descarga los estados por su cuenta — reutiliza
+    dashboard_financiero.obtener_dashboard(), que ya los baja y AHORA está
+    cacheado. Así "Analizar" baja los estados UNA sola vez (compartida con el
+    dashboard que pinta el frontend) en vez de dos, evitando el rate-limit 429.
+    Cacheado 24h. Best-effort: lo que falle queda en None."""
     with _ESTADOS_LOCK:
         c = _ESTADOS_CACHE.get(ticker)
         if c and (time.time() - c[0]) < _ESTADOS_TTL:
@@ -318,57 +307,30 @@ def _derivar_de_estados(ticker: str, market_cap: Optional[float] = None) -> Dict
 
     out: Dict[str, Any] = {}
     try:
-        t = yf.Ticker(ticker)
-        cf = bs = fin = None
-        try: cf = t.cashflow
-        except Exception: cf = None
-        try: fin = t.financials
-        except Exception: fin = None
-        try: bs = t.balance_sheet
-        except Exception: bs = None
+        import dashboard_financiero as _dash  # type: ignore
+        dd = _dash.obtener_dashboard(ticker)
+        if dd and dd.get("ok"):
+            ni   = dd.get("net_income_ultimo")
+            rev  = dd.get("revenue_ultimo")
+            eq   = dd.get("equity_ultimo")
+            debt = dd.get("deuda_total_ultimo")
+            fcf  = dd.get("fcf_ultimo")
+            mc   = market_cap or dd.get("market_cap")
 
-        # --- Flujo de efectivo → FCF ---
-        ocf = _fila_estado(cf, "Operating Cash Flow", "Total Cash From Operating Activities",
-                           "Cash Flow From Continuing Operating Activities")
-        capex = _fila_estado(cf, "Capital Expenditure", "Capital Expenditures")
-        fcf = _fila_estado(cf, "Free Cash Flow")
-        if fcf is None and ocf is not None and capex is not None:
-            fcf = ocf + capex          # capex viene NEGATIVO en el estado
-        out["operating_cash_flow"] = ocf
-        out["capex"] = capex
-        out["fcf"] = fcf
+            out["fcf"]                 = fcf
+            out["roe"]                 = dd.get("roe_ultimo")
+            out["margen_neto"]         = dd.get("margen_neto_ultimo")
+            out["margen_operativo"]    = dd.get("margen_operativo_ultimo")
+            out["net_income"]          = ni
+            out["total_revenue"]       = rev
+            out["stockholders_equity"] = eq
 
-        # --- Resultados → utilidad, ventas, márgenes ---
-        ni  = _fila_estado(fin, "Net Income", "Net Income Common Stockholders",
-                           "Net Income From Continuing Operation Net Minority Interest")
-        rev = _fila_estado(fin, "Total Revenue", "Operating Revenue")
-        opi = _fila_estado(fin, "Operating Income", "Operating Income Or Loss", "EBIT")
-        gp  = _fila_estado(fin, "Gross Profit")
-
-        # --- Balance → capital y deuda ---
-        eq  = _fila_estado(bs, "Stockholders Equity", "Total Stockholder Equity", "Common Stock Equity")
-        debt = _fila_estado(bs, "Total Debt")
-        if debt is None:
-            ltd = _fila_estado(bs, "Long Term Debt")
-            cd  = _fila_estado(bs, "Current Debt", "Current Debt And Capital Lease Obligation")
-            if ltd is not None or cd is not None:
-                debt = (ltd or 0.0) + (cd or 0.0)
-
-        out["net_income"] = ni
-        out["total_revenue"] = rev
-        out["stockholders_equity"] = eq
-
-        if ni is not None and rev:        out["margen_neto"] = round(ni / rev, 4)
-        if opi is not None and rev:       out["margen_operativo"] = round(opi / rev, 4)
-        if gp is not None and rev:        out["margen_bruto"] = round(gp / rev, 4)
-        if ni is not None and eq and eq > 0:   out["roe"] = round(ni / eq, 4)
-        if debt is not None and eq and eq > 0:  out["debt_to_equity"] = round(debt / eq * 100, 2)
-
-        # --- Ratios de mercado (requieren market cap) ---
-        if market_cap and market_cap > 0:
-            if ni and ni > 0:   out["pe"] = round(market_cap / ni, 2)
-            if eq and eq > 0:   out["pb"] = round(market_cap / eq, 2)
-            if fcf and fcf != 0: out["fcf_yield"] = round(fcf / market_cap, 4)
+            if debt is not None and eq and eq > 0:
+                out["debt_to_equity"] = round(debt / eq * 100, 2)
+            if mc and mc > 0:
+                if ni and ni > 0:    out["pe"] = round(mc / ni, 2)
+                if eq and eq > 0:    out["pb"] = round(mc / eq, 2)
+                if fcf and fcf != 0: out["fcf_yield"] = round(fcf / mc, 4)
     except Exception:
         pass
 
