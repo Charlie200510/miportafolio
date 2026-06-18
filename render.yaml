@@ -58,13 +58,15 @@ services:
       - key: MERCADOPAGO_ACCESS_TOKEN
         sync: false
       - key: MERCADOPAGO_PRECIO_MXN
-        value: "79.00"
+        value: "65.00"
       - key: MERCADOPAGO_PLAN_NOMBRE
         value: "Mi Portafolio Premium"
       - key: MERCADOPAGO_BACK_URL
         value: "https://miportafolio.uk/static/index.html?paid=1"
       - key: MERCADOPAGO_WEBHOOK_SECRET
         sync: false
+      - key: ALPHAVANTAGE_API_KEY
+        sync: false             # opcional; respaldo de fundamentales (solo EE.UU./cripto)
       - key: SENTRY_DSN
         sync: false             # opcional; activa observabilidad si lo defines
       - key: PYTHON_ENV

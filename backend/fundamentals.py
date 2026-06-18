@@ -16,6 +16,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import yfinance as yf
 
+try:
+    import data_fallback as _fallback  # type: ignore
+except Exception:  # pragma: no cover
+    _fallback = None  # type: ignore
+
 
 # ----------------------------------------------------------------
 # Cache de benchmarks (SPY, NAFTRAC.MX) para cálculo de beta
@@ -532,11 +537,34 @@ def _fundamentals_ticker(ticker: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # Cachear solo cuando los datos están COMPLETOS (no cachear parciales ni
-    # errores transitorios — así se reintenta la próxima vez).
+    # Datos COMPLETOS de yfinance → cachear en memoria y persistir como respaldo
+    # (self-healing cache en BD, para servir si Yahoo falla en el futuro).
     if out.get("ok") and not out.get("datos_parciales"):
         with _FUND_LOCK:
             _FUND_CACHE[ticker] = (time.time(), out)
+        if _fallback is not None:
+            try:
+                _fallback.guardar_cache(ticker, out)
+            except Exception:
+                pass
+        return out
+
+    # yfinance NO dio datos completos → recurrir a respaldos:
+    #   1) caché en BD (última versión buena; cubre acciones mexicanas)
+    #   2) proveedor externo Stooq/Alpha Vantage (solo EE.UU./cripto)
+    if _fallback is not None:
+        try:
+            respaldo = _fallback.recuperar_fundamentales(ticker)
+            if respaldo and respaldo.get("ok"):
+                # Conservar las métricas de comportamiento que sí calculamos
+                # localmente (volatilidad, Sharpe, retornos) si el respaldo no las trae.
+                for k in ("volatilidad_anual", "sharpe_ratio", "sortino_ratio", "max_drawdown",
+                          "correlacion_sp500", "retorno_1m", "retorno_3m", "retorno_1y", "retorno_ytd"):
+                    if respaldo.get(k) is None and out.get(k) is not None:
+                        respaldo[k] = out[k]
+                return respaldo
+        except Exception:
+            pass
 
     return out
 
