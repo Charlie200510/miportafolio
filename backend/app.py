@@ -561,6 +561,20 @@ def api_cron_dispatch(tipo):
         threading.Thread(target=_run_prewarm, daemon=True).start()
         return jsonify({"ok": True, "tipo": "prewarm-mx", "status": "iniciado en segundo plano"}), 202
 
+    # Descubrir el pool de emergentes (semanal). Lee el caché de BD (no Yahoo),
+    # es rápido, pero igual lo corremos en segundo plano por consistencia.
+    if tipo in ("descubrir-emergentes", "emergentes"):
+        import threading
+        script_em = _Path_cron(__file__).parent / "descubrir_emergentes.py"
+        def _run_emergentes():
+            try:
+                _sub_cron.run(["python3", str(script_em)],
+                              cwd=str(_Path_cron(__file__).parent), timeout=300)
+            except Exception:
+                pass
+        threading.Thread(target=_run_emergentes, daemon=True).start()
+        return jsonify({"ok": True, "tipo": "descubrir-emergentes", "status": "iniciado en segundo plano"}), 202
+
     if tipo not in ("drift", "precio", "semanal", "periodico", "newsletter", "newsletter_semanal"):
         return jsonify({"error": f"tipo desconocido: {tipo}",
                         "validos": ["drift", "precio", "semanal", "periodico", "newsletter"]}), 400

@@ -384,6 +384,10 @@ def _fundamentals_ticker(ticker: str, con_estados: bool = False) -> Dict[str, An
         sector = info.get("sector")
         industria = info.get("industry")
         moneda = info.get("currency") or info.get("financialCurrency")
+        # ETFs/fondos/índices NO tienen estados financieros → evitar pedirlos
+        # (genera 404 "No fundamentals data found" y desperdicia tiempo).
+        _es_fondo = (info.get("quoteType") or "").upper() in (
+            "ETF", "MUTUALFUND", "INDEX", "MONEYMARKET", "CURRENCY")
 
         market_cap = _safe_float(info.get("marketCap"))
         # Fallback de market cap = precio × acciones en circulación. Yahoo a veces
@@ -579,6 +583,7 @@ def _fundamentals_ticker(ticker: str, con_estados: bool = False) -> Dict[str, An
             "proximas_earnings": proximas_earnings,
             # True si yfinance no devolvió .info (mostramos lo que se pueda igual)
             "datos_parciales":   not bool(info),
+            "_es_fondo":         _es_fondo,
         })
     except Exception as e:
         out["error"] = f"{type(e).__name__}: {e}"
@@ -609,7 +614,7 @@ def _fundamentals_ticker(ticker: str, con_estados: bool = False) -> Dict[str, An
     # Rellenar con ESTADOS FINANCIEROS: FCF (métrica nueva) + ratios faltantes.
     # Se hace si lo piden (con_estados) o si faltan ratios clave — el caso típico
     # de las acciones mexicanas, donde el resumen viene vacío pero los estados no.
-    if out.get("ok") and (con_estados
+    if out.get("ok") and not out.get("_es_fondo") and (con_estados
                           or out.get("pe_trailing") is None
                           or out.get("pb") is None
                           or out.get("roe") is None

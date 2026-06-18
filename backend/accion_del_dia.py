@@ -310,12 +310,24 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
     hay_recomendadas = any(
         isinstance(v, dict) and v.get("recomendada") for v in info_all.values()
     )
+    # Pool de emergentes (lo refresca semanalmente descubrir_emergentes.py).
+    # Estas entran como candidatas AUNQUE no estén marcadas 'recomendada'.
+    pool_emergentes = set()
+    try:
+        import data_fallback as _fb
+        _pe = _fb.leer_cache("__POOL_EMERGENTES__")
+        if _pe and _pe.get("tickers"):
+            pool_emergentes = {str(t).upper() for t in _pe["tickers"]}
+    except Exception:
+        pass
+
     candidatos = []
     for t in df_precios.columns:
         info = info_all.get(t, {})
         if not _es_candidato(t, info):
             continue
-        if hay_recomendadas and not info.get("recomendada"):
+        en_pool = t.upper() in pool_emergentes
+        if hay_recomendadas and not info.get("recomendada") and not en_pool:
             continue
         candidatos.append(t)
 

@@ -96,6 +96,28 @@ def guardar_cache(ticker: str, data: Dict[str, Any]) -> None:
         pass
 
 
+def listar_cache_todos() -> Dict[str, Dict[str, Any]]:
+    """Devuelve {ticker: datos} de TODO el caché de fundamentales.
+    Lo usa el descubridor de emergentes para filtrar sin re-descargar de Yahoo."""
+    if not _ensure_tabla():
+        return {}
+    out: Dict[str, Dict[str, Any]] = {}
+    try:
+        with _db.conn() as c:
+            rows = _db.query(c, "SELECT ticker, data FROM fundamentals_cache", ())
+        for r in rows or []:
+            tk = r.get("ticker")
+            if not tk or tk.startswith("__"):   # saltar claves especiales (pools, etc.)
+                continue
+            try:
+                out[tk] = json.loads(r["data"])
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out
+
+
 def leer_cache(ticker: str) -> Optional[Dict[str, Any]]:
     """Devuelve la última versión buena guardada de un ticker, o None."""
     if not ticker or not _ensure_tabla():

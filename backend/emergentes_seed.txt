@@ -1,0 +1,47 @@
+# Semilla de acciones EMERGENTES (small/mid-cap en crecimiento) para sembrar el
+# universo y darle materia prima al descubridor de Acción del Día.
+# NO son recomendaciones de inversión — son candidatas para la feature de
+# "descubrir". Edita esta lista a tu gusto; las líneas con # se ignoran.
+#
+# Cómo usarla (desde tu Mac, con DATABASE_URL de Neon):
+#   python3 agregar_ipc_universo.py $(grep -v '^#' emergentes_seed.txt)
+#
+# Energía / limpia / nuclear
+ENPH
+FSLR
+RUN
+SHLS
+ARRY
+NXT
+OKLO
+SMR
+# Tech / IA / software
+PLTR
+SNOW
+NET
+DDOG
+S
+PATH
+AI
+SOUN
+IONQ
+RGTI
+RKLB
+ASTS
+# Fintech (incluye LatAm, relevante para MX)
+SOFI
+AFRM
+UPST
+NU
+DLO
+# Semiconductores (medianas)
+WOLF
+AMBA
+LSCC
+INDI
+NVTS
+# Consumo en crecimiento
+CELH
+DUOL
+ELF
+CAVA
