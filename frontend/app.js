@@ -8499,7 +8499,16 @@ const Analizador = (() => {
           </div>
         </div>
 
-        <!-- Componentes del score -->
+        <!-- Razones del score canónico (mismo score que Acción del Día) -->
+        ${(d.score_razones && d.score_razones.length) ? `
+        <div class="mt-5 pt-5 border-t border-surface-border">
+          <p class="text-xs uppercase tracking-wider text-zinc-500 mb-3">Por qué este score</p>
+          <ul class="space-y-1.5">
+            ${d.score_razones.map(r => `<li class="flex gap-2 items-start text-xs text-zinc-300"><span class="text-accent-green mt-0.5">+</span><span>${escapeHtml(r)}</span></li>`).join('')}
+          </ul>
+          <p class="text-[10px] text-zinc-600 mt-3">Score canónico (alpha CAPM, Sharpe, volatilidad, fundamentales, momentum). El mismo número que ves en Acción del Día y en el ranking.</p>
+        </div>` : `
+        <!-- Fallback: desglose del score propio (tickers fuera del universo) -->
         <div class="mt-5 pt-5 border-t border-surface-border">
           <p class="text-xs uppercase tracking-wider text-zinc-500 mb-3">Desglose del score</p>
           <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -8529,7 +8538,7 @@ const Analizador = (() => {
               `;
             }).join('')}
           </div>
-        </div>
+        </div>`}
       </div>
     `;
 

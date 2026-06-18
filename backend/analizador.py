@@ -428,11 +428,31 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
     except Exception as e:
         peer = {"ticker_objetivo": ticker, "peers": [], "filas": [], "error": str(e)}
 
-    # 3. Score determinístico (protegido: datos parciales no deben tumbarlo)
+    # 3. Score CANÓNICO — el MISMO que usan Acción del Día, ranking y screener,
+    #    para que un ticker dé el mismo número en todas las vistas (homogéneo).
+    sc = None
     try:
-        sc = _score(fund, peer)
+        import accion_del_dia as _ad
+        det = _ad.score_para_ticker(ticker)   # usa el universo local (canónico)
+        if det is not None and det.get("score") is not None:
+            from metricas_canonicas import nivel_para_score as _niv
+            etq, col = _niv(int(det["score"]))
+            sc = {
+                "score":       int(det["score"]),
+                "veredicto":   {"nivel": etq, "etiqueta": etq, "color": col},
+                "componentes": {},
+                "pesos":       {},
+                "razones":     det.get("razones") or [],
+            }
     except Exception:
-        sc = {"score": None, "veredicto": {}, "componentes": {}, "pesos": {}}
+        sc = None
+    # Fallback (solo para tickers que NO están en el universo local): score propio.
+    if sc is None:
+        try:
+            sc = _score(fund, peer)
+            sc["razones"] = []
+        except Exception:
+            sc = {"score": None, "veredicto": {}, "componentes": {}, "pesos": {}, "razones": []}
 
     # 4. Narrativas (Claude o fallback)
     try:
@@ -467,6 +487,7 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
         "veredicto":        sc["veredicto"],
         "score_componentes": sc["componentes"],
         "score_pesos":       sc["pesos"],
+        "score_razones":     sc.get("razones") or [],
     }
 
 

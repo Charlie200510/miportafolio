@@ -113,6 +113,52 @@ def _liquidez_diaria(info: Dict[str, Any], precio_actual: Optional[float]) -> fl
     return float(info.get("market_cap") or info.get("marketCap") or 0)
 
 
+# Sectores en crecimiento que el usuario quiere "descubrir"
+_SECTORES_CRECIMIENTO = ("tech", "tecnolog", "energy", "energ", "semiconduct",
+                         "software", "communication", "comunicac", "renewable",
+                         "clean", "bio", "health")
+
+# Mega-caps archiconocidas: la feature es para DESCUBRIR, no repetir Google/GMéxico.
+_ARCHICONOCIDAS = {
+    "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "NVDA", "TSLA", "NFLX",
+    "JPM", "V", "MA", "WMT", "JNJ", "PG", "KO", "DIS", "BAC",
+    "WALMEX.MX", "AMXB.MX", "GMEXICOB.MX", "FEMSAUBD.MX", "GFNORTEO.MX", "GCARSOA1.MX",
+}
+
+
+def _ajuste_descubrimiento(det: Dict[str, Any], info: Dict[str, Any]) -> float:
+    """Sesga Acción del Día hacia acciones chicas/emergentes en sectores en
+    crecimiento, y castiga las mega-caps archiconocidas. NO cambia el score que
+    se muestra (ese sigue siendo el canónico), solo a QUIÉN se elige como ganador."""
+    aj = 0.0
+    tk = (det.get("ticker") or "").upper()
+    if tk in _ARCHICONOCIDAS:
+        aj -= 20
+
+    mc = info.get("market_cap") or info.get("marketCap")
+    if mc:
+        try:
+            mc = float(mc)
+            if det.get("es_mx"):
+                mc /= 18.0   # MXN→USD aprox para comparar magnitudes
+            if mc > 200e9:     aj -= 16   # gigante archiconocida
+            elif mc > 50e9:    aj -= 8
+            elif mc > 15e9:    aj -= 3
+            elif mc >= 500e6:  aj += 8    # small/mid: el sweet spot emergente
+            else:              aj -= 4    # micro: demasiado ilíquida/especulativa
+        except (TypeError, ValueError):
+            pass
+
+    sector = (det.get("sector") or "").lower()
+    if any(s in sector for s in _SECTORES_CRECIMIENTO):
+        aj += 6
+
+    mom = det.get("momentum_3m") or 0
+    if 0.05 <= mom <= 0.40:
+        aj += 4   # subiendo con fuerza sana → potencial real
+    return aj
+
+
 def calcular_metricas_y_score(
     ticker: str,
     df_precios: pd.DataFrame,
@@ -286,7 +332,9 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
         serie = df_precios[ticker].dropna()
         rec5 = float(serie.iloc[-1] / serie.iloc[-6] - 1) if len(serie) >= 6 else 0.0
         det["retorno_5d_pct"] = round(rec5 * 100, 2)
-        rank = score_t + max(-5.0, min(5.0, rec5 * 100 * 0.5))
+        rank = (score_t
+                + max(-5.0, min(5.0, rec5 * 100 * 0.5))           # desempeño reciente
+                + _ajuste_descubrimiento(det, info_all.get(ticker, {})))  # sesgo emergentes
         puntuados.append((rank, score_t, det))
 
     if not puntuados:
@@ -330,9 +378,11 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
         "candidatos_evaluados": len(puntuados),
         "top_5":          [d for _, _, d in puntuados[:5]],
         "metodologia": (
-            "Elegida por score canónico (alpha CAPM, Sharpe, fundamentales, "
-            "momentum y liquidez), con un ajuste por desempeño reciente para que "
-            "varíe día a día."
+            "Pensada para DESCUBRIR: se elige por score canónico (alpha CAPM, "
+            "Sharpe, fundamentales, momentum) pero favoreciendo acciones chicas/"
+            "medianas en sectores en crecimiento (tecnología, energía…) y dejando "
+            "fuera a las mega-caps que ya todos conocen. El score mostrado es el "
+            "mismo que verás en Analizar."
         ),
     }
 

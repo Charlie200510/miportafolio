@@ -267,7 +267,7 @@ def score_compuesto(
     elif alpha > -0.02:
         score += 3
     else:
-        score -= 10
+        score -= 7
 
     # === Sharpe (hasta 10 pts) ===
     if sharpe > 1.0:
@@ -292,7 +292,7 @@ def score_compuesto(
             score += 4
             razones.append(f"Volatilidad contenida ({vol*100:.0f}%)")
         elif vol > 0.70:
-            score -= 8
+            score -= 6
             razones.append(f"Volatilidad muy alta ({vol*100:.0f}%) — especulativa")
         elif vol > 0.50:
             score -= 4
@@ -336,7 +336,7 @@ def score_compuesto(
         elif roe > 0.05:
             score += 3
         elif roe < 0:
-            score -= 10
+            score -= 7
 
     if margen is not None:
         if margen > 0.20:
@@ -345,7 +345,7 @@ def score_compuesto(
         elif margen > 0.10:
             score += 6
         elif margen < 0:
-            score -= 8
+            score -= 5
 
     if de is not None:
         if de < 0.5:
@@ -376,17 +376,24 @@ def score_compuesto(
     elif liquidez_valor_diaria and liquidez_valor_diaria < 1_000_000:
         score -= 5
 
-    # Acotar a [0, 100]
-    score = max(0, min(100, score))
-    return score, razones
+    # Recalibración: lift suave para que no se vean tan castigadas, PERO
+    # conservando la distinción entre buenas y excelentes (nada de aplastar todo
+    # en el tope). Techo realista = 95 (no existe el "100 perfecto").
+    #   final = raw*0.92 + 8   → ej: raw 28→34, 46→50, 65→68, 81→82, 95+→95
+    raw = max(0, min(120, score))
+    score_final = int(round(raw * 0.92 + 8))
+    score_final = max(0, min(95, score_final))
+    return score_final, razones
 
 
 def nivel_para_score(score: int) -> Tuple[str, str]:
-    """Devuelve (nivel, color) según el score canónico."""
-    if score >= 60:
+    """Devuelve (nivel, color) según el score canónico (escala recalibrada)."""
+    if score >= 78:
         return "Recomendación fuerte", "green"
-    if score >= 40:
-        return "Recomendación moderada", "blue"
-    if score >= 25:
-        return "Mención honorífica", "amber"
-    return "Sin ganador claro", "zinc"
+    if score >= 62:
+        return "Recomendación sólida", "green"
+    if score >= 48:
+        return "Interesante", "blue"
+    if score >= 35:
+        return "Mención", "amber"
+    return "Sin ventaja clara", "zinc"
