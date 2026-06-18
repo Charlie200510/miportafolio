@@ -1991,9 +1991,23 @@ def api_periodico_sectores():
                 if t not in df.columns:
                     continue
                 serie = df[t].dropna()
-                if len(serie) < dias + 1:
+                if len(serie) < 2:
                     continue
-                cambio = (float(serie.iloc[-1]) / float(serie.iloc[-dias - 1]) - 1) * 100
+                ultimo = float(serie.iloc[-1])
+                if dias <= 1:
+                    # vs último cierre distinto (salta fin de semana/feriados)
+                    base = None
+                    for v in serie.iloc[:-1].values[::-1]:
+                        if float(v) != ultimo:
+                            base = float(v)
+                            break
+                else:
+                    if len(serie) < dias + 1:
+                        continue
+                    base = float(serie.iloc[-dias - 1])
+                if not base:
+                    continue
+                cambio = (ultimo / base - 1) * 100
                 out.append({
                     "ticker":     t,
                     "nombre":     s["nombre"],
@@ -2026,7 +2040,14 @@ def api_watchlist():
                 if len(s) < 2:
                     continue
                 precio = float(s.iloc[-1])
-                prev = float(s.iloc[-2])
+                # Cambio del día vs el último cierre DISTINTO: salta fines de
+                # semana/feriados que arrastran el mismo precio (evita el 0% falso).
+                prev = None
+                for v in s.iloc[:-1].values[::-1]:
+                    fv = float(v)
+                    if fv != precio:
+                        prev = fv
+                        break
                 cambio = (precio / prev - 1) * 100 if prev else 0.0
                 sp = s.iloc[-30:]
                 paso = max(1, len(sp) // 20)

@@ -57,12 +57,27 @@ def _calcular_retornos(df: pd.DataFrame, dias: int) -> pd.Series:
     """Retorno desde hace N días al hoy, por ticker."""
     if df is None or df.empty:
         return pd.Series(dtype=float)
-    if len(df) < dias + 1:
+    ultimo = df.iloc[-1]
+    if dias <= 1:
+        # Cambio del DÍA: comparar contra el último cierre DISTINTO por ticker,
+        # saltando fines de semana/feriados con precio arrastrado (evita el 0% falso).
+        prev = {}
+        for col in df.columns:
+            s = df[col].dropna()
+            base = None
+            if len(s) >= 2:
+                last = float(s.iloc[-1])
+                for v in s.iloc[:-1].values[::-1]:
+                    if float(v) != last:
+                        base = float(v)
+                        break
+            prev[col] = base
+        primer = pd.Series(prev)
+    elif len(df) < dias + 1:
         # Si no hay tanto historial, usa el primer día disponible
         primer = df.iloc[0]
     else:
         primer = df.iloc[-dias - 1]
-    ultimo = df.iloc[-1]
     ret = (ultimo - primer) / primer
     return ret.dropna().sort_values(ascending=False)
 

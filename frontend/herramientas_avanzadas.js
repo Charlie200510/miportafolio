@@ -278,7 +278,6 @@
           <label style="font-size:11px;color:#71717a;">P/E máx.<input id="mp-sc-pemax" type="number" placeholder="25" style="display:block;width:100%;background:#161616;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-top:4px;font-family:monospace;"></label>
           <label style="font-size:11px;color:#71717a;">Yield mín. (%)<input id="mp-sc-ymin" type="number" step="0.5" placeholder="2" style="display:block;width:100%;background:#161616;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-top:4px;font-family:monospace;"></label>
           <label style="font-size:11px;color:#71717a;">Beta máx.<input id="mp-sc-bmax" type="number" step="0.1" placeholder="1.2" style="display:block;width:100%;background:#161616;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-top:4px;font-family:monospace;"></label>
-          <label style="font-size:11px;color:#71717a;display:flex;align-items:flex-end;gap:6px;padding-top:18px;"><input id="mp-sc-reco" type="checkbox" style="accent-color:#22c55e;">Solo recomendadas ⭐</label>
         </div>
         <button id="mp-sc-buscar" style="display:block;width:100%;background:#fb923c;color:#0a0a0b;border:none;border-radius:8px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Buscar →</button>
         <div id="mp-sc-resultado" style="margin-top:16px;"></div>
@@ -297,7 +296,6 @@
         pe_max:             num('mp-sc-pemax'),
         yield_min:          num('mp-sc-ymin') ? num('mp-sc-ymin') / 100 : undefined,
         beta_max:           num('mp-sc-bmax'),
-        solo_recomendadas:  document.getElementById('mp-sc-reco').checked,
         limit:              50,
       };
       // Limpiar undefined
@@ -320,7 +318,7 @@
       const precio = r.precio != null ? `${sym}${Number(r.precio).toLocaleString('en-US',{maximumFractionDigits:2})}` : '—';
       const score = r.score != null ? `<span style="font-weight:700;color:#f59e0b;">${Math.round(r.score)}</span>` : '—';
       return `<tr>
-        <td style="padding:6px 10px;font-family:monospace;color:#f4f4f5;font-weight:600;font-size:12px;">${r.ticker}${r.recomendada ? ' ⭐' : ''}</td>
+        <td style="padding:6px 10px;font-family:monospace;color:#f4f4f5;font-weight:600;font-size:12px;">${r.ticker}</td>
         <td style="padding:6px 10px;color:#a1a1aa;font-size:11px;">${r.mercado || '—'}</td>
         <td style="padding:6px 10px;text-align:right;font-family:monospace;font-size:12px;">${score}</td>
         <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:11px;">${r.beta != null ? Number(r.beta).toFixed(2) : '—'}</td>
@@ -767,7 +765,6 @@
         sector:            get('sc-sector') || undefined,
         score_min:         num('sc-scoremin'),
         beta_max:          num('sc-bmax'),
-        solo_recomendadas: document.getElementById('sc-reco').checked,
         limit:             50,
       };
       Object.keys(criterios).forEach(k => criterios[k] == null && delete criterios[k]);
