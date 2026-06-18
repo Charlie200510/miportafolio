@@ -67,7 +67,8 @@ def _clasificar(fund: dict) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pausa", type=float, default=1.5, help="segundos entre cada emisora")
+    ap.add_argument("--pausa", type=float, default=4.0,
+                    help="segundos entre cada emisora (más alto = menos rate-limit 429 de Yahoo)")
     args = ap.parse_args()
 
     try:
