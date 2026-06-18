@@ -386,6 +386,13 @@ def _fundamentals_ticker(ticker: str, con_estados: bool = False) -> Dict[str, An
         moneda = info.get("currency") or info.get("financialCurrency")
 
         market_cap = _safe_float(info.get("marketCap"))
+        # Fallback de market cap = precio × acciones en circulación. Yahoo a veces
+        # NO trae marketCap para emisoras .MX, y sin él no se pueden calcular P/E
+        # ni P/B. Con precio + acciones lo reconstruimos.
+        if market_cap is None and precio:
+            _sh = _safe_float(info.get("sharesOutstanding")) or _safe_float(info.get("impliedSharesOutstanding"))
+            if _sh and _sh > 0:
+                market_cap = precio * _sh
         pe_trailing = _safe_float(info.get("trailingPE"))
         pe_forward  = _safe_float(info.get("forwardPE"))
         pb = _safe_float(info.get("priceToBook"))

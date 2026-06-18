@@ -241,6 +241,16 @@ def obtener_dashboard(ticker: str) -> dict[str, Any]:
             all_anos.update(d.keys())
         fy_actual = max(all_anos) if all_anos else None
 
+        # Market cap: si Yahoo no lo trae (común en .MX), reconstruir = precio × acciones
+        _market_cap = _safe_float(info.get("marketCap"))
+        if _market_cap is None:
+            _precio = _safe_float(info.get("currentPrice")) or _safe_float(info.get("regularMarketPrice"))
+            _sh = _safe_float(info.get("sharesOutstanding"))
+            if _sh is None:
+                _sh = _ultimo(_to_yearly_dict(_row(balance, "Ordinary Shares Number", "Share Issued")))
+            if _precio and _sh and _sh > 0:
+                _market_cap = _precio * _sh
+
         resultado = {
             "ok":              True,
             "ticker":          ticker,
@@ -259,7 +269,7 @@ def obtener_dashboard(ticker: str) -> dict[str, Any]:
             "margen_operativo_ultimo": _ultimo(margen_op_d),
             "roe_ultimo":        roe,
             "fcf_ultimo":        _ultimo(fcf_d),
-            "market_cap":        _safe_float(info.get("marketCap")),
+            "market_cap":        _market_cap,
         }
         with _DASH_LOCK:
             _DASH_CACHE[ticker] = (time.time(), resultado)
