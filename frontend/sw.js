@@ -6,7 +6,7 @@
 */
 // IMPORTANTE: Bumpear esta versión cada vez que cambies JS/CSS críticos
 // para forzar invalidación del cache en todos los usuarios.
-const VERSION = 'mp-v1.8.6';
+const VERSION = 'mp-v1.9.2';
 const SHELL_CACHE  = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const ASSETS_CACHE = `${VERSION}-assets`;
@@ -49,15 +49,15 @@ self.addEventListener('fetch', (event) => {
     return; // dejar al navegador que vaya a la red
   }
 
-  // Páginas HTML del shell → stale-while-revalidate
+  // HTML + JS + CSS → stale-while-revalidate: sirve del caché AL INSTANTE
+  // (la app siempre carga rápido, aunque el server del free tier esté lento o
+  // reiniciándose) y actualiza en segundo plano para la próxima carga. El bump
+  // de VERSION en cada deploy purga los cachés viejos, así que los fixes llegan
+  // sin que el usuario se quede atorado en una pantalla en blanco.
   if (req.mode === 'navigate' || url.pathname.match(/\.(html)$/)) {
     event.respondWith(staleWhileRevalidate(req, SHELL_CACHE));
     return;
   }
-
-  // JS y CSS → stale-while-revalidate (cache para velocidad, pero siempre
-  // actualiza en background. Así los fixes llegan al usuario sin que tenga
-  // que limpiar el cache manualmente).
   if (url.pathname.match(/\.(js|css)$/)) {
     event.respondWith(staleWhileRevalidate(req, STATIC_CACHE));
     return;
@@ -93,6 +93,28 @@ async function staleWhileRevalidate(request, cacheName) {
     })
     .catch(() => cached);
   return cached || fetchPromise;
+}
+
+// Red primero CON timeout: intenta la red y actualiza el caché; pero si el
+// servidor tarda más de timeoutMs (típico del free tier en arranque en frío) y
+// HAY copia en caché, sirve la caché al instante para no dejar la app trabada.
+// Si no hay caché, espera la red. Si la red falla, cae a la caché.
+// Resultado: siempre fresco cuando el server responde rápido, y nunca se traba.
+async function networkFirst(request, cacheName, timeoutMs = 3500) {
+  const cache = await caches.open(cacheName);
+  const fromNet = fetch(request)
+    .then((r) => { if (r && r.status === 200) cache.put(request, r.clone()); return r; });
+  const cached = await cache.match(request);
+  try {
+    if (cached) {
+      // Carrera: lo que llegue primero entre la red y el timeout (→ caché).
+      const timeout = new Promise((resolve) => setTimeout(() => resolve(cached), timeoutMs));
+      return await Promise.race([fromNet.catch(() => cached), timeout]);
+    }
+    return await fromNet;   // sin caché: hay que esperar a la red
+  } catch (_) {
+    return cached || new Response('Offline', { status: 503 });
+  }
 }
 
 
