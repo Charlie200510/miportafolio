@@ -1,0 +1,88 @@
+name: capture-oci-vm
+# Intenta capturar la VM ARM Always Free en OCI (mx-queretaro-1).
+# Corre desde los servidores de GitHub: NO depende de que tu Mac esté prendida.
+# Prioriza 2 OCPU/12GB y, si no hay capacidad, intenta 1 OCPU/6GB.
+# Idempotente: si ya existe una VM 'portafolio-vm', no lanza otra.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # cada 5 min (mínimo permitido por GitHub Actions)
+  workflow_dispatch: {}      # permite dispararlo a mano para probar
+
+concurrency:
+  group: capture-oci-vm
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+      OCI_CLI_REGION: mx-queretaro-1
+      SUPPRESS_LABEL_WARNING: 'True'
+      COMPARTMENT: 'ocid1.tenancy.oc1..aaaaaaaaz2fshzhd2vbwhkuy4hj5onfzqxr4frezaodkqceidac3t7umi6ka'
+      IMAGE: 'ocid1.image.oc1.mx-queretaro-1.aaaaaaaaxnob7sxbnzwl65ev7ew4eaivafdchbdktrr2nqy3rhczpeoaemqq'
+      SUBNET: 'ocid1.subnet.oc1.mx-queretaro-1.aaaaaaaa47vdt62hxrsmrybdkbwphj7e44rns75gvpm4dggigroqqncwtv6q'
+      AD: 'pQcQ:MX-QUERETARO-1-AD-1'
+      NAME: 'portafolio-vm'
+      SSH_PUBKEY: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDJRoQenzmDYUm98ICkULIi9DEHsh4+suaeC8cbDBWL4tXXP5+ttZtk6uj38rnZUzne86/+jdtVIpSOBcJFFMOCf/lMQ2XgyXlJUas/5Ys75Kx5lqq429ghgIlc08Y1hfQvOiwKgTJ3YA7M+XXYrOlZRDC7MVRPSgxqWVtfVcAY9vANb77KsEiCTcd6yl7WqX3T1zy4H3a1in5Zd1lG/2NsXcFZMk2dacwnbKjMt1u5J5lyBQMFtENnVsnv8hSQ1hpm1Kd1d36lt4aP1Aq7fKHvhBPnqFkWHRPjMN0cuzMXL40AyFKzbHOr2ovhc/DFyd6O+VmPfuTUzT5BPfjk+trbwZ3DaOGeUeBaRbqalpB6z25rwv/27SigfJA8FYUUgW9cDQB+0hepUCWU0kk/cBqRNoDAZl4jnhx46As4WFSYTz0U5SKBUz3CfmJOqDtwUVGHNziwPl+PrUyWBLv/9iiIZXQBy5aWCJcisLjjlq5RNT/V/YnAyrf1wQU+5EJNtcQQFjUSk2CgOLeXARlklBElPgYRgCxeg52x3oie/nAoYLTLc9kN0u2Z+SAI+IT9VhaU+wxxKshK6U4ELsGkAE0Hz7qKWqew0KEIwnvXPu/+rPU7W+edB6GGKtdvhi8NfzozaWSQ7pu5T7g4eTUyYXp3tFkkG7GNTeYAWjUZtr+Efw== oci-portafolio'
+    steps:
+      - name: Instalar OCI CLI
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet oci-cli
+
+      - name: ¿Ya existe la VM? (idempotencia)
+        id: guard
+        run: |
+          set -e
+          TOTAL=0
+          for st in RUNNING PROVISIONING STARTING; do
+            n=$(oci compute instance list -c "$COMPARTMENT" --lifecycle-state "$st" \
+                  --display-name "$NAME" --query "length(data)" --raw-output 2>/dev/null || echo 0)
+            TOTAL=$((TOTAL + n))
+          done
+          echo "Instancias '$NAME' activas/aprovisionando: $TOTAL"
+          echo "exist=$TOTAL" >> "$GITHUB_OUTPUT"
+          if [ "$TOTAL" -gt 0 ]; then echo "Ya hay VM — no se lanza otra."; fi
+
+      - name: Intentar captura (2/12, fallback 1/6)
+        if: steps.guard.outputs.exist == '0'
+        run: |
+          launch () {
+            oci compute instance launch \
+              --compartment-id "$COMPARTMENT" \
+              --availability-domain "$AD" \
+              --shape "VM.Standard.A1.Flex" \
+              --shape-config "{\"ocpus\":$1,\"memoryInGBs\":$2}" \
+              --image-id "$IMAGE" \
+              --subnet-id "$SUBNET" \
+              --assign-public-ip true \
+              --display-name "$NAME" \
+              --metadata "{\"ssh_authorized_keys\":\"$SSH_PUBKEY\"}" \
+              --wait-for-state RUNNING \
+              --max-wait-seconds 600
+          }
+          for cycle in 1 2 3; do
+            for sh in "2 12" "1 6"; do
+              set -- $sh
+              echo "== ciclo $cycle: intento ${1}OCPU/${2}GB =="
+              if OUT=$(launch "$1" "$2" 2>&1); then
+                echo "$OUT"
+                echo "✅ CAPTURADA shape ${1}/${2}"
+                exit 0
+              fi
+              if echo "$OUT" | grep -qiE "out of host capacity|out of capacity|TooManyRequests|InternalError.*capacity"; then
+                echo "sin capacidad ${1}/${2}"
+              else
+                echo "$OUT"
+                echo "❌ error distinto a capacidad — abortando corrida"
+                exit 1
+              fi
+            done
+            [ "$cycle" -lt 3 ] && sleep 60 || true
+          done
+          echo "sin capacidad en esta corrida; el cron reintenta en ~5 min"
