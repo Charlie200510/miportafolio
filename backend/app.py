@@ -274,6 +274,60 @@ CORS(app,
 )
 
 
+# ============================================================
+#  SEGURIDAD (hardening)
+# ============================================================
+# 1) ProxyFix: detrás de Caddy la IP real del cliente viene en X-Forwarded-For.
+#    Sin esto request.remote_addr = 127.0.0.1 (Caddy) y el rate limiting metería
+#    a TODOS en un mismo balde. x_for=1 = un proxy (Caddy). Si algún día activas
+#    el proxy NARANJA de Cloudflare, sube a x_for=2.
+try:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+    print("✓ ProxyFix activo (IP real del cliente)")
+except Exception as _e:
+    print(f"warn: ProxyFix no disponible: {_e}")
+
+# 2) Rate limiting (Flask-Limiter). Frena fuerza bruta en login, bombardeo de
+#    magic-links por correo y abuso de costos del asistente IA. Storage en
+#    memoria: suficiente como primera capa (para límites compartidos entre
+#    varios workers, migrar a Redis más adelante).
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    limiter = Limiter(
+        key_func=get_remote_address,
+        app=app,
+        default_limits=[],            # sin límite global (no romper endpoints pesados legítimos)
+        storage_uri="memory://",
+        strategy="fixed-window",
+        headers_enabled=True,
+    )
+    print("✓ Flask-Limiter activo")
+except Exception as _e:
+    limiter = None
+    print(f"warn: Flask-Limiter no disponible: {_e}")
+
+def _rate_limit(reglas):
+    """Aplica el límite solo si limiter existe (no rompe el server si falta)."""
+    def _wrap(fn):
+        return limiter.limit(reglas)(fn) if limiter else fn
+    return _wrap
+
+# 3) Security headers en TODAS las respuestas.
+@app.after_request
+def _security_headers(resp):
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    resp.headers.setdefault("Permissions-Policy",
+                            "geolocation=(), microphone=(), camera=(), payment=()")
+    # HSTS: fuerza HTTPS por 1 año (la app ya sirve solo HTTPS vía Caddy).
+    resp.headers.setdefault("Strict-Transport-Security",
+                            "max-age=31536000; includeSubDomains")
+    return resp
+
+
 # ------------------------------------------------------------
 # Memoria: gc.collect() después de requests pesadas (free tier 512 MB)
 # Las rutas que cargan pandas DataFrames grandes generan basura que no
@@ -1270,6 +1324,7 @@ def api_asistente_estado():
 
 
 @app.route("/api/asistente/chat", methods=["POST"])
+@_rate_limit("20 per minute; 200 per hour")
 def api_asistente_chat():
     """
     Body JSON:
@@ -2348,6 +2403,7 @@ def api_auth_estado():
 
 @app.route("/api/auth/login", methods=["POST"])
 @app.route("/api/auth/magiclink", methods=["POST"])  # alias (lo usa signup.html)
+@_rate_limit("5 per minute; 30 per hour")
 def api_auth_login():
     if _auth is None:
         return jsonify({"error": "auth no disponible"}), 500
@@ -2399,6 +2455,7 @@ def api_auth_logout():
 
 
 @app.route("/api/auth/eliminar-cuenta", methods=["POST", "DELETE"])
+@_rate_limit("5 per minute")
 def api_auth_eliminar_cuenta():
     """Borra la cuenta del usuario autenticado y todos sus datos en el servidor.
     Requisito de App Store (5.1.1v) y Google Play."""
@@ -2427,6 +2484,7 @@ def api_payments_estado():
 
 
 @app.route("/api/payments/suscribir", methods=["POST"])
+@_rate_limit("10 per minute")
 def api_payments_suscribir():
     if _payments is None:
         return jsonify({"error": "pagos no disponibles"}), 500
@@ -2542,4 +2600,6 @@ if __name__ == "__main__":
     print(f"  Abre:     http://127.0.0.1:5001")
     print("=" * 60)
     # macOS usa el puerto 5000 para AirPlay Receiver, por eso usamos 5001.
-    app.run(host="127.0.0.1", port=5001, debug=True)
+    # debug solo si FLASK_DEBUG=1 (en producción gunicorn ni siquiera llama a app.run)
+    app.run(host="127.0.0.1", port=5001,
+            debug=os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes"))
