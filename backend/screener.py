@@ -69,6 +69,59 @@ def _es_etf(ticker: str, info: Dict) -> bool:
     return any(kw in nombre for kw in ("etf", "trust", "ishares", "vanguard", "spdr", "fund"))
 
 
+def _filtrar_desde_rows(rows: List[Dict[str, Any]], criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Filtra sobre el ranking COMPLETO precalculado en Neon (cubre ~todo el
+    universo de acciones). Cada row trae ticker/nombre/sector/score/beta/pe/
+    dividend_yield/market_cap/es_mx/precio."""
+    limit = int(criterios.get("limit", 100))
+    out = []
+    for r in rows:
+        ticker = r.get("ticker")
+        if not ticker:
+            continue
+        mercado = _detectar_mercado(ticker, {})
+        if criterios.get("mercado") and mercado != criterios["mercado"]:
+            continue
+        sector = r.get("sector") or ""
+        if criterios.get("sector") and criterios["sector"].lower() not in sector.lower():
+            continue
+        score = r.get("score")
+        if criterios.get("score_min") is not None and (score is None or score < criterios["score_min"]):
+            continue
+        pe   = r.get("pe")
+        yld  = r.get("dividend_yield")
+        beta = r.get("beta")
+        mc   = r.get("market_cap")
+        # Los demás filtros solo excluyen cuando el dato existe y queda fuera de rango.
+        if criterios.get("pe_min") is not None and pe is not None and pe < criterios["pe_min"]: continue
+        if criterios.get("pe_max") is not None and pe is not None and pe > criterios["pe_max"]: continue
+        if criterios.get("yield_min") is not None and yld is not None and yld < criterios["yield_min"]: continue
+        if criterios.get("yield_max") is not None and yld is not None and yld > criterios["yield_max"]: continue
+        if criterios.get("beta_min") is not None and beta is not None and beta < criterios["beta_min"]: continue
+        if criterios.get("beta_max") is not None and beta is not None and beta > criterios["beta_max"]: continue
+        if criterios.get("market_cap_min") is not None and mc is not None and mc < criterios["market_cap_min"]: continue
+        if criterios.get("market_cap_max") is not None and mc is not None and mc > criterios["market_cap_max"]: continue
+        out.append({
+            "ticker":      ticker,
+            "nombre":      r.get("nombre"),
+            "sector":      r.get("sector"),
+            "mercado":     mercado,
+            "pe":          pe,
+            "yield":       yld,
+            "beta":        round(beta, 2) if isinstance(beta, (int, float)) else beta,
+            "score":       score,
+            "market_cap":  mc,
+            "retorno_1y":  None,
+            "precio":      r.get("precio"),
+            "moneda":      "MXN" if mercado == "MX" else "USD",
+            "es_etf":      False,
+            "recomendada": False,
+        })
+    out.sort(key=lambda x: (x.get("score") if x.get("score") is not None else -1,
+                            x.get("market_cap") or 0), reverse=True)
+    return out[:limit]
+
+
 def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Devuelve lista de tickers que cumplen todos los criterios.
@@ -85,6 +138,18 @@ def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
       solo_recomendadas: bool
       limit: int (max resultados, default 100)
     """
+    # Universo COMPLETO: si hay ranking precalculado en Neon, úsalo (cubre ~todas
+    # las acciones sin cargar el CSV gigante en prod). ETFs/cripto siguen por el
+    # universo local lite (abajo), porque el ranking solo incluye acciones.
+    if criterios.get("tipo") not in ("etfs", "crypto"):
+        try:
+            import accion_del_dia as _ad
+            full_rows = _ad.ranking_full_neon()
+        except Exception:
+            full_rows = []
+        if full_rows:
+            return _filtrar_desde_rows(full_rows, criterios)
+
     info_all = _cargar_info()
     if not info_all:
         return []

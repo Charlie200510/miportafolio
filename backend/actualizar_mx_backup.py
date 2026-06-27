@@ -143,6 +143,15 @@ def main() -> int:
     except Exception as e:
         print(f"  warn descubrir_emergentes: {e}")
 
+    # Ranking del universo COMPLETO → Neon, para que el screener cubra todo el
+    # universo en prod sin cargar el CSV gigante (solo lee la lista de Neon).
+    try:
+        import accion_del_dia as _ad
+        print("\nGenerando ranking del universo completo → Neon…")
+        _ad.generar_ranking_full()
+    except Exception as e:
+        print(f"  warn generar_ranking_full: {e}")
+
     return 0
 
 

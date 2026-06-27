@@ -507,3 +507,54 @@ def ranking(n: int = 60, solo_recomendadas: bool = True) -> List[Dict[str, Any]]
     out.sort(key=lambda x: x["score"], reverse=True)
     _RANKING_CACHE[ck] = {"fecha": hoy, "data": out}
     return out[:n]
+
+
+# ─────────────────────────────────────────────────────────
+# Ranking del UNIVERSO COMPLETO → Neon (para que el screener cubra todo
+# sin cargar el CSV gigante en prod). Se computa donde ESTÉ el CSV completo
+# (la Mac en el prewarm, o GitHub que sí puede bajar precios) y se guarda en
+# Neon; producción solo LEE la lista (rápido, poca memoria).
+# ─────────────────────────────────────────────────────────
+_CLAVE_RANKING_FULL = "__RANKING_FULL__"
+_RANKING_FULL_NEON_CACHE: Dict[str, Any] = {}
+
+
+def generar_ranking_full(n: int = 9000, verbose: bool = True) -> List[Dict[str, Any]]:
+    """Calcula el ranking del universo CARGADO (full si el CSV completo está
+    presente; lite si no) y lo guarda en Neon bajo __RANKING_FULL__."""
+    rows = ranking(n=n, solo_recomendadas=False)
+    try:
+        import data_fallback as _fb
+        _fb.guardar_cache(_CLAVE_RANKING_FULL, {
+            "ok": True,
+            "rows": rows,
+            "generado": _fecha_cdmx(),
+            "total": len(rows),
+        })
+        if verbose:
+            print(f"Ranking completo guardado en Neon: {len(rows)} tickers.")
+    except Exception as e:
+        if verbose:
+            print(f"  warn guardando ranking full: {e}")
+    return rows
+
+
+def ranking_full_neon() -> List[Dict[str, Any]]:
+    """Lee el ranking precalculado del universo completo desde Neon (cache en
+    memoria por día CDMX). Lo usa el screener para cubrir TODO sin recomputar.
+    Devuelve [] si no hay (entonces el screener cae al universo local lite)."""
+    hoy = _fecha_cdmx()
+    c = _RANKING_FULL_NEON_CACHE.get("data")
+    if c and c.get("fecha") == hoy and c.get("rows"):
+        return c["rows"]
+    rows: List[Dict[str, Any]] = []
+    try:
+        import data_fallback as _fb
+        d = _fb.leer_cache(_CLAVE_RANKING_FULL)
+        if d and isinstance(d.get("rows"), list):
+            rows = d["rows"]
+    except Exception:
+        pass
+    if rows:
+        _RANKING_FULL_NEON_CACHE["data"] = {"fecha": hoy, "rows": rows}
+    return rows
