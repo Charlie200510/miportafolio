@@ -1,0 +1,49 @@
+name: alertas
+# Dispara las alertas por email del portafolio pegándole a los endpoints
+# /api/cron/* del servidor (Oracle) con el CRON_SECRET. No depende de la Mac ni
+# de Claude — corre solo en GitHub. El servidor SOLO manda email si se cumple la
+# condición y la alerta está activada por el usuario (silencioso por diseño);
+# si no hay snapshot o la alerta está apagada, responde "skipped" sin molestar.
+#
+# Requisito: secret CRON_SECRET en repo → Settings → Secrets and variables →
+# Actions (el MISMO valor que CRON_SECRET en deploy/.env de la VM).
+
+on:
+  schedule:
+    - cron: '0 15 * * 1-5'   # drift   — Lun-Vie 9:00 CDMX (15:00 UTC)
+    - cron: '0 23 * * 1-5'   # precio  — Lun-Vie 17:00 CDMX (23:00 UTC)
+    - cron: '0 14 * * 1'     # semanal — Lunes 8:00 CDMX (14:00 UTC)
+  workflow_dispatch:
+    inputs:
+      tipo:
+        description: "Alerta a disparar a mano (drift/precio/semanal/periodico)"
+        required: true
+        default: drift
+
+jobs:
+  alerta:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determinar tipo según el horario
+        id: t
+        run: |
+          case "${{ github.event.schedule }}" in
+            "0 15 * * 1-5") TIPO=drift ;;
+            "0 23 * * 1-5") TIPO=precio ;;
+            "0 14 * * 1")   TIPO=semanal ;;
+            *)              TIPO="${{ github.event.inputs.tipo }}" ;;
+          esac
+          echo "tipo=$TIPO" >> "$GITHUB_OUTPUT"
+
+      - name: Disparar alerta
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          TIPO="${{ steps.t.outputs.tipo }}"
+          if [ -z "$CRON_SECRET" ]; then echo "::error::Falta secret CRON_SECRET"; exit 1; fi
+          echo "Disparando alerta: $TIPO"
+          code=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "https://miportafolio.uk/api/cron/$TIPO")
+          echo "HTTP $code"; cat /tmp/resp.json 2>/dev/null || true; echo ""
+          [ "$code" = "200" ] || { echo "::error::cron $TIPO devolvió $code"; exit 1; }
