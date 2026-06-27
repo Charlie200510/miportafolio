@@ -224,6 +224,123 @@ def obtener_cetes() -> Dict[str, Any]:
     }
 
 
+# ---- Curvas de rendimiento (US vía FRED + MX vía CETES) ---------------------
+
+def _fred_key() -> Optional[str]:
+    return os.environ.get("FRED_API_KEY")
+
+
+# Tesoro de EE.UU. — Constant Maturity (FRED). (plazo, años, series_id)
+FRED_CURVA_US = [
+    ("1M",  1/12,  "DGS1MO"),
+    ("3M",  0.25,  "DGS3MO"),
+    ("6M",  0.5,   "DGS6MO"),
+    ("1A",  1.0,   "DGS1"),
+    ("2A",  2.0,   "DGS2"),
+    ("3A",  3.0,   "DGS3"),
+    ("5A",  5.0,   "DGS5"),
+    ("7A",  7.0,   "DGS7"),
+    ("10A", 10.0,  "DGS10"),
+    ("20A", 20.0,  "DGS20"),
+    ("30A", 30.0,  "DGS30"),
+]
+
+# CETES (Banxico) — el corto plazo de la curva MX. (plazo, años, key de obtener_cetes)
+CETES_CURVA_MX = [
+    ("28d",  28/365,  "28"),
+    ("91d",  91/365,  "91"),
+    ("182d", 182/365, "182"),
+    ("364d", 364/365, "364"),
+]
+
+# Cache en memoria (las curvas cambian 1 vez al día como mucho).
+_CURVA_CACHE: Dict[str, Any] = {}
+_CURVA_TTL = 12 * 60 * 60   # 12 horas
+
+
+def _fred_ultimo_valor(series_id: str, key: str) -> Optional[Dict[str, Any]]:
+    """Último valor válido de una serie FRED (salta los '.' de días sin dato)."""
+    try:
+        url = ("https://api.stlouisfed.org/fred/series/observations"
+               f"?series_id={series_id}&api_key={key}&file_type=json"
+               "&sort_order=desc&limit=8")
+        r = requests.get(url, timeout=12)
+        if r.status_code != 200:
+            return None
+        for obs in r.json().get("observations", []):
+            v = obs.get("value")
+            if v not in (None, "", "."):
+                try:
+                    return {"tasa": float(v), "fecha": obs.get("date")}
+                except (TypeError, ValueError):
+                    continue
+    except Exception:
+        return None
+    return None
+
+
+def obtener_curva_us() -> Dict[str, Any]:
+    """Curva del Tesoro de EE.UU. (1M→30A) desde FRED. Requiere FRED_API_KEY."""
+    key = _fred_key()
+    if not key:
+        return {"ok": False, "puntos": [], "fuente": "fred",
+                "nota": "Falta FRED_API_KEY para la curva del Tesoro de EE.UU."}
+
+    puntos: List[Dict[str, Any]] = []
+    fecha = None
+    # En paralelo: 11 series, rápido.
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        futs = {ex.submit(_fred_ultimo_valor, sid, key): (plazo, anios)
+                for (plazo, anios, sid) in FRED_CURVA_US}
+        res = {}
+        for fut in as_completed(futs):
+            plazo, anios = futs[fut]
+            d = fut.result()
+            if d:
+                res[plazo] = (anios, d)
+    for (plazo, anios, _sid) in FRED_CURVA_US:
+        if plazo in res:
+            anios_v, d = res[plazo]
+            puntos.append({"plazo": plazo, "anios": round(anios_v, 3), "tasa": round(d["tasa"], 2)})
+            fecha = fecha or d["fecha"]
+    if not puntos:
+        return {"ok": False, "puntos": [], "fuente": "fred",
+                "nota": "FRED no devolvió datos (¿key inválida?)."}
+    return {"ok": True, "puntos": puntos, "fecha": fecha, "fuente": "FRED · US Treasury"}
+
+
+def obtener_curva_mx() -> Dict[str, Any]:
+    """Curva CETES (corto plazo MX) reusando obtener_cetes() (Banxico SIE)."""
+    cetes = obtener_cetes()
+    tasas = cetes.get("tasas", {})
+    puntos: List[Dict[str, Any]] = []
+    fecha = None
+    for (plazo, anios, key) in CETES_CURVA_MX:
+        t = tasas.get(key)
+        if t and isinstance(t.get("tasa_pct"), (int, float)):
+            puntos.append({"plazo": plazo, "anios": round(anios, 3),
+                           "tasa": round(float(t["tasa_pct"]), 2)})
+            fecha = fecha or t.get("fecha")
+    fuente = "Banxico SIE · CETES" if cetes.get("fuente") == "banxico_sie" else "CETES (respaldo)"
+    return {"ok": bool(puntos), "puntos": puntos, "fecha": fecha, "fuente": fuente}
+
+
+def obtener_curvas() -> Dict[str, Any]:
+    """Curvas US (Tesoro/FRED) + MX (CETES/Banxico) con cache de 12h."""
+    import time
+    c = _CURVA_CACHE.get("data")
+    if c and (time.time() - c["ts"]) < _CURVA_TTL:
+        return c["payload"]
+    payload = {
+        "ok": True,
+        "us": obtener_curva_us(),
+        "mx": obtener_curva_mx(),
+        "actualizado": datetime.now().isoformat(timespec="seconds"),
+    }
+    _CURVA_CACHE["data"] = {"ts": time.time(), "payload": payload}
+    return payload
+
+
 # ---- API agregada -----------------------------------------------------------
 
 def obtener_panel_renta_fija() -> Dict[str, Any]:

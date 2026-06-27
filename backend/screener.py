@@ -129,10 +129,18 @@ def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
                 continue
 
         m = metr.get(ticker, {})
-        pe   = info.get("pe_trailing") or info.get("pe")
-        yld  = info.get("dividend_yield") or info.get("yield")
+        # Preferir el ranking (fundamentales con merge universo + caché Neon);
+        # caer al JSON del universo con las claves correctas (camelCase de yfinance).
+        pe = m.get("pe")
+        if pe is None:
+            pe = info.get("trailingPE") or info.get("pe_trailing") or info.get("pe")
+        yld = m.get("dividend_yield")
+        if yld is None:
+            yld = info.get("dividendYield") or info.get("dividend_yield") or info.get("yield")
         beta = info.get("beta") if info.get("beta") is not None else m.get("beta")
-        mc   = info.get("market_cap") or info.get("marketCap")
+        mc = m.get("market_cap")
+        if mc is None:
+            mc = info.get("marketCap") or info.get("market_cap")
         r1y  = info.get("retorno_1y") or info.get("performance_1y")
         score = m.get("score")
 

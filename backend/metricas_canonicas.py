@@ -246,7 +246,6 @@ def score_compuesto(
         (score 0-100, lista de razones)
     """
     f = fundamentales or {}
-    score = 0
     razones: List[str] = []
 
     alpha = metricas.get("alpha_anualizado", 0) or 0
@@ -254,34 +253,38 @@ def score_compuesto(
     sharpe = metricas.get("sharpe", 0) or 0
     mom = metricas.get("momentum_3m", 0) or 0
 
+    # ════════ BLOQUE TÉCNICO (de mercado) — máx +64 ════════
+    # Solo depende de la serie de precios; SIEMPRE disponible.
+    tec = 0
+
     # === SML / Alpha (hasta 30 pts) ===
     if alpha > 0.05:
-        score += 30
+        tec += 30
         razones.append(f"Alpha SML alto ({alpha*100:+.1f}% vs CAPM)")
     elif alpha > 0.02:
-        score += 20
+        tec += 20
         razones.append(f"Alpha SML positivo ({alpha*100:+.1f}%)")
     elif alpha > 0:
-        score += 8
+        tec += 8
         razones.append(f"Alpha ligeramente positivo ({alpha*100:+.1f}%)")
     elif alpha > -0.02:
-        score += 3
+        tec += 3
     else:
-        score -= 7
+        tec -= 7
 
     # === Sharpe (hasta 10 pts) ===
     if sharpe > 1.0:
-        score += 10
+        tec += 10
         razones.append(f"Sharpe excelente ({sharpe:.2f})")
     elif sharpe > 0.5:
-        score += 6
+        tec += 6
         razones.append(f"Sharpe sólido ({sharpe:.2f})")
     elif sharpe > 0:
-        score += 2
+        tec += 2
 
     # === Beta razonable (5 pts) ===
     if 0.7 <= abs(beta) <= 1.3:
-        score += 5
+        tec += 5
 
     # === Riesgo total / volatilidad (integra el análisis de riesgo) ===
     # Premia calidad de baja volatilidad y castiga nombres híper-especulativos,
@@ -289,26 +292,49 @@ def score_compuesto(
     vol = metricas.get("volatilidad_anual")
     if vol is not None:
         if vol < 0.25:
-            score += 4
+            tec += 4
             razones.append(f"Volatilidad contenida ({vol*100:.0f}%)")
         elif vol > 0.70:
-            score -= 6
+            tec -= 6
             razones.append(f"Volatilidad muy alta ({vol*100:.0f}%) — especulativa")
         elif vol > 0.50:
-            score -= 4
+            tec -= 4
 
     # === Confiabilidad del cálculo (más datos = alpha más creíble) ===
     nobs = metricas.get("n_observaciones_beta") or 0
     if nobs and nobs < 36 and alpha > 0.05:
         # Con menos de 3 años de historia, no sobre-premiar el alpha alto.
-        score -= 6
+        tec -= 6
 
-    # === Fundamentales ===
+    # === Momentum (hasta 10 pts) ===
+    if 0.03 <= mom <= 0.20:
+        tec += 10
+        razones.append(f"Momentum 3m sano (+{mom*100:.1f}%)")
+    elif mom > 0.20:
+        tec += 4
+        razones.append(f"Momentum 3m fuerte (+{mom*100:.1f}%)")
+    elif mom < -0.15:
+        tec -= 6
+
+    # === Liquidez (5 pts) ===
+    if liquidez_valor_diaria and liquidez_valor_diaria >= 50_000_000:
+        tec += 5
+    elif liquidez_valor_diaria and liquidez_valor_diaria < 1_000_000:
+        tec -= 5
+
+    TEC_MAX = 64   # suma de los máximos positivos del bloque técnico
+
+    # ════════ BLOQUE FUNDAMENTAL — máx +56 ════════
+    # Depende de P/E, ROE, etc. que Yahoo a veces NO da (sobre todo desde el
+    # server). Marcamos si hubo AL MENOS un fundamental para no castigar de más.
+    fund = 0
     pe  = f.get("pe")
     roe = f.get("roe")
     margen = f.get("margen_neto")
     de  = f.get("debt_equity")
     dy  = f.get("dividend_yield")
+
+    fund_disponible = any(v is not None for v in (pe, roe, margen, de, dy))
 
     # Normalización defensiva
     if roe is not None and roe > 1:    roe /= 100
@@ -318,69 +344,67 @@ def score_compuesto(
 
     if pe and 0 < pe < 60:
         if 8 <= pe <= 25:
-            score += 15
+            fund += 15
             razones.append(f"P/E razonable ({pe:.1f})")
         elif pe < 8:
-            score += 8
+            fund += 8
             razones.append(f"P/E bajo ({pe:.1f}) — value")
         elif pe < 35:
-            score += 5
+            fund += 5
 
     if roe is not None:
         if roe > 0.20:
-            score += 15
+            fund += 15
             razones.append(f"ROE excelente ({roe*100:.0f}%)")
         elif roe > 0.12:
-            score += 10
+            fund += 10
             razones.append(f"ROE sólido ({roe*100:.0f}%)")
         elif roe > 0.05:
-            score += 3
+            fund += 3
         elif roe < 0:
-            score -= 7
+            fund -= 7
 
     if margen is not None:
         if margen > 0.20:
-            score += 10
+            fund += 10
             razones.append(f"Margen neto alto ({margen*100:.0f}%)")
         elif margen > 0.10:
-            score += 6
+            fund += 6
         elif margen < 0:
-            score -= 5
+            fund -= 5
 
     if de is not None:
         if de < 0.5:
-            score += 8
+            fund += 8
             razones.append(f"Deuda baja (D/E {de:.2f})")
         elif de < 1.0:
-            score += 4
+            fund += 4
         elif de > 2.0:
-            score -= 5
+            fund -= 5
 
     if dy and dy > 0.02:
-        score += min(8, int(dy * 200))
+        fund += min(8, int(dy * 200))
         razones.append(f"Dividend yield {dy*100:.1f}%")
 
-    # === Momentum ===
-    if 0.03 <= mom <= 0.20:
-        score += 10
-        razones.append(f"Momentum 3m sano (+{mom*100:.1f}%)")
-    elif mom > 0.20:
-        score += 4
-        razones.append(f"Momentum 3m fuerte (+{mom*100:.1f}%)")
-    elif mom < -0.15:
-        score -= 6
+    FUND_MAX = 56   # suma de los máximos positivos del bloque fundamental
 
-    # === Liquidez ===
-    if liquidez_valor_diaria and liquidez_valor_diaria >= 50_000_000:
-        score += 5
-    elif liquidez_valor_diaria and liquidez_valor_diaria < 1_000_000:
-        score -= 5
+    # ════════ COMBINAR ════════
+    if fund_disponible:
+        raw = tec + fund
+    else:
+        # RED DE SEGURIDAD: sin fundamentales (Yahoo no los dio) NO castigamos
+        # topando el score en ~60. Tomamos el desempeño técnico y asumimos un
+        # nivel fundamental NEUTRAL (~40% del máx), en vez de cero. Así una
+        # acción con buen desempeño de mercado puede competir aunque le falten
+        # los ratios — y se marca claramente.
+        raw = tec + 0.40 * FUND_MAX
+        razones.append("Fundamentales no disponibles — score por desempeño de mercado")
 
     # Recalibración: lift suave para que no se vean tan castigadas, PERO
     # conservando la distinción entre buenas y excelentes (nada de aplastar todo
     # en el tope). Techo realista = 95 (no existe el "100 perfecto").
     #   final = raw*0.92 + 8   → ej: raw 28→34, 46→50, 65→68, 81→82, 95+→95
-    raw = max(0, min(120, score))
+    raw = max(0, min(120, raw))
     score_final = int(round(raw * 0.92 + 8))
     score_final = max(0, min(95, score_final))
     return score_final, razones

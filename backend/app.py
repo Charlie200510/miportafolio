@@ -192,6 +192,13 @@ except Exception as _e:
     _renta_fija = None
     _renta_fija_error = str(_e)
 
+# Consenso de analistas + earnings (Finnhub).
+try:
+    import estimados as _estimados
+except Exception as _e:
+    _estimados = None
+    _estimados_error = str(_e)
+
 # Alertas por email (drift, movimientos, reporte semanal).
 try:
     import alertas as _alertas
@@ -683,6 +690,21 @@ def pwa_service_worker():
 @app.route("/manifest.webmanifest")
 def pwa_manifest():
     return send_from_directory(str(FRONTEND_DIR), "manifest.webmanifest")
+
+
+# ── Favicon en la raíz (navegadores y Google piden /favicon.ico) ──
+@app.route("/favicon.ico")
+def favicon_ico():
+    return send_from_directory(str(FRONTEND_DIR), "favicon.ico",
+                               mimetype="image/x-icon")
+
+
+@app.route("/apple-touch-icon.png")
+@app.route("/apple-touch-icon-precomposed.png")
+def apple_touch_icon():
+    # iOS pide estos en la raíz si no encuentra el <link>
+    return send_from_directory(str(FRONTEND_DIR), "apple-touch-icon.png",
+                               mimetype="image/png")
 
 
 # ── SEO: robots.txt y sitemap.xml en raíz ────────────────────────
@@ -2224,6 +2246,28 @@ def api_renta_fija_mx():
         return jsonify(_renta_fija.obtener_panel_renta_fija())
     except Exception as e:
         return jsonify({"error": f"fallo inesperado: {e}"}), 500
+
+
+@app.route("/api/curvas", methods=["GET"])
+def api_curvas():
+    """Curvas de rendimiento: Tesoro US (FRED) + CETES MX (Banxico)."""
+    if _renta_fija is None:
+        return jsonify({"error": "renta_fija no cargado", "detalle": _renta_fija_error}), 500
+    try:
+        return jsonify(_renta_fija.obtener_curvas())
+    except Exception as e:
+        return jsonify({"error": f"fallo inesperado: {e}"}), 500
+
+
+@app.route("/api/estimados/<ticker>", methods=["GET"])
+def api_estimados(ticker):
+    """Consenso de analistas + objetivo de precio + próximos earnings (Finnhub)."""
+    if _estimados is None:
+        return jsonify({"ok": False, "error": "estimados no cargado"}), 500
+    try:
+        return jsonify(_estimados.estimados_para(ticker))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"fallo inesperado: {e}"}), 500
 
 
 # ------------------------------------------------------------

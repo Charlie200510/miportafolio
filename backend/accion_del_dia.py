@@ -74,6 +74,32 @@ def _cargar_info() -> Dict[str, Any]:
     return {}
 
 
+# Cache del mapa de fundamentales de Neon (1 sola query, refrescado por día CDMX).
+# Lo llena el prewarm (actualizar_mx_backup.py). Es la fuente que hace que el
+# score de las US/MX funcione aunque Yahoo bloquee los fundamentales desde el
+# server (el JSON del universo casi no los trae).
+_FUND_NEON_CACHE: Dict[str, Any] = {}
+
+
+def _fund_neon_map() -> Dict[str, Dict[str, Any]]:
+    """{TICKER: fundamentales} desde el caché de Neon. Cache por día CDMX para no
+    consultar la BD en cada cálculo (después de la 1ª vez es un lookup en dict)."""
+    hoy = _fecha_cdmx()
+    c = _FUND_NEON_CACHE.get("map")
+    if c and c.get("fecha") == hoy:
+        return c["data"]
+    out: Dict[str, Dict[str, Any]] = {}
+    try:
+        import data_fallback as _fb
+        for tk, fund in (_fb.listar_cache_todos() or {}).items():
+            if isinstance(fund, dict) and fund.get("ok"):
+                out[str(tk).upper()] = fund
+    except Exception:
+        pass
+    _FUND_NEON_CACHE["map"] = {"fecha": hoy, "data": out}
+    return out
+
+
 def _es_candidato(ticker: str, info: Dict[str, Any]) -> bool:
     """Filtra ETFs, fondos, crypto, índices."""
     t = ticker.upper()
@@ -93,14 +119,35 @@ def _es_candidato(ticker: str, info: Dict[str, Any]) -> bool:
     return True
 
 
-def _fundamentales_de_info(info: Dict[str, Any]) -> Dict[str, Any]:
-    """Extrae fundamentales en formato esperado por MC.score_compuesto."""
+def _fundamentales_de_info(
+    info: Dict[str, Any],
+    fund_neon: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Extrae fundamentales en formato esperado por MC.score_compuesto.
+
+    Prefiere el JSON del universo y, si falta algún dato, cae al caché de Neon
+    (lo llena el prewarm; cubre US y MX que el universo no trae por el bloqueo
+    de Yahoo desde el server)."""
+    pe  = info.get("pe") or info.get("trailingPE") or info.get("forwardPE")
+    roe = info.get("roe") if info.get("roe") is not None else info.get("returnOnEquity")
+    margen = info.get("margen_neto") if info.get("margen_neto") is not None else info.get("profitMargins")
+    de  = info.get("debt_equity") if info.get("debt_equity") is not None else info.get("debtToEquity")
+    dy  = info.get("dividend_yield") if info.get("dividend_yield") is not None else info.get("dividendYield")
+
+    fn = fund_neon or {}
+    if fn:
+        if pe is None:     pe = fn.get("pe_trailing") or fn.get("pe_forward")
+        if roe is None:    roe = fn.get("roe")
+        if margen is None: margen = (fn.get("margenes") or {}).get("neto")
+        if de is None:     de = fn.get("debt_to_equity")
+        if dy is None:     dy = fn.get("dividend_yield")
+
     return {
-        "pe":             info.get("pe") or info.get("trailingPE") or info.get("forwardPE"),
-        "roe":            info.get("roe") or info.get("returnOnEquity"),
-        "margen_neto":    info.get("margen_neto") or info.get("profitMargins"),
-        "debt_equity":    info.get("debt_equity") or info.get("debtToEquity"),
-        "dividend_yield": info.get("dividend_yield") or info.get("dividendYield"),
+        "pe":             pe,
+        "roe":            roe,
+        "margen_neto":    margen,
+        "debt_equity":    de,
+        "dividend_yield": dy,
     }
 
 
@@ -185,9 +232,18 @@ def calcular_metricas_y_score(
         return None
 
     info = info_all.get(ticker, {})
-    fund = _fundamentales_de_info(info)
+    fund_neon = _fund_neon_map().get(ticker.upper())
+    fund = _fundamentales_de_info(info, fund_neon)
     precio_actual = float(serie.dropna().iloc[-1]) if len(serie.dropna()) else None
     liquidez = _liquidez_diaria(info, precio_actual)
+    market_cap = info.get("market_cap") or info.get("marketCap")
+    if market_cap is None and fund_neon:
+        market_cap = fund_neon.get("market_cap")
+    if not liquidez and market_cap:
+        try:
+            liquidez = float(market_cap)
+        except (TypeError, ValueError):
+            pass
 
     score, razones = MC.score_compuesto(metricas, fund, liquidez)
 
@@ -208,6 +264,7 @@ def calcular_metricas_y_score(
         "moneda":     metricas["moneda"],
         "es_mx":      es_mx,
         "precio":     round(precio_actual, 2) if precio_actual else None,
+        "market_cap": market_cap,
 
         # Métricas canónicas (mismas en TODAS las vistas)
         "beta":                  metricas["beta"],
@@ -442,6 +499,10 @@ def ranking(n: int = 60, solo_recomendadas: bool = True) -> List[Dict[str, Any]]
             "score":   score, "beta": det.get("beta"), "sharpe": det.get("sharpe"),
             "alpha_anualizado": det.get("alpha_anualizado"), "precio": det.get("precio"),
             "es_mx":   det.get("es_mx"),
+            # Fundamentales (merge universo + caché Neon) para el screener:
+            "pe":             det.get("pe"),
+            "dividend_yield": det.get("dividend_yield"),
+            "market_cap":     det.get("market_cap"),
         })
     out.sort(key=lambda x: x["score"], reverse=True)
     _RANKING_CACHE[ck] = {"fecha": hoy, "data": out}

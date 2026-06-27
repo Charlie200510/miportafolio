@@ -31,6 +31,21 @@ _SECTORES_CRECIMIENTO = ("tech", "tecnolog", "energy", "energ", "semiconduct",
 
 _CLAVE_POOL = "__POOL_EMERGENTES__"
 
+_UNIV_LITE_CSV = BACKEND / "universo_lite_precios.csv"
+
+
+def _tickers_desplegables() -> set[str]:
+    """Tickers que de verdad están en el universo LITE (lo único que corre en
+    prod). Acción del Día solo puede elegir candidatos que estén en este CSV de
+    precios, así que el pool debe limitarse a ellos o no servirá de nada."""
+    try:
+        import csv
+        with open(_UNIV_LITE_CSV, newline="") as f:
+            cols = next(csv.reader(f))
+        return {c.strip().upper() for c in cols if c.strip()}
+    except Exception:
+        return set()
+
 
 def _mc_usd(fund: dict) -> float:
     mc = fund.get("market_cap")
@@ -85,6 +100,10 @@ def generar_pool(n: int = 40, verbose: bool = True) -> list[str]:
             print("Caché de fundamentales vacío. Corre primero el prewarm. Nada que hacer.")
         return []
 
+    # Solo tickers que están en el universo lite (los únicos que Acción del Día
+    # puede elegir en prod). Si por alguna razón no se puede leer, no filtramos.
+    desplegables = _tickers_desplegables()
+
     candidatos = []
     for tk, fund in cache.items():
         if not isinstance(fund, dict) or not fund.get("ok"):
@@ -93,6 +112,8 @@ def generar_pool(n: int = 40, verbose: bool = True) -> list[str]:
             continue
         t = tk.upper()
         if "-USD" in t or "-USDT" in t:        # cripto fuera
+            continue
+        if desplegables and t not in desplegables:   # fuera del universo lite → inservible en prod
             continue
         pot = _potencial(fund)
         if pot > 0:

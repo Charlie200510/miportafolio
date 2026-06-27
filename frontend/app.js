@@ -5573,6 +5573,63 @@ const Alertas = (() => {
 // ===========================================================================
 const RentaFija = (() => {
   const state = { data: null, cargando: false, cargado: false };
+  let _curvaChart = null;
+
+  async function renderCurvas() {
+    const cv = $('rf-curva-canvas');
+    if (!cv || typeof Chart === 'undefined') return;
+    const fuenteEl = $('rf-curva-fuente');
+    const notaEl = $('rf-curva-nota');
+    let d;
+    try {
+      const res = await fetch('/api/curvas');
+      d = await res.json();
+    } catch (e) { return; }
+    if (!d) return;
+    const us = (d.us && d.us.ok) ? d.us.puntos : [];
+    const mx = (d.mx && d.mx.ok) ? d.mx.puntos : [];
+    const ds = [];
+    if (mx.length) ds.push({
+      label: 'CETES (MX)',
+      data: mx.map(p => ({ x: p.anios, y: p.tasa, plazo: p.plazo })),
+      borderColor: '#2dd4bf', backgroundColor: '#2dd4bf', tension: 0.3, pointRadius: 4,
+    });
+    if (us.length) ds.push({
+      label: 'Tesoro (US)',
+      data: us.map(p => ({ x: p.anios, y: p.tasa, plazo: p.plazo })),
+      borderColor: '#a78bfa', backgroundColor: '#a78bfa', tension: 0.3, pointRadius: 3,
+    });
+    if (_curvaChart) { _curvaChart.destroy(); _curvaChart = null; }
+    if (!ds.length) {
+      if (notaEl) notaEl.textContent = (d.us && d.us.nota) || 'Sin datos de curvas por ahora.';
+      return;
+    }
+    _curvaChart = new Chart(cv.getContext('2d'), {
+      type: 'line',
+      data: { datasets: ds },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'nearest' },
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'Plazo (años)', color: '#71717a' },
+               ticks: { color: '#71717a' }, grid: { color: 'rgba(255,255,255,.05)' } },
+          y: { title: { display: true, text: 'Tasa anual', color: '#71717a' },
+               ticks: { color: '#71717a', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,.05)' } },
+        },
+        plugins: {
+          legend: { labels: { color: '#a1a1aa' } },
+          tooltip: { callbacks: { label: c => `${c.dataset.label} ${c.raw.plazo}: ${c.raw.y}%` } },
+        },
+      },
+    });
+    if (fuenteEl) {
+      const parts = [];
+      if (us.length && d.us.fuente) parts.push(d.us.fuente + (d.us.fecha ? ' ' + d.us.fecha : ''));
+      if (mx.length && d.mx.fuente) parts.push(d.mx.fuente + (d.mx.fecha ? ' ' + d.mx.fecha : ''));
+      fuenteEl.textContent = parts.join(' · ');
+    }
+    if (notaEl) notaEl.textContent = (!us.length && d.us && d.us.nota) ? d.us.nota : '';
+  }
 
   function fmtPctLocal(x, d = 2) {
     if (x === null || x === undefined) return '—';
@@ -5704,6 +5761,7 @@ const RentaFija = (() => {
   }
 
   async function cargar(forzar = false) {
+    renderCurvas();   // curvas US/MX (fetch propio + cache server 12h)
     if (state.cargando) return;
     if (state.cargado && !forzar && state.data) {
       renderCetes(state.data.cetes);
@@ -8675,10 +8733,11 @@ const Analizador = (() => {
 
     // ddHTML + srHTML removidos (requieren Claude API)
     const smlHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Valoración SML · CAPM</h4><div id="an-sml-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
+    const estHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Consenso de analistas</h4><div id="an-estimados-host" class="text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-violet-500/40 border-t-violet-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando consenso…</div></div>`;
     const ddHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Análisis profundo · Deep Dive</h4><p class="text-[11px] text-zinc-500 mb-3">Comparativa contra peers + narrativa. Tarda unos segundos (descarga datos en vivo).</p><div id="an-deepdive-host"><button id="an-dd-load" class="text-[12px] font-semibold text-accent-blue border border-accent-blue/40 hover:bg-accent-blue/10 rounded-lg px-4 py-2 transition">Ver análisis profundo →</button></div></div>`;
     cont.innerHTML = headerHTML + fundHTML + chartHTML + peerHTML
                    + `<div id="an-dashboard-host"><div class="bg-surface border border-surface-border rounded-2xl p-5 text-center text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando dashboard financiero…</div></div>`
-                   + smlHTML + ddHostHTML;
+                   + smlHTML + estHostHTML + ddHostHTML;
     cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     _renderPrecioChart(d.ticker, '1A');
@@ -8697,11 +8756,71 @@ const Analizador = (() => {
     });
 
     if (window.renderSmlEn) window.renderSmlEn(d.ticker, 'an-sml-host');
+    cargarEstimados(d.ticker);
     const _ddBtn = $('an-dd-load');
     if (_ddBtn) _ddBtn.addEventListener('click', () => {
       if (window.renderDeepDiveEn) window.renderDeepDiveEn(d.ticker, 'an-deepdive-host');
     });
     cargarDashboardFinanciero(d.ticker);
+  }
+
+  // ============================================================
+  //  CONSENSO DE ANALISTAS + EARNINGS (Finnhub)
+  // ============================================================
+  async function cargarEstimados(ticker) {
+    const host = $('an-estimados-host');
+    if (!host) return;
+    let d;
+    try {
+      const res = await fetch('/api/estimados/' + encodeURIComponent(ticker));
+      d = await res.json();
+    } catch (e) {
+      host.innerHTML = '<p class="text-[11px] text-zinc-600">No se pudo cargar el consenso.</p>';
+      return;
+    }
+    if (!d || !d.disponible) {
+      host.innerHTML = `<p class="text-[11px] text-zinc-600">${escapeHtml((d && d.nota) || 'Sin consenso de analistas para esta acción (Finnhub cubre EE.UU.).')}</p>`;
+      return;
+    }
+    let html = '';
+    const r = d.recomendaciones;
+    if (r) {
+      const color = /Compra/.test(r.veredicto) ? 'text-accent-green'
+                  : (/Venta|Reducir/.test(r.veredicto) ? 'text-accent-red' : 'text-zinc-300');
+      const seg = (n, c) => n > 0 ? `<div class="${c}" style="flex:${n}"></div>` : '';
+      html += `
+        <div class="mb-4">
+          <div class="flex items-baseline justify-between mb-2">
+            <span class="text-lg font-bold ${color}">${escapeHtml(r.veredicto)}</span>
+            <span class="text-[11px] text-zinc-500">${r.total_analistas} analistas · ${escapeHtml(r.periodo || '')}</span>
+          </div>
+          <div class="flex h-2.5 rounded-full overflow-hidden bg-zinc-800 gap-px">
+            ${seg(r.strong_buy, 'bg-green-600')}${seg(r.buy, 'bg-green-400')}${seg(r.hold, 'bg-zinc-500')}${seg(r.sell, 'bg-red-400')}${seg(r.strong_sell, 'bg-red-600')}
+          </div>
+          <div class="flex justify-between text-[10px] text-zinc-600 mt-1">
+            <span>Compra ${r.strong_buy + r.buy}</span>
+            <span>Mantener ${r.hold}</span>
+            <span>Vender ${r.sell + r.strong_sell}</span>
+          </div>
+        </div>`;
+    }
+    const pt = d.price_target;
+    if (pt && pt.objetivo_medio) {
+      const f = x => (x == null ? '—' : '$' + Number(x).toFixed(2));
+      html += `
+        <div class="grid grid-cols-3 gap-2 mb-4">
+          <div class="bg-zinc-900/40 border border-surface-border rounded-lg p-3 text-center"><p class="text-[10px] uppercase text-zinc-500">Obj. bajo</p><p class="text-sm font-semibold text-zinc-300 tabular mt-1">${f(pt.objetivo_bajo)}</p></div>
+          <div class="bg-zinc-900/40 border border-accent-blue/30 rounded-lg p-3 text-center"><p class="text-[10px] uppercase text-zinc-500">Obj. medio</p><p class="text-sm font-bold text-accent-blue tabular mt-1">${f(pt.objetivo_medio)}</p></div>
+          <div class="bg-zinc-900/40 border border-surface-border rounded-lg p-3 text-center"><p class="text-[10px] uppercase text-zinc-500">Obj. alto</p><p class="text-sm font-semibold text-zinc-300 tabular mt-1">${f(pt.objetivo_alto)}</p></div>
+        </div>`;
+    }
+    const e = d.proximos_earnings;
+    if (e && e.fecha) {
+      const hora = e.hora === 'bmo' ? 'antes de abrir' : (e.hora === 'amc' ? 'después del cierre' : '');
+      html += `<div class="text-[12px] text-zinc-400"><span class="text-zinc-500">Próximo reporte:</span> <span class="font-semibold text-zinc-200">${escapeHtml(e.fecha)}</span>${hora ? ` (${hora})` : ''}${e.eps_estimado != null ? ` · EPS est. <span class="tabular">${e.eps_estimado}</span>` : ''}</div>`;
+    }
+    html += `<p class="text-[10px] text-zinc-600 mt-3">Fuente: ${escapeHtml(d.fuente || 'Finnhub')}.</p>`;
+    host.innerHTML = html || '<p class="text-[11px] text-zinc-600">Sin datos.</p>';
   }
 
   // ============================================================

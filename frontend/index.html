@@ -12,8 +12,10 @@
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
   <link rel="canonical" href="https://miportafolio.uk/" />
 
-  <link rel="icon" type="image/png" href="/static/logo.png" />
-  <link rel="apple-touch-icon" href="/static/logo.png" />
+  <link rel="icon" href="/favicon.ico?v=2" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png?v=2">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png?v=2">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest" />
   <meta name="theme-color" content="#0a0a0b" />
@@ -1575,6 +1577,23 @@
           <div class="bg-surface-card border border-surface-border rounded-xl p-5 text-center">
             <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Cargando…</p>
           </div>
+        </div>
+      </section>
+
+      <!-- CURVAS DE RENDIMIENTO (US Treasury + CETES MX) -->
+      <section class="mb-8 fade-up">
+        <div class="flex items-end justify-between mb-3">
+          <div>
+            <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Curvas de rendimiento</h3>
+            <p class="text-[11px] text-zinc-500 mt-0.5">Tasa por plazo. La pendiente revela expectativas de tasas y riesgo de recesión.</p>
+          </div>
+          <p id="rf-curva-fuente" class="text-[10px] text-zinc-600 tabular text-right">—</p>
+        </div>
+        <div class="bg-surface-card border border-surface-border rounded-xl p-4">
+          <div class="relative" style="height: 280px;">
+            <canvas id="rf-curva-canvas"></canvas>
+          </div>
+          <p id="rf-curva-nota" class="text-[10px] text-zinc-600 mt-3"></p>
         </div>
       </section>
 
