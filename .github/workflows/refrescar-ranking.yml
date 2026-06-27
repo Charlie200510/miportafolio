@@ -1,0 +1,45 @@
+name: refrescar-ranking
+# Refresca el ranking del universo COMPLETO en Neon, que es lo que lee el
+# screener para cubrir todas las acciones (no solo el lite).
+#
+# Corre en GitHub: baja SOLO precios (que sí funcionan desde datacenter) y
+# recalcula el ranking usando los fundamentales que ya están en Neon (los llena
+# el prewarm de la Mac). Así el screener-completo se mantiene fresco solo.
+#
+# Requisito: secret DATABASE_URL (connection string de Neon) en
+#   repo → Settings → Secrets and variables → Actions.
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'    # lunes 08:00 UTC (~2am CDMX)
+  workflow_dispatch: {}     # dispáralo a mano para probar
+
+concurrency:
+  group: refrescar-ranking
+  cancel-in-progress: false
+
+jobs:
+  ranking:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -r backend/requirements.txt
+      - name: Verificar secret
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Falta el secret DATABASE_URL (Neon)."
+            exit 1
+          fi
+      - name: Refrescar ranking del universo completo → Neon
+        working-directory: backend
+        run: python3 refrescar_ranking_full.py

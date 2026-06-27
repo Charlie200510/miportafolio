@@ -1,0 +1,57 @@
+name: prewarm-fundamentals
+# Refresca el caché de fundamentales en Neon (lo que alimenta el SCORE de
+# Acción del Día / Screener / Analizar) y regenera el pool de emergentes.
+#
+# Corre desde los servidores de GitHub → no depende de que tu Mac esté prendida.
+#
+# ⚠️ CAVEAT: Yahoo a veces bloquea las IPs de datacenter (incluidas las de
+# GitHub) con "Invalid Crumb". curl_cffi lo mitiga, pero no está garantizado.
+# Es SEGURO igual: el caché solo se sobreescribe con fundamentales BUENOS, así
+# que si Yahoo bloquea, esta corrida simplemente no agrega nada (no corrompe).
+# La vía 100% confiable sigue siendo correrlo desde tu Mac (IP residencial):
+#   cd backend && export DATABASE_URL='<neon>' && python3 actualizar_mx_backup.py --todas --lite
+#
+# Requisito: definir el secret DATABASE_URL (la connection string de Neon) en
+#   GitHub → repo → Settings → Secrets and variables → Actions → New secret.
+
+on:
+  schedule:
+    - cron: '0 9 * * 0'    # domingos 09:00 UTC (~3am CDMX)
+  workflow_dispatch: {}     # permite dispararlo a mano
+
+concurrency:
+  group: prewarm-fundamentals
+  cancel-in-progress: false
+
+jobs:
+  prewarm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -r backend/requirements.txt
+
+      - name: Verificar que hay DATABASE_URL
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Falta el secret DATABASE_URL (connection string de Neon)."
+            exit 1
+          fi
+
+      - name: Prewarm fundamentales (universo lite) + pool de emergentes
+        working-directory: backend
+        run: |
+          python3 actualizar_mx_backup.py --todas --lite --pausa 3

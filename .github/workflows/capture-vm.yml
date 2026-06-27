@@ -5,9 +5,12 @@ name: capture-oci-vm
 # Idempotente: si ya existe una VM 'portafolio-vm', no lanza otra.
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'   # cada 5 min (mínimo permitido por GitHub Actions)
-  workflow_dispatch: {}      # permite dispararlo a mano para probar
+  # DESACTIVADO: la VM ya está capturada y corriendo, así que el cron cada 5 min
+  # solo gastaba minutos de Actions en vano. Dejamos solo el disparo MANUAL por
+  # si algún día la VM se borra y hay que recapturarla (Actions → este workflow → Run).
+  # schedule:
+  #   - cron: '*/5 * * * *'
+  workflow_dispatch: {}      # dispáralo a mano solo si necesitas recapturar la VM
 
 concurrency:
   group: capture-oci-vm
