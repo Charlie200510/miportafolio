@@ -468,12 +468,16 @@ function renderHero(data) {
   }
 
   // KPIs
-  const ra = p.rendimiento_anualizado_pct;
+  // Retorno PROMEDIO ANUAL: usa el CAGR de los últimos 5 años; si no hay tanta
+  // historia, cae al anualizado del periodo completo.
+  const ra = (p.rendimiento_prom_anual_5y_pct != null)
+    ? p.rendimiento_prom_anual_5y_pct
+    : p.rendimiento_anualizado_pct;
   $('kpi-retorno-anual').textContent = fmtPct(ra);
   $('kpi-retorno-anual').className = `text-2xl font-semibold tabular mt-1 ${claseColor(ra)}`;
   $('kpi-retorno-anual-ctx').textContent = ra >= 0
-    ? 'Crece por año, en promedio'
-    : 'Pierde por año, en promedio';
+    ? 'Promedio por año (últimos 5 años)'
+    : 'Pérdida promedio por año (últimos 5 años)';
 
   const vol = p.volatilidad_anual_pct;
   $('kpi-vol').textContent = fmtPct(vol, 1, false);

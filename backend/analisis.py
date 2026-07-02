@@ -298,10 +298,32 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
     max_dd_port = calcular_max_drawdown(valor_portafolio)
     rend_total_port = float((valor_portafolio.iloc[-1] - 1) * 100)
 
+    # --- Retorno últimos 12 meses (holding period real, no anualizado) ---
+    _n = len(valor_portafolio)
+    rend_1y_pct = None
+    if _n >= DIAS_HABILES:
+        rend_1y_pct = float((valor_portafolio.iloc[-1] / valor_portafolio.iloc[-DIAS_HABILES] - 1) * 100)
+    elif _n >= 2:
+        rend_1y_pct = float((valor_portafolio.iloc[-1] / valor_portafolio.iloc[0] - 1) * 100)
+
+    # --- Retorno PROMEDIO ANUAL de los últimos 5 años (CAGR) ---
+    # Crecimiento anual compuesto sobre la ventana de 5 años (o la historia
+    # disponible si es menor). Es el "en promedio, cuánto rindió por año".
+    rend_prom_anual_5y_pct = None
+    _ventana_5y = min(_n, DIAS_HABILES * 5)
+    if _ventana_5y >= DIAS_HABILES:                      # al menos 1 año de datos
+        _v_ini = float(valor_portafolio.iloc[-_ventana_5y])
+        _v_fin = float(valor_portafolio.iloc[-1])
+        _anios = _ventana_5y / DIAS_HABILES
+        if _v_ini > 0 and _anios > 0:
+            rend_prom_anual_5y_pct = float(((_v_fin / _v_ini) ** (1.0 / _anios) - 1) * 100)
+
     portafolio = {
         "pesos": {t: round(w, 4) for t, w in pesos_dict.items()},
         "rendimiento_total_pct": round(rend_total_port, 2),
         "rendimiento_anualizado_pct": round(rend_port_anual, 2),
+        "rendimiento_1y_pct": round(rend_1y_pct, 2) if rend_1y_pct is not None else None,
+        "rendimiento_prom_anual_5y_pct": round(rend_prom_anual_5y_pct, 2) if rend_prom_anual_5y_pct is not None else None,
         "volatilidad_anual_pct": round(vol_port_anual, 2),
         "sharpe_ratio": round(sharpe_port, 3),
         "max_drawdown_pct": round(max_dd_port, 2),
