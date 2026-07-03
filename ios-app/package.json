@@ -4,7 +4,7 @@
   "description": "Mi Portafolio — wrapper iOS + Android via Capacitor",
   "private": true,
   "scripts": {
-    "sync-www": "rm -rf www && cp -R ../frontend www && find www -name '.DS_Store' -delete",
+    "sync-www": "rm -rf www && cp -R ../frontend www && find www -name '.DS_Store' -delete && find www \\( -name '*.html' -o -name '*.js' -o -name '*.webmanifest' \\) -exec sed -i '' 's|/static/|/|g' {} +",
     "cap:add:ios": "npm run sync-www && npx cap add ios",
     "cap:add:android": "npm run sync-www && npx cap add android",
     "cap:sync": "npm run sync-www && npx cap sync",
@@ -17,22 +17,21 @@
     "build:android": "npm run sync-www && npx cap sync android && npx cap open android"
   },
   "dependencies": {
-    "@capacitor/core": "^6.1.0",
-    "@capacitor/ios": "^6.1.0",
     "@capacitor/android": "^6.1.0",
     "@capacitor/app": "^6.0.0",
-    "@capacitor/status-bar": "^6.0.0",
-    "@capacitor/splash-screen": "^6.0.0",
-    "@capacitor/preferences": "^6.0.0",
     "@capacitor/browser": "^6.0.0",
-    "@capacitor/share": "^6.0.0",
-    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/core": "^6.1.0",
     "@capacitor/haptics": "^6.0.0",
-    "@capgo/capacitor-native-biometric": "^6.0.0",
-    "@revenuecat/purchases-capacitor": "^9.0.0",
-    "@capgo/capacitor-social-login": "^6.0.0"
+    "@capacitor/ios": "^6.1.0",
+    "@capacitor/preferences": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/share": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "@revenuecat/purchases-capacitor": "^9.0.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.1.0"
+    "@capacitor/cli": "^6.1.0",
+    "typescript": "^6.0.3"
   }
 }

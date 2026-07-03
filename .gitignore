@@ -53,3 +53,6 @@ backend/.env.production
 # OS
 Thumbs.db
 .DS_Store
+
+# Datos de tooling local (claude-flow)
+.claude-flow/

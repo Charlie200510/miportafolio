@@ -15,7 +15,10 @@
 (function () {
   'use strict';
   try {
-    var nativo = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    // Detección robusta: el objeto Capacitor puede no estar inyectado aún al
+    // parsear este script, pero el scheme capacitor: solo existe en la app iOS.
+    var nativo = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+      || window.location.protocol === 'capacitor:';
     if (!nativo) return;
 
     // URL del backend en producción (ajústala si cambias de hosting/dominio)

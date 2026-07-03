@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Push Notifications. PASO MANUAL PENDIENTE: crear la APNs Auth Key en
+	     developer.apple.com (Keys → +, marcar APNs) y configurarla donde la
+	     espera backend/push.py. Xcode cambia el valor a "production" al
+	     exportar para App Store. Sin la key configurada, el push simplemente
+	     no dispara — la app funciona normal. -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

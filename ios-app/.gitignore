@@ -1,6 +1,10 @@
 # Build artifacts y dependencias
 node_modules/
-www/                          # se genera desde ../frontend con `npm run sync-www`
+# www/ se genera desde ../frontend con `npm run sync-www`
+www/
+# Datos de tooling local (claude-flow)
+.claude-flow/
+ios/App/.claude-flow/
 ios/App/build/
 ios/App/Pods/
 ios/App/Podfile.lock
