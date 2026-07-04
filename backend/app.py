@@ -12,6 +12,7 @@
 # ============================================================
 from pathlib import Path
 import os
+import time
 
 # ---- Cargar .env si existe (sin depender de python-dotenv) ----------
 # Esto deja disponibles ANTHROPIC_API_KEY, SMTP_*, etc. para los módulos
@@ -2430,6 +2431,40 @@ def _sesion_actual() -> Optional[dict]:
     return _auth.obtener_sesion(sid)
 
 
+# --- Gate de prueba (hard paywall) ------------------------------------------
+# premium siempre tiene acceso; trial dentro de TRIAL_DIAS desde creado_en
+# tiene acceso; lo demás = "expirado" (el cliente muestra paywall bloqueante).
+# El estado premium viene de la entitlement de RevenueCat sincronizada
+# server-side (actualizar_plan) o de MercadoPago en web.
+_TRIAL_DIAS = int(os.environ.get("TRIAL_DIAS", "14"))
+
+
+def _estado_plan(usuario: dict) -> dict:
+    premium = (usuario or {}).get("plan") == "premium"
+    try:
+        creado = float((usuario or {}).get("creado_en") or 0)
+    except (TypeError, ValueError):
+        creado = 0
+    # Sin fecha de alta (cuentas legacy): empieza la prueba hoy, no bloquear.
+    if creado <= 0:
+        creado = time.time()
+    transcurridos = (time.time() - creado) / 86400.0
+    restantes = max(0, _TRIAL_DIAS - int(transcurridos))
+    if premium:
+        plan = "premium"
+    elif transcurridos < _TRIAL_DIAS:
+        plan = "trial"
+    else:
+        plan = "expirado"
+    return {
+        "plan": plan,
+        "premium": premium,
+        "dias_restantes": None if premium else restantes,
+        "trial_dias": _TRIAL_DIAS,
+        "acceso": plan != "expirado",
+    }
+
+
 @app.route("/api/auth/estado")
 def api_auth_estado():
     if _auth is None:
@@ -2437,11 +2472,13 @@ def api_auth_estado():
     ses = _sesion_actual()
     if not ses:
         return jsonify({"autenticado": False}), 200
+    gate = _estado_plan(ses.get("usuario", {}))
     return jsonify({
         "autenticado": True,
         "email": ses["email"],
         "usuario": ses.get("usuario", {}),
         "expira_en": ses["expira_en"],
+        **gate,
     })
 
 

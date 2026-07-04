@@ -53,8 +53,12 @@
   }
   async function esPremium() {
     const e = await estadoUsuario();
-    const plan = (e && e.usuario && e.usuario.plan) || '';
-    return plan === 'premium';
+    return _esPremiumEstado(e);
+  }
+  function _esPremiumEstado(e) {
+    if (!e) return false;
+    if (e.premium === true) return true;               // campo del gate (backend)
+    return ((e.usuario && e.usuario.plan) || '') === 'premium';
   }
 
   // -------------------------------------------------- RevenueCat (nativo)
@@ -125,9 +129,14 @@
       body: JSON.stringify({ email })
     });
     const j = await r.json();
-    cerrar();
-    if (j && j.premium) toast('Tu suscripción se restauró correctamente.');
-    else toast('No encontramos una suscripción activa para restaurar.');
+    if (j && j.premium) {
+      cerrar(true);   // también libera el candado
+      toast('Tu suscripción se restauró correctamente.');
+      try { window.dispatchEvent(new Event('mp:premium-actualizado')); } catch (_) {}
+    } else {
+      cerrar();       // en modo bloqueante NO cierra
+      toast('No encontramos una suscripción activa para restaurar.');
+    }
     return j;
   }
 
@@ -150,7 +159,12 @@
   }
 
   let _overlay = null;
-  function cerrar() { if (_overlay) { _overlay.remove(); _overlay = null; } }
+  let _bloqueante = false;   // hard paywall: prueba vencida sin premium
+  function cerrar(force) {
+    if (_bloqueante && force !== true) return;   // no se puede cerrar el candado
+    if (_overlay) { _overlay.remove(); _overlay = null; }
+    _bloqueante = false;
+  }
 
   const BENEFICIOS = [
     'Portafolio óptimo y frontera eficiente',
@@ -160,7 +174,7 @@
     'Reporte mensual en PDF y alertas',
   ];
 
-  function vista(email, premium) {
+  function vista(email, premium, bloqueante) {
     const nativo = esNativo();
     const benef = BENEFICIOS.map(b =>
       `<li style="display:flex;gap:8px;align-items:flex-start;margin:6px 0">
@@ -195,9 +209,13 @@
         Al continuar aceptas los <a href="/terminos" style="color:#71717a">Términos</a> y la
         <a href="/privacidad" style="color:#71717a">Privacidad</a>.</p>`;
 
+    const titulo = bloqueante ? 'Tu prueba de 14 días terminó' : 'Mi Portafolio Premium';
+    const subtitulo = bloqueante
+      ? 'Suscríbete para seguir usando todo el análisis profesional.'
+      : 'Desbloquea todo el análisis profesional.';
     return `
-      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Mi Portafolio Premium</h2>
-      <p style="color:#a1a1aa;margin:0 0 14px;font-size:14px">Desbloquea todo el análisis profesional.</p>
+      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">${titulo}</h2>
+      <p style="color:#a1a1aa;margin:0 0 14px;font-size:14px">${subtitulo}</p>
       ${bloquePrecio}
       <ul style="list-style:none;padding:0;margin:16px 0;font-size:14px;color:#e4e4e7">${benef}</ul>
       <div style="display:flex;flex-direction:column;gap:8px">${cta}</div>
@@ -207,18 +225,23 @@
   const BTN_PRI = 'width:100%;background:#22c55e;color:#052e16;font-weight:700;border:0;border-radius:12px;padding:14px;font-size:15px;cursor:pointer';
   const BTN_SEC = 'width:100%;background:transparent;color:#a1a1aa;font-weight:600;border:1px solid #27272a;border-radius:12px;padding:12px;font-size:14px;cursor:pointer';
 
-  async function abrir() {
-    cerrar();
+  async function abrir(opts) {
+    const bloqueante = !!(opts && opts.bloqueante);
+    if (_overlay && _bloqueante) return;      // el candado ya está en pantalla
+    cerrar(true);
+    _bloqueante = bloqueante;
     const email = await emailActual();
     const premium = await esPremium();
 
+    const btnCerrar = bloqueante ? '' :
+      `<button data-x="close" aria-label="Cerrar" style="position:absolute;top:14px;right:14px;background:transparent;border:0;color:#71717a;font-size:22px;cursor:pointer;line-height:1">×</button>`;
     _overlay = document.createElement('div');
     _overlay.setAttribute('role', 'dialog');
     _overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)';
     _overlay.innerHTML = `
       <div style="position:relative;max-width:420px;width:100%;background:#0f0f11;border:1px solid #27272a;border-radius:20px;padding:24px;color:#fafafa;font-family:system-ui,-apple-system,sans-serif;max-height:90vh;overflow:auto">
-        <button data-x="close" aria-label="Cerrar" style="position:absolute;top:14px;right:14px;background:transparent;border:0;color:#71717a;font-size:22px;cursor:pointer;line-height:1">×</button>
-        <div data-x="body">${vista(email, premium)}</div>
+        ${btnCerrar}
+        <div data-x="body">${vista(email, premium, bloqueante)}</div>
       </div>`;
     document.body.appendChild(_overlay);
 
@@ -283,7 +306,7 @@
             const pkg = _pkgs[idx];
             if (!pkg) throw new Error('Plan no disponible, intenta de nuevo.');
             await comprarNativo(email, pkg);
-            cerrar();
+            cerrar(true);   // compra hecha: libera también el candado
             toast('¡Listo! Ya eres Premium.');
             try { window.dispatchEvent(new Event('mp:premium-actualizado')); } catch (_) {}
           } else {
@@ -314,14 +337,60 @@
     if (el) { ev.preventDefault(); abrir(); }
   });
 
-  // Botón del header: si ya es premium, mostrar "Premium ✓"
-  async function _refrescarBotonHeader() {
+  // ------------------------------------------------ GATE (hard paywall)
+  // premium o trial vigente -> acceso normal. Prueba vencida sin premium ->
+  // overlay bloqueante. Sin sesión (demo / revisores de Apple) -> acceso
+  // completo: el candado solo aplica a cuentas con la prueba vencida.
+
+  let _btnHTMLOriginal = null;
+  function _refrescarBotonHeader(e) {
     const btn = document.getElementById('btn-premium-header');
     if (!btn) return;
-    try { if (await esPremium()) btn.textContent = 'Premium ✓'; } catch (_) {}
+    if (_btnHTMLOriginal === null) _btnHTMLOriginal = btn.innerHTML;
+    if (_esPremiumEstado(e)) {
+      if (!btn.dataset.premium) { btn.dataset.premium = '1'; btn.textContent = 'Premium ✓'; }
+    } else if (btn.dataset.premium) {
+      delete btn.dataset.premium; btn.innerHTML = _btnHTMLOriginal;
+    }
   }
-  document.addEventListener('DOMContentLoaded', _refrescarBotonHeader);
-  window.addEventListener('mp:premium-actualizado', _refrescarBotonHeader);
 
-  window.MPPaywall = { abrir, cerrar, esPremium, restaurar, requierePremium, plataforma, esNativo, customerInfo, entitlementActiva };
+  // Franja delgada bajo la barra superior: "te quedan X días" (solo en trial)
+  function _renderTrialStrip(e) {
+    let strip = document.getElementById('mp-trial-strip');
+    const activo = e && e.autenticado && e.plan === 'trial' && e.dias_restantes != null;
+    if (!activo) { if (strip) strip.remove(); return; }
+    if (!strip) {
+      strip = document.createElement('button');
+      strip.id = 'mp-trial-strip';
+      strip.style.cssText = 'display:block;width:100%;background:rgba(245,158,11,.10);border:0;border-bottom:1px solid rgba(245,158,11,.25);color:#fcd34d;font-size:11px;font-weight:600;padding:5px 12px;text-align:center;cursor:pointer;font-family:inherit';
+      const hdr = document.querySelector('header');
+      if (hdr) hdr.appendChild(strip); else document.body.prepend(strip);
+      strip.addEventListener('click', () => abrir());
+    }
+    const d = e.dias_restantes;
+    strip.textContent = d > 0
+      ? `Prueba gratis: te quedan ${d} ${d === 1 ? 'día' : 'días'} · Hazte Premium →`
+      : 'Tu prueba termina hoy · Hazte Premium →';
+  }
+
+  async function verificarAcceso() {
+    let e = null;
+    try { e = await estadoUsuario(); } catch (_) {}
+    _renderTrialStrip(e);
+    _refrescarBotonHeader(e);
+    if (!e || !e.autenticado) return;                    // demo/revisores: sin candado
+    if (_esPremiumEstado(e) || e.plan !== 'expirado') {
+      if (_bloqueante) cerrar(true);                     // se volvió premium: liberar
+      return;
+    }
+    abrir({ bloqueante: true });
+  }
+
+  document.addEventListener('DOMContentLoaded', verificarAcceso);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') verificarAcceso();
+  });
+  window.addEventListener('mp:premium-actualizado', verificarAcceso);
+
+  window.MPPaywall = { abrir, cerrar, esPremium, restaurar, requierePremium, plataforma, esNativo, customerInfo, entitlementActiva, verificarAcceso };
 })();
