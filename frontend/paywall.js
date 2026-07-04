@@ -314,5 +314,14 @@
     if (el) { ev.preventDefault(); abrir(); }
   });
 
+  // Botón del header: si ya es premium, mostrar "Premium ✓"
+  async function _refrescarBotonHeader() {
+    const btn = document.getElementById('btn-premium-header');
+    if (!btn) return;
+    try { if (await esPremium()) btn.textContent = 'Premium ✓'; } catch (_) {}
+  }
+  document.addEventListener('DOMContentLoaded', _refrescarBotonHeader);
+  window.addEventListener('mp:premium-actualizado', _refrescarBotonHeader);
+
   window.MPPaywall = { abrir, cerrar, esPremium, restaurar, requierePremium, plataforma, esNativo, customerInfo, entitlementActiva };
 })();

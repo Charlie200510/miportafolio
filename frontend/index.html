@@ -232,7 +232,9 @@
       <div class="flex items-center gap-3">
         <!-- Logo Mi Portafolio -->
         <img src="/static/logo.png" alt="Mi Portafolio" class="w-10 h-10 rounded-xl shadow-glow-green object-cover" />
-        <div>
+        <!-- En teléfonos el logo identifica la app; el texto se oculta para
+             liberar espacio (botón Premium siempre visible a la derecha) -->
+        <div class="hidden min-[500px]:block">
           <h1 class="text-[15px] font-semibold tracking-tight leading-none">Mi Portafolio</h1>
           <p class="text-[11px] text-zinc-500 mt-0.5 leading-none">Análisis de inversión</p>
         </div>
@@ -259,6 +261,11 @@
       </div>
 
       <div class="flex items-center gap-4 text-xs text-zinc-400">
+        <!-- Siempre visible (también sin sesión): abre el paywall vía data-mp-paywall -->
+        <button data-mp-paywall id="btn-premium-header"
+          class="shrink-0 inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:border-amber-400/60 hover:text-amber-200 rounded-lg px-2 sm:px-3 py-1.5 transition whitespace-nowrap cursor-pointer">
+          ★<span class="hidden sm:inline">&nbsp;Hazte</span> Premium
+        </button>
         <div class="hidden sm:flex items-center gap-2" id="meta-periodo">
           <span class="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse"></span>
           <span>Cargando…</span>
