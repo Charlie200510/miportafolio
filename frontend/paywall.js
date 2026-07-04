@@ -71,19 +71,49 @@
     if (email && RC.logIn) { try { await RC.logIn({ appUserID: email }); } catch (_) {} }
     return RC;
   }
-  async function comprarNativo(email) {
+  // Carga los paquetes del offering actual, ordenados mensual → anual → de por vida
+  async function cargarPaquetes(email) {
     const RC = await rcInit(email);
     const offerings = await RC.getOfferings();
     const current = offerings && (offerings.current || (offerings.all && (offerings.all.default || Object.values(offerings.all)[0])));
     const pkgs = (current && current.availablePackages) || [];
     if (!pkgs.length) throw new Error('No hay planes disponibles por ahora.');
-    const pkg = pkgs[0];
+    const orden = { MONTHLY: 0, ANNUAL: 1, LIFETIME: 2 };
+    return pkgs.slice().sort((a, b) => (orden[a.packageType] ?? 9) - (orden[b.packageType] ?? 9));
+  }
+
+  // El usuario cerró la hoja de pago: no es un error, no mostrar alerta roja
+  function esCancelacion(e) {
+    if (!e) return false;
+    if (e.userCancelled === true) return true;
+    const m = String((e.message || '') + ' ' + (e.code || '')).toLowerCase();
+    return m.includes('cancel');
+  }
+
+  async function comprarNativo(email, pkg) {
+    const RC = await rcInit(email);
     await RC.purchasePackage({ aPackage: pkg });          // abre la hoja de pago nativa
-    // Confirmar la entitlement de forma segura en el servidor
+    // Confirmar la entitlement de forma segura en el servidor (fuente de verdad)
     await fetch('/api/payments/revenuecat/sync', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
     });
+  }
+
+  // CustomerInfo del SDK (estado local inmediato; el servidor sigue siendo la
+  // fuente de verdad vía /api/payments/revenuecat/sync)
+  async function customerInfo() {
+    if (!esNativo()) return null;
+    try {
+      const RC = await rcInit(await emailActual());
+      const r = await RC.getCustomerInfo();
+      return (r && r.customerInfo) || r || null;
+    } catch (_) { return null; }
+  }
+  function entitlementActiva(info) {
+    const act = (info && info.entitlements && info.entitlements.active) || {};
+    const nombre = window.MP_RC_ENTITLEMENT || 'premium';
+    return !!(act[nombre] || act['premium'] || act['Mi Portafolio']);
   }
   async function restaurar() {
     if (!esNativo()) return { ok: false, error: 'Solo en la app' };
@@ -137,23 +167,27 @@
          <span style="color:#22c55e;flex:0 0 auto">✓</span><span>${b}</span></li>`).join('');
 
     if (premium) {
+      const gestion = nativo
+        ? `<button data-x="manage" style="${BTN_SEC};margin-bottom:8px">Gestionar suscripción</button>` : '';
       return `<h2 style="margin:0 0 8px;font-size:20px;font-weight:700">Ya eres Premium ✓</h2>
         <p style="color:#a1a1aa;margin:0 0 18px">Tienes acceso a todas las funciones. ¡Gracias por tu apoyo!</p>
-        <button data-x="close" style="${BTN_SEC}">Cerrar</button>`;
+        ${gestion}<button data-x="close" style="${BTN_SEC}">Cerrar</button>`;
     }
 
     // Bloque legal/precio según plataforma
     const bloquePrecio = nativo
-      ? `<div style="font-size:28px;font-weight:800;margin:2px 0">${PRECIO_TXT}</div>
-         <p style="color:#a1a1aa;font-size:13px;margin:6px 0 0">
-           Suscripción mensual con renovación automática. Puedes cancelarla cuando quieras
-           desde los Ajustes de tu cuenta de ${plataforma() === 'ios' ? 'App Store' : 'Google Play'}.</p>`
+      ? `<p style="color:#a1a1aa;font-size:13px;margin:6px 0 0">
+           Elige tu plan. Las suscripciones se renuevan automáticamente y puedes cancelarlas
+           cuando quieras desde los Ajustes de tu cuenta de ${plataforma() === 'ios' ? 'App Store' : 'Google Play'}.
+           El plan De por vida es un pago único, sin renovación.</p>`
       : `<div style="font-size:28px;font-weight:800;margin:2px 0">14 días gratis</div>
          <p style="color:#a1a1aa;font-size:13px;margin:6px 0 0">
            Luego ${PRECIO_TXT}. Cancela en un click, sin permanencia. Pago seguro con MercadoPago.</p>`;
 
     const cta = nativo
-      ? `<button data-x="buy" style="${BTN_PRI}">Suscribirme — ${PRECIO_TXT}</button>
+      ? `<div data-x="planes" style="display:flex;flex-direction:column;gap:8px">
+           <p style="color:#71717a;font-size:13px;text-align:center;margin:4px 0">Cargando planes…</p>
+         </div>
          <button data-x="restore" style="${BTN_SEC}">Restaurar compra</button>`
       : `<button data-x="buy" style="${BTN_PRI}">${email ? 'Empezar prueba gratis' : 'Inicia sesión para suscribirte'}</button>`;
 
@@ -188,11 +222,47 @@
       </div>`;
     document.body.appendChild(_overlay);
 
+    // En nativo: renderizar los planes reales del offering (mensual/anual/de por vida)
+    let _pkgs = [];
+    if (esNativo() && !premium) {
+      const cont = _overlay.querySelector('[data-x="planes"]');
+      cargarPaquetes(email).then((pkgs) => {
+        _pkgs = pkgs;
+        if (!cont) return;
+        const NOMBRE = { MONTHLY: 'Mensual', ANNUAL: 'Anual', LIFETIME: 'De por vida' };
+        cont.innerHTML = pkgs.map((p, i) => {
+          const prod = p.product || {};
+          const nombre = NOMBRE[p.packageType] || prod.title || p.identifier;
+          const precio = prod.priceString || '';
+          const sufijo = p.packageType === 'MONTHLY' ? '/mes'
+                       : p.packageType === 'ANNUAL'  ? '/año'
+                       : p.packageType === 'LIFETIME' ? ' · pago único' : '';
+          const destacado = p.packageType === 'ANNUAL';
+          return `<button data-x="buy" data-pkg="${i}"
+            style="${destacado ? BTN_PRI : BTN_SEC};display:flex;justify-content:space-between;align-items:center">
+            <span>${nombre}</span><span style="font-weight:800">${precio}${sufijo}</span>
+          </button>`;
+        }).join('');
+      }).catch((e) => {
+        if (cont) cont.innerHTML = `<p style="color:#f87171;font-size:13px;text-align:center;margin:4px 0">${(e && e.message) || 'No se pudieron cargar los planes.'}</p>`;
+      });
+    }
+
     _overlay.addEventListener('click', async (ev) => {
       const el = ev.target.closest('[data-x]');
       if (!el) { if (ev.target === _overlay) cerrar(); return; }
       const act = el.getAttribute('data-x');
       if (act === 'close') return cerrar();
+      if (act === 'manage') {
+        // "Customer center": portal de gestión de la suscripción (App Store / Google Play)
+        try {
+          const info = await customerInfo();
+          const url = (info && info.managementURL) || 'https://apps.apple.com/account/subscriptions';
+          const B = (Caps && Caps.Plugins && Caps.Plugins.Browser);
+          if (B && B.open) await B.open({ url }); else window.open(url, '_blank');
+        } catch (_) { toast('No se pudo abrir la gestión de suscripción.'); }
+        return;
+      }
       if (act === 'restore') {
         el.disabled = true; el.textContent = 'Restaurando…';
         try { await restaurar(); } catch (e) { toast(e.message || 'Error al restaurar'); el.disabled = false; el.textContent = 'Restaurar compra'; }
@@ -209,7 +279,10 @@
         el.disabled = true; const prev = el.textContent; el.textContent = 'Procesando…';
         try {
           if (esNativo()) {
-            await comprarNativo(email);
+            const idx = parseInt(el.getAttribute('data-pkg') || '0', 10);
+            const pkg = _pkgs[idx];
+            if (!pkg) throw new Error('Plan no disponible, intenta de nuevo.');
+            await comprarNativo(email, pkg);
             cerrar();
             toast('¡Listo! Ya eres Premium.');
             try { window.dispatchEvent(new Event('mp:premium-actualizado')); } catch (_) {}
@@ -217,6 +290,10 @@
             await comprarWeb(email);     // redirige al checkout de MercadoPago
           }
         } catch (e) {
+          if (esCancelacion(e)) {        // cerró la hoja de pago: silencioso
+            el.disabled = false; el.textContent = prev;
+            return;
+          }
           toast(e.message || 'No se pudo completar la compra.');
           el.disabled = false; el.textContent = prev;
         }
@@ -237,5 +314,5 @@
     if (el) { ev.preventDefault(); abrir(); }
   });
 
-  window.MPPaywall = { abrir, cerrar, esPremium, restaurar, requierePremium, plataforma, esNativo };
+  window.MPPaywall = { abrir, cerrar, esPremium, restaurar, requierePremium, plataforma, esNativo, customerInfo, entitlementActiva };
 })();

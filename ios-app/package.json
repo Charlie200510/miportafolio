@@ -17,21 +17,21 @@
     "build:android": "npm run sync-www && npx cap sync android && npx cap open android"
   },
   "dependencies": {
-    "@capacitor/android": "^6.1.0",
-    "@capacitor/app": "^6.0.0",
-    "@capacitor/browser": "^6.0.0",
-    "@capacitor/core": "^6.1.0",
-    "@capacitor/haptics": "^6.0.0",
-    "@capacitor/ios": "^6.1.0",
-    "@capacitor/preferences": "^6.0.0",
-    "@capacitor/push-notifications": "^6.0.0",
-    "@capacitor/share": "^6.0.0",
-    "@capacitor/splash-screen": "^6.0.0",
-    "@capacitor/status-bar": "^6.0.0",
-    "@revenuecat/purchases-capacitor": "^9.0.0"
+    "@capacitor/android": "^7.6.7",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/browser": "^7.0.5",
+    "@capacitor/core": "^7.6.7",
+    "@capacitor/haptics": "^7.0.5",
+    "@capacitor/ios": "^7.6.7",
+    "@capacitor/preferences": "^7.0.4",
+    "@capacitor/push-notifications": "^7.0.7",
+    "@capacitor/share": "^7.0.4",
+    "@capacitor/splash-screen": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6",
+    "@revenuecat/purchases-capacitor": "^11.3.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.1.0",
+    "@capacitor/cli": "^7.6.7",
     "typescript": "^6.0.3"
   }
 }

@@ -25,7 +25,13 @@
     window.MP_API_BASE = 'https://miportafolio.uk';
 
     // API keys PÚBLICAS de RevenueCat (Dashboard → Project → API keys → Public)
-    window.MP_REVENUECAT_KEY_IOS     = 'appl_TODO_REEMPLAZAR';
+    // ⚠️ key del TEST STORE (compras simuladas, sin App Store Connect).
+    // Antes de mandar a revisión: reemplazar por la key 'appl_...' de producción.
+    window.MP_REVENUECAT_KEY_IOS     = 'test_LzkdpbEfhWFopkIxLeZeVomJlGY';
     window.MP_REVENUECAT_KEY_ANDROID = 'goog_TODO_REEMPLAZAR';
+
+    // Identificador de la entitlement en el dashboard de RevenueCat.
+    // Debe coincidir con REVENUECAT_ENTITLEMENT en el backend.
+    window.MP_RC_ENTITLEMENT = 'Mi Portafolio';
   } catch (_) {}
 })();
