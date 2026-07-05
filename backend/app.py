@@ -13,6 +13,7 @@
 from pathlib import Path
 import os
 import time
+import hmac
 
 # ---- Cargar .env si existe (sin depender de python-dotenv) ----------
 # Esto deja disponibles ANTHROPIC_API_KEY, SMTP_*, etc. para los módulos
@@ -272,13 +273,21 @@ CORS(app,
         "http://127.0.0.1",
         "http://127.0.0.1:5001",
         "http://localhost:5001",
-        # Producción: agregar tu dominio Render aquí
-        # "https://miportafolio.onrender.com",
-        # "https://miportafolio.app",
+        # Producción — dominios web reales.
+        "https://miportafolio.uk",
+        "https://www.miportafolio.uk",
+        "https://miportafolio.app",
+        "https://www.miportafolio.app",
     ],
     supports_credentials=True,
     expose_headers=["Authorization"],
     allow_headers=["Content-Type", "Authorization"],
+)
+
+# Límite de tamaño del body: frena DoS por payloads gigantes. 2 MB cubre de
+# sobra cualquier request legítima (tickers, historial de chat, snapshots).
+app.config["MAX_CONTENT_LENGTH"] = int(
+    os.environ.get("MAX_CONTENT_LENGTH", str(2 * 1024 * 1024))
 )
 
 
@@ -333,6 +342,20 @@ def _security_headers(resp):
     # HSTS: fuerza HTTPS por 1 año (la app ya sirve solo HTTPS vía Caddy).
     resp.headers.setdefault("Strict-Transport-Security",
                             "max-age=31536000; includeSubDomains")
+    # CSP: mitiga XSS/inyección. Permite los CDNs que la web usa hoy (Tailwind
+    # Play, jsDelivr para chart.js/html2canvas) e inline styles/handlers que el
+    # frontend emplea. object-src/base-uri/frame-ancestors cerrados. Afecta solo
+    # a la web servida por Flask (la app nativa carga archivos locales).
+    resp.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.tailwindcss.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+        "font-src 'self' data: https://fonts.gstatic.com; "
+        "img-src 'self' data: blob: https:; "
+        "connect-src 'self' https:; "
+        "frame-ancestors 'self'; base-uri 'self'; object-src 'none'"
+    )
     return resp
 
 
@@ -398,14 +421,17 @@ CRON_SECRET = _os_cron.environ.get("CRON_SECRET", "")
 
 
 def _check_cron_auth(req) -> bool:
-    """Verifica el bearer token o query param `secret`."""
+    """Verifica el bearer token del cron (GitHub Actions envía Authorization: Bearer).
+
+    Solo por header: el query param `?secret=` se eliminó porque los query
+    strings quedan registrados en los logs de acceso (Caddy/gunicorn) y filtraban
+    el CRON_SECRET. Usa comparación en tiempo constante.
+    """
     if not CRON_SECRET:
         return False
     auth = req.headers.get("Authorization", "")
-    if auth.startswith("Bearer ") and auth[7:] == CRON_SECRET:
-        return True
-    if req.args.get("secret") == CRON_SECRET:
-        return True
+    if auth.startswith("Bearer "):
+        return hmac.compare_digest(auth[7:], CRON_SECRET)
     return False
 
 
@@ -829,6 +855,7 @@ def api_universo():
 
 
 @app.route("/api/explorar", methods=["POST"])
+@_rate_limit("30 per minute; 300 per hour")
 def api_explorar():
     """
     Analiza una selección de tickers del universo.
@@ -864,6 +891,7 @@ def api_explorar():
 # MI PORTAFOLIO: análisis dinámico con tickers arbitrarios
 # ------------------------------------------------------------
 @app.route("/api/analizar", methods=["POST"])
+@_rate_limit("60 per minute; 600 per hour")
 def api_analizar():
     """
     Analiza un portafolio definido por el usuario.
@@ -882,6 +910,9 @@ def api_analizar():
 
     if not isinstance(tickers, list):
         return jsonify({"error": "tickers debe ser un arreglo"}), 400
+    # Cap de entrada: evita descargas/cómputo desmedido (DoS por lista enorme).
+    if len(tickers) > 100:
+        return jsonify({"error": "máximo 100 tickers por análisis"}), 400
 
     try:
         resultado = _mi_portafolio.analizar(tickers, pesos)
@@ -1366,6 +1397,9 @@ def api_asistente_chat():
     mensaje = (body.get("mensaje") or "").strip()
     if not mensaje:
         return jsonify({"error": "mensaje vacío"}), 400
+    # Cap de longitud: controla costo de tokens de IA y abuso.
+    if len(mensaje) > 4000:
+        return jsonify({"error": "mensaje demasiado largo (máx 4000 caracteres)"}), 400
 
     # Construir contexto del portafolio en el servidor combinando analizar + transacciones
     contexto: dict = {}
@@ -1443,6 +1477,7 @@ def api_asistente_chat():
 # REPORTE MENSUAL PDF
 # ------------------------------------------------------------
 @app.route("/api/reporte/pdf", methods=["POST"])
+@_rate_limit("10 per minute; 60 per hour")
 def api_reporte_pdf():
     """
     Genera el PDF del reporte mensual.
@@ -1632,6 +1667,7 @@ def api_reporte_pdf():
 # FUNDAMENTALES (P/E, yield, market cap, earnings, etc.)
 # ------------------------------------------------------------
 @app.route("/api/fundamentals/portafolio", methods=["POST"])
+@_rate_limit("30 per minute; 300 per hour")
 def api_fundamentals_portafolio():
     """
     Body JSON: {"tickers": ["AAPL", "MSFT", ...]}
@@ -1691,6 +1727,7 @@ def api_dashboard(ticker):
 # BACKTEST HISTÓRICO
 # ------------------------------------------------------------
 @app.route("/api/backtest", methods=["POST"])
+@_rate_limit("20 per minute; 200 per hour")
 def api_backtest():
     """Body JSON: {tickers: [...], pesos: {t:peso_pp}, periodo: "covid_full"|"custom",
        inicio?: "YYYY-MM-DD", fin?: "YYYY-MM-DD"}"""
@@ -1723,6 +1760,7 @@ def api_backtest_periodos():
 # STRESS TEST
 # ------------------------------------------------------------
 @app.route("/api/stress-test", methods=["POST"])
+@_rate_limit("20 per minute; 200 per hour")
 def api_stress_test():
     """Body JSON: {tickers: [...], pesos: {t:peso_pp}, escenario: "covid_2020",
        montos?: {t: monto_mxn}}"""
@@ -1808,12 +1846,14 @@ def api_push_unsubscribe():
 
 
 @app.route("/api/push/test", methods=["POST"])
+@_rate_limit("10 per hour")
 def api_push_test():
-    """Body: {email, titulo?, body?} → manda push de prueba."""
+    """Push de prueba. Identidad de sesión si existe; si no, email del cliente
+    (compat web anónima). El rate limit (10/hora/IP) frena el abuso."""
     try:
         import push as _push
         body = request.get_json(silent=True) or {}
-        email = (body.get("email") or "").strip().lower()
+        email = _email_efectivo(body.get("email"))
         if not email:
             return jsonify({"ok": False, "error": "email requerido"}), 400
         res = _push.enviar_notificacion(
@@ -1830,14 +1870,16 @@ def api_push_test():
 @app.route("/api/backups", methods=["GET", "POST"])
 def api_backups():
     """Cloud backups del portafolio.
-    POST {email, snapshot, nombre?, automatico?} → crea backup
-    GET ?email=... → lista metadata de backups"""
+    Identidad: la sesión (cookie/JWT) manda; si no hay, se usa el email del
+    cliente (compat con la web anónima actual). Un usuario autenticado NO puede
+    operar sobre el email de otro (anti-IDOR). Cierre total del IDOR anónimo:
+    gatear la sección tras login (LANZAMIENTO.md §8)."""
     try:
         import backups as _bk
         if request.method == "POST":
             body = request.get_json(silent=True) or {}
-            email = (body.get("email") or "").strip().lower()
-            if not email or "@" not in email:
+            email = _email_efectivo(body.get("email"))
+            if not email:
                 return jsonify({"ok": False, "error": "email requerido"}), 400
             snap = body.get("snapshot") or {}
             res = _bk.crear_backup(
@@ -1851,8 +1893,8 @@ def api_backups():
             except Exception: pass
             return jsonify({"ok": True, **res})
         else:
-            email = (request.args.get("email") or "").strip().lower()
-            if not email or "@" not in email:
+            email = _email_efectivo(request.args.get("email"))
+            if not email:
                 return jsonify({"ok": False, "error": "email requerido"}), 400
             backups = _bk.listar_backups(email, limit=30)
             return jsonify({"ok": True, "total": len(backups), "backups": backups})
@@ -1862,11 +1904,13 @@ def api_backups():
 
 @app.route("/api/backups/<backup_id>", methods=["GET", "DELETE"])
 def api_backup_single(backup_id):
-    """GET → devuelve snapshot completo. DELETE → elimina backup."""
+    """GET → devuelve snapshot completo. DELETE → elimina backup.
+    Identidad: sesión (cookie/JWT) si existe; si no, email del cliente
+    (compat web anónima). Autenticado no puede tocar backups de otro."""
     try:
         import backups as _bk
-        email = (request.args.get("email") or "").strip().lower()
-        if not email or "@" not in email:
+        email = _email_efectivo(request.args.get("email"))
+        if not email:
             return jsonify({"ok": False, "error": "email requerido"}), 400
         if request.method == "DELETE":
             ok = _bk.eliminar_backup(backup_id, email)
@@ -1985,6 +2029,7 @@ def api_precios_live():
 
 
 @app.route("/api/portafolio-optimo", methods=["GET"])
+@_rate_limit("30 per minute; 300 per hour")
 def api_portafolio_optimo():
     """Genera portafolio óptimo Markowitz para nivel de riesgo (1-10).
     ?nivel=5 → balanceado. Cache 6h."""
@@ -2170,6 +2215,7 @@ def api_periodico_accion_del_dia():
 
 
 @app.route("/api/deep-dive/<path:ticker>", methods=["GET"])
+@_rate_limit("30 per minute; 300 per hour")
 def api_deep_dive(ticker):
     """Análisis profundo automático de un ticker BMV (o cualquier ticker).
     Devuelve métricas + comparativa contra peers mexicanos + narrativa."""
@@ -2379,23 +2425,26 @@ def api_calendario_ics():
 
 
 @app.route("/api/alertas/enviar", methods=["POST"])
+@_rate_limit("5 per hour")
 def api_alertas_enviar():
     """
-    Envía realmente el correo. Requiere SMTP_* configurado.
-    Body JSON:
-    {
-      "tipo":          "drift" | "precio" | "semanal",
-      "destinatario":  "user@email.com",
-      "nombre":        "Charlie",
-      "payload":       {...}
-    }
+    Envía una alerta de PRUEBA.
+
+    SEGURIDAD: antes era un relay de correo SIN límite (spam/phishing con la
+    reputación SMTP del proyecto). Ahora: si hay sesión, el destino se fija al
+    email de la sesión (ignora el `destinatario` del cliente); si no hay sesión,
+    se respeta el `destinatario` (compat web anónima) pero con rate limit
+    estricto (5/hora/IP) que corta el abuso. (Las alertas reales programadas
+    salen por /api/cron/* con CRON_SECRET, no por aquí.) Cierre total del relay:
+    gatear la sección tras login (LANZAMIENTO.md §8).
+    Body JSON: { "tipo": "drift"|"precio"|"semanal", "destinatario"?, "nombre"?, "payload"? }
     """
     if _alertas is None:
         return jsonify({"error": "alertas no cargado", "detalle": _alertas_error}), 500
 
     body = request.get_json(silent=True) or {}
-    destinatario = (body.get("destinatario") or "").strip()
-    if not destinatario or "@" not in destinatario:
+    destinatario = _email_efectivo(body.get("destinatario"))
+    if not destinatario:
         return jsonify({"error": "destinatario inválido"}), 400
 
     try:
@@ -2425,10 +2474,71 @@ def _cookie_sesion(resp: Response, session_id: str, max_age: int) -> Response:
 
 
 def _sesion_actual() -> Optional[dict]:
+    """Resuelve la sesión del request.
+
+    1) Cookie `session_id` (web / PWA).
+    2) `Authorization: Bearer <JWT>` (app nativa iOS/Android — WKWebView no
+       maneja cookies de forma confiable). El JWT se valida server-side y se
+       reconstruye el estado del usuario desde el store. Aditivo: no cambia el
+       comportamiento web existente.
+    """
     if _auth is None:
         return None
     sid = request.cookies.get("session_id")
-    return _auth.obtener_sesion(sid)
+    ses = _auth.obtener_sesion(sid) if sid else None
+    if ses:
+        return ses
+    # Fallback JWT (nativo)
+    if _jwt is not None:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            payload = _jwt.validar_jwt(auth_header[7:].strip())
+            if payload and payload.get("email"):
+                email = str(payload["email"]).strip().lower()
+                usuario = None
+                try:
+                    usuario = _auth.obtener_usuario(email)
+                except Exception:
+                    usuario = None
+                if usuario is None:
+                    usuario = {"email": email, "plan": payload.get("plan", "trial")}
+                return {
+                    "session_id": None,
+                    "email": email,
+                    "expira_en": payload.get("exp"),
+                    "usuario": usuario,
+                }
+    return None
+
+
+def _email_identidad() -> Optional[str]:
+    """Email del usuario autenticado (cookie o JWT). None si no hay sesión.
+
+    Se usa para ligar acciones sensibles a la identidad real y NO al email que
+    mande el cliente en el body/query (evita IDOR y relays abiertos)."""
+    ses = _sesion_actual()
+    if ses and ses.get("email"):
+        return str(ses["email"]).strip().lower()
+    return None
+
+
+def _email_efectivo(email_cliente: Optional[str]) -> Optional[str]:
+    """Identidad EFECTIVA para features que hoy la web usa de forma anónima
+    (backups, alertas de prueba, push de prueba).
+
+    - Si hay sesión (cookie/JWT) se usa SIEMPRE esa (a prueba de suplantación):
+      un usuario autenticado no puede operar sobre el email de otra persona.
+    - Si NO hay sesión, se cae al email auto-declarado del cliente (modelo
+      legacy de la web anónima) para NO romper el flujo existente.
+
+    Cerrar del todo el IDOR/relay para usuarios anónimos requiere gatear estas
+    secciones tras login (ver LANZAMIENTO.md §8). Aquí endurecemos lo posible
+    sin romper la web: identidad real cuando existe + rate limits."""
+    ident = _email_identidad()
+    if ident:
+        return ident
+    e = (email_cliente or "").strip().lower()
+    return e if "@" in e else None
 
 
 # --- Gate de prueba (hard paywall) ------------------------------------------
@@ -2581,16 +2691,23 @@ def api_payments_suscribir():
 
 
 @app.route("/api/payments/simular-aprobacion", methods=["POST"])
+@_rate_limit("5 per minute")
 def api_payments_simular():
-    """Solo util en mock mode / dev."""
+    """Solo útil en mock mode / dev. Deshabilitado salvo AUTH_MOCK_MODE=1."""
     if _payments is None:
         return jsonify({"error": "pagos no disponibles"}), 500
+    # Guard duro: sin AUTH_MOCK_MODE esta ruta no existe funcionalmente (evita
+    # que cualquiera se auto-otorgue premium en producción).
+    if not getattr(_payments, "MOCK_ENABLED", False):
+        return jsonify({"error": "no_disponible"}), 403
     body = request.get_json(silent=True) or {}
     pre_id = (body.get("preapproval_id") or "").strip()
     if not pre_id:
         return jsonify({"error": "preapproval_id requerido"}), 400
     try:
         return jsonify(_payments.simular_aprobacion(pre_id))
+    except PermissionError as e:
+        return jsonify({"error": str(e)}), 403
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 

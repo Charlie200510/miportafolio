@@ -256,6 +256,21 @@ def obtener_sesion(session_id: Optional[str]) -> Optional[dict[str, Any]]:
         }
 
 
+def obtener_usuario(email: str) -> Optional[dict[str, Any]]:
+    """Devuelve el registro del usuario por email (plan, creado_en, etc.) o None.
+
+    Lo usa la resolucion de identidad por JWT (app nativa) para construir el
+    estado de sesion sin cookie.
+    """
+    email = (email or "").strip().lower()
+    if not email:
+        return None
+    with _LOCK:
+        data = _cargar()
+        u = data.get("usuarios", {}).get(email)
+        return dict(u) if u else None
+
+
 def cerrar_sesion(session_id: str) -> bool:
     if not session_id:
         return False

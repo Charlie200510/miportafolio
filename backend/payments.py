@@ -49,6 +49,16 @@ _PLAN_NOMBRE = os.environ.get("MERCADOPAGO_PLAN_NOMBRE", "Mi Portafolio Premium"
 _BACK_URL = os.environ.get("MERCADOPAGO_BACK_URL", "http://localhost:5001/static/index.html?paid=1")
 _WEBHOOK_SECRET = os.environ.get("MERCADOPAGO_WEBHOOK_SECRET")
 
+# Interruptores de seguridad:
+# - AUTH_MOCK_MODE=1  habilita la simulacion de aprobacion de pagos (SOLO dev).
+#   En produccion NUNCA debe estar activo: si lo esta, cualquiera se auto-otorga
+#   premium. Por eso simular_aprobacion() se niega salvo que este flag este on.
+# - STRICT_WEBHOOKS=1 exige firma/secreto valido en los webhooks (fail-closed).
+#   Recomendado en produccion. Por default (off) se conserva el comportamiento
+#   previo (acepta si no hay secreto) para no romper entornos ya desplegados.
+MOCK_ENABLED = os.environ.get("AUTH_MOCK_MODE", "").lower() in ("1", "true", "yes")
+STRICT_WEBHOOKS = os.environ.get("STRICT_WEBHOOKS", "").lower() in ("1", "true", "yes")
+
 # --- RevenueCat (compras in-app de App Store / Google Play) ------------------
 # RevenueCat unifica las compras de iOS y Android y nos da una sola "entitlement"
 # llamada 'premium'. La fuente de verdad es server-side: verificamos contra la
@@ -173,11 +183,21 @@ def crear_preapproval(email: str) -> dict[str, Any]:
 
 
 def simular_aprobacion(preapproval_id: str) -> dict[str, Any]:
-    """Solo para mock mode / pruebas locales: marca una suscripcion como autorizada."""
+    """Solo para mock mode / pruebas locales: marca una suscripcion como autorizada.
+
+    SEGURIDAD: sin este guard, cualquiera podia auto-otorgarse premium
+    (POST /suscribir -> POST /simular-aprobacion). Se niega salvo que
+    AUTH_MOCK_MODE este explicitamente activo (dev). Ademas solo acepta
+    suscripciones creadas en mock.
+    """
+    if not MOCK_ENABLED:
+        raise PermissionError("simulacion_deshabilitada")
     data = _cargar_store()
     sus = data.get("suscripciones", {}).get(preapproval_id)
     if not sus:
         raise ValueError("Suscripcion no encontrada")
+    if not sus.get("mock"):
+        raise PermissionError("solo suscripciones mock pueden simularse")
     sus["status"] = "authorized"
     sus["autorizado_en"] = time.time()
     data.setdefault("eventos", []).append({
@@ -193,7 +213,8 @@ def simular_aprobacion(preapproval_id: str) -> dict[str, Any]:
 def _verificar_firma(headers: dict[str, str], raw_body: bytes) -> bool:
     """Valida el header x-signature de MercadoPago (formato ts=,v1=)."""
     if not _WEBHOOK_SECRET:
-        return True  # sin secreto -> aceptamos (modo dev)
+        # Sin secreto: en modo estricto (prod) rechazamos; si no, aceptamos (dev).
+        return not STRICT_WEBHOOKS
     sig = headers.get("x-signature") or headers.get("X-Signature")
     if not sig:
         return False
@@ -264,14 +285,24 @@ def revenuecat_configurado() -> bool:
 
 
 def _rc_entitlement_activa(subscriber: dict[str, Any]) -> bool:
-    """True si la entitlement 'premium' del subscriber sigue vigente."""
+    """True si la entitlement 'premium' del subscriber sigue vigente.
+
+    Distingue tres casos:
+      - Entitlement NO otorgada -> inactiva.
+      - Entitlement otorgada SIN expires_date -> compra "Ilimitado"/lifetime
+        (NON_RENEWING_PURCHASE). No expira nunca => ACTIVA. (Antes se trataba
+        como inactiva y los compradores de por vida no recibian premium.)
+      - Entitlement con expires_date -> activa solo si la fecha es futura.
+    """
     ents = ((subscriber or {}).get("entitlements") or {})
-    ent = ents.get(_RC_ENTITLEMENT) or {}
+    ent = ents.get(_RC_ENTITLEMENT)
+    if not ent:
+        return False
     exp = ent.get("expires_date")
     if not exp:
-        return False
+        # Lifetime / compra unica: sin expiracion = vigente para siempre.
+        return True
     # expires_date viene en ISO-8601 UTC, ej "2026-07-15T00:00:00Z".
-    # Una entitlement sin fecha de expiración futura = inactiva.
     try:
         from datetime import datetime, timezone
         dt = datetime.fromisoformat(str(exp).replace("Z", "+00:00"))
@@ -334,6 +365,10 @@ def revenuecat_webhook(headers: dict[str, str], payload: dict[str, Any]) -> dict
         auth = headers.get("Authorization") or headers.get("authorization") or ""
         if not hmac.compare_digest(auth.strip(), _RC_WEBHOOK_AUTH.strip()):
             return {"ok": False, "error": "auth_invalida"}
+    elif STRICT_WEBHOOKS:
+        # Modo estricto (prod): sin REVENUECAT_WEBHOOK_AUTH configurado no se
+        # acepta ningun webhook (evita que un tercero POStee eventos falsos).
+        return {"ok": False, "error": "webhook_no_configurado"}
 
     ev = (payload or {}).get("event") or {}
     app_user_id = ev.get("app_user_id") or ev.get("original_app_user_id")

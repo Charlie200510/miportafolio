@@ -43,7 +43,9 @@
   // -------------------------------------------------- estado del usuario
   async function estadoUsuario() {
     try {
-      const r = await fetch('/api/auth/estado');
+      // no-store + timestamp: el WKWebView puede cachear el GET y dejar el
+      // estado premium desactualizado justo después de una compra
+      const r = await fetch('/api/auth/estado?t=' + Date.now(), { cache: 'no-store' });
       return (await r.json()) || { autenticado: false };
     } catch (_) { return { autenticado: false }; }
   }
@@ -164,8 +166,12 @@
   let _pkgs = [];            // paquetes del offering actual (nativo)
   function cerrar(force) {
     if (_bloqueante && force !== true) return;   // no se puede cerrar el candado
+    const habia = !!_overlay;
     if (_overlay) { _overlay.remove(); _overlay = null; }
     _bloqueante = false;
+    // Al cerrar, re-consultar el estado: si la compra ocurrió dentro del
+    // paywall, el botón del header debe pasar a "Premium ✓" sin recargar.
+    if (habia) setTimeout(() => { try { verificarAcceso(); } catch (_) {} }, 60);
   }
 
   const BENEFICIOS = [
@@ -195,7 +201,7 @@
       ? `<p style="color:#a1a1aa;font-size:13px;margin:6px 0 0">
            Elige tu plan. Las suscripciones se renuevan automáticamente y puedes cancelarlas
            cuando quieras desde los Ajustes de tu cuenta de ${plataforma() === 'ios' ? 'App Store' : 'Google Play'}.
-           El plan De por vida es un pago único, sin renovación.</p>`
+           El plan Ilimitado es un pago único, sin renovación.</p>`
       : `<div style="font-size:28px;font-weight:800;margin:2px 0">14 días gratis</div>
          <p style="color:#a1a1aa;font-size:13px;margin:6px 0 0">
            Luego ${PRECIO_TXT}. Cancela en un click, sin permanencia. Pago seguro con MercadoPago.</p>`;
@@ -253,7 +259,7 @@
       if (!_overlay) return;
       const c = _overlay.querySelector('[data-x="planes"]');
       if (!c) return;
-      const NOMBRE = { MONTHLY: 'Mensual', ANNUAL: 'Anual', LIFETIME: 'De por vida' };
+      const NOMBRE = { MONTHLY: 'Mensual', ANNUAL: 'Anual', LIFETIME: 'Ilimitado' };
       c.innerHTML = pkgs.map((p, i) => {
         const prod = p.product || {};
         const nombre = NOMBRE[p.packageType] || prod.title || p.identifier;

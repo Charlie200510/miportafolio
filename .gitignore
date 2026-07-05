@@ -3,6 +3,13 @@
 backend/.env
 deploy/.env
 *.env.local
+# Cualquier variante de .env (a cualquier nivel), excepto las plantillas .example
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!*.env.example
+!**/.env.example
 
 # Datos generados (regenerable con descargar_universo.py)
 backend/universo_precios.csv
