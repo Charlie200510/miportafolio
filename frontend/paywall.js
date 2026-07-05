@@ -160,6 +160,8 @@
 
   let _overlay = null;
   let _bloqueante = false;   // hard paywall: prueba vencida sin premium
+  let _email = '';           // correo de la sesión o capturado en el paywall
+  let _pkgs = [];            // paquetes del offering actual (nativo)
   function cerrar(force) {
     if (_bloqueante && force !== true) return;   // no se puede cerrar el candado
     if (_overlay) { _overlay.remove(); _overlay = null; }
@@ -198,12 +200,27 @@
          <p style="color:#a1a1aa;font-size:13px;margin:6px 0 0">
            Luego ${PRECIO_TXT}. Cancela en un click, sin permanencia. Pago seguro con MercadoPago.</p>`;
 
-    const cta = nativo
+    // Sin sesión: capturamos el correo AQUÍ MISMO (sin dead-end). El correo
+    // liga la compra (appUserID de RevenueCat) y dispara un magic link para
+    // acceso web/otros dispositivos — pero la compra NO depende de abrirlo.
+    const captura = `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
+          placeholder="tu@correo.com"
+          style="width:100%;background:#18181b;border:1px solid #3f3f46;border-radius:12px;padding:13px 14px;font-size:15px;color:#fafafa;outline:none;box-sizing:border-box">
+        <button data-x="email-continuar" style="${BTN_PRI}">Continuar</button>
+        <p style="color:#71717a;font-size:11px;margin:2px 0 0;text-align:center">
+          Ligamos tu compra a este correo y te enviamos un enlace de acceso para la web y tus otros dispositivos.</p>
+      </div>${nativo ? `<button data-x="restore" style="${BTN_SEC};margin-top:8px">Restaurar compra</button>` : ''}`;
+
+    const cta = !email
+      ? captura
+      : nativo
       ? `<div data-x="planes" style="display:flex;flex-direction:column;gap:8px">
            <p style="color:#71717a;font-size:13px;text-align:center;margin:4px 0">Cargando planes…</p>
          </div>
          <button data-x="restore" style="${BTN_SEC}">Restaurar compra</button>`
-      : `<button data-x="buy" style="${BTN_PRI}">${email ? 'Empezar prueba gratis' : 'Inicia sesión para suscribirte'}</button>`;
+      : `<button data-x="buy" style="${BTN_PRI}">Empezar prueba gratis</button>`;
 
     const legal = `<p style="color:#52525b;font-size:11px;margin:14px 0 0;text-align:center">
         Al continuar aceptas los <a href="/terminos" style="color:#71717a">Términos</a> y la
@@ -225,12 +242,43 @@
   const BTN_PRI = 'width:100%;background:#22c55e;color:#052e16;font-weight:700;border:0;border-radius:12px;padding:14px;font-size:15px;cursor:pointer';
   const BTN_SEC = 'width:100%;background:transparent;color:#a1a1aa;font-weight:600;border:1px solid #27272a;border-radius:12px;padding:12px;font-size:14px;cursor:pointer';
 
+  // Renderiza los paquetes del offering en el overlay abierto (usa _email
+  // como appUserID vía rcInit dentro de cargarPaquetes)
+  function _cargarPlanesEnOverlay() {
+    if (!_overlay) return;
+    const cont = _overlay.querySelector('[data-x="planes"]');
+    if (!cont) return;
+    cargarPaquetes(_email).then((pkgs) => {
+      _pkgs = pkgs;
+      if (!_overlay) return;
+      const c = _overlay.querySelector('[data-x="planes"]');
+      if (!c) return;
+      const NOMBRE = { MONTHLY: 'Mensual', ANNUAL: 'Anual', LIFETIME: 'De por vida' };
+      c.innerHTML = pkgs.map((p, i) => {
+        const prod = p.product || {};
+        const nombre = NOMBRE[p.packageType] || prod.title || p.identifier;
+        const precio = prod.priceString || '';
+        const sufijo = p.packageType === 'MONTHLY' ? '/mes'
+                     : p.packageType === 'ANNUAL'  ? '/año'
+                     : p.packageType === 'LIFETIME' ? ' · pago único' : '';
+        const destacado = p.packageType === 'ANNUAL';
+        return `<button data-x="buy" data-pkg="${i}"
+          style="${destacado ? BTN_PRI : BTN_SEC};display:flex;justify-content:space-between;align-items:center">
+          <span>${nombre}</span><span style="font-weight:800">${precio}${sufijo}</span>
+        </button>`;
+      }).join('');
+    }).catch((e) => {
+      const c = _overlay && _overlay.querySelector('[data-x="planes"]');
+      if (c) c.innerHTML = `<p style="color:#f87171;font-size:13px;text-align:center;margin:4px 0">${(e && e.message) || 'No se pudieron cargar los planes.'}</p>`;
+    });
+  }
+
   async function abrir(opts) {
     const bloqueante = !!(opts && opts.bloqueante);
     if (_overlay && _bloqueante) return;      // el candado ya está en pantalla
     cerrar(true);
     _bloqueante = bloqueante;
-    const email = await emailActual();
+    _email = await emailActual();
     const premium = await esPremium();
 
     const btnCerrar = bloqueante ? '' :
@@ -241,35 +289,20 @@
     _overlay.innerHTML = `
       <div style="position:relative;max-width:420px;width:100%;background:#0f0f11;border:1px solid #27272a;border-radius:20px;padding:24px;color:#fafafa;font-family:system-ui,-apple-system,sans-serif;max-height:90vh;overflow:auto">
         ${btnCerrar}
-        <div data-x="body">${vista(email, premium, bloqueante)}</div>
+        <div data-x="body">${vista(_email, premium, bloqueante)}</div>
       </div>`;
     document.body.appendChild(_overlay);
 
-    // En nativo: renderizar los planes reales del offering (mensual/anual/de por vida)
-    let _pkgs = [];
-    if (esNativo() && !premium) {
-      const cont = _overlay.querySelector('[data-x="planes"]');
-      cargarPaquetes(email).then((pkgs) => {
-        _pkgs = pkgs;
-        if (!cont) return;
-        const NOMBRE = { MONTHLY: 'Mensual', ANNUAL: 'Anual', LIFETIME: 'De por vida' };
-        cont.innerHTML = pkgs.map((p, i) => {
-          const prod = p.product || {};
-          const nombre = NOMBRE[p.packageType] || prod.title || p.identifier;
-          const precio = prod.priceString || '';
-          const sufijo = p.packageType === 'MONTHLY' ? '/mes'
-                       : p.packageType === 'ANNUAL'  ? '/año'
-                       : p.packageType === 'LIFETIME' ? ' · pago único' : '';
-          const destacado = p.packageType === 'ANNUAL';
-          return `<button data-x="buy" data-pkg="${i}"
-            style="${destacado ? BTN_PRI : BTN_SEC};display:flex;justify-content:space-between;align-items:center">
-            <span>${nombre}</span><span style="font-weight:800">${precio}${sufijo}</span>
-          </button>`;
-        }).join('');
-      }).catch((e) => {
-        if (cont) cont.innerHTML = `<p style="color:#f87171;font-size:13px;text-align:center;margin:4px 0">${(e && e.message) || 'No se pudieron cargar los planes.'}</p>`;
-      });
-    }
+    if (esNativo() && !premium && _email) _cargarPlanesEnOverlay();
+
+    // Enter en el campo de correo = Continuar
+    _overlay.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && ev.target && ev.target.getAttribute && ev.target.getAttribute('data-x') === 'email-input') {
+        ev.preventDefault();
+        const b = _overlay.querySelector('[data-x="email-continuar"]');
+        if (b) b.click();
+      }
+    });
 
     _overlay.addEventListener('click', async (ev) => {
       const el = ev.target.closest('[data-x]');
@@ -291,26 +324,36 @@
         try { await restaurar(); } catch (e) { toast(e.message || 'Error al restaurar'); el.disabled = false; el.textContent = 'Restaurar compra'; }
         return;
       }
+      if (act === 'email-continuar') {
+        const inp = _overlay.querySelector('[data-x="email-input"]');
+        const v = ((inp && inp.value) || '').trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { toast('Escribe un correo válido.'); return; }
+        _email = v;
+        // Magic link para acceso web/otros dispositivos. Fire-and-forget:
+        // la compra en iOS la autentica Apple y NO depende de abrir el correo.
+        fetch('/api/auth/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: v })
+        }).catch(() => {});
+        const body = _overlay.querySelector('[data-x="body"]');
+        if (body) body.innerHTML = vista(_email, false, _bloqueante);
+        if (esNativo()) _cargarPlanesEnOverlay();
+        return;
+      }
       if (act === 'buy') {
-        if (!email) {
-          // No hay sesión: mandamos al login (web). En nativo también se requiere cuenta.
-          cerrar();
-          try { location.hash = '#login'; } catch (_) {}
-          toast('Inicia sesión con tu correo para suscribirte.');
-          return;
-        }
+        if (!_email) { toast('Escribe tu correo para continuar.'); return; }
         el.disabled = true; const prev = el.textContent; el.textContent = 'Procesando…';
         try {
           if (esNativo()) {
             const idx = parseInt(el.getAttribute('data-pkg') || '0', 10);
             const pkg = _pkgs[idx];
             if (!pkg) throw new Error('Plan no disponible, intenta de nuevo.');
-            await comprarNativo(email, pkg);
+            await comprarNativo(_email, pkg);
             cerrar(true);   // compra hecha: libera también el candado
             toast('¡Listo! Ya eres Premium.');
             try { window.dispatchEvent(new Event('mp:premium-actualizado')); } catch (_) {}
           } else {
-            await comprarWeb(email);     // redirige al checkout de MercadoPago
+            await comprarWeb(_email);    // redirige al checkout de MercadoPago
           }
         } catch (e) {
           if (esCancelacion(e)) {        // cerró la hoja de pago: silencioso
