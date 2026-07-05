@@ -34,9 +34,9 @@
     window.MP_REVENUECAT_KEY_ANDROID = 'goog_TODO_REEMPLAZAR';             // solo si lanzas Android
 
     // Identificador de la entitlement en el dashboard de RevenueCat.
-    // DEBE coincidir con REVENUECAT_ENTITLEMENT del backend (default: 'premium').
-    // Crea esta entitlement en RevenueCat y adjúntale los 3 productos.
-    window.MP_RC_ENTITLEMENT = 'premium';
+    // DEBE coincidir con REVENUECAT_ENTITLEMENT del backend. Hoy en RevenueCat
+    // y en el servidor es 'Mi Portafolio' — adjúntale los 3 productos.
+    window.MP_RC_ENTITLEMENT = 'Mi Portafolio';
 
     // Product IDs de los 3 productos (App Store Connect + RevenueCat). El paywall
     // los muestra dinámicamente desde el offering "current"; esta lista es solo

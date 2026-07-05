@@ -7,14 +7,14 @@ Lo que ya quedó hecho en el código está al final ("Ya hecho por Claude").
 > - 🔴 **BLOQUEANTE** = sin esto Apple rechaza o la monetización no funciona.
 > - 🟡 = importante, hazlo antes de crecer.
 > - Product IDs: `com.miportafolio.mensual`, `com.miportafolio.anual`, `com.miportafolio.lifetime`
-> - Entitlement: **`premium`**  ·  Bundle ID: **`app.miportafolio`**  ·  Dominio: **miportafolio.uk**
+> - Entitlement: **`Mi Portafolio`** (el que ya existe en RevenueCat y en el servidor)  ·  Bundle ID: **`app.miportafolio`**  ·  Dominio: **miportafolio.uk**
 
 ---
 
 ## 0) Orden recomendado (mapa)
 
 1. App Store Connect → contrato Paid Apps + 3 productos IAP.
-2. RevenueCat → app iOS + API keys + shared secret + entitlement `premium` + offering.
+2. RevenueCat → app iOS + API keys + shared secret + entitlement `Mi Portafolio` + offering.
 3. Pega la **Public key `appl_…`** en el código y recompila (1 línea + build).
 4. Variables de entorno en el servidor Oracle (secretos de RevenueCat, JWT, etc.).
 5. Endurece el servidor Oracle (firewall, SSH, fail2ban, updates).
@@ -71,7 +71,7 @@ Detalles:
 
 ### 2.4 Entitlement
 `Entitlements → (+)`
-- [ ] Crea la entitlement con **identifier exacto: `premium`** (en minúsculas; el backend y el cliente ya esperan ese nombre).
+- [ ] Usa la entitlement existente con **identifier exacto: `Mi Portafolio`** (el backend y el cliente ya esperan ese nombre; respeta mayúsculas y el espacio).
 - [ ] Adjúntale los **3 productos** (`com.miportafolio.mensual`, `.anual`, `.lifetime`).
 
 ### 2.5 Offering + Packages
@@ -120,7 +120,7 @@ TRIAL_DIAS=14
 
 # --- Pagos / RevenueCat (server-side, fuente de verdad del premium) ---
 REVENUECAT_SECRET_API_KEY=sk_...              # 🔴 Secret key del paso 2.2
-REVENUECAT_ENTITLEMENT=premium                # debe coincidir con la entitlement
+REVENUECAT_ENTITLEMENT="Mi Portafolio"        # YA configurado en el server; debe coincidir con la entitlement del dashboard
 REVENUECAT_WEBHOOK_AUTH=<el valor del paso 2.6>
 STRICT_WEBHOOKS=1                             # 🟡 rechaza webhooks sin firma/secreto (prod)
 
@@ -218,10 +218,10 @@ En Xcode / App Store Connect:
 
 ## 7) ✅ Smoke tests (después de desplegar servidor + subir build)
 
-- [ ] `curl -s https://miportafolio.uk/api/payments/estado` → `revenuecat_disponible: true`, `entitlement: "premium"`.
+- [ ] `curl -s https://miportafolio.uk/api/payments/estado` → `revenuecat_disponible: true`, `entitlement: "Mi Portafolio"`.
 - [ ] `curl -si https://miportafolio.uk/ | grep -i content-security-policy` → aparece la CSP.
 - [ ] Bypass cerrado: `curl -s -X POST https://miportafolio.uk/api/payments/simular-aprobacion -H 'Content-Type: application/json' -d '{"preapproval_id":"x"}'` → **403** `no_disponible`.
-- [ ] En **sandbox de iOS** (dispositivo real con Apple ID sandbox): compra Mensual → la hoja de Apple aparece → tras comprar, RevenueCat marca la entitlement `premium` y el webhook llega a `/api/payments/revenuecat/webhook`.
+- [ ] En **sandbox de iOS** (dispositivo real con Apple ID sandbox): compra Mensual → la hoja de Apple aparece → tras comprar, RevenueCat marca la entitlement `Mi Portafolio` y el webhook llega a `/api/payments/revenuecat/webhook`.
 - [ ] Compra **Ilimitado** (lifetime) en sandbox → el usuario queda premium **permanente** (ya corregido server-side; antes lifetime no daba premium).
 - [ ] **Restaurar compra** funciona (botón en el paywall).
 - [ ] Cron de alertas (GitHub Actions → run manual) responde 200.
