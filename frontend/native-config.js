@@ -25,12 +25,10 @@
     window.MP_API_BASE = 'https://miportafolio.uk';
 
     // API keys PÚBLICAS de RevenueCat (Dashboard → Project → API keys → Public)
-    // ⚠️⚠️ BLOQUEANTE: hoy es la key del TEST STORE (compras SIMULADAS, no
-    // conectadas a App Store Connect). Con esta key Apple RECHAZA la app.
-    // Antes de archivar el build de producción, reemplaza por la key 'appl_...'
-    // real (RevenueCat → Project → API keys → Public app-specific de iOS) y corre
-    // `npm run cap:sync:ios` en ios-app/. Ver LANZAMIENTO.md.
-    window.MP_REVENUECAT_KEY_IOS     = 'test_LzkdpbEfhWFopkIxLeZeVomJlGY';  // TODO -> appl_...
+    // Key de PRODUCCIÓN de iOS (app-specific, conectada a App Store Connect).
+    // Es una SDK key pública: es seguro que viva en el cliente. Tras cambiarla,
+    // corre `npm run cap:sync:ios` en ios-app/ para que llegue al build.
+    window.MP_REVENUECAT_KEY_IOS     = 'appl_RImxHCOwAIIjVMrbcYVYqvQjeiA';
     window.MP_REVENUECAT_KEY_ANDROID = 'goog_TODO_REEMPLAZAR';             // solo si lanzas Android
 
     // Identificador de la entitlement en el dashboard de RevenueCat.
