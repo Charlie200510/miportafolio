@@ -17,6 +17,9 @@
 
   async function cerrarSesion() {
     try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (_) {}
+    // En nativo la sesión es un JWT en localStorage: hay que borrarlo o la
+    // sesión persistiría pese al logout. (No borra el portafolio local.)
+    try { localStorage.removeItem('mp.jwt.v1'); } catch (_) {}
     location.reload();
   }
 

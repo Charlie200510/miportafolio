@@ -31,6 +31,13 @@ try:
 except Exception:  # pragma: no cover
     import alertas as _alertas  # type: ignore
 
+# bcrypt para el hash de contraseñas. Import guardado: si no está instalado,
+# el magic-link sigue funcionando y solo el auth por contraseña lo reporta.
+try:
+    import bcrypt as _bcrypt  # type: ignore
+except Exception:  # pragma: no cover
+    _bcrypt = None
+
 
 _BASE_DIR = Path(__file__).resolve().parent
 _DATA_DIR = _BASE_DIR / "_datos"
@@ -269,6 +276,104 @@ def obtener_usuario(email: str) -> Optional[dict[str, Any]]:
         data = _cargar()
         u = data.get("usuarios", {}).get(email)
         return dict(u) if u else None
+
+
+# ─────────────────────────────────────────────────────────────────
+# Autenticación con correo + CONTRASEÑA (flujo principal de la app nativa)
+# ─────────────────────────────────────────────────────────────────
+PASSWORD_DISPONIBLE = _bcrypt is not None
+
+
+def _validar_credenciales(email: str, password: str) -> str:
+    email = (email or "").strip().lower()
+    if not email or "@" not in email or len(email) > 254:
+        raise ValueError("Correo inválido")
+    if not password or len(password) < 8:
+        raise ValueError("La contraseña debe tener al menos 8 caracteres")
+    if len(password) > 128:
+        raise ValueError("La contraseña es demasiado larga (máx 128)")
+    return email
+
+
+def _hash_password(password: str) -> str:
+    # bcrypt trunca a 72 bytes; lo dejamos explícito para no depender del truncado silencioso.
+    return _bcrypt.hashpw(password.encode("utf-8")[:72], _bcrypt.gensalt()).decode("utf-8")
+
+
+def _verificar_password(password: str, hashed: str) -> bool:
+    if not hashed:
+        return False
+    try:
+        return _bcrypt.checkpw(password.encode("utf-8")[:72], hashed.encode("utf-8"))
+    except Exception:
+        return False
+
+
+def registrar_con_password(email: str, password: str) -> dict[str, Any]:
+    """Crea una cuenta nueva con contraseña. Inicia el trial (creado_en = ahora).
+    Falla si el correo ya tiene cuenta (evita apropiación de cuentas existentes)."""
+    if _bcrypt is None:
+        raise RuntimeError("auth por contraseña no disponible (falta bcrypt en el servidor)")
+    email = _validar_credenciales(email, password)
+    ahora = time.time()
+    with _LOCK:
+        data = _cargar()
+        usuarios = data.setdefault("usuarios", {})
+        if email in usuarios:
+            raise ValueError("Ese correo ya tiene una cuenta. Inicia sesión.")
+        usuarios[email] = {
+            "email": email,
+            "creado_en": ahora,          # ← inicio del trial POR CUENTA (server-side)
+            "ultima_sesion": ahora,
+            "plan": "trial",
+            "estado_pago": "inactivo",
+            "password_hash": _hash_password(password),
+            "auth": "password",
+        }
+        _guardar(data)
+    return {"email": email, "creado_en": ahora, "plan": "trial", "nueva": True}
+
+
+def login_con_password(email: str, password: str) -> dict[str, Any]:
+    """Verifica correo+contraseña. Devuelve el usuario o lanza ValueError.
+    Mensaje de error genérico (no revela si el correo existe)."""
+    if _bcrypt is None:
+        raise RuntimeError("auth por contraseña no disponible (falta bcrypt en el servidor)")
+    email = (email or "").strip().lower()
+    if not email or not password:
+        raise ValueError("Correo o contraseña incorrectos")
+    with _LOCK:
+        data = _cargar()
+        u = data.get("usuarios", {}).get(email)
+        # Verifica SIEMPRE contra un hash (real o dummy) para gastar el mismo
+        # tiempo y no filtrar por timing si el correo está o no registrado.
+        real_hash = (u or {}).get("password_hash")
+        ok = _verificar_password(password, real_hash or _DUMMY_HASH)
+        if not (u and real_hash and ok):
+            raise ValueError("Correo o contraseña incorrectos")
+        u["ultima_sesion"] = time.time()
+        _guardar(data)
+        return dict(u)
+
+
+# Hash "dummy" válido para gastar el mismo tiempo de cómputo cuando el correo no existe.
+_DUMMY_HASH = (_bcrypt.hashpw(b"x", _bcrypt.gensalt()).decode("utf-8")) if _bcrypt else ""
+
+
+def crear_sesion(email: str) -> dict[str, Any]:
+    """Crea una sesión (cookie session_id) para el correo dado. La usan los
+    endpoints de registro/login para dejar cookie en web (en nativo se usa el JWT)."""
+    email = (email or "").strip().lower()
+    ahora = time.time()
+    with _LOCK:
+        data = _cargar()
+        _limpiar_expirados(data)
+        session_id = secrets.token_urlsafe(32)
+        data.setdefault("sesiones", {})[session_id] = {
+            "email": email, "creado_en": ahora, "expira_en": ahora + _SESSION_TTL,
+        }
+        _guardar(data)
+    return {"session_id": session_id, "expira_en": ahora + _SESSION_TTL}
 
 
 def cerrar_sesion(session_id: str) -> bool:

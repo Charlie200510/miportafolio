@@ -235,7 +235,7 @@
     if (premium) {
       const gestion = nativo
         ? `<button data-x="manage" style="${BTN_SEC};margin-bottom:8px">Gestionar suscripción</button>` : '';
-      return `<h2 style="margin:0 0 8px;font-size:20px;font-weight:700">Ya eres Premium ✓</h2>
+      return `<h2 style="margin:0 0 8px;font-size:20px;font-weight:700">Tu suscripción está activa ✓</h2>
         <p style="color:#a1a1aa;margin:0 0 18px">Tienes acceso a todas las funciones. ¡Gracias por tu apoyo!</p>
         ${gestion}<button data-x="close" style="${BTN_SEC}">Cerrar</button>`;
     }
@@ -283,9 +283,9 @@
         Al continuar aceptas los <a href="/terminos" style="color:#71717a">Términos</a> y la
         <a href="/privacidad" style="color:#71717a">Privacidad</a>.</p>`;
 
-    const titulo = bloqueante ? 'Tu prueba de 14 días terminó' : 'Mi Portafolio Premium';
+    const titulo = bloqueante ? 'Tu prueba terminó' : 'Suscríbete a Mi Portafolio';
     const subtitulo = bloqueante
-      ? 'Suscríbete para seguir usando todo el análisis profesional.'
+      ? 'Suscríbete para seguir usando Mi Portafolio.'
       : 'Desbloquea todo el análisis profesional.';
     return `
       <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">${titulo}</h2>
@@ -298,6 +298,10 @@
 
   const BTN_PRI = 'width:100%;background:#22c55e;color:#052e16;font-weight:700;border:0;border-radius:12px;padding:14px;font-size:15px;cursor:pointer';
   const BTN_SEC = 'width:100%;background:transparent;color:#a1a1aa;font-weight:600;border:1px solid #27272a;border-radius:12px;padding:12px;font-size:14px;cursor:pointer';
+  // font-size:16px en inputs evita el auto-zoom de iOS al enfocar.
+  const INP = 'width:100%;background:#18181b;border:1px solid #3f3f46;border-radius:12px;padding:13px 14px;font-size:16px;color:#fafafa;outline:none;box-sizing:border-box';
+  const BTN_LINK = 'background:none;border:0;color:#71717a;font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 0;width:100%';
+  const LEGAL = '<p style="color:#52525b;font-size:11px;margin:14px 0 0;text-align:center">Al continuar aceptas los <a href="/terminos" style="color:#71717a">Términos</a> y la <a href="/privacidad" style="color:#71717a">Privacidad</a>.</p>';
 
   // Renderiza los paquetes del offering en el overlay abierto (usa _email
   // como appUserID vía rcInit dentro de cargarPaquetes)
@@ -386,7 +390,7 @@
         const body = _overlay.querySelector('[data-x="body"]');
         if (body) body.innerHTML = `
           <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Inicia sesión</h2>
-          <p style="color:#a1a1aa;margin:0 0 14px;font-size:14px">Opcional. Sincroniza tu Premium entre tus dispositivos. No es necesario para comprar ni para usar la prueba.</p>
+          <p style="color:#a1a1aa;margin:0 0 14px;font-size:14px">Opcional. Sincroniza tu suscripción entre tus dispositivos. No es necesario para comprar ni para usar la prueba.</p>
           <div style="display:flex;flex-direction:column;gap:8px">
             <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
               placeholder="tu@correo.com"
@@ -429,7 +433,7 @@
             if (!pkg) throw new Error('Plan no disponible, intenta de nuevo.');
             await comprarNativo(_email, pkg);   // _email puede ir vacío = compra ANÓNIMA
             cerrar(true);   // compra hecha: libera también el candado
-            toast('¡Listo! Ya eres Premium.');
+            toast('¡Listo! Tu suscripción está activa.');
             try { window.dispatchEvent(new Event('mp:premium-actualizado')); } catch (_) {}
           } else {
             if (!_email) { toast('Escribe tu correo para continuar.'); el.disabled = false; el.textContent = prev; return; }
@@ -460,6 +464,83 @@
     if (el) { ev.preventDefault(); abrir(); }
   });
 
+  // ------------------------------------------------ AUTH in-app (correo+contraseña)
+  // Flujo PRINCIPAL de la app nativa: crea sesión DENTRO de la app (JWT guardado
+  // en localStorage 'mp.jwt.v1', que el wrapper de fetch envía como Bearer) sin
+  // depender del magic-link/Safari. El trial de 14 días se cuenta POR CUENTA en
+  // el servidor (creado_en). En web NO se fuerza esta pantalla.
+  let _authOverlay = null;
+  let _authModo = 'registro';   // 'registro' | 'ingresar'
+  function cerrarAuth() { if (_authOverlay) { _authOverlay.remove(); _authOverlay = null; } }
+
+  function _authCuerpo(err) {
+    const reg = _authModo === 'registro';
+    const errHTML = err ? `<p style="color:#f87171;font-size:13px;margin:0 0 10px">${err}</p>` : '';
+    return `
+      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">${reg ? 'Crea tu cuenta' : 'Inicia sesión'}</h2>
+      <p style="color:#a1a1aa;margin:0 0 14px;font-size:14px">${reg ? '14 días gratis. Sin tarjeta.' : 'Bienvenido de vuelta.'}</p>
+      ${errHTML}
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input data-x="auth-email" type="email" inputmode="email" autocapitalize="none" autocorrect="off" autocomplete="username"
+          placeholder="tu@correo.com" style="${INP}">
+        <input data-x="auth-pass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}"
+          placeholder="Contraseña (mín. 8)" style="${INP}">
+        <button data-x="auth-submit" style="${BTN_PRI}">${reg ? 'Crear cuenta' : 'Entrar'}</button>
+        <button data-x="auth-toggle" style="${BTN_LINK}">${reg ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Crea una gratis'}</button>
+      </div>
+      <button data-x="auth-planes" style="${BTN_LINK};margin-top:10px">Ver planes de suscripción</button>
+      ${LEGAL}`;
+  }
+
+  function abrirAuth() {
+    if (_authOverlay) return;
+    cerrar(true);                     // no dejar el paywall abierto detrás
+    _authOverlay = document.createElement('div');
+    _authOverlay.setAttribute('role', 'dialog');
+    _authOverlay.style.cssText = 'position:fixed;inset:0;z-index:99998;background:#0a0a0b;display:flex;align-items:center;justify-content:center;padding:16px';
+    _authOverlay.innerHTML = `<div style="max-width:420px;width:100%;background:#0f0f11;border:1px solid #27272a;border-radius:20px;padding:24px;color:#fafafa;font-family:system-ui,-apple-system,sans-serif;max-height:92vh;overflow:auto"><div data-x="auth-body">${_authCuerpo('')}</div></div>`;
+    document.body.appendChild(_authOverlay);
+
+    _authOverlay.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { const b = _authOverlay.querySelector('[data-x="auth-submit"]'); if (b) { ev.preventDefault(); b.click(); } }
+    });
+
+    _authOverlay.addEventListener('click', async (ev) => {
+      const el = ev.target.closest('[data-x]'); if (!el) return;
+      const act = el.getAttribute('data-x');
+      const setErr = (m) => { const b = _authOverlay && _authOverlay.querySelector('[data-x="auth-body"]'); if (b) b.innerHTML = _authCuerpo(m); };
+      if (act === 'auth-toggle') {
+        _authModo = (_authModo === 'registro') ? 'ingresar' : 'registro';
+        setErr('');
+        return;
+      }
+      if (act === 'auth-planes') { abrir(); return; }   // paywall encima: permite comprar (p.ej. revisores de Apple)
+      if (act === 'auth-submit') {
+        const email = ((_authOverlay.querySelector('[data-x="auth-email"]') || {}).value || '').trim().toLowerCase();
+        const pass  =  (_authOverlay.querySelector('[data-x="auth-pass"]')  || {}).value || '';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setErr('Escribe un correo válido.');
+        if (pass.length < 8) return setErr('La contraseña debe tener al menos 8 caracteres.');
+        el.disabled = true; el.textContent = 'Un momento…';
+        try {
+          const ruta = (_authModo === 'registro') ? '/api/auth/registro' : '/api/auth/ingresar';
+          const r = await fetch(ruta, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+            body: JSON.stringify({ email: email, password: pass })
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) return setErr(j.error || 'No se pudo completar. Intenta de nuevo.');
+          if (j.token) { try { localStorage.setItem('mp.jwt.v1', j.token); } catch (_) {} }
+          // Identifica la cuenta en RevenueCat (aliasa una compra anónima previa).
+          if (esNativo()) { try { await rcInit(email); } catch (_) {} }
+          cerrarAuth();
+          verificarAcceso();
+        } catch (_) {
+          setErr('Sin conexión. Intenta de nuevo.');
+        }
+      }
+    });
+  }
+
   // ------------------------------------------------ GATE (hard paywall)
   // premium o trial vigente -> acceso normal. Prueba vencida sin premium ->
   // overlay bloqueante. Sin sesión (demo / revisores de Apple) -> acceso
@@ -470,8 +551,8 @@
     const btn = document.getElementById('btn-premium-header');
     if (!btn) return;
     if (_btnHTMLOriginal === null) _btnHTMLOriginal = btn.innerHTML;
-    if (_esPremiumEstado(e) || _sdkPremium) {          // servidor O compra anónima (SDK)
-      if (!btn.dataset.premium) { btn.dataset.premium = '1'; btn.textContent = 'Premium ✓'; }
+    if (_esPremiumEstado(e) || _sdkPremium) {          // servidor O compra (SDK)
+      if (!btn.dataset.premium) { btn.dataset.premium = '1'; btn.textContent = 'Suscrito ✓'; }
     } else if (btn.dataset.premium) {
       delete btn.dataset.premium; btn.innerHTML = _btnHTMLOriginal;
     }
@@ -492,21 +573,35 @@
     }
     const d = e.dias_restantes;
     strip.textContent = d > 0
-      ? `Prueba gratis: te quedan ${d} ${d === 1 ? 'día' : 'días'} · Hazte Premium →`
-      : 'Tu prueba termina hoy · Hazte Premium →';
+      ? `Prueba gratis: te quedan ${d} ${d === 1 ? 'día' : 'días'} · Suscríbete →`
+      : 'Tu prueba termina hoy · Suscríbete →';
   }
 
   async function verificarAcceso() {
     let e = null;
     try { e = await estadoUsuario(); } catch (_) {}
-    _renderTrialStrip(e);
-    _refrescarBotonHeader(e);
-    if (!e || !e.autenticado) return;                    // demo/revisores: sin candado
-    if (_esPremiumEstado(e) || e.plan !== 'expirado') {
-      if (_bloqueante) cerrar(true);                     // se volvió premium: liberar
+    const authed = !!(e && e.autenticado);
+
+    // NATIVO sin cuenta: exige registro/login (el trial se cuenta por-cuenta).
+    // Excepción: si ya compró de forma anónima (p.ej. revisor de Apple probando
+    // la compra), NO lo forzamos a crear cuenta.
+    if (esNativo() && !authed) {
+      _refrescarBotonHeader(e);
+      if (_sdkPremium) { cerrarAuth(); _renderTrialStrip(null); return; }
+      _renderTrialStrip(null);
+      abrirAuth();
       return;
     }
-    abrir({ bloqueante: true });
+
+    cerrarAuth();                                        // autenticado (o web): fuera pantalla de auth
+    _renderTrialStrip(e);
+    _refrescarBotonHeader(e);
+    if (!authed) return;                                 // WEB anónimo: sin candado (flujo intacto)
+    if (_esPremiumEstado(e) || _sdkPremium || e.plan !== 'expirado') {
+      if (_bloqueante) cerrar(true);                     // trial vigente / suscrito: liberar candado
+      return;
+    }
+    abrir({ bloqueante: true });                         // día 15+ sin suscripción: hard paywall neutro
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -520,5 +615,5 @@
   });
   window.addEventListener('mp:premium-actualizado', verificarAcceso);
 
-  window.MPPaywall = { abrir, cerrar, esPremium, restaurar, requierePremium, plataforma, esNativo, customerInfo, entitlementActiva, verificarAcceso };
+  window.MPPaywall = { abrir, cerrar, esPremium, restaurar, requierePremium, plataforma, esNativo, customerInfo, entitlementActiva, verificarAcceso, abrirAuth, cerrarAuth };
 })();

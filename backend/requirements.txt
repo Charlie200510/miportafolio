@@ -35,3 +35,6 @@ python-dotenv>=1.0
 # Web Push notifications (iOS 16.4+, Android, Desktop)
 pywebpush>=2.0
 cryptography>=44.0             # >=44.0: incluye fix de CVE-2024-26130 y parches recientes
+
+# Hash de contraseñas (auth correo+contraseña de la app nativa)
+bcrypt>=4.1

@@ -2473,6 +2473,15 @@ def _cookie_sesion(resp: Response, session_id: str, max_age: int) -> Response:
     return resp
 
 
+_CAMPOS_USUARIO_SENSIBLES = ("password_hash",)
+
+
+def _usuario_publico(u: Optional[dict]) -> dict:
+    """Copia del usuario SIN campos sensibles. El hash de la contraseña NUNCA
+    debe salir al cliente (aunque bcrypt sea difícil de romper)."""
+    return {k: v for k, v in (u or {}).items() if k not in _CAMPOS_USUARIO_SENSIBLES}
+
+
 def _sesion_actual() -> Optional[dict]:
     """Resuelve la sesión del request.
 
@@ -2487,6 +2496,7 @@ def _sesion_actual() -> Optional[dict]:
     sid = request.cookies.get("session_id")
     ses = _auth.obtener_sesion(sid) if sid else None
     if ses:
+        ses["usuario"] = _usuario_publico(ses.get("usuario"))   # nunca exponer password_hash
         return ses
     # Fallback JWT (nativo)
     if _jwt is not None:
@@ -2506,7 +2516,7 @@ def _sesion_actual() -> Optional[dict]:
                     "session_id": None,
                     "email": email,
                     "expira_en": payload.get("exp"),
-                    "usuario": usuario,
+                    "usuario": _usuario_publico(usuario),
                 }
     return None
 
@@ -2605,6 +2615,70 @@ def api_auth_login():
     try:
         res = _auth.solicitar_magic_link(email)
         return jsonify(res)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Auth con correo + CONTRASEÑA (flujo principal de la app nativa) ──────────
+def _respuesta_auth(email: str, usuario: dict) -> Response:
+    """Respuesta de registro/login: JWT (nativo → localStorage 'mp.jwt.v1') +
+    cookie de sesión (web) + estado del trial. El plan/trial SIEMPRE se derivan
+    del store server-side (no de lo que mande el cliente)."""
+    gate = _estado_plan(usuario or {})
+    token = None
+    if _jwt is not None:
+        try:
+            token = _jwt.crear_jwt(email, email, (usuario or {}).get("plan", "trial"))
+        except Exception:
+            token = None
+    resp = jsonify({
+        "ok": True, "autenticado": True, "email": email,
+        "token": token, "usuario": _usuario_publico(usuario), **gate,
+    })
+    try:
+        ses = _auth.crear_sesion(email)
+        max_age = int(ses["expira_en"] - time.time())
+        _cookie_sesion(resp, ses["session_id"], max_age=max(60, max_age))
+    except Exception:
+        pass
+    return resp
+
+
+@app.route("/api/auth/registro", methods=["POST"])
+@_rate_limit("10 per minute; 40 per hour")
+def api_auth_registro():
+    if _auth is None:
+        return jsonify({"error": "auth no disponible"}), 500
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+    try:
+        _auth.registrar_con_password(email, password)
+        usuario = _auth.obtener_usuario(email) or {"email": email, "plan": "trial"}
+        return _respuesta_auth(email, usuario)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503     # bcrypt no instalado
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/auth/ingresar", methods=["POST"])
+@_rate_limit("10 per minute; 50 per hour")
+def api_auth_ingresar():
+    if _auth is None:
+        return jsonify({"error": "auth no disponible"}), 500
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+    try:
+        usuario = _auth.login_con_password(email, password)
+        return _respuesta_auth(email, usuario)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401     # credenciales incorrectas (mensaje genérico)
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
