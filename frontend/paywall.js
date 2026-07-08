@@ -53,9 +53,29 @@
     const e = await estadoUsuario();
     return (e && e.email) ? String(e.email).toLowerCase() : '';
   }
+  // Premium EFECTIVO = servidor (sesión) O entitlement del SDK en la app nativa.
+  // Esto permite comprar SIN cuenta: RevenueCat valida la compra en el dispositivo
+  // con el usuario anónimo y la app desbloquea aunque el servidor no tenga sesión.
+  // (El servidor sigue siendo la fuente de verdad para usuarios CON sesión.)
+  let _sdkPremium = false;
+  async function refrescarSDKPremium() {
+    if (!esNativo()) { _sdkPremium = false; return false; }
+    // Solo actualizamos ante una RESPUESTA DEFINITIVA del SDK: así un reembolso o
+    // caducidad quita el acceso en el próximo arranque, mientras que un fallo
+    // transitorio (plugin no listo, timeout) NO le quita el Premium a un
+    // comprador legítimo (conserva el último valor conocido).
+    try {
+      const RC = await rcInit(await emailActual());
+      const r = await RC.getCustomerInfo();
+      _sdkPremium = entitlementActiva((r && (r.customerInfo || r)) || null);
+    } catch (_) { /* fallo transitorio: conserva el último valor conocido */ }
+    return _sdkPremium;
+  }
   async function esPremium() {
     const e = await estadoUsuario();
-    return _esPremiumEstado(e);
+    if (_esPremiumEstado(e)) return true;               // servidor: usuario con sesión
+    if (esNativo()) return await refrescarSDKPremium(); // nativo: SDK (anónimo o identificado)
+    return false;
   }
   function _esPremiumEstado(e) {
     if (!e) return false;
@@ -68,13 +88,21 @@
     const P = (Caps && Caps.Plugins) || {};
     return P.Purchases || P.PurchasesPlugin || P.RevenueCat || null;
   }
+  let _rcConfigured = false;   // configure() se llama UNA sola vez (evita warning/reset del SDK)
+  let _rcUser = null;          // último appUserID identificado (para no repetir logIn)
   async function rcInit(email) {
     const RC = rcPlugin();
     if (!RC) throw new Error('El módulo de compras no está disponible en esta versión.');
     const key = plataforma() === 'ios' ? window.MP_REVENUECAT_KEY_IOS : window.MP_REVENUECAT_KEY_ANDROID;
     if (!key) throw new Error('Configuración de compras incompleta.');
-    try { await RC.configure({ apiKey: key, appUserID: email || undefined }); } catch (_) {}
-    if (email && RC.logIn) { try { await RC.logIn({ appUserID: email }); } catch (_) {} }
+    if (!_rcConfigured) {
+      // Arranca ANÓNIMO si no hay correo: se puede comprar sin cuenta.
+      try { await RC.configure({ apiKey: key, appUserID: email || undefined }); _rcConfigured = true; } catch (_) {}
+    }
+    // Identifica al usuario SOLO si inició sesión (opcional, para multi-dispositivo).
+    if (email && email !== _rcUser && RC.logIn) {
+      try { await RC.logIn({ appUserID: email }); _rcUser = email; } catch (_) {}
+    }
     return RC;
   }
   // Carga los paquetes del offering actual, ordenados mensual → anual → de por vida
@@ -99,11 +127,18 @@
   async function comprarNativo(email, pkg) {
     const RC = await rcInit(email);
     await RC.purchasePackage({ aPackage: pkg });          // abre la hoja de pago nativa
-    // Confirmar la entitlement de forma segura en el servidor (fuente de verdad)
-    await fetch('/api/payments/revenuecat/sync', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
+    _sdkPremium = true;                                   // compra ok: desbloqueo local inmediato
+    // Solo si hay sesión (correo) confirmamos server-side (fuente de verdad +
+    // multi-dispositivo). En compra ANÓNIMA no hay a quién sincronizar: la
+    // entitlement del SDK (validada por RevenueCat en el dispositivo) basta.
+    if (email) {
+      try {
+        await fetch('/api/payments/revenuecat/sync', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+      } catch (_) {}
+    }
   }
 
   // CustomerInfo del SDK (estado local inmediato; el servidor sigue siendo la
@@ -125,13 +160,22 @@
     if (!esNativo()) return { ok: false, error: 'Solo en la app' };
     const email = await emailActual();
     const RC = await rcInit(email);
-    await RC.restorePurchases();
-    const r = await fetch('/api/payments/revenuecat/sync', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    const j = await r.json();
-    if (j && j.premium) {
+    const r = await RC.restorePurchases();
+    // Fuente inmediata: la entitlement del SDK tras restaurar (funciona anónimo).
+    let premium = entitlementActiva((r && (r.customerInfo || r)) || null);
+    // Si hay sesión, el servidor confirma (multi-dispositivo).
+    if (email) {
+      try {
+        const rs = await fetch('/api/payments/revenuecat/sync', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const j = await rs.json();
+        if (j && typeof j.premium === 'boolean') premium = j.premium;
+      } catch (_) {}
+    }
+    _sdkPremium = premium;
+    if (premium) {
       cerrar(true);   // también libera el candado
       toast('Tu suscripción se restauró correctamente.');
       try { window.dispatchEvent(new Event('mp:premium-actualizado')); } catch (_) {}
@@ -139,7 +183,7 @@
       cerrar();       // en modo bloqueante NO cierra
       toast('No encontramos una suscripción activa para restaurar.');
     }
-    return j;
+    return { ok: true, premium: premium };
   }
 
   // -------------------------------------------------- MercadoPago (web)
@@ -206,9 +250,7 @@
          <p style="color:#a1a1aa;font-size:13px;margin:6px 0 0">
            Luego ${PRECIO_TXT}. Cancela en un click, sin permanencia. Pago seguro con MercadoPago.</p>`;
 
-    // Sin sesión: capturamos el correo AQUÍ MISMO (sin dead-end). El correo
-    // liga la compra (appUserID de RevenueCat) y dispara un magic link para
-    // acceso web/otros dispositivos — pero la compra NO depende de abrirlo.
+    // Captura de correo — SOLO en web (MercadoPago necesita el correo del pagador).
     const captura = `
       <div style="display:flex;flex-direction:column;gap:8px">
         <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
@@ -216,17 +258,26 @@
           style="width:100%;background:#18181b;border:1px solid #3f3f46;border-radius:12px;padding:13px 14px;font-size:15px;color:#fafafa;outline:none;box-sizing:border-box">
         <button data-x="email-continuar" style="${BTN_PRI}">Continuar</button>
         <p style="color:#71717a;font-size:11px;margin:2px 0 0;text-align:center">
-          Ligamos tu compra a este correo y te enviamos un enlace de acceso para la web y tus otros dispositivos.</p>
-      </div>${nativo ? `<button data-x="restore" style="${BTN_SEC};margin-top:8px">Restaurar compra</button>` : ''}`;
+          Te enviamos un enlace de acceso a este correo.</p>
+      </div>`;
 
-    const cta = !email
-      ? captura
-      : nativo
+    // Link de login OPCIONAL en nativo: sincroniza Premium entre dispositivos.
+    // NO es requisito para comprar (se puede pagar con el usuario anónimo).
+    const loginOpcional = `<button data-x="login-opcional"
+        style="background:none;border:0;color:#71717a;font-size:12px;text-decoration:underline;cursor:pointer;padding:8px 0 0;width:100%">
+        ${email ? 'Sesión iniciada: ' + email : '¿Ya tienes cuenta? Inicia sesión para sincronizar'}</button>`;
+
+    // NATIVO: planes directos (compra sin cuenta) + restaurar + login opcional.
+    // WEB: si hay correo, botón de prueba; si no, captura de correo para MercadoPago.
+    const cta = nativo
       ? `<div data-x="planes" style="display:flex;flex-direction:column;gap:8px">
            <p style="color:#71717a;font-size:13px;text-align:center;margin:4px 0">Cargando planes…</p>
          </div>
-         <button data-x="restore" style="${BTN_SEC}">Restaurar compra</button>`
-      : `<button data-x="buy" style="${BTN_PRI}">Empezar prueba gratis</button>`;
+         <button data-x="restore" style="${BTN_SEC}">Restaurar compra</button>
+         ${loginOpcional}`
+      : email
+      ? `<button data-x="buy" style="${BTN_PRI}">Empezar prueba gratis</button>`
+      : captura;
 
     const legal = `<p style="color:#52525b;font-size:11px;margin:14px 0 0;text-align:center">
         Al continuar aceptas los <a href="/terminos" style="color:#71717a">Términos</a> y la
@@ -299,7 +350,7 @@
       </div>`;
     document.body.appendChild(_overlay);
 
-    if (esNativo() && !premium && _email) _cargarPlanesEnOverlay();
+    if (esNativo() && !premium) _cargarPlanesEnOverlay();   // planes aunque NO haya correo (anónimo)
 
     // Enter en el campo de correo = Continuar
     _overlay.addEventListener('keydown', (ev) => {
@@ -330,35 +381,58 @@
         try { await restaurar(); } catch (e) { toast(e.message || 'Error al restaurar'); el.disabled = false; el.textContent = 'Restaurar compra'; }
         return;
       }
+      if (act === 'login-opcional') {
+        // Mostrar captura de correo (login OPCIONAL para sincronizar).
+        const body = _overlay.querySelector('[data-x="body"]');
+        if (body) body.innerHTML = `
+          <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Inicia sesión</h2>
+          <p style="color:#a1a1aa;margin:0 0 14px;font-size:14px">Opcional. Sincroniza tu Premium entre tus dispositivos. No es necesario para comprar ni para usar la prueba.</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
+              placeholder="tu@correo.com"
+              style="width:100%;background:#18181b;border:1px solid #3f3f46;border-radius:12px;padding:13px 14px;font-size:15px;color:#fafafa;outline:none;box-sizing:border-box">
+            <button data-x="email-continuar" style="${BTN_PRI}">Enviarme el enlace</button>
+            <button data-x="volver" style="${BTN_SEC}">Volver a los planes</button>
+          </div>`;
+        return;
+      }
+      if (act === 'volver') {
+        const body = _overlay.querySelector('[data-x="body"]');
+        if (body) { body.innerHTML = vista(_email, false, _bloqueante); if (esNativo()) _cargarPlanesEnOverlay(); }
+        return;
+      }
       if (act === 'email-continuar') {
         const inp = _overlay.querySelector('[data-x="email-input"]');
         const v = ((inp && inp.value) || '').trim().toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { toast('Escribe un correo válido.'); return; }
         _email = v;
-        // Magic link para acceso web/otros dispositivos. Fire-and-forget:
-        // la compra en iOS la autentica Apple y NO depende de abrir el correo.
+        // Magic link para acceso multi-dispositivo. Fire-and-forget: en nativo la
+        // compra la autentica Apple/RevenueCat y NO depende de abrir el correo.
+        // Al identificar el correo, rcInit hará logIn y RevenueCat aliasa la
+        // compra anónima previa a esta cuenta (no se pierde el Premium).
         fetch('/api/auth/login', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: v })
         }).catch(() => {});
+        toast('Te enviamos un enlace de acceso a ' + v + '.');
         const body = _overlay.querySelector('[data-x="body"]');
         if (body) body.innerHTML = vista(_email, false, _bloqueante);
         if (esNativo()) _cargarPlanesEnOverlay();
         return;
       }
       if (act === 'buy') {
-        if (!_email) { toast('Escribe tu correo para continuar.'); return; }
         el.disabled = true; const prev = el.textContent; el.textContent = 'Procesando…';
         try {
           if (esNativo()) {
             const idx = parseInt(el.getAttribute('data-pkg') || '0', 10);
             const pkg = _pkgs[idx];
             if (!pkg) throw new Error('Plan no disponible, intenta de nuevo.');
-            await comprarNativo(_email, pkg);
+            await comprarNativo(_email, pkg);   // _email puede ir vacío = compra ANÓNIMA
             cerrar(true);   // compra hecha: libera también el candado
             toast('¡Listo! Ya eres Premium.');
             try { window.dispatchEvent(new Event('mp:premium-actualizado')); } catch (_) {}
           } else {
+            if (!_email) { toast('Escribe tu correo para continuar.'); el.disabled = false; el.textContent = prev; return; }
             await comprarWeb(_email);    // redirige al checkout de MercadoPago
           }
         } catch (e) {
@@ -396,7 +470,7 @@
     const btn = document.getElementById('btn-premium-header');
     if (!btn) return;
     if (_btnHTMLOriginal === null) _btnHTMLOriginal = btn.innerHTML;
-    if (_esPremiumEstado(e)) {
+    if (_esPremiumEstado(e) || _sdkPremium) {          // servidor O compra anónima (SDK)
       if (!btn.dataset.premium) { btn.dataset.premium = '1'; btn.textContent = 'Premium ✓'; }
     } else if (btn.dataset.premium) {
       delete btn.dataset.premium; btn.innerHTML = _btnHTMLOriginal;
@@ -435,7 +509,12 @@
     abrir({ bloqueante: true });
   }
 
-  document.addEventListener('DOMContentLoaded', verificarAcceso);
+  document.addEventListener('DOMContentLoaded', () => {
+    // En nativo, consulta el entitlement del SDK al arrancar: reconoce a un
+    // comprador ANÓNIMO que vuelve a abrir la app (el servidor no lo conoce).
+    if (esNativo()) refrescarSDKPremium().then(verificarAcceso, verificarAcceso);
+    else verificarAcceso();
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') verificarAcceso();
   });
