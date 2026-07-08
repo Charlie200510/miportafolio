@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 import time
 import hmac
+from functools import wraps
 
 # ---- Cargar .env si existe (sin depender de python-dotenv) ----------
 # Esto deja disponibles ANTHROPIC_API_KEY, SMTP_*, etc. para los módulos
@@ -330,6 +331,34 @@ def _rate_limit(reglas):
     def _wrap(fn):
         return limiter.limit(reglas)(fn) if limiter else fn
     return _wrap
+
+
+def requiere_acceso(fn):
+    """Enforcement SERVER-SIDE del acceso a funciones premium. Deja pasar a:
+      - Anónimos (web/demo): NO se bloquea → preserva el flujo web anónimo.
+      - Autenticados con trial vigente (día 1-14) o con suscripción activa.
+    Bloquea con 402 SOLO a cuentas AUTENTICADAS con la prueba vencida y sin
+    suscripción. El acceso se deriva del store server-side (_estado_plan sobre
+    creado_en + plan), NUNCA de lo que mande el cliente (JWT/body/localStorage).
+    Aplicar DESPUÉS de @_rate_limit y SOLO a endpoints premium (no a /api/analizar,
+    ni endpoints básicos/gratuitos, ni auth). _sesion_actual/_estado_plan se
+    resuelven en tiempo de request (definidos más abajo en el archivo)."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            ses = _sesion_actual()
+        except Exception:
+            ses = None
+        if ses:
+            gate = _estado_plan(ses.get("usuario", {}))
+            if not gate.get("acceso"):
+                return jsonify({
+                    "error": "acceso_requerido",
+                    "detalle": "Tu prueba terminó. Suscríbete para seguir usando Mi Portafolio.",
+                    "plan": gate.get("plan"),
+                }), 402
+        return fn(*args, **kwargs)
+    return wrapper
 
 # 3) Security headers en TODAS las respuestas.
 @app.after_request
@@ -856,6 +885,7 @@ def api_universo():
 
 @app.route("/api/explorar", methods=["POST"])
 @_rate_limit("30 per minute; 300 per hour")
+@requiere_acceso
 def api_explorar():
     """
     Analiza una selección de tickers del universo.
@@ -1478,6 +1508,7 @@ def api_asistente_chat():
 # ------------------------------------------------------------
 @app.route("/api/reporte/pdf", methods=["POST"])
 @_rate_limit("10 per minute; 60 per hour")
+@requiere_acceso
 def api_reporte_pdf():
     """
     Genera el PDF del reporte mensual.
@@ -1728,6 +1759,7 @@ def api_dashboard(ticker):
 # ------------------------------------------------------------
 @app.route("/api/backtest", methods=["POST"])
 @_rate_limit("20 per minute; 200 per hour")
+@requiere_acceso
 def api_backtest():
     """Body JSON: {tickers: [...], pesos: {t:peso_pp}, periodo: "covid_full"|"custom",
        inicio?: "YYYY-MM-DD", fin?: "YYYY-MM-DD"}"""
@@ -1761,6 +1793,7 @@ def api_backtest_periodos():
 # ------------------------------------------------------------
 @app.route("/api/stress-test", methods=["POST"])
 @_rate_limit("20 per minute; 200 per hour")
+@requiere_acceso
 def api_stress_test():
     """Body JSON: {tickers: [...], pesos: {t:peso_pp}, escenario: "covid_2020",
        montos?: {t: monto_mxn}}"""
@@ -2030,6 +2063,7 @@ def api_precios_live():
 
 @app.route("/api/portafolio-optimo", methods=["GET"])
 @_rate_limit("30 per minute; 300 per hour")
+@requiere_acceso
 def api_portafolio_optimo():
     """Genera portafolio óptimo Markowitz para nivel de riesgo (1-10).
     ?nivel=5 → balanceado. Cache 6h."""
@@ -2216,6 +2250,7 @@ def api_periodico_accion_del_dia():
 
 @app.route("/api/deep-dive/<path:ticker>", methods=["GET"])
 @_rate_limit("30 per minute; 300 per hour")
+@requiere_acceso
 def api_deep_dive(ticker):
     """Análisis profundo automático de un ticker BMV (o cualquier ticker).
     Devuelve métricas + comparativa contra peers mexicanos + narrativa."""
