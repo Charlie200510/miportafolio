@@ -333,31 +333,51 @@ def _rate_limit(reglas):
     return _wrap
 
 
+def _es_cliente_nativo() -> bool:
+    """True si la request viene de la app nativa (Capacitor). Señal: el Origin
+    que el WKWebView envía en toda llamada al API (cross-origin a miportafolio.uk).
+    Ya está en la allowlist CORS, así que no requiere header extra ni preflight."""
+    origin = (request.headers.get("Origin") or "").strip().lower()
+    return origin in ("capacitor://localhost", "https://localhost", "ionic://localhost")
+
+
 def requiere_acceso(fn):
-    """Enforcement SERVER-SIDE del acceso a funciones premium. Deja pasar a:
-      - Anónimos (web/demo): NO se bloquea → preserva el flujo web anónimo.
-      - Autenticados con trial vigente (día 1-14) o con suscripción activa.
-    Bloquea con 402 SOLO a cuentas AUTENTICADAS con la prueba vencida y sin
-    suscripción. El acceso se deriva del store server-side (_estado_plan sobre
-    creado_en + plan), NUNCA de lo que mande el cliente (JWT/body/localStorage).
-    Aplicar DESPUÉS de @_rate_limit y SOLO a endpoints premium (no a /api/analizar,
-    ni endpoints básicos/gratuitos, ni auth). _sesion_actual/_estado_plan se
-    resuelven en tiempo de request (definidos más abajo en el archivo)."""
+    """Enforcement SERVER-SIDE del acceso a funciones premium.
+      - Autenticado con trial vigente (día 1-14) o suscripción activa → PASA.
+      - Autenticado con prueba vencida y sin suscripción → 402.
+      - App NATIVA sin sesión → 401: la app siempre opera con cuenta (login
+        obligatorio), así que sin sesión = token ausente/borrado. Cierra el hueco
+        de evadir el trial vencido borrando el JWT.
+      - Web/PWA anónimo (demo) → PASA (no rompe el flujo web anónimo).
+    El acceso se deriva del store server-side (_estado_plan sobre creado_en+plan),
+    NUNCA del cliente. FAIL-CLOSED: si la verificación lanza, NO se regala acceso
+    (503). Aplicar DESPUÉS de @_rate_limit y SOLO a endpoints premium."""
     @wraps(fn)
     def wrapper(*args, **kwargs):
+        # Resolver acceso dentro del try; el handler se llama FUERA (para no
+        # enmascarar sus propios errores como fallo de verificación).
         try:
             ses = _sesion_actual()
+            gate = _estado_plan(ses.get("usuario", {})) if ses else None
         except Exception:
-            ses = None
+            return jsonify({
+                "error": "acceso_no_verificable",
+                "detalle": "No pudimos verificar tu acceso. Intenta de nuevo.",
+            }), 503
         if ses:
-            gate = _estado_plan(ses.get("usuario", {}))
             if not gate.get("acceso"):
                 return jsonify({
                     "error": "acceso_requerido",
                     "detalle": "Tu prueba terminó. Suscríbete para seguir usando Mi Portafolio.",
                     "plan": gate.get("plan"),
                 }), 402
-        return fn(*args, **kwargs)
+            return fn(*args, **kwargs)          # trial vigente o suscriptor
+        if _es_cliente_nativo():
+            return jsonify({
+                "error": "cuenta_requerida",
+                "detalle": "Inicia sesión o crea tu cuenta para continuar.",
+            }), 401
+        return fn(*args, **kwargs)              # web/PWA anónimo: demo abierto
     return wrapper
 
 # 3) Security headers en TODAS las respuestas.
