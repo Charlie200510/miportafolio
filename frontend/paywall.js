@@ -425,13 +425,16 @@
         return;
       }
       if (act === 'buy') {
+        // La compra en nativo SIEMPRE va ligada a la cuenta (sin ruta anónima):
+        // si no hay sesión, se envía a crear cuenta / iniciar sesión primero.
+        if (esNativo() && !_email) { cerrar(true); abrirAuth(); return; }
         el.disabled = true; const prev = el.textContent; el.textContent = 'Procesando…';
         try {
           if (esNativo()) {
             const idx = parseInt(el.getAttribute('data-pkg') || '0', 10);
             const pkg = _pkgs[idx];
             if (!pkg) throw new Error('Plan no disponible, intenta de nuevo.');
-            await comprarNativo(_email, pkg);   // _email puede ir vacío = compra ANÓNIMA
+            await comprarNativo(_email, pkg);   // _email siempre presente (compra ligada a la cuenta)
             cerrar(true);   // compra hecha: libera también el candado
             toast('¡Listo! Tu suscripción está activa.');
             try { window.dispatchEvent(new Event('mp:premium-actualizado')); } catch (_) {}
@@ -488,7 +491,6 @@
         <button data-x="auth-submit" style="${BTN_PRI}">${reg ? 'Crear cuenta' : 'Entrar'}</button>
         <button data-x="auth-toggle" style="${BTN_LINK}">${reg ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Crea una gratis'}</button>
       </div>
-      <button data-x="auth-planes" style="${BTN_LINK};margin-top:10px">Ver planes de suscripción</button>
       ${LEGAL}`;
   }
 
@@ -514,7 +516,6 @@
         setErr('');
         return;
       }
-      if (act === 'auth-planes') { abrir(); return; }   // paywall encima: permite comprar (p.ej. revisores de Apple)
       if (act === 'auth-submit') {
         const email = ((_authOverlay.querySelector('[data-x="auth-email"]') || {}).value || '').trim().toLowerCase();
         const pass  =  (_authOverlay.querySelector('[data-x="auth-pass"]')  || {}).value || '';
