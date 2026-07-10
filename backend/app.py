@@ -2615,6 +2615,19 @@ _TRIAL_DIAS = int(os.environ.get("TRIAL_DIAS", "14"))
 
 
 def _estado_plan(usuario: dict) -> dict:
+    # Acceso PERMANENTE por cuenta (p.ej. la cuenta demo de Apple): nunca expira
+    # ni depende del trial ni de RevenueCat. Se marca con el flag server-side
+    # `acceso_permanente: true` en el store, SOLO en esa cuenta exacta. El cliente
+    # no puede setearlo (vive en el store; se lee vía _sesion_actual). No cambia
+    # la lógica global del trial.
+    if (usuario or {}).get("acceso_permanente") is True:
+        return {
+            "plan": "premium",
+            "premium": True,
+            "dias_restantes": None,
+            "trial_dias": _TRIAL_DIAS,
+            "acceso": True,
+        }
     premium = (usuario or {}).get("plan") == "premium"
     try:
         creado = float((usuario or {}).get("creado_en") or 0)
