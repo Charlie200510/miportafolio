@@ -60,6 +60,35 @@ def es_crypto(ticker: str) -> bool:
     return t.endswith("-USD") or t.endswith("-USDT")
 
 
+# Palabras que delatan un ETF / fondo / índice en sector/nombre.
+_ETF_KEYS = ("ETF", "ÍNDICE", "INDICE", "INDEX", "MUTUALFUND", "FUND", "FONDO",
+             "TRUST", "ISHARES", "VANGUARD", "SPDR", "NAFTRAC")
+
+
+def tipo_activo(ticker: str, info: Optional[Dict[str, Any]] = None) -> str:
+    """Detecta el tipo de activo para elegir la metodología de score.
+
+    Devuelve 'crypto' | 'etf' | 'accion' | 'generico'. Reglas (de más a menos fuerte):
+      - crypto: sufijo -USD / -USDT (es_crypto).
+      - etf: sector/industria/nombre contiene ETF/índice/fondo/gestora.
+      - accion: tiene un sector de EMPRESA real (los universos guardan 'sector').
+      - generico: no cae en lo anterior (activo sin fundamentales ni sector de
+        empresa: p.ej. materias primas, divisas, índices sin nombre-fondo).
+    Los universos hoy guardan sector como 'Criptomoneda', 'ETF / Índice', o el
+    sector real de la empresa, así que la detección es fiable con esos datos."""
+    if es_crypto(ticker):
+        return "crypto"
+    info = info or {}
+    campos = " ".join(str(info.get(k, "") or "") for k in
+                      ("tipo", "quoteType", "sector", "industria", "nombre")).upper()
+    if any(k in campos for k in _ETF_KEYS):
+        return "etf"
+    sector = str(info.get("sector", "") or "").strip()
+    if sector and sector.upper() not in ("CRIPTOMONEDA", "CRYPTO", "N/A", "-"):
+        return "accion"
+    return "generico"
+
+
 def rf_para(ticker: str) -> float:
     """Tasa libre de riesgo en la moneda apropiada."""
     if (ticker or "").upper().endswith(".MX"):
@@ -228,12 +257,117 @@ def calcular_metricas(
 # ─────────────────────────────────────────────────────────
 # Score compuesto — única fuente
 # ─────────────────────────────────────────────────────────
+def _score_por_tipo(tipo: str, m: Dict[str, Any],
+                    liquidez_valor_diaria: Optional[float] = None) -> Tuple[float, List[str]]:
+    """Score para activos SIN fundamentales de empresa (ETF, crypto, otros).
+
+    Devuelve (raw, razones) en el MISMO espacio ~0-110 que el bloque técnico+
+    fundamental de las acciones, para que el lift/clamp final produzca una escala
+    0-95 COMPARABLE. Cada rama usa solo métricas derivables de la serie de precios
+    (retorno anual, Sharpe, momentum 3m, volatilidad, beta) y trata como NEUTRO
+    (0 pts, sin castigo) las métricas que no existen (expense ratio, AUM, mcap):
+
+      - CRYPTO: dominado por momentum + retorno + Sharpe. NO usa Alpha/Beta vs
+        SPY (sin sentido para cripto) y la alta volatilidad es la norma (no se
+        castiga salvo extrema >150%). market_cap/volumen suman si están.
+      - ETF/índice: prima Sharpe + estabilidad (vol baja) + retorno. NO castiga
+        Alpha≈0 (un índice por diseño no genera alpha). Beta≈1 es sano.
+      - GENERICO: desempeño de mercado puro (Sharpe/retorno/momentum/vol).
+    """
+    ret  = m.get("retorno_real_anual")
+    shp  = m.get("sharpe")
+    mom  = m.get("momentum_3m")
+    vol  = m.get("volatilidad_anual")
+    beta = m.get("beta")
+    razones: List[str] = []
+    raw = 0.0
+
+    def add(p, msg=None):
+        nonlocal raw
+        raw += p
+        if msg and p > 0:
+            razones.append(msg)
+
+    if tipo == "crypto":
+        if mom is not None:
+            if mom > 0.20:      add(30, f"Momentum 3m muy fuerte (+{mom*100:.0f}%)")
+            elif mom >= 0.05:   add(22, f"Momentum 3m sano (+{mom*100:.0f}%)")
+            elif mom > 0:       add(10)
+            elif mom < -0.20:   add(-8)
+            elif mom < -0.05:   add(-4)
+        if ret is not None:
+            if ret > 0.30:      add(25, f"Retorno anual alto ({ret*100:.0f}%)")
+            elif ret > 0.10:    add(16, f"Retorno anual sólido ({ret*100:.0f}%)")
+            elif ret > 0:       add(8)
+            else:               add(-5)
+        if shp is not None:
+            if shp > 1.0:       add(25, f"Sharpe excelente ({shp:.2f})")
+            elif shp > 0.5:     add(16, f"Sharpe sólido ({shp:.2f})")
+            elif shp > 0:       add(6)
+        if vol is not None:
+            if vol < 0.50:      add(15, "Volatilidad baja para cripto")
+            elif vol < 0.80:    add(8)
+            elif vol > 1.5:     add(-5)
+        if liquidez_valor_diaria and liquidez_valor_diaria >= 50_000_000:
+            add(10, "Liquidez alta")
+        razones.append("Score cripto (momentum/retorno/riesgo; sin fundamentales de empresa)")
+
+    elif tipo == "etf":
+        if shp is not None:
+            if shp > 1.0:       add(30, f"Sharpe excelente ({shp:.2f})")
+            elif shp > 0.6:     add(20, f"Sharpe sólido ({shp:.2f})")
+            elif shp > 0.3:     add(10)
+            elif shp > 0:       add(3)
+        if ret is not None:
+            if ret > 0.15:      add(25, f"Retorno anual alto ({ret*100:.0f}%)")
+            elif ret > 0.08:    add(18, f"Retorno anual sólido ({ret*100:.0f}%)")
+            elif ret > 0:       add(10)
+            else:               add(-5)
+        if vol is not None:
+            if vol < 0.15:      add(25, "Muy estable (volatilidad baja)")
+            elif vol < 0.25:    add(18, "Estable")
+            elif vol < 0.40:    add(10)
+            elif vol > 0.60:    add(-5)
+        if mom is not None:
+            if 0.03 <= mom <= 0.20: add(15, f"Momentum sano (+{mom*100:.0f}%)")
+            elif mom > 0.20:    add(8)
+            elif mom > 0:       add(3)
+            elif mom < -0.15:   add(-4)
+        if beta is not None and 0.7 <= abs(beta) <= 1.3:
+            add(10, "Participación de mercado sana (beta≈1)")
+        razones.append("Score ETF (Sharpe/estabilidad/retorno; sin fundamentales de empresa)")
+
+    else:  # generico
+        if shp is not None:
+            if shp > 1.0:       add(28, f"Sharpe excelente ({shp:.2f})")
+            elif shp > 0.5:     add(18, f"Sharpe sólido ({shp:.2f})")
+            elif shp > 0:       add(6)
+        if ret is not None:
+            if ret > 0.15:      add(25, f"Retorno anual alto ({ret*100:.0f}%)")
+            elif ret > 0.05:    add(15)
+            elif ret > 0:       add(6)
+            else:               add(-5)
+        if mom is not None:
+            if 0.03 <= mom <= 0.20: add(20, f"Momentum sano (+{mom*100:.0f}%)")
+            elif mom > 0.20:    add(8)
+            elif mom > 0:       add(3)
+            elif mom < -0.15:   add(-5)
+        if vol is not None:
+            if vol < 0.25:      add(20, "Volatilidad contenida")
+            elif vol < 0.50:    add(10)
+            elif vol > 0.80:    add(-5)
+        razones.append("Score por desempeño de mercado (activo sin fundamentales)")
+
+    return raw, razones
+
+
 def score_compuesto(
     metricas: Dict[str, Any],
     fundamentales: Optional[Dict[str, Any]] = None,
     liquidez_valor_diaria: Optional[float] = None,
+    tipo: str = "accion",
 ) -> Tuple[int, List[str]]:
-    """Calcula el score compuesto canónico (0-100) y las razones.
+    """Calcula el score compuesto canónico (0-95, escala comparable) y las razones.
 
     Mismo cálculo que se usa en Acción del Día, Analizar y cualquier otra vista.
 
@@ -241,10 +375,19 @@ def score_compuesto(
         metricas: bundle de calcular_metricas()
         fundamentales: {pe, roe, margen_neto, debt_equity, dividend_yield} opcional
         liquidez_valor_diaria: volumen × precio (USD/MXN diarios)
+        tipo: 'accion' (default, fórmula empresa) | 'etf' | 'crypto' | 'generico'.
+              Para no-empresa se usa una metodología específica por tipo
+              (_score_por_tipo) que NO castiga por faltar P/E, ROE, etc.
 
     Returns:
-        (score 0-100, lista de razones)
+        (score 0-95, lista de razones)
     """
+    # Activos sin fundamentales de empresa: metodología por tipo, misma escala.
+    if tipo in ("etf", "crypto", "generico"):
+        raw, razones = _score_por_tipo(tipo, metricas, liquidez_valor_diaria)
+        raw = max(0, min(120, raw))
+        return max(0, min(95, int(round(raw * 0.92 + 8)))), razones
+
     f = fundamentales or {}
     razones: List[str] = []
 

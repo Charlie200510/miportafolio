@@ -245,7 +245,10 @@ def calcular_metricas_y_score(
         except (TypeError, ValueError):
             pass
 
-    score, razones = MC.score_compuesto(metricas, fund, liquidez)
+    # Detecta el tipo de activo para aplicar la metodología de score correcta
+    # (ETF/crypto/otros no se castigan por faltar fundamentales de empresa).
+    tipo = MC.tipo_activo(ticker, info)
+    score, razones = MC.score_compuesto(metricas, fund, liquidez, tipo=tipo)
 
     # Normalizar fundamentales para mostrar
     fund_norm = dict(fund)
@@ -261,6 +264,7 @@ def calcular_metricas_y_score(
         "nombre":     info.get("nombre") or ticker,
         "sector":     info.get("sector"),
         "industria":  info.get("industria") or info.get("industry"),
+        "tipo_activo": tipo,
         "moneda":     metricas["moneda"],
         "es_mx":      es_mx,
         "precio":     round(precio_actual, 2) if precio_actual else None,
