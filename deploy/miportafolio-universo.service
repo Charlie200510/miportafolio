@@ -1,0 +1,14 @@
+[Unit]
+Description=Refresco diario del universo lite (Mi Portafolio)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/portafolio-app/backend
+# actualizar_lite_diario.py es SEGURO: si la descarga falla/viene vacía, NO sobrescribe.
+ExecStart=/home/ubuntu/portafolio-app/.venv/bin/python actualizar_lite_diario.py
+# Tras refrescar el CSV, reiniciar gunicorn para que recargue el universo en memoria.
+# (el prefijo '+' ejecuta como root aunque el servicio corra como 'ubuntu')
+ExecStartPost=+/usr/bin/systemctl restart miportafolio

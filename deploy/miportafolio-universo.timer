@@ -1,0 +1,10 @@
+[Unit]
+Description=Timer: refresco diario del universo lite
+
+[Timer]
+# Lun-Vie 23:00 (hora del sistema, UTC en la VM) = tras el cierre de US y BMV.
+OnCalendar=Mon..Fri 23:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

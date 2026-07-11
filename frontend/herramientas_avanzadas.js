@@ -1116,6 +1116,14 @@
     const secComparar = document.getElementById('sub-comparar');
     if (!tabs.length) return;
     function activar(sub) {
+      // Estos tabs viven en Analizar. Si se clican desde el Optimizador (que es
+      // otra vista, vista-explorador), primero regresamos a Analizar reutilizando
+      // el nav principal; si no, las sub-secciones quedarían ocultas.
+      const vA = document.getElementById('vista-analizar');
+      if (vA && vA.classList.contains('hidden')) {
+        const navA = document.querySelector('.nav-tab.nav-primary[data-vista="analizar"]');
+        if (navA) navA.click();
+      }
       tabs.forEach(b => {
         const activo = b.dataset.subAnalizar === sub;
         b.classList.toggle('text-zinc-100', activo);

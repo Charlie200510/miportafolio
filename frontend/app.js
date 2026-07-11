@@ -32,6 +32,114 @@ window.fetch = function(url, init) {
   return _origFetch(url, init);
 };
 
+// ── Carga en frío: sesión lista + reintentos ────────────────────────────────
+// Una sola lectura de /api/auth/estado, memoizada: (a) garantiza que el
+// token/cookie esté resuelto ANTES de pedir datos (evita el error transitorio
+// en nativo cuando el fetch sale sin Authorization) y (b) "despierta" el backend.
+window.__mpSesionLista = (async () => {
+  try {
+    const r = await fetch('/api/auth/estado?t=' + Date.now(), { cache: 'no-store' });
+    return await r.json();
+  } catch (_) { return { autenticado: false }; }
+})();
+
+// fetch de JSON con reintentos para cold-start del backend. NO reintenta errores
+// 4xx (auth/entrada) — solo 5xx/red/429 (servidor frío o caído momentáneamente).
+async function fetchJsonRetry(url, init, opts) {
+  const { intentos = 2, delay = 3500, onRetry = null } = (opts || {});
+  let ultimoErr;
+  for (let i = 0; i <= intentos; i++) {
+    try {
+      const res = await fetch(url, init);
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        const j = await res.json().catch(() => ({}));
+        const e = new Error((j && j.error) || ('HTTP ' + res.status));
+        e.status = res.status; e.body = j; throw e;   // 4xx: no reintentar
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);   // 5xx: reintentable
+      return await res.json();
+    } catch (err) {
+      ultimoErr = err;
+      if (err && err.status && err.status < 500 && err.status !== 429) throw err;
+      if (i < intentos) { if (onRetry) try { onRetry(i + 1); } catch (_) {} await new Promise(r => setTimeout(r, delay)); continue; }
+      throw ultimoErr;
+    }
+  }
+  throw ultimoErr;
+}
+
+// ── Autocompletar por NOMBRE o ticker, reutilizable en TODAS las lupas ───────
+// Crea su propio dropdown (no requiere HTML extra) y usa /api/buscar-ticker
+// (Yahoo: soporta nombre parcial, ticker, ETFs, crypto, índices). Al elegir,
+// rellena el input con el ticker correcto y llama onPick(ticker, item) si se pasa.
+window.attachTickerAutocomplete = function (input, onPick) {
+  if (!input || input.dataset.acWired) return;
+  input.dataset.acWired = '1';
+  const wrap = input.parentElement || input;
+  try { if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative'; } catch (_) {}
+  const box = document.createElement('div');
+  box.className = 'hidden absolute z-30 left-0 right-0 mt-1 bg-surface-card border border-surface-border rounded-md shadow-lg max-h-56 overflow-y-auto text-sm';
+  wrap.appendChild(box);
+  let items = [], sel = -1, timer = null, seq = 0;
+  const hide = () => { box.classList.add('hidden'); box.innerHTML = ''; sel = -1; };
+  function render() {
+    if (!items.length) { hide(); return; }
+    box.innerHTML = items.map((r, i) =>
+      `<div data-i="${i}" class="px-3 py-2 cursor-pointer ${i === sel ? 'bg-white/10' : 'hover:bg-white/5'}">
+         <span class="font-semibold text-zinc-100">${r.ticker}</span>
+         <span class="text-zinc-400 ml-1">${String(r.nombre || '').slice(0, 44)}</span>
+         ${r.tipo ? `<span class="text-[10px] text-zinc-600 ml-1">${r.tipo}</span>` : ''}
+       </div>`).join('');
+    box.classList.remove('hidden');
+  }
+  function pick(i) {
+    const r = items[i]; if (!r) return;
+    input.value = r.ticker;
+    hide();
+    try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+    try { input.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+    if (typeof onPick === 'function') onPick(r.ticker, r);
+  }
+  async function buscar(q) {
+    const mine = ++seq;
+    try {
+      const res = await fetch('/api/buscar-ticker?q=' + encodeURIComponent(q) + '&limite=12');
+      const body = await res.json();
+      if (mine !== seq) return;             // respuesta obsoleta
+      items = Array.isArray(body) ? body.slice(0, 12) : [];
+      sel = -1; render();
+    } catch (_) { hide(); }
+  }
+  input.addEventListener('input', () => {
+    const q = input.value.trim();
+    if (q.length < 2) { hide(); return; }
+    clearTimeout(timer);
+    timer = setTimeout(() => buscar(q), 220);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (box.classList.contains('hidden') || !items.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); render(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); render(); }
+    else if (e.key === 'Enter' && sel >= 0) { e.preventDefault(); pick(sel); }
+    else if (e.key === 'Escape') { hide(); }
+  });
+  box.addEventListener('mousedown', (e) => {
+    const el = e.target.closest('[data-i]');
+    if (el) { e.preventDefault(); pick(parseInt(el.dataset.i, 10)); }
+  });
+  document.addEventListener('click', (e) => { if (e.target !== input && !box.contains(e.target)) hide(); });
+};
+
+// Cablea el autocompletar en todas las lupas de resolución (input -> ticker).
+// #cmp-input y #pick-buscar YA tienen su propio buscador por nombre; no se tocan.
+function bindAutocompletes() {
+  const lupas = ['an-input', 'dd-input', 'sml-input', 'comprar-ticker-input', 'tx-form-ticker', 'brokers-ticker'];
+  lupas.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) window.attachTickerAutocomplete(el);
+  });
+}
+
 // ============================================================
 //  Carga /api/resultados y /api/info-activos y renderiza:
 //   - hero (KPIs del portafolio)
@@ -339,18 +447,18 @@ async function analizarYRender(tickers, pesos /* dict opcional */) {
   try {
     const payload = { tickers };
     if (pesos && Object.keys(pesos).length) payload.pesos = pesos;
-    const res = await fetch('/api/analizar', {
+    // Reintenta ante cold-start (no ante 4xx). Mientras, mantiene el estado de carga.
+    data = await fetchJsonRetry('/api/analizar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-    data = json;
+    }, { intentos: 2, delay: 3500, onRetry: (n) => {
+      $('hero-titulo').textContent = `Despertando servidor… (${n}/2)`;
+    } });
   } catch (err) {
     console.error(err);
     $('hero-titulo').textContent = 'No pude analizar tu portafolio';
-    $('hero-subtitulo').textContent = err.message + ' · Toca Editar para ajustar la selección.';
+    $('hero-subtitulo').textContent = (err.message || 'Error') + ' · Toca Editar para ajustar la selección.';
     $('hero-retorno').textContent = '—';
     return;
   }
@@ -9331,7 +9439,6 @@ document.addEventListener('DOMContentLoaded', () => {
   PortfolioManager.bind();   // primero: fija el portafolio activo
   Picker.bind();       // bind antes de init — init puede llamar cargar()
   if (typeof PortafolioOptimo !== 'undefined') PortafolioOptimo.bind();
-  init();
   CetesBench.bind();
   bindNav();
   bindEditar();
@@ -9353,9 +9460,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof Brokers !== 'undefined') Brokers.bind();
   if (typeof DeclaracionSat !== 'undefined') DeclaracionSat.bind();
   if (typeof Aportaciones !== 'undefined') Aportaciones.bind();
+  try { bindAutocompletes(); } catch (_) {}   // autocompletar por nombre en todas las lupas
 
-  // Cargar Periódico como vista default
-  try { Periodico.cargar(); } catch (_) {}
+  // Datos: esperar a que la sesión esté resuelta (token/cookie) antes de pedir,
+  // para no disparar fetches sin Authorization en la carga en frío (nativo).
+  window.__mpSesionLista.finally(() => {
+    init();                                   // analiza el portafolio si existe
+    try { Periodico.cargar(); } catch (_) {}  // vista default: Periódico
+  });
 
   // ── PWA: registrar service worker ───────────────────────────
   if ('serviceWorker' in navigator) {
