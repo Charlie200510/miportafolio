@@ -374,7 +374,7 @@ def _narrativa_fallback(ticker: str, fund: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "fuente": "datos",
         "deep_dive": {
-            "business_model": f"{nombre} opera en {sector} ({industria}). Configura tu ANTHROPIC_API_KEY para recibir un análisis cualitativo más profundo.",
+            "business_model": f"{nombre} opera en {sector} ({industria}). El análisis cualitativo profundo no está disponible para esta emisora por el momento.",
             "moat":           "Sin análisis cualitativo disponible. Verifica market share, patentes y barreras de entrada manualmente.",
             "catalyst":       "Sin catalizadores específicos identificados. Revisa el calendario de earnings y noticias del sector.",
             "asymmetry":      "Análisis de asimetría no disponible. Compara la valuación histórica vs el crecimiento esperado.",

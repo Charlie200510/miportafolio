@@ -279,9 +279,7 @@
       ? `<button data-x="buy" style="${BTN_PRI}">Empezar prueba gratis</button>`
       : captura;
 
-    const legal = `<p style="color:#52525b;font-size:11px;margin:14px 0 0;text-align:center">
-        Al continuar aceptas los <a href="/terminos" style="color:#71717a">Términos</a> y la
-        <a href="/privacidad" style="color:#71717a">Privacidad</a>.</p>`;
+    const legal = _legalHTML();
 
     const titulo = bloqueante ? 'Tu prueba terminó' : 'Suscríbete a Mi Portafolio';
     const subtitulo = bloqueante
@@ -301,7 +299,20 @@
   // font-size:16px en inputs evita el auto-zoom de iOS al enfocar.
   const INP = 'width:100%;background:#18181b;border:1px solid #3f3f46;border-radius:12px;padding:13px 14px;font-size:16px;color:#fafafa;outline:none;box-sizing:border-box';
   const BTN_LINK = 'background:none;border:0;color:#71717a;font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 0;width:100%';
-  const LEGAL = '<p style="color:#52525b;font-size:11px;margin:14px 0 0;text-align:center">Al continuar aceptas los <a href="/terminos" style="color:#71717a">Términos</a> y la <a href="/privacidad" style="color:#71717a">Privacidad</a>.</p>';
+  // En nativo el bundle local no sirve /terminos ni /privacidad (el WKWebView
+  // caería al index): se enlaza a la web de producción y el click se abre con
+  // el plugin Browser (ver act === 'legal' en los handlers).
+  function _legalHTML() {
+    const base = esNativo() ? (window.MP_API_BASE || 'https://miportafolio.uk').replace(/\/$/, '') : '';
+    return `<p style="color:#52525b;font-size:11px;margin:14px 0 0;text-align:center">Al continuar aceptas los <a href="${base}/terminos" data-x="legal" style="color:#71717a">Términos</a> y la <a href="${base}/privacidad" data-x="legal" style="color:#71717a">Privacidad</a>.</p>`;
+  }
+  async function _abrirLegal(ev, el) {
+    if (!esNativo()) return;                    // web: navegación normal del <a>
+    ev.preventDefault();
+    const url = el.getAttribute('href');
+    const B = (Caps && Caps.Plugins && Caps.Plugins.Browser);
+    try { if (B && B.open) await B.open({ url }); else window.open(url, '_blank'); } catch (_) {}
+  }
 
   // Renderiza los paquetes del offering en el overlay abierto (usa _email
   // como appUserID vía rcInit dentro de cargarPaquetes)
@@ -323,15 +334,53 @@
                      : p.packageType === 'ANNUAL'  ? '/año'
                      : p.packageType === 'LIFETIME' ? ' · pago único' : '';
         const destacado = p.packageType === 'ANNUAL';
+        // Badge de ahorro: $650/año vs $65×12 = 2 meses gratis (precios ref. LANZAMIENTO §1.2)
+        const izquierda = destacado
+          ? `<span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
+               <span>${nombre}</span>
+               <span style="background:rgba(5,46,22,.85);color:#4ade80;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap">2 meses gratis vs mensual</span>
+             </span>`
+          : `<span>${nombre}</span>`;
         return `<button data-x="buy" data-pkg="${i}"
           style="${destacado ? BTN_PRI : BTN_SEC};display:flex;justify-content:space-between;align-items:center">
-          <span>${nombre}</span><span style="font-weight:800">${precio}${sufijo}</span>
+          ${izquierda}<span style="font-weight:800">${precio}${sufijo}</span>
         </button>`;
       }).join('');
     }).catch((e) => {
       const c = _overlay && _overlay.querySelector('[data-x="planes"]');
       if (c) c.innerHTML = `<p style="color:#f87171;font-size:13px;text-align:center;margin:4px 0">${(e && e.message) || 'No se pudieron cargar los planes.'}</p>`;
     });
+  }
+
+  // ---------------------------------------------- OTP (login nativo — LANZAMIENTO §8)
+  // El magic link abre Safari y la sesión no llega al WKWebView. En la app el
+  // usuario teclea un código de 6 dígitos y el JWT se guarda en 'mp.jwt.v1'
+  // (el wrapper de fetch de app.js lo manda como Authorization: Bearer).
+  async function _pedirOTP(correo) {
+    const r = await fetch('/api/auth/otp/solicitar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+      body: JSON.stringify({ email: correo }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'No se pudo enviar el código.');
+    return j;
+  }
+
+  function _otpCuerpo(correo, err) {
+    const errHTML = err ? `<p style="color:#f87171;font-size:13px;margin:0 0 10px">${err}</p>` : '';
+    return `
+      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Revisa tu correo</h2>
+      <p style="color:#a1a1aa;margin:0 0 14px;font-size:14px">Enviamos un código de 6 dígitos a
+        <span style="color:#e4e4e7">${correo}</span>. Expira en 10 minutos.</p>
+      ${errHTML}
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input data-x="otp-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+          autocomplete="one-time-code" placeholder="000000"
+          style="${INP};text-align:center;letter-spacing:8px;font-weight:700">
+        <button data-x="otp-verificar" style="${BTN_PRI}">Verificar</button>
+        <button data-x="otp-reenviar" style="${BTN_LINK}">Reenviar código</button>
+        <button data-x="volver" style="${BTN_SEC}">Volver a los planes</button>
+      </div>`;
   }
 
   async function abrir(opts) {
@@ -356,13 +405,16 @@
 
     if (esNativo() && !premium) _cargarPlanesEnOverlay();   // planes aunque NO haya correo (anónimo)
 
-    // Enter en el campo de correo = Continuar
+    // Enter en el campo de correo = Continuar; en el de código = Verificar
     _overlay.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' && ev.target && ev.target.getAttribute && ev.target.getAttribute('data-x') === 'email-input') {
-        ev.preventDefault();
-        const b = _overlay.querySelector('[data-x="email-continuar"]');
-        if (b) b.click();
-      }
+      if (ev.key !== 'Enter' || !ev.target || !ev.target.getAttribute) return;
+      const dx = ev.target.getAttribute('data-x');
+      const destino = dx === 'email-input' ? 'email-continuar'
+                    : dx === 'otp-input'   ? 'otp-verificar' : null;
+      if (!destino) return;
+      ev.preventDefault();
+      const b = _overlay.querySelector(`[data-x="${destino}"]`);
+      if (b) b.click();
     });
 
     _overlay.addEventListener('click', async (ev) => {
@@ -370,6 +422,7 @@
       if (!el) { if (ev.target === _overlay) cerrar(); return; }
       const act = el.getAttribute('data-x');
       if (act === 'close') return cerrar();
+      if (act === 'legal') return _abrirLegal(ev, el);
       if (act === 'manage') {
         // "Customer center": portal de gestión de la suscripción (App Store / Google Play)
         try {
@@ -386,7 +439,8 @@
         return;
       }
       if (act === 'login-opcional') {
-        // Mostrar captura de correo (login OPCIONAL para sincronizar).
+        // Mostrar captura de correo (login OPCIONAL para sincronizar). En la
+        // app el acceso es con código OTP (dentro de la app); en web, enlace.
         const body = _overlay.querySelector('[data-x="body"]');
         if (body) body.innerHTML = `
           <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Inicia sesión</h2>
@@ -395,9 +449,51 @@
             <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
               placeholder="tu@correo.com"
               style="width:100%;background:#18181b;border:1px solid #3f3f46;border-radius:12px;padding:13px 14px;font-size:15px;color:#fafafa;outline:none;box-sizing:border-box">
-            <button data-x="email-continuar" style="${BTN_PRI}">Enviarme el enlace</button>
+            <button data-x="email-continuar" style="${BTN_PRI}">${esNativo() ? 'Enviarme un código' : 'Enviarme el enlace'}</button>
             <button data-x="volver" style="${BTN_SEC}">Volver a los planes</button>
           </div>`;
+        return;
+      }
+      if (act === 'otp-verificar') {
+        const inp = _overlay.querySelector('[data-x="otp-input"]');
+        const cod = ((inp && inp.value) || '').trim();
+        const body = _overlay.querySelector('[data-x="body"]');
+        if (!/^\d{6}$/.test(cod)) {
+          if (body) body.innerHTML = _otpCuerpo(_email, 'Escribe el código de 6 dígitos que te enviamos.');
+          return;
+        }
+        el.disabled = true; el.textContent = 'Verificando…';
+        try {
+          const r = await fetch('/api/auth/otp/verificar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+            body: JSON.stringify({ email: _email, codigo: cod }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            if (body) body.innerHTML = _otpCuerpo(_email, j.error || 'Código inválido o expirado.');
+            return;
+          }
+          // Sesión dentro de la app: el wrapper de fetch manda este JWT como Bearer.
+          if (j.token) { try { localStorage.setItem('mp.jwt.v1', j.token); } catch (_) {} }
+          // Identifica la cuenta en RevenueCat (aliasa una compra anónima previa).
+          if (esNativo()) { try { await rcInit(_email); } catch (_) {} }
+          toast('Sesión iniciada como ' + _email + '.');
+          if (body) { body.innerHTML = vista(_email, false, _bloqueante); if (esNativo()) _cargarPlanesEnOverlay(); }
+          try { verificarAcceso(); } catch (_) {}
+        } catch (_) {
+          if (body) body.innerHTML = _otpCuerpo(_email, 'Sin conexión. Intenta de nuevo.');
+        }
+        return;
+      }
+      if (act === 'otp-reenviar') {
+        el.disabled = true; el.textContent = 'Enviando…';
+        try {
+          await _pedirOTP(_email);
+          toast('Te enviamos un código nuevo a ' + _email + '.');
+        } catch (e) {
+          toast(e.message || 'No se pudo enviar el código.');
+        }
+        el.disabled = false; el.textContent = 'Reenviar código';
         return;
       }
       if (act === 'volver') {
@@ -410,18 +506,31 @@
         const v = ((inp && inp.value) || '').trim().toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { toast('Escribe un correo válido.'); return; }
         _email = v;
-        // Magic link para acceso multi-dispositivo. Fire-and-forget: en nativo la
-        // compra la autentica Apple/RevenueCat y NO depende de abrir el correo.
-        // Al identificar el correo, rcInit hará logIn y RevenueCat aliasa la
-        // compra anónima previa a esta cuenta (no se pierde el Premium).
+        const body = _overlay.querySelector('[data-x="body"]');
+        if (esNativo()) {
+          // App nativa: login con código OTP DENTRO de la app. El magic link
+          // abriría Safari y la sesión nunca llegaría al WKWebView (§8).
+          const prev = el.textContent;
+          el.disabled = true; el.textContent = 'Enviando…';
+          try {
+            await _pedirOTP(v);
+            if (body) body.innerHTML = _otpCuerpo(v, '');
+            const oi = _overlay.querySelector('[data-x="otp-input"]');
+            if (oi) oi.focus();
+          } catch (e) {
+            el.disabled = false; el.textContent = prev;
+            toast(e.message || 'No se pudo enviar el código.');
+          }
+          return;
+        }
+        // Web: magic link para acceso multi-dispositivo. Fire-and-forget: el
+        // pago con MercadoPago no depende de abrir el correo.
         fetch('/api/auth/login', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: v })
         }).catch(() => {});
         toast('Te enviamos un enlace de acceso a ' + v + '.');
-        const body = _overlay.querySelector('[data-x="body"]');
         if (body) body.innerHTML = vista(_email, false, _bloqueante);
-        if (esNativo()) _cargarPlanesEnOverlay();
         return;
       }
       if (act === 'buy') {
@@ -491,7 +600,7 @@
         <button data-x="auth-submit" style="${BTN_PRI}">${reg ? 'Crear cuenta' : 'Entrar'}</button>
         <button data-x="auth-toggle" style="${BTN_LINK}">${reg ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Crea una gratis'}</button>
       </div>
-      ${LEGAL}`;
+      ${_legalHTML()}`;
   }
 
   function abrirAuth() {
@@ -510,6 +619,7 @@
     _authOverlay.addEventListener('click', async (ev) => {
       const el = ev.target.closest('[data-x]'); if (!el) return;
       const act = el.getAttribute('data-x');
+      if (act === 'legal') return _abrirLegal(ev, el);
       const setErr = (m) => { const b = _authOverlay && _authOverlay.querySelector('[data-x="auth-body"]'); if (b) b.innerHTML = _authCuerpo(m); };
       if (act === 'auth-toggle') {
         _authModo = (_authModo === 'registro') ? 'ingresar' : 'registro';

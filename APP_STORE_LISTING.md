@@ -71,7 +71,6 @@ Y ADEMÁS
 • Más de 11,000 acciones globales (BMV, NYSE, NASDAQ, ETFs) + 190 criptomonedas.
 • Comparativa contra las 9 AFOREs y SIEFOREs, y contra 8 brokers mexicanos con comisiones reales.
 • Alertas por correo (drift, precios, resumen semanal) y calendario fiscal SAT.
-• Asistente con IA que te explica tus números en español claro.
 
 Tus datos viven en tu dispositivo. Sin credenciales bancarias.
 

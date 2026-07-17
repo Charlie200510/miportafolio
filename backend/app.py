@@ -2687,6 +2687,45 @@ def api_auth_login():
         return jsonify({"error": str(e)}), 500
 
 
+# ── Login por código OTP (app nativa — LANZAMIENTO §8) ───────────────────────
+# El magic link abre Safari y no crea sesión dentro del WKWebView. El OTP se
+# teclea dentro de la app y verificar devuelve un JWT (localStorage 'mp.jwt.v1').
+@app.route("/api/auth/otp/solicitar", methods=["POST"])
+@_rate_limit("5 per hour")
+def api_auth_otp_solicitar():
+    if _auth is None:
+        return jsonify({"error": "auth no disponible"}), 500
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return jsonify({"error": "email invalido"}), 400
+    try:
+        return jsonify(_auth.solicitar_otp(email))
+    except PermissionError as e:      # 5 solicitudes/hora por email
+        return jsonify({"error": str(e)}), 429
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/auth/otp/verificar", methods=["POST"])
+@_rate_limit("10 per minute; 30 per hour")
+def api_auth_otp_verificar():
+    if _auth is None:
+        return jsonify({"error": "auth no disponible"}), 500
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    codigo = str(body.get("codigo") or "").strip()
+    try:
+        usuario = _auth.verificar_otp(email, codigo)
+        return _respuesta_auth(email, usuario)   # JWT + cookie + estado del trial
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── Auth con correo + CONTRASEÑA (flujo principal de la app nativa) ──────────
 def _respuesta_auth(email: str, usuario: dict) -> Response:
     """Respuesta de registro/login: JWT (nativo → localStorage 'mp.jwt.v1') +

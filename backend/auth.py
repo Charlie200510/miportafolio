@@ -16,6 +16,7 @@ Env vars:
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import os
@@ -79,6 +80,15 @@ def _limpiar_expirados(data: dict[str, Any]) -> None:
     }
     data["tokens"] = tokens_vivos
     data["sesiones"] = sesiones_vivas
+    # OTPs: se conserva el historial de solicitudes de la última hora aunque el
+    # código haya expirado (si se borrara, pedir códigos reiniciaría el límite).
+    otps_vivos: dict[str, Any] = {}
+    for e, info in (data.get("otp") or {}).items():
+        sols = [t for t in info.get("solicitudes", []) if t > ahora - 3600]
+        if info.get("expira_en", 0) > ahora or sols:
+            info["solicitudes"] = sols
+            otps_vivos[e] = info
+    data["otp"] = otps_vivos
 
 
 def _registrar_usuario(data: dict[str, Any], email: str) -> dict[str, Any]:
@@ -360,6 +370,123 @@ def login_con_password(email: str, password: str) -> dict[str, Any]:
 _DUMMY_HASH = (_bcrypt.hashpw(b"x", _bcrypt.gensalt()).decode("utf-8")) if _bcrypt else ""
 
 
+# ─────────────────────────────────────────────────────────────────
+# Login por código OTP de 6 dígitos (app nativa — LANZAMIENTO §8).
+# El magic link abre Safari y no crea sesión dentro del WKWebView; el OTP
+# se teclea dentro de la app y el endpoint devuelve un JWT.
+# ─────────────────────────────────────────────────────────────────
+_OTP_TTL = int(os.environ.get("AUTH_OTP_TTL", "600"))   # 10 minutos
+_OTP_MAX_SOLICITUDES_HORA = 5                           # por email (por IP: Flask-Limiter)
+_OTP_MAX_INTENTOS = 5                                   # códigos fallidos antes de invalidar
+
+
+def _hash_otp(codigo: str) -> str:
+    return hashlib.sha256(("otp:" + codigo).encode("utf-8")).hexdigest()
+
+
+def solicitar_otp(email: str) -> dict[str, Any]:
+    """Genera un código de 6 dígitos (un solo uso, expira en 10 min) y lo envía
+    por correo. Máximo 5 solicitudes por hora por email; pedir un código nuevo
+    invalida el anterior. Lanza PermissionError al exceder el límite."""
+    if not email or "@" not in email or len(email) > 254:
+        raise ValueError("Email invalido")
+
+    email = email.strip().lower()
+    codigo = f"{secrets.randbelow(1_000_000):06d}"
+    ahora = time.time()
+
+    with _LOCK:
+        data = _cargar()
+        _limpiar_expirados(data)
+        otps = data.setdefault("otp", {})
+        previo = otps.get(email) or {}
+        solicitudes = [t for t in previo.get("solicitudes", []) if t > ahora - 3600]
+        if len(solicitudes) >= _OTP_MAX_SOLICITUDES_HORA:
+            raise PermissionError("Demasiadas solicitudes. Inténtalo de nuevo en una hora.")
+        solicitudes.append(ahora)
+        otps[email] = {
+            "codigo_hash": _hash_otp(codigo),
+            "creado_en": ahora,
+            "expira_en": ahora + _OTP_TTL,
+            "intentos": 0,
+            "solicitudes": solicitudes,
+        }
+        _guardar(data)
+
+    enviado = False
+    detalle = ""
+    if _MOCK_MODE:
+        print(f"[auth] OTP para {email}: {codigo}")
+        detalle = "mock_mode"
+    else:
+        try:
+            asunto = "Tu código de acceso a Mi Portafolio"
+            _alertas.enviar_correo(email, asunto, _html_otp(email, codigo))
+            enviado = True
+            detalle = "enviado"
+        except Exception as exc:
+            detalle = f"smtp_error: {exc}"
+
+    return {
+        "ok": True,
+        "email": email,
+        "expira_en": ahora + _OTP_TTL,
+        "enviado": enviado,
+        "detalle": detalle,
+        # En mock mode devolvemos el código para facilitar pruebas locales.
+        "codigo_debug": codigo if _MOCK_MODE else None,
+    }
+
+
+def verificar_otp(email: str, codigo: str) -> dict[str, Any]:
+    """Valida el código (un solo uso). Devuelve el usuario, creándolo si es
+    nuevo (el trial arranca en el primer login, igual que registro_con_password).
+    Mensaje de error genérico: no revela si el correo tiene código pendiente."""
+    email = (email or "").strip().lower()
+    codigo = (codigo or "").strip()
+    generico = ValueError("Código inválido o expirado")
+    if not email or "@" not in email or len(codigo) != 6 or not codigo.isdigit():
+        raise generico
+
+    ahora = time.time()
+    with _LOCK:
+        data = _cargar()
+        _limpiar_expirados(data)
+        otps = data.setdefault("otp", {})
+        info = otps.get(email)
+        if not info or not info.get("codigo_hash") or info.get("expira_en", 0) <= ahora:
+            raise generico
+        if not secrets.compare_digest(_hash_otp(codigo), info["codigo_hash"]):
+            info["intentos"] = info.get("intentos", 0) + 1
+            if info["intentos"] >= _OTP_MAX_INTENTOS:
+                # Demasiados fallos: invalida el código, conserva el historial
+                # de solicitudes (el límite por hora sigue contando).
+                info.pop("codigo_hash", None)
+                info["expira_en"] = 0
+            _guardar(data)
+            raise generico
+        # Éxito: un solo uso — se borra el código, queda el historial de solicitudes.
+        otps[email] = {"solicitudes": info.get("solicitudes", [])}
+        u = _registrar_usuario(data, email)
+        u["ultima_sesion"] = ahora
+        u.setdefault("auth", "otp")
+        _guardar(data)
+        return dict(u)
+
+
+def _html_otp(email: str, codigo: str) -> str:
+    return f"""<!doctype html>
+<html><head><meta charset="utf-8"></head>
+<body style="font-family:system-ui,-apple-system,sans-serif;background:#0b1220;color:#e2e8f0;padding:24px">
+  <div style="max-width:520px;margin:0 auto;background:#111827;border:1px solid #1f2937;border-radius:16px;padding:28px">
+    <h1 style="margin:0 0 8px;font-size:22px">Tu código de acceso</h1>
+    <p style="margin:0 0 20px;color:#94a3b8">Hola {html.escape(email)}, escribe este código en la app. Es válido por 10 minutos y solo se puede usar una vez.</p>
+    <p style="margin:0;background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:14px 18px;text-align:center;font-size:32px;letter-spacing:10px;font-weight:700;color:#22c55e">{codigo}</p>
+    <p style="margin:24px 0 0;color:#64748b;font-size:12px">Si no lo solicitaste, ignora este mensaje.</p>
+  </div>
+</body></html>"""
+
+
 def crear_sesion(email: str) -> dict[str, Any]:
     """Crea una sesión (cookie session_id) para el correo dado. La usan los
     endpoints de registro/login para dejar cookie en web (en nativo se usa el JWT)."""
@@ -430,6 +557,7 @@ def eliminar_cuenta(email: str) -> dict[str, Any]:
             tk: info for tk, info in data.get("tokens", {}).items()
             if (info or {}).get("email") != email
         }
+        data.setdefault("otp", {}).pop(email, None)
         _guardar(data)
 
     # Best-effort: borrar suscripciones push del usuario

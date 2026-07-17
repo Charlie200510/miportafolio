@@ -6158,251 +6158,6 @@ const Fundamentales = (() => {
 })();
 
 
-// ===========================================================================
-// ASISTENTE IA (chat con Claude sobre el portafolio del usuario)
-// ===========================================================================
-const Asistente = (() => {
-  const state = {
-    disponible:     null,   // null = no sabemos, false/true = ya chequeado
-    modelo:         null,
-    historial:      [],     // [{role:'user'|'assistant', content:''}]
-    cargando:       false,
-    ctxChequeado:   false,
-  };
-
-  function escapeHtmlLocal(s) {
-    return String(s ?? '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-
-  // Markdown MUY ligero para mensajes del assistant: bold, inline code, bullets, saltos de línea.
-  function renderMarkdownLigero(txt) {
-    let t = escapeHtmlLocal(txt);
-    // Code block ``` ... ```
-    t = t.replace(/```([\s\S]*?)```/g, (_, c) =>
-      `<pre class="bg-zinc-950 border border-surface-border rounded-lg p-2 mt-2 mb-2 text-[11px] overflow-x-auto text-zinc-200">${c.trim()}</pre>`);
-    // Inline code `...`
-    t = t.replace(/`([^`]+)`/g, '<code class="bg-zinc-800/60 text-zinc-200 px-1 py-0.5 rounded text-[11px]">$1</code>');
-    // Bold **...**
-    t = t.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-zinc-100">$1</strong>');
-    // Bullets: líneas que empiezan con "- " o "• "
-    const lineas = t.split('\n');
-    let out = [];
-    let enLista = false;
-    for (const l of lineas) {
-      if (/^\s*[-•]\s+/.test(l)) {
-        if (!enLista) { out.push('<ul class="list-disc list-inside space-y-1 my-1.5 text-zinc-300">'); enLista = true; }
-        out.push('<li>' + l.replace(/^\s*[-•]\s+/, '') + '</li>');
-      } else {
-        if (enLista) { out.push('</ul>'); enLista = false; }
-        if (l.trim() === '') out.push('<div class="h-1"></div>');
-        else out.push(l);
-      }
-    }
-    if (enLista) out.push('</ul>');
-    return out.join('<br>').replace(/<br><ul/g, '<ul').replace(/<\/ul><br>/g, '</ul>');
-  }
-
-  function renderMensajes() {
-    const cont = $('asi-mensajes');
-    if (!cont) return;
-
-    if (!state.historial.length && !state.cargando) {
-      cont.innerHTML = `
-        <div class="text-center text-xs text-zinc-600 py-8">
-          Empieza preguntando algo o usa una de las sugerencias de arriba.
-        </div>
-      `;
-      return;
-    }
-
-    const html = state.historial.map(msg => {
-      if (msg.role === 'user') {
-        return `
-          <div class="flex justify-end">
-            <div class="max-w-[85%] bg-accent-purple/15 border border-accent-purple/30 rounded-2xl rounded-tr-sm px-4 py-2.5">
-              <p class="text-sm text-zinc-100 whitespace-pre-wrap">${escapeHtmlLocal(msg.content)}</p>
-            </div>
-          </div>
-        `;
-      }
-      return `
-        <div class="flex justify-start">
-          <div class="max-w-[90%] bg-zinc-900/70 border border-surface-border rounded-2xl rounded-tl-sm px-4 py-2.5">
-            <div class="flex items-center gap-1.5 mb-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-accent-purple"></span>
-              <span class="text-[10px] uppercase tracking-wider text-zinc-500">Asistente</span>
-            </div>
-            <div class="text-sm text-zinc-200 leading-relaxed">${renderMarkdownLigero(msg.content)}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    const loader = state.cargando ? `
-      <div class="flex justify-start">
-        <div class="bg-zinc-900/70 border border-surface-border rounded-2xl rounded-tl-sm px-4 py-3">
-          <div class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-accent-purple animate-pulse"></span>
-            <span class="w-2 h-2 rounded-full bg-accent-purple animate-pulse" style="animation-delay: .15s"></span>
-            <span class="w-2 h-2 rounded-full bg-accent-purple animate-pulse" style="animation-delay: .3s"></span>
-          </div>
-        </div>
-      </div>
-    ` : '';
-
-    cont.innerHTML = html + loader;
-    // Autoscroll
-    cont.scrollTop = cont.scrollHeight;
-  }
-
-  function renderContexto() {
-    const el = $('asi-ctx-tickers');
-    if (!el) return;
-    const tickers = (typeof leerPortafolioGuardado === 'function') ? (leerPortafolioGuardado() || []) : [];
-    if (!tickers.length) {
-      el.innerHTML = '<span class="text-zinc-600">Ningún portafolio guardado</span>';
-      return;
-    }
-    el.innerHTML = tickers.map(t =>
-      `<span class="px-1.5 py-0.5 rounded bg-zinc-900 border border-surface-border text-zinc-400">${escapeHtmlLocal(t)}</span>`
-    ).join(' ');
-  }
-
-  async function chequearEstado() {
-    if (state.ctxChequeado) return;
-    state.ctxChequeado = true;
-    try {
-      const res = await fetch('/api/asistente/estado');
-      const data = await res.json();
-      state.disponible = !!data.disponible;
-      state.modelo = data.modelo || null;
-    } catch (e) {
-      state.disponible = false;
-    }
-    // Toggle banner "no configurado"
-    const banner = $('asi-no-config');
-    const sugs = $('asi-sugerencias');
-    const chatWrap = $('asi-chat-wrap');
-    if (state.disponible === false) {
-      banner?.classList.remove('hidden');
-      sugs?.classList.add('hidden');
-      chatWrap?.classList.add('opacity-50', 'pointer-events-none');
-    } else {
-      banner?.classList.add('hidden');
-      sugs?.classList.remove('hidden');
-      chatWrap?.classList.remove('opacity-50', 'pointer-events-none');
-    }
-  }
-
-  function construirContextoBody(mensaje) {
-    const body = { mensaje, historial: state.historial.slice(-24) };
-    const tickers = (typeof leerPortafolioGuardado === 'function') ? leerPortafolioGuardado() : null;
-    const pesos   = (typeof leerPesosGuardados === 'function')     ? leerPesosGuardados()     : null;
-    if (Array.isArray(tickers) && tickers.length) body.tickers = tickers;
-    if (pesos && Object.keys(pesos).length) body.pesos = pesos;
-
-    try {
-      const raw = localStorage.getItem('miPortafolio.transacciones.v1');
-      if (raw) {
-        const txs = JSON.parse(raw);
-        if (Array.isArray(txs) && txs.length) body.transacciones = txs;
-      }
-    } catch (_) {}
-
-    return body;
-  }
-
-  async function enviar(mensajeDirecto) {
-    if (state.cargando) return;
-    if (state.disponible === false) {
-      alert('El asistente no está configurado. Revisa el banner de arriba.');
-      return;
-    }
-
-    const input = $('asi-input');
-    const mensaje = (mensajeDirecto ?? (input?.value || '')).trim();
-    if (!mensaje) return;
-
-    // Ocultar sugerencias después del primer mensaje
-    $('asi-sugerencias')?.classList.add('hidden');
-
-    // Agregar al historial
-    state.historial.push({ role: 'user', content: mensaje });
-    if (input && !mensajeDirecto) { input.value = ''; input.style.height = 'auto'; }
-    state.cargando = true;
-    const btn = $('asi-enviar');
-    if (btn) { btn.disabled = true; btn.textContent = '...'; }
-    renderMensajes();
-
-    try {
-      const body = construirContextoBody(mensaje);
-      const res = await fetch('/api/asistente/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error');
-      const respuesta = data.respuesta || '(sin respuesta)';
-      state.historial.push({ role: 'assistant', content: respuesta });
-    } catch (e) {
-      state.historial.push({
-        role: 'assistant',
-        content: '⚠ Error: ' + (e.message || e) + '\n\nRevisa que `ANTHROPIC_API_KEY` esté configurada y reintenta.',
-      });
-    } finally {
-      state.cargando = false;
-      if (btn) { btn.disabled = false; btn.textContent = 'Enviar'; }
-      renderMensajes();
-    }
-  }
-
-  function limpiar() {
-    state.historial = [];
-    $('asi-sugerencias')?.classList.remove('hidden');
-    renderMensajes();
-  }
-
-  function autoResize(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-  }
-
-  function cargar() {
-    chequearEstado();
-    renderContexto();
-    renderMensajes();
-  }
-
-  function bind() {
-    const input = $('asi-input');
-    const btn   = $('asi-enviar');
-
-    btn?.addEventListener('click', () => enviar());
-    input?.addEventListener('input', () => autoResize(input));
-    input?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        enviar();
-      }
-    });
-
-    $('asi-limpiar')?.addEventListener('click', limpiar);
-
-    document.querySelectorAll('.asi-sugerencia').forEach(el => {
-      el.addEventListener('click', () => {
-        const msg = el.dataset.msg;
-        if (msg) enviar(msg);
-      });
-    });
-  }
-
-  return { cargar, bind };
-})();
-
-
 // ============================================================
 // MÓDULO: BACKTEST HISTÓRICO
 // ============================================================
@@ -9216,7 +8971,6 @@ function bindNav() {
     rebalanceo:    document.getElementById('vista-rebalanceo'),
     transacciones: document.getElementById('vista-transacciones'),
     metas:         document.getElementById('vista-metas'),
-    asistente:     document.getElementById('vista-asistente'),
   };
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -9247,7 +9001,6 @@ function bindNav() {
       if (vista === 'rebalanceo')    Rebalanceo.cargar();
       if (vista === 'transacciones') { Transacciones.cargar(); Impuestos.cargar(); }
       if (vista === 'metas')         Metas.cargar();
-      if (vista === 'asistente')     Asistente.cargar();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
@@ -9449,7 +9202,6 @@ document.addEventListener('DOMContentLoaded', () => {
   Transacciones.bind();
   Impuestos.bind();
   Metas.bind();
-  Asistente.bind();
   Fundamentales.bind();
   RentaFija.bind();
   Alertas.bind();
