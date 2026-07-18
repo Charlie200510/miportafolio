@@ -155,3 +155,24 @@ Con 10 suscriptores cubres costos. Con 50 hay margen.
 1. Render → **Manual Deploy** → commit anterior → **Deploy**
 2. BD corrupta: restore desde backup (Render mantiene 7 días)
 3. MP falla: env var `MERCADOPAGO_ACCESS_TOKEN=''` deshabilita pagos temp
+
+## 10. Actualizar producción (Oracle VM — deploy manual)
+
+El servidor real (miportafolio.uk) es la VM de Oracle con deploy manual. Para
+aplicar cambios del repo:
+
+```bash
+ssh ubuntu@<VM>
+cd ~/portafolio-app
+# El timer diario (miportafolio-universo.timer) muta universo_lite_precios.csv
+# in-place, así que el pull SIEMPRE va a chocar con ese archivo. Descarta el
+# cambio local primero — esa misma noche el timer vuelve a ponerle precios del día:
+git checkout -- backend/universo_lite_precios.csv backend/universo_lite_info.json
+git pull origin main
+sudo systemctl restart miportafolio
+```
+
+> El universo lite del repo se refresca solo cada ~4 semanas vía el workflow
+> `refrescar-universo` (GitHub Actions): membresía de tickers + metadata.
+> Los precios diarios en producción los mantiene el timer systemd de la VM;
+> ninguno de los dos sustituye al otro.

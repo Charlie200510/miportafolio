@@ -1,0 +1,135 @@
+name: refrescar-universo
+# Refresca el universo LITE committeado en el repo (backend/universo_lite_precios.csv
+# + universo_lite_info.json): membresía de tickers, metadata (nombre/sector) e
+# historia de 5 años. Corre el pipeline completo (descargar_universo.py →
+# generar_universo_lite.py) porque universo_precios.csv (full) es gitignored y
+# no existe en el runner.
+#
+# Complementa (NO reemplaza) al timer systemd del servidor
+# (deploy/miportafolio-universo.timer), que refresca los PRECIOS del lite a
+# diario en la VM. Este workflow mantiene fresco el punto de partida del repo.
+#
+# Cadencia: domingos 09:00 UTC (~3am CDMX) con gate de 21 días — corre de
+# verdad una vez cada ~4 semanas, y si un run falla el siguiente domingo
+# reintenta solo. workflow_dispatch ignora el gate (siempre corre).
+
+on:
+  schedule:
+    - cron: '0 9 * * 0'    # domingos 09:00 UTC (~3am CDMX)
+  workflow_dispatch: {}     # manual: corre sin gate
+
+permissions:
+  contents: write           # necesario solo para el commit+push del CSV
+
+concurrency:
+  group: refrescar-universo
+  cancel-in-progress: false
+
+jobs:
+  refrescar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120    # la descarga full tarda 15-30 min; margen amplio
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gate — ¿hubo refresh hace menos de 21 días?
+        id: gate
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ultimo=$(gh api "repos/${GITHUB_REPOSITORY}/commits?path=backend/universo_lite_precios.csv&per_page=1" \
+                     --jq '.[0].commit.committer.date')
+          edad_dias=$(( ( $(date +%s) - $(date -d "$ultimo" +%s) ) / 86400 ))
+          echo "Último commit del CSV: $ultimo (hace ${edad_dias} días)"
+          if [ "$edad_dias" -lt 21 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Refresh reciente — este domingo no toca."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.skip != 'true'
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          python -m pip install --quiet --upgrade pip
+          # lxml: pd.read_html (scrape de índices en Wikipedia) lo necesita;
+          # sin él los scrapes caen al fallback estático silenciosamente.
+          python -m pip install --quiet -r backend/requirements.txt lxml
+
+      - name: Respaldar metadata actual (para comparar calidad)
+        if: steps.gate.outputs.skip != 'true'
+        run: cp backend/universo_lite_info.json /tmp/lite_info_old.json
+
+      - name: Descargar universo completo (Yahoo Finance)
+        if: steps.gate.outputs.skip != 'true'
+        working-directory: backend
+        run: python3 descargar_universo.py
+
+      - name: Regenerar universo lite
+        if: steps.gate.outputs.skip != 'true'
+        working-directory: backend
+        run: python3 generar_universo_lite.py
+
+      - name: Verificar resultado (falla ruidosa, sin commit, si quedó corto)
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          import pandas as pd
+
+          df = pd.read_csv('backend/universo_lite_precios.csv', index_col=0, parse_dates=True)
+          n_tickers, n_dias = df.shape[1], len(df)
+          cols_vacias = int(df.isna().all().sum())
+
+          nuevo = json.load(open('backend/universo_lite_info.json'))
+          viejo = json.load(open('/tmp/lite_info_old.json'))
+
+          def pct_sector_conocido(info):
+              if not info:
+                  return 0.0
+              con = sum(1 for v in info.values()
+                        if (v.get('sector') or 'Desconocido') != 'Desconocido')
+              return 100.0 * con / len(info)
+
+          p_nuevo, p_viejo = pct_sector_conocido(nuevo), pct_sector_conocido(viejo)
+          print(f"tickers={n_tickers} filas={n_dias} columnas_vacias={cols_vacias}")
+          print(f"sector conocido: nuevo {p_nuevo:.1f}% · anterior {p_viejo:.1f}%")
+
+          errores = []
+          if n_tickers < 500:
+              errores.append(f"solo {n_tickers} tickers (<500)")
+          if n_dias < 1200:
+              errores.append(f"solo {n_dias} filas (<1200 ≈ 5 años hábiles)")
+          if cols_vacias > n_tickers * 0.05:
+              errores.append(f"{cols_vacias} tickers sin ningún precio (>5%)")
+          if p_nuevo < p_viejo - 10:
+              errores.append(
+                  f"metadata degradada: sector conocido {p_nuevo:.1f}% "
+                  f"(anterior {p_viejo:.1f}%) — probable bloqueo de .info en el runner")
+          if errores:
+              for e in errores:
+                  print(f"::error::{e}")
+              sys.exit(1)
+          print("verificación OK")
+          EOF
+
+      - name: Commit y push
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/universo_lite_precios.csv backend/universo_lite_info.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios en el universo lite — nada que commitear."
+            exit 0
+          fi
+          git commit -m "chore: refresh universo [bot] — $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
+          git push origin main
