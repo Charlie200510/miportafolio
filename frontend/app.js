@@ -8961,6 +8961,23 @@ const Analizador = (() => {
 })();
 
 
+// Redibuja los charts dentro de una vista recién mostrada. Chart.js con
+// responsive:true + maintainAspectRatio:false que se creó mientras la vista
+// estaba display:none se mide 0×0 y NO se redibuja solo (WKWebView no dispara
+// el resize interno al pasar de oculto a visible). Forzamos el resize en el
+// siguiente frame, cuando el layout ya tiene tamaño real.
+function _redibujarChartsEn(vistaEl) {
+  if (!vistaEl || typeof Chart === 'undefined') return;
+  requestAnimationFrame(() => {
+    vistaEl.querySelectorAll('canvas').forEach(cv => {
+      try {
+        const c = (typeof Chart.getChart === 'function') ? Chart.getChart(cv) : null;
+        if (c) c.resize();
+      } catch (_) {}
+    });
+  });
+}
+
 function bindNav() {
   const tabs = document.querySelectorAll('.nav-tab');
   const vistas = {
@@ -9001,6 +9018,10 @@ function bindNav() {
       if (vista === 'rebalanceo')    Rebalanceo.cargar();
       if (vista === 'transacciones') { Transacciones.cargar(); Impuestos.cargar(); }
       if (vista === 'metas')         Metas.cargar();
+      // Redibuja los charts que se hayan creado mientras la vista estaba oculta
+      // (p.ej. los del dashboard de portafolio, creados en el arranque). Sin
+      // esto quedan en blanco hasta que un resize nativo los dispare.
+      _redibujarChartsEn(vistas[vista]);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
