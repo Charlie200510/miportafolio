@@ -16,8 +16,10 @@
   // ============================================================
   const css = `
     /* ── 1. TOASTS ── */
+    /* z-index por encima del paywall (99999) y del modal de cuenta (100000):
+       si un toast queda detrás del overlay, el error es invisible. */
     #mp-toast-host {
-      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      position: fixed; bottom: 24px; right: 24px; z-index: 100001;
       display: flex; flex-direction: column; gap: 8px;
       pointer-events: none;
     }

@@ -8988,6 +8988,8 @@ function bindNav() {
     rebalanceo:    document.getElementById('vista-rebalanceo'),
     transacciones: document.getElementById('vista-transacciones'),
     metas:         document.getElementById('vista-metas'),
+    // "Mi cuenta": la pinta account.js (App Store 5.1.1v — borrado de cuenta).
+    cuenta:        document.getElementById('vista-cuenta'),
   };
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -9018,6 +9020,9 @@ function bindNav() {
       if (vista === 'rebalanceo')    Rebalanceo.cargar();
       if (vista === 'transacciones') { Transacciones.cargar(); Impuestos.cargar(); }
       if (vista === 'metas')         Metas.cargar();
+      // Estado fresco cada vez que se entra (la sesión pudo cambiar desde el
+      // paywall sin recargar la página).
+      if (vista === 'cuenta')        { try { window.MPCuenta && window.MPCuenta.render(); } catch (_) {} }
       // Redibuja los charts que se hayan creado mientras la vista estaba oculta
       // (p.ej. los del dashboard de portafolio, creados en el arranque). Sin
       // esto quedan en blanco hasta que un resize nativo los dispare.

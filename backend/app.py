@@ -2566,6 +2566,17 @@ def _sesion_actual() -> Optional[dict]:
                 except Exception:
                     usuario = None
                 if usuario is None:
+                    # Cuenta ELIMINADA (App Store 5.1.1v): el JWT sigue siendo
+                    # criptográficamente válido hasta 30 días después, pero la
+                    # cuenta ya no existe. Sintetizar un usuario aquí la
+                    # resucitaba con un trial nuevo. El store es efímero (se
+                    # rehace en cada deploy), así que solo cerramos la sesión
+                    # cuando el borrado consta explícitamente.
+                    try:
+                        if _auth.cuenta_eliminada(email):
+                            return None
+                    except Exception:
+                        pass
                     usuario = {"email": email, "plan": payload.get("plan", "trial")}
                 return {
                     "session_id": None,

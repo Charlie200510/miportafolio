@@ -32,6 +32,35 @@
   const PRECIO_TXT = '$65 MXN/mes';
   const Caps = window.Capacitor;
 
+  // Techo de tiempo para la red y para el SDK de compras. Sin esto, un fetch o
+  // un getOfferings() colgado (cold start del backend, sandbox de Apple, red
+  // del revisor) dejaba el paywall en "Cargando planes…" para siempre — o peor,
+  // hacía que tocar "Suscribirse" no mostrara NADA. Causa más probable del
+  // rechazo por Guideline 2.1(b) en el build 1.0(4).
+  const TIMEOUT_RED_MS       = 6000;
+  const TIMEOUT_OFFERINGS_MS = 10000;
+
+  // Precios de REFERENCIA (LANZAMIENTO §1.2 / App Store Connect). Solo se usan
+  // para que la pantalla nunca quede vacía: cuando RevenueCat responde, sus
+  // precios reales (localizados por la tienda) tienen prioridad.
+  const PLANES_REF = [
+    { tipo: 'MONTHLY',  nombre: 'Mensual',   precio: '$65 MXN',    sufijo: '/mes' },
+    { tipo: 'ANNUAL',   nombre: 'Anual',     precio: '$650 MXN',   sufijo: '/año', badge: '2 meses gratis vs mensual' },
+    { tipo: 'LIFETIME', nombre: 'Ilimitado', precio: '$6,500 MXN', sufijo: ' · pago único' },
+  ];
+
+  // Resuelve con `fallback` si la promesa tarda más de ms (nunca rechaza).
+  function conTimeout(promesa, ms, fallback) {
+    return Promise.race([
+      Promise.resolve(promesa).catch(() => fallback),
+      new Promise((res) => setTimeout(() => res(fallback), ms)),
+    ]);
+  }
+  // Rechaza a los ms (para hacer race con algo que sí debe fallar visiblemente).
+  function rechazaEn(ms) {
+    return new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
+  }
+
   function plataforma() {
     try { if (Caps && Caps.getPlatform) return Caps.getPlatform(); } catch (_) {}
     return 'web';
@@ -42,12 +71,12 @@
 
   // -------------------------------------------------- estado del usuario
   async function estadoUsuario() {
-    try {
-      // no-store + timestamp: el WKWebView puede cachear el GET y dejar el
-      // estado premium desactualizado justo después de una compra
+    // no-store + timestamp: el WKWebView puede cachear el GET y dejar el
+    // estado premium desactualizado justo después de una compra
+    return conTimeout((async () => {
       const r = await fetch('/api/auth/estado?t=' + Date.now(), { cache: 'no-store' });
       return (await r.json()) || { autenticado: false };
-    } catch (_) { return { autenticado: false }; }
+    })(), TIMEOUT_RED_MS, { autenticado: false });
   }
   async function emailActual() {
     const e = await estadoUsuario();
@@ -64,11 +93,14 @@
     // caducidad quita el acceso en el próximo arranque, mientras que un fallo
     // transitorio (plugin no listo, timeout) NO le quita el Premium a un
     // comprador legítimo (conserva el último valor conocido).
-    try {
+    // conTimeout: si el plugin no responde, NO bloqueamos el arranque ni el
+    // paywall (se conserva el último valor conocido).
+    const info = await conTimeout((async () => {
       const RC = await rcInit(await emailActual());
       const r = await RC.getCustomerInfo();
-      _sdkPremium = entitlementActiva((r && (r.customerInfo || r)) || null);
-    } catch (_) { /* fallo transitorio: conserva el último valor conocido */ }
+      return { ok: true, info: (r && (r.customerInfo || r)) || null };
+    })(), TIMEOUT_OFFERINGS_MS, null);
+    if (info && info.ok) _sdkPremium = entitlementActiva(info.info);
     return _sdkPremium;
   }
   async function esPremium() {
@@ -198,9 +230,10 @@
   }
 
   // -------------------------------------------------- UI
-  function toast(msg) {
+  function toast(msg, tipo) {
+    // window.toast lo define ux_helpers.js (se carga antes que este archivo).
+    try { if (window.toast) return window.toast(msg, tipo || 'info'); } catch (_) {}
     try { if (window.MP && MP.toast) return MP.toast(msg); } catch (_) {}
-    try { if (window.mostrarToast) return window.mostrarToast(msg); } catch (_) {}
     alert(msg);
   }
 
@@ -270,9 +303,12 @@
     // NATIVO: planes directos (compra sin cuenta) + restaurar + login opcional.
     // WEB: si hay correo, botón de prueba; si no, captura de correo para MercadoPago.
     const cta = nativo
-      ? `<div data-x="planes" style="display:flex;flex-direction:column;gap:8px">
-           <p style="color:#71717a;font-size:13px;text-align:center;margin:4px 0">Cargando planes…</p>
-         </div>
+      ? `<div data-x="planes" style="display:flex;flex-direction:column;gap:8px">${
+             // Se siembra con los precios de referencia (no con "Cargando…") por
+             // si _cargarPlanesEnOverlay nunca llega a correr: la pantalla de
+             // compra jamás debe quedar vacía (Guideline 2.1(b)).
+             _htmlPlanesRef('')
+           }</div>
          <button data-x="restore" style="${BTN_SEC}">Restaurar compra</button>
          ${loginOpcional}`
       : email
@@ -302,9 +338,10 @@
   // En nativo el bundle local no sirve /terminos ni /privacidad (el WKWebView
   // caería al index): se enlaza a la web de producción y el click se abre con
   // el plugin Browser (ver act === 'legal' en los handlers).
-  function _legalHTML() {
+  function _legalHTML(prefijo) {
     const base = esNativo() ? (window.MP_API_BASE || 'https://miportafolio.uk').replace(/\/$/, '') : '';
-    return `<p style="color:#52525b;font-size:11px;margin:14px 0 0;text-align:center">Al continuar aceptas los <a href="${base}/terminos" data-x="legal" style="color:#71717a">Términos</a> y la <a href="${base}/privacidad" data-x="legal" style="color:#71717a">Privacidad</a>.</p>`;
+    const intro = prefijo || 'Al continuar aceptas los';
+    return `<p style="color:#52525b;font-size:11px;margin:14px 0 0;text-align:center">${intro} <a href="${base}/terminos" data-x="legal" style="color:#71717a">Términos</a> y la <a href="${base}/privacidad" data-x="legal" style="color:#71717a">Privacidad</a>.</p>`;
   }
   async function _abrirLegal(ev, el) {
     if (!esNativo()) return;                    // web: navegación normal del <a>
@@ -314,41 +351,122 @@
     try { if (B && B.open) await B.open({ url }); else window.open(url, '_blank'); } catch (_) {}
   }
 
-  // Renderiza los paquetes del offering en el overlay abierto (usa _email
-  // como appUserID vía rcInit dentro de cargarPaquetes)
+  // Portal de gestión de la suscripción (App Store / Google Play). Lo usa el
+  // paywall y también la pantalla "Mi cuenta".
+  async function abrirGestion() {
+    try {
+      const info = await conTimeout(customerInfo(), TIMEOUT_OFFERINGS_MS, null);
+      const url = (info && info.managementURL) || 'https://apps.apple.com/account/subscriptions';
+      const B = (Caps && Caps.Plugins && Caps.Plugins.Browser);
+      if (B && B.open) await B.open({ url }); else window.open(url, '_blank');
+    } catch (_) { toast('No se pudo abrir la gestión de suscripción.', 'error'); }
+  }
+
+  // Aviso global de "la sesión cambió" (login OTP, alta con contraseña, logout,
+  // borrado de cuenta): quien lo escuche se re-renderiza SIN recargar.
+  function notificarSesion() {
+    try { window.dispatchEvent(new Event('mp:sesion-actualizada')); } catch (_) {}
+  }
+
+  // ---------------------------------------------- planes (offerings + fallback)
+  const NOMBRE_PLAN = { MONTHLY: 'Mensual', ANNUAL: 'Anual', LIFETIME: 'Ilimitado' };
+
+  // Un botón de plan. `o.idx` presente = paquete real de RevenueCat; ausente =
+  // precio de referencia (el handler de compra resuelve el paquete al tocarlo).
+  function _botonPlan(o) {
+    const destacado = o.tipo === 'ANNUAL';
+    // Badge de ahorro: $650/año vs $65×12 = 2 meses gratis (LANZAMIENTO §1.2)
+    const izquierda = o.badge
+      ? `<span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
+           <span>${o.nombre}</span>
+           <span style="background:rgba(5,46,22,.85);color:#4ade80;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap">${o.badge}</span>
+         </span>`
+      : `<span>${o.nombre}</span>`;
+    const pkgAttr = (o.idx == null) ? '' : ` data-pkg="${o.idx}"`;
+    return `<button data-x="buy" data-plan="${o.tipo}"${pkgAttr}
+      style="${destacado ? BTN_PRI : BTN_SEC};display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left">
+      ${izquierda}<span style="font-weight:800;white-space:nowrap">${o.precio}${o.sufijo}</span>
+    </button>`;
+  }
+
+  const NOTA = 'color:#71717a;font-size:11px;text-align:center;margin:6px 0 0;line-height:1.5';
+
+  // Error inline dentro del bloque de planes (msg vacío = lo limpia).
+  // Devuelve false si no hay dónde pintarlo (p.ej. paywall web).
+  function _errEnPlanes(msg) {
+    const c = _overlay && _overlay.querySelector('[data-x="planes"]');
+    if (!c) return false;
+    let p = c.querySelector('[data-x="err-compra"]');
+    if (!msg) { if (p) p.remove(); return true; }
+    if (!p) {
+      p = document.createElement('p');
+      p.setAttribute('data-x', 'err-compra');
+      p.style.cssText = 'color:#f87171;font-size:12px;text-align:center;margin:8px 0 0;line-height:1.5';
+      c.appendChild(p);
+    }
+    p.textContent = msg;
+    return true;
+  }
+
+  function _htmlPlanesRef(nota) {
+    return PLANES_REF.map(p => _botonPlan(p)).join('') + (nota || '');
+  }
+
+  function _htmlPlanesReales(pkgs) {
+    return pkgs.map((p, i) => {
+      const prod = p.product || {};
+      return _botonPlan({
+        idx: i,
+        tipo: p.packageType || '',
+        nombre: NOMBRE_PLAN[p.packageType] || prod.title || p.identifier,
+        precio: prod.priceString || '',
+        sufijo: p.packageType === 'MONTHLY' ? '/mes'
+              : p.packageType === 'ANNUAL'  ? '/año'
+              : p.packageType === 'LIFETIME' ? ' · pago único' : '',
+        badge: p.packageType === 'ANNUAL' ? '2 meses gratis vs mensual' : '',
+      });
+    }).join('');
+  }
+
+  // Renderiza los paquetes del offering en el overlay abierto (usa _email como
+  // appUserID vía rcInit dentro de cargarPaquetes).
+  //
+  // La pantalla NUNCA queda vacía ni en "Cargando…": se pintan de inmediato los
+  // 3 planes con precios de referencia y, cuando RevenueCat responde (o falla /
+  // vence el timeout de 10 s), se sustituyen por los reales o se deja el aviso
+  // con botón de reintento. Requisito del rechazo 2.1(b).
   function _cargarPlanesEnOverlay() {
     if (!_overlay) return;
     const cont = _overlay.querySelector('[data-x="planes"]');
     if (!cont) return;
-    cargarPaquetes(_email).then((pkgs) => {
+    cont.innerHTML = _htmlPlanesRef(
+      `<p style="${NOTA}">Confirmando precios con la App Store…</p>`);
+
+    let vencido = false;
+    const reloj = new Promise((_, rej) => setTimeout(() => {
+      vencido = true; rej(new Error('timeout'));
+    }, TIMEOUT_OFFERINGS_MS));
+
+    Promise.race([cargarPaquetes(_email), reloj]).then((pkgs) => {
+      // Log para depurar en dispositivo físico (Safari → Web Inspector).
+      console.info('[MPPaywall] offerings OK ·', pkgs.length, 'paquetes ·',
+        pkgs.map(p => (p.packageType || '?') + '=' + (((p.product || {}).priceString) || '?')).join(' '));
       _pkgs = pkgs;
-      if (!_overlay) return;
-      const c = _overlay.querySelector('[data-x="planes"]');
-      if (!c) return;
-      const NOMBRE = { MONTHLY: 'Mensual', ANNUAL: 'Anual', LIFETIME: 'Ilimitado' };
-      c.innerHTML = pkgs.map((p, i) => {
-        const prod = p.product || {};
-        const nombre = NOMBRE[p.packageType] || prod.title || p.identifier;
-        const precio = prod.priceString || '';
-        const sufijo = p.packageType === 'MONTHLY' ? '/mes'
-                     : p.packageType === 'ANNUAL'  ? '/año'
-                     : p.packageType === 'LIFETIME' ? ' · pago único' : '';
-        const destacado = p.packageType === 'ANNUAL';
-        // Badge de ahorro: $650/año vs $65×12 = 2 meses gratis (precios ref. LANZAMIENTO §1.2)
-        const izquierda = destacado
-          ? `<span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
-               <span>${nombre}</span>
-               <span style="background:rgba(5,46,22,.85);color:#4ade80;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap">2 meses gratis vs mensual</span>
-             </span>`
-          : `<span>${nombre}</span>`;
-        return `<button data-x="buy" data-pkg="${i}"
-          style="${destacado ? BTN_PRI : BTN_SEC};display:flex;justify-content:space-between;align-items:center">
-          ${izquierda}<span style="font-weight:800">${precio}${sufijo}</span>
-        </button>`;
-      }).join('');
-    }).catch((e) => {
       const c = _overlay && _overlay.querySelector('[data-x="planes"]');
-      if (c) c.innerHTML = `<p style="color:#f87171;font-size:13px;text-align:center;margin:4px 0">${(e && e.message) || 'No se pudieron cargar los planes.'}</p>`;
+      if (c) c.innerHTML = _htmlPlanesReales(pkgs);
+    }).catch((e) => {
+      const motivo = vencido ? 'timeout ' + TIMEOUT_OFFERINGS_MS + 'ms' : ((e && e.message) || 'error');
+      console.info('[MPPaywall] offerings FALLO ·', motivo,
+        '· plataforma=' + plataforma(),
+        '· plugin=' + !!rcPlugin(),
+        '· key=' + !!(plataforma() === 'ios' ? window.MP_REVENUECAT_KEY_IOS : window.MP_REVENUECAT_KEY_ANDROID));
+      const c = _overlay && _overlay.querySelector('[data-x="planes"]');
+      if (!c) return;
+      c.innerHTML = _htmlPlanesRef(
+        `<p style="color:#fcd34d;font-size:12px;text-align:center;margin:8px 0 0;line-height:1.5">
+           No pudimos confirmar los precios con la App Store. Los de arriba son de referencia;
+           al comprar verás el precio exacto de tu región.</p>
+         <button data-x="reintentar-planes" style="${BTN_SEC};margin-top:8px">Reintentar</button>`);
     });
   }
 
@@ -383,13 +501,18 @@
       </div>`;
   }
 
-  async function abrir(opts) {
+  // El overlay se monta SIN esperar a la red. Antes `abrir()` hacía dos awaits
+  // (estado de sesión + entitlement del SDK) ANTES de crear el nodo: si el
+  // backend estaba en cold start o el plugin de compras no respondía, tocar
+  // "Suscribirse" no mostraba absolutamente nada. Ahora se pinta al instante
+  // con el último estado conocido y, cuando la sesión/entitlement resuelven, se
+  // re-pinta el cuerpo. (Guideline 2.1(b): el paywall no puede ser invisible.)
+  function abrir(opts) {
     const bloqueante = !!(opts && opts.bloqueante);
     if (_overlay && _bloqueante) return;      // el candado ya está en pantalla
     cerrar(true);
     _bloqueante = bloqueante;
-    _email = await emailActual();
-    const premium = await esPremium();
+    const premium = false;                    // optimista: se corrige al resolver
 
     const btnCerrar = bloqueante ? '' :
       `<button data-x="close" aria-label="Cerrar" style="position:absolute;top:14px;right:14px;background:transparent;border:0;color:#71717a;font-size:22px;cursor:pointer;line-height:1">×</button>`;
@@ -402,8 +525,24 @@
         <div data-x="body">${vista(_email, premium, bloqueante)}</div>
       </div>`;
     document.body.appendChild(_overlay);
+    const _propio = _overlay;                 // para no re-pintar un overlay ya cerrado
 
     if (esNativo() && !premium) _cargarPlanesEnOverlay();   // planes aunque NO haya correo (anónimo)
+
+    // Sesión y entitlement EN SEGUNDO PLANO: si cambian algo, se re-pinta.
+    (async () => {
+      const e = await estadoUsuario();
+      const email = (e && e.email) ? String(e.email).toLowerCase() : '';
+      let esPrem = _esPremiumEstado(e) || _sdkPremium;
+      if (!esPrem && esNativo()) esPrem = await refrescarSDKPremium();
+      if (_overlay !== _propio) return;                      // se cerró o se reabrió
+      if (email === _email && !esPrem) return;               // nada nuevo que pintar
+      _email = email;
+      const body = _propio.querySelector('[data-x="body"]');
+      if (!body) return;
+      body.innerHTML = vista(_email, esPrem, _bloqueante);
+      if (esNativo() && !esPrem) _cargarPlanesEnOverlay();
+    })();
 
     // Enter en el campo de correo = Continuar; en el de código = Verificar
     _overlay.addEventListener('keydown', (ev) => {
@@ -423,16 +562,8 @@
       const act = el.getAttribute('data-x');
       if (act === 'close') return cerrar();
       if (act === 'legal') return _abrirLegal(ev, el);
-      if (act === 'manage') {
-        // "Customer center": portal de gestión de la suscripción (App Store / Google Play)
-        try {
-          const info = await customerInfo();
-          const url = (info && info.managementURL) || 'https://apps.apple.com/account/subscriptions';
-          const B = (Caps && Caps.Plugins && Caps.Plugins.Browser);
-          if (B && B.open) await B.open({ url }); else window.open(url, '_blank');
-        } catch (_) { toast('No se pudo abrir la gestión de suscripción.'); }
-        return;
-      }
+      if (act === 'manage') return void abrirGestion();
+      if (act === 'reintentar-planes') { _cargarPlanesEnOverlay(); return; }
       if (act === 'restore') {
         el.disabled = true; el.textContent = 'Restaurando…';
         try { await restaurar(); } catch (e) { toast(e.message || 'Error al restaurar'); el.disabled = false; el.textContent = 'Restaurar compra'; }
@@ -477,7 +608,11 @@
           if (j.token) { try { localStorage.setItem('mp.jwt.v1', j.token); } catch (_) {} }
           // Identifica la cuenta en RevenueCat (aliasa una compra anónima previa).
           if (esNativo()) { try { await rcInit(_email); } catch (_) {} }
-          toast('Sesión iniciada como ' + _email + '.');
+          // La sesión cambió: "Mi cuenta" (y quien escuche) se re-renderiza sin
+          // recargar. Bug del build 4: el widget de cuenta solo se pintaba en
+          // DOMContentLoaded, así que tras el login por OTP no aparecía.
+          notificarSesion();
+          toast('Sesión iniciada como ' + _email + '.', 'success');
           if (body) { body.innerHTML = vista(_email, false, _bloqueante); if (esNativo()) _cargarPlanesEnOverlay(); }
           try { verificarAcceso(); } catch (_) {}
         } catch (_) {
@@ -537,12 +672,25 @@
         // La compra en nativo SIEMPRE va ligada a la cuenta (sin ruta anónima):
         // si no hay sesión, se envía a crear cuenta / iniciar sesión primero.
         if (esNativo() && !_email) { cerrar(true); abrirAuth(); return; }
-        el.disabled = true; const prev = el.textContent; el.textContent = 'Procesando…';
+        // innerHTML (no textContent): los botones de plan llevan nombre, badge
+        // y precio como nodos; con textContent se perdían al restaurar.
+        el.disabled = true; const prev = el.innerHTML; el.textContent = 'Procesando…';
+        _errEnPlanes('');
         try {
           if (esNativo()) {
-            const idx = parseInt(el.getAttribute('data-pkg') || '0', 10);
-            const pkg = _pkgs[idx];
-            if (!pkg) throw new Error('Plan no disponible, intenta de nuevo.');
+            const idxAttr = el.getAttribute('data-pkg');
+            let pkg = (idxAttr == null) ? null : _pkgs[parseInt(idxAttr, 10)];
+            if (!pkg) {
+              // Botón con precio de REFERENCIA (RevenueCat no había respondido):
+              // se intenta cargar el offering ahora y comprar el plan elegido.
+              const tipo = el.getAttribute('data-plan') || '';
+              try {
+                const pkgs = await Promise.race([cargarPaquetes(_email), rechazaEn(TIMEOUT_OFFERINGS_MS)]);
+                _pkgs = pkgs;
+                pkg = pkgs.filter(p => p.packageType === tipo)[0] || null;
+              } catch (_) { pkg = null; }
+            }
+            if (!pkg) throw new Error('No pudimos conectar con la App Store para completar la compra. Revisa tu conexión e intenta de nuevo.');
             await comprarNativo(_email, pkg);   // _email siempre presente (compra ligada a la cuenta)
             cerrar(true);   // compra hecha: libera también el candado
             toast('¡Listo! Tu suscripción está activa.');
@@ -552,12 +700,12 @@
             await comprarWeb(_email);    // redirige al checkout de MercadoPago
           }
         } catch (e) {
-          if (esCancelacion(e)) {        // cerró la hoja de pago: silencioso
-            el.disabled = false; el.textContent = prev;
-            return;
-          }
-          toast(e.message || 'No se pudo completar la compra.');
-          el.disabled = false; el.textContent = prev;
+          el.disabled = false; el.innerHTML = prev;
+          if (esCancelacion(e)) return;  // cerró la hoja de pago: silencioso
+          // Inline: el toast vive detrás del overlay en algunos casos, y el
+          // error de una compra tiene que verse sí o sí.
+          const msg = e.message || 'No se pudo completar la compra.';
+          if (!_errEnPlanes(msg)) toast(msg);
         }
       }
     });
@@ -599,6 +747,10 @@
           placeholder="Contraseña (mín. 8)" style="${INP}">
         <button data-x="auth-submit" style="${BTN_PRI}">${reg ? 'Crear cuenta' : 'Entrar'}</button>
         <button data-x="auth-toggle" style="${BTN_LINK}">${reg ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Crea una gratis'}</button>
+        <!-- Los planes y precios se pueden consultar SIN cuenta: esta pantalla
+             es lo primero que ve el revisor de Apple y no debe esconder las
+             compras in-app (Guideline 2.1(b)). La compra sí pide cuenta. -->
+        <button data-x="auth-planes" style="${BTN_SEC}">Ver planes y precios</button>
       </div>
       ${_legalHTML()}`;
   }
@@ -626,6 +778,12 @@
         setErr('');
         return;
       }
+      if (act === 'auth-planes') {
+        // El paywall se monta ENCIMA del gate (z 99999 > 99998); al cerrarlo se
+        // vuelve a esta pantalla. No cerramos el gate para no perder el paso.
+        abrir();
+        return;
+      }
       if (act === 'auth-submit') {
         const email = ((_authOverlay.querySelector('[data-x="auth-email"]') || {}).value || '').trim().toLowerCase();
         const pass  =  (_authOverlay.querySelector('[data-x="auth-pass"]')  || {}).value || '';
@@ -644,6 +802,7 @@
           // Identifica la cuenta en RevenueCat (aliasa una compra anónima previa).
           if (esNativo()) { try { await rcInit(email); } catch (_) {} }
           cerrarAuth();
+          notificarSesion();     // re-render de "Mi cuenta" sin recargar
           verificarAcceso();
         } catch (_) {
           setErr('Sin conexión. Intenta de nuevo.');
@@ -726,5 +885,14 @@
   });
   window.addEventListener('mp:premium-actualizado', verificarAcceso);
 
-  window.MPPaywall = { abrir, cerrar, esPremium, restaurar, requierePremium, plataforma, esNativo, customerInfo, entitlementActiva, verificarAcceso, abrirAuth, cerrarAuth };
+  // Al quedar sin sesión (logout o cuenta eliminada) el gate nativo se re-arma.
+  window.addEventListener('mp:sesion-actualizada', () => { verificarAcceso(); });
+
+  window.MPPaywall = {
+    abrir, cerrar, esPremium, restaurar, requierePremium, plataforma, esNativo,
+    customerInfo, entitlementActiva, verificarAcceso, abrirAuth, cerrarAuth,
+    // Reutilizados por account.js (pantalla "Mi cuenta"): mismo mecanismo
+    // nativo para los links legales y para el portal de la suscripción.
+    abrirGestion, legalHTML: _legalHTML, abrirLegal: _abrirLegal, notificarSesion,
+  };
 })();

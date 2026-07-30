@@ -89,6 +89,48 @@ def _limpiar_expirados(data: dict[str, Any]) -> None:
             info["solicitudes"] = sols
             otps_vivos[e] = info
     data["otp"] = otps_vivos
+    _limpiar_tombstones(data)
+
+
+# ─────────────────────────────────────────────────────────────────
+# Tombstones de cuentas eliminadas (App Store 5.1.1v)
+# ─────────────────────────────────────────────────────────────────
+# El JWT de la app nativa vive 30 dias y no se puede invalidar por firma, y el
+# store de usuarios es efimero (se reconstruye en cada deploy), asi que
+# app.py sintetiza un usuario cuando el JWT es valido pero el registro no
+# existe. Sin esta lista, una cuenta ELIMINADA seguia autenticando con su token
+# viejo (y volvia a recibir un trial nuevo), y cualquier webhook de pago la
+# resucitaba via actualizar_plan(). Guardamos solo un HASH del correo (no el
+# correo) y lo purgamos al caducar el token, para no retener datos personales.
+_TOMBSTONE_TTL = max(_SESSION_TTL, 30 * 24 * 3600)
+
+
+def _hash_email(email: str) -> str:
+    return hashlib.sha256(("cuenta-eliminada:" + (email or "").strip().lower()).encode("utf-8")).hexdigest()
+
+
+def _limpiar_tombstones(data: dict[str, Any]) -> None:
+    ahora = time.time()
+    data["eliminados"] = {
+        h: ts for h, ts in (data.get("eliminados") or {}).items()
+        if isinstance(ts, (int, float)) and ts > ahora - _TOMBSTONE_TTL
+    }
+
+
+def _esta_eliminado(data: dict[str, Any], email: str) -> bool:
+    """Version para usar DENTRO de _LOCK (que no es reentrante)."""
+    if not email:
+        return False
+    return _hash_email(email) in (data.get("eliminados") or {})
+
+
+def cuenta_eliminada(email: str) -> bool:
+    """True si esta cuenta se elimino y su token viejo aun podria estar vivo."""
+    email = (email or "").strip().lower()
+    if not email:
+        return False
+    with _LOCK:
+        return _esta_eliminado(_cargar(), email)
 
 
 def _registrar_usuario(data: dict[str, Any], email: str) -> dict[str, Any]:
@@ -102,6 +144,9 @@ def _registrar_usuario(data: dict[str, Any], email: str) -> dict[str, Any]:
             "plan": "trial",
             "estado_pago": "inactivo",
         }
+        # Alta explicita: si esa cuenta se habia eliminado, el usuario tiene
+        # derecho a volver a registrarse — se levanta el tombstone.
+        (data.get("eliminados") or {}).pop(_hash_email(email), None)
     return usuarios[email]
 
 
@@ -340,6 +385,9 @@ def registrar_con_password(email: str, password: str) -> dict[str, Any]:
             "password_hash": _hash_password(password),
             "auth": "password",
         }
+        # Alta explicita: si esa cuenta se habia eliminado, el usuario tiene
+        # derecho a volver a registrarse — se levanta el tombstone.
+        (data.get("eliminados") or {}).pop(_hash_email(email), None)
         _guardar(data)
     return {"email": email, "creado_en": ahora, "plan": "trial", "nueva": True}
 
@@ -521,6 +569,10 @@ def actualizar_plan(email: str, plan: str, estado_pago: str) -> dict[str, Any]:
     with _LOCK:
         data = _cargar()
         usuarios = data.setdefault("usuarios", {})
+        # Cuenta ELIMINADA: un webhook tardio (cancelacion/renovacion de
+        # MercadoPago o RevenueCat) no debe resucitarla via setdefault.
+        if email not in usuarios and _esta_eliminado(data, email):
+            return {}
         u = usuarios.setdefault(email, {"email": email, "creado_en": time.time()})
         u["plan"] = plan
         u["estado_pago"] = estado_pago
@@ -535,9 +587,10 @@ def eliminar_cuenta(email: str) -> dict[str, Any]:
     sus tokens pendientes. Requisito obligatorio de App Store (Guideline 5.1.1v)
     y Google Play para apps con creación de cuenta.
 
-    Best-effort también borra sus suscripciones push. La suscripción de pago
-    (MercadoPago / App Store / Google Play) se cancela desde la tienda
-    correspondiente; aquí solo eliminamos los datos en nuestro servidor.
+    También borra sus backups del portafolio en la nube y sus suscripciones
+    push. La suscripción de pago (MercadoPago / App Store / Google Play) se
+    cancela desde la tienda correspondiente; aquí solo eliminamos los datos en
+    nuestro servidor.
     """
     email = (email or "").strip().lower()
     if not email or "@" not in email:
@@ -558,17 +611,36 @@ def eliminar_cuenta(email: str) -> dict[str, Any]:
             if (info or {}).get("email") != email
         }
         data.setdefault("otp", {}).pop(email, None)
+        # Tombstone: invalida los JWT viejos (viven 30 dias y no se pueden
+        # revocar por firma) y evita que un webhook resucite la cuenta.
+        _limpiar_tombstones(data)
+        data.setdefault("eliminados", {})[_hash_email(email)] = time.time()
         _guardar(data)
 
-    # Best-effort: borrar suscripciones push del usuario
+    # Datos en Postgres. NO se silencian los fallos: si algo queda sin borrar
+    # hay que saberlo (antes un `except: pass` reportaba exito con datos vivos).
+    errores: list[str] = []
+
+    try:
+        import backups as _backups  # type: ignore
+        _backups.eliminar_todos_email(email)
+    except Exception as exc:
+        errores.append(f"backups: {exc}")
+
     try:
         import push as _push  # type: ignore
         if hasattr(_push, "eliminar_todas_email"):
             _push.eliminar_todas_email(email)
-    except Exception:
-        pass
+    except Exception as exc:
+        errores.append(f"push: {exc}")
 
-    return {"ok": True, "eliminada": existia, "email": email}
+    # El detalle del fallo se queda en el log del servidor; al cliente solo le
+    # decimos que la limpieza fue parcial (no filtramos errores internos).
+    if errores:
+        print(f"[auth] eliminar_cuenta: limpieza parcial ({'; '.join(errores)})")
+
+    return {"ok": True, "eliminada": existia, "email": email,
+            "parcial": bool(errores)}
 
 
 def _html_magic_link(email: str, enlace: str) -> str:

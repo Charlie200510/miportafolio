@@ -252,7 +252,10 @@
         <div class="ml-3 pl-3 border-l border-surface-border relative min-w-0">
           <button id="port-selector-btn" class="flex items-center gap-2 text-xs text-zinc-300 hover:text-zinc-100 transition px-2 py-1 rounded-md hover:bg-zinc-900 min-w-0 max-w-full">
             <span id="port-active-avatar" class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-semibold text-white shrink-0" style="background: linear-gradient(135deg, #16a34a, #22c55e);">P</span>
-            <span id="port-active-nombre" class="font-medium truncate">Portafolio principal</span>
+            <!-- En pantallas angostas (iPhone) se oculta el nombre: los botones
+                 "Suscribirse" y "Mi cuenta" tienen prioridad y así no queda
+                 truncado a una letra. El avatar sigue identificando el portafolio. -->
+            <span id="port-active-nombre" class="font-medium truncate hidden min-[560px]:inline">Portafolio principal</span>
             <span class="text-zinc-600 text-[10px]">▾</span>
           </button>
           <div id="port-selector-menu" class="hidden absolute top-full left-0 mt-1 w-64 bg-surface-card border border-surface-border rounded-lg shadow-xl z-50 p-2">
@@ -270,14 +273,24 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-4 text-xs text-zinc-400 shrink-0">
+      <div class="flex items-center gap-2 sm:gap-4 text-xs text-zinc-400 shrink-0">
         <!-- Acceso a suscripción SIEMPRE visible (también para que Apple pruebe la
-             compra en sandbox): abre el paywall vía data-mp-paywall. -->
-        <button data-mp-paywall id="btn-premium-header"
-          class="shrink-0 inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:border-amber-400/60 hover:text-amber-200 rounded-lg px-2 sm:px-3 py-1.5 transition whitespace-nowrap cursor-pointer">
-          <span class="hidden sm:inline">Suscribirse</span><span class="sm:hidden">Suscripción</span>
+             compra en sandbox): abre el paywall vía data-mp-paywall. Presente en
+             TODAS las pestañas, con o sin sesión, y sin depender del trial
+             (App Store 2.1(b): las compras in-app deben poder encontrarse). -->
+        <button data-mp-paywall id="btn-premium-header" aria-label="Ver planes y suscribirse"
+          class="shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:border-amber-400/60 hover:text-amber-200 rounded-lg px-2 sm:px-3 py-1.5 transition whitespace-nowrap cursor-pointer">
+          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.3 6.9.8-5 4.7 1.3 6.8L12 17.3 5.9 20.6 7.2 13.8l-5-4.7 6.9-.8L12 2z"/></svg>
+          <span>Suscribirse</span>
         </button>
-        <div class="hidden sm:flex items-center gap-2" id="meta-periodo">
+        <!-- Acceso a "Mi cuenta" SIEMPRE visible: correo, plan, suscripción y
+             ELIMINAR CUENTA a 2 toques del arranque (App Store 5.1.1(v)). Lleva
+             la clase nav-tab para que lo enrute bindNav() en app.js. -->
+        <button data-vista="cuenta" id="btn-cuenta-header" class="nav-tab shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold text-zinc-200 bg-zinc-800/70 border border-zinc-700 hover:border-zinc-500 hover:text-white rounded-lg px-2 sm:px-3 py-1.5 transition whitespace-nowrap cursor-pointer" aria-label="Mi cuenta">
+          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Mi cuenta</span>
+        </button>
+        <div class="hidden lg:flex items-center gap-2" id="meta-periodo">
           <span class="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse"></span>
           <span>Cargando…</span>
         </div>
@@ -3237,6 +3250,28 @@
     </div>
   </main><!-- /vista-metas -->
 
+  <!-- ============================================================ -->
+  <!-- MI CUENTA — sesión, plan, suscripción y ELIMINAR CUENTA        -->
+  <!-- App Store Guideline 5.1.1(v): el borrado de cuenta debe poder  -->
+  <!-- encontrarse dentro de la app. Se llega con el botón fijo       -->
+  <!-- "Mi cuenta" del header (2 toques desde el arranque).           -->
+  <!-- El contenido lo pinta account.js con estilos inline: Tailwind  -->
+  <!-- llega por CDN y en la app nativa puede no cargar.              -->
+  <!-- ============================================================ -->
+  <main id="vista-cuenta" class="hidden">
+    <section class="max-w-xl mx-auto px-4 sm:px-6 pt-8 pb-16">
+      <h2 class="text-2xl sm:text-3xl font-bold tracking-tight mb-1">Mi cuenta</h2>
+      <p class="text-sm text-zinc-500 mb-6">Sesión, plan, suscripción y eliminación de la cuenta.</p>
+      <div id="cuenta-contenido">
+        <!-- Fallback visible mientras account.js consulta el estado: esta
+             pantalla nunca debe verse vacía. -->
+        <div style="background:#111114;border:1px solid #1f1f24;border-radius:16px;padding:18px;color:#a1a1aa;font-size:13px">
+          Cargando tu cuenta…
+        </div>
+      </div>
+    </section>
+  </main><!-- /vista-cuenta -->
+
 
   <!-- ============================================================ -->
   <!-- FOOTER                                                        -->
@@ -3285,7 +3320,11 @@
         <button onclick="window.abrirCursosIndex && window.abrirCursosIndex()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Mini-cursos</button>
         <a href="/blog" class="text-zinc-400 hover:text-zinc-200 transition">Blog</a>
         <a href="mailto:soporte@miportafolio.app" class="text-zinc-400 hover:text-zinc-200 transition">Soporte</a>
-        <span id="cuenta-widget" class="hidden items-center gap-3 flex-wrap"></span>
+        <!-- Segundo acceso a la pantalla de cuenta. El widget que se pintaba aquí
+             (con confirm()/prompt() y solo en DOMContentLoaded) se retiró: la
+             vista "Mi cuenta" es ahora la única implementación. -->
+        <button data-vista="cuenta" class="nav-tab text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Mi cuenta</button>
+        <span id="cuenta-footer-email" class="text-zinc-600"></span>
       </div>
       <div class="text-zinc-600 leading-relaxed max-w-md text-right">
         NO somos asesor financiero registrado ante CNBV. Esta herramienta es educativa. Las decisiones de inversión son responsabilidad del usuario.

@@ -114,6 +114,22 @@ def eliminar_backup(backup_id: str, email: str) -> bool:
     return n > 0
 
 
+def eliminar_todos_email(email: str) -> int:
+    """Borra TODOS los backups de un email. Devuelve cuántos se eliminaron.
+
+    Lo usa auth.eliminar_cuenta(): al eliminar la cuenta hay que borrar también
+    los snapshots del portafolio en la nube (App Store 5.1.1v / Google Play).
+    Sin esto los datos sobrevivían al borrado de la cuenta y volvían a quedar
+    accesibles si el mismo correo se registraba de nuevo.
+    """
+    if not email or "@" not in email:
+        return 0
+    with _db.conn() as c:
+        sql = "DELETE FROM backups_nube WHERE user_email = {pl}".format(
+            pl="%s" if _db.USING_PG else "?")
+        return _db.execute(c, sql, (email.lower().strip(),))
+
+
 def limpiar_antiguos(email: str, max_manuales: int = 10, max_automaticos: int = 30) -> int:
     """Elimina backups viejos para mantener tamaño bajo control.
     Devuelve cuántos se eliminaron."""
