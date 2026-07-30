@@ -35,7 +35,30 @@
 
 set -Eeuo pipefail
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# --- Re-exec desde una copia ------------------------------------------------
+# Este script se actualiza a SÍ MISMO con el pull, y bash lee el archivo por
+# offset mientras lo ejecuta: si el pull lo reemplaza a media corrida, bash
+# sigue leyendo desde el byte donde iba y puede ejecutar basura. (Ya pasó: una
+# corrida imprimió el texto de la versión anterior.) Nos copiamos a un temporal
+# y corremos desde ahí, así el archivo que bash lee no cambia nunca.
+# El repo se calcula ANTES y viaja por env, porque la copia en /tmp no podría
+# deducirlo de su propia ruta.
+if [[ -z "${MP_PULL_REPO:-}" ]]; then
+  MP_PULL_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  export MP_PULL_REPO
+fi
+
+if [[ "${MP_PULL_REEXEC:-}" != "1" ]]; then
+  export MP_PULL_REEXEC=1
+  _copia="$(mktemp "${TMPDIR:-/tmp}/mp-pull.XXXXXX")"
+  cat "${BASH_SOURCE[0]}" > "$_copia"
+  trap 'rm -f "$_copia"' EXIT
+  _rc=0
+  bash "$_copia" "$@" || _rc=$?
+  exit "$_rc"
+fi
+
+REPO="$MP_PULL_REPO"
 SERVICIO="miportafolio"
 RAMA="main"
 SALUD="http://127.0.0.1:8000/api/health"
