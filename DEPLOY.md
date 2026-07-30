@@ -158,21 +158,60 @@ Con 10 suscriptores cubres costos. Con 50 hay margen.
 
 ## 10. Actualizar producción (Oracle VM — deploy manual)
 
-El servidor real (miportafolio.uk) es la VM de Oracle con deploy manual. Para
-aplicar cambios del repo:
+El servidor real (miportafolio.uk) es la VM de Oracle con deploy manual.
+**Usa el script, no los comandos a mano:**
 
 ```bash
 ssh ubuntu@<VM>
+bash ~/portafolio-app/deploy/pull.sh
+```
+
+`deploy/pull.sh` es idempotente y falla ruidosamente (exit != 0) si algo no
+queda como debe. Hace: saneamiento del índice → descarte de los archivos de
+datos → `fetch` → `merge --ff-only` → `restart` → verificación de que el
+servicio quedó `active` y `/api/health` responde `ok`. Si hay cambios locales
+que **no** son de los archivos de datos, aborta sin descartarlos.
+
+Luego verifica desde fuera, no solo en la VM:
+
+```bash
+curl -s https://miportafolio.uk/api/health
+```
+
+### Por qué no basta `git checkout -- <csv> && git pull`
+
+Es lo que decía esta guía antes, y **falla en silencio**. Dos trampas:
+
+1. **`skip-worktree`.** Los dos archivos de datos tenían ese bit puesto en el
+   índice (para que el timer no ensuciara `git status`). Con él, `git status`
+   los reporta limpios, `git diff` sale vacío y `git checkout -- <archivo>` y
+   `git restore` son **no-ops silenciosos**… pero `git pull` sigue abortando con
+   `error: Your local changes to the following files would be overwritten by
+   merge`. El fetch entra (`origin/main` avanza) y el fast-forward no, así que
+   el servidor se queda clavado en un commit viejo **sirviendo código antiguo
+   sin ninguna señal evidente**. Fue lo que pasó del 2026-07-17 al 2026-07-30:
+   cinco commits sin desplegar, incluido el build 5 de App Store.
+   `pull.sh` limpia el bit con `git update-index --no-skip-worktree`.
+   **No lo vuelvas a poner:** rompe todos los pulls que toquen esos archivos.
+2. **El `&&`.** Si el `git checkout --` falla por cualquier razón (pathspec que
+   no existe, por ejemplo), el `&&` corta la cadena y `git pull` nunca corre.
+   El script usa `set -e` y verifica el resultado de cada paso.
+
+Diagnóstico rápido si vuelve a pasar (¿se movió `HEAD` o solo `origin/main`?):
+
+```bash
 cd ~/portafolio-app
-# El timer diario (miportafolio-universo.timer) muta universo_lite_precios.csv
-# in-place, así que el pull SIEMPRE va a chocar con ese archivo. Descarta el
-# cambio local primero — esa misma noche el timer vuelve a ponerle precios del día:
-git checkout -- backend/universo_lite_precios.csv backend/universo_lite_info.json
-git pull origin main
-sudo systemctl restart miportafolio
+git rev-parse --short HEAD origin/main   # si difieren, el FF no ocurrió
+git ls-files -v backend/universo_lite_precios.csv   # debe empezar con H, no con S
+git reflog -3                            # ¿cuándo se movió HEAD por última vez?
 ```
 
 > El universo lite del repo se refresca solo cada ~4 semanas vía el workflow
 > `refrescar-universo` (GitHub Actions): membresía de tickers + metadata.
 > Los precios diarios en producción los mantiene el timer systemd de la VM;
 > ninguno de los dos sustituye al otro.
+
+> `deploy/.env` tiene valores sin comillas (`RESEND_FROM=Mi Portafolio <...>`).
+> systemd los parsea bien, pero `source deploy/.env` desde bash truena con
+> `syntax error near unexpected token`. No lo hagas desde scripts; si necesitas
+> un valor, extráelo con `grep '^CLAVE=' deploy/.env | cut -d= -f2-`.

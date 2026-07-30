@@ -598,6 +598,12 @@ def _enviar_resend(destinatario: str, subject: str, html_body: str, reply_to: Op
         headers={
             "Authorization": f"Bearer {cfg['api_key']}",
             "Content-Type":  "application/json",
+            # api.resend.com está detrás de Cloudflare y su WAF bloquea el
+            # User-Agent por defecto de urllib ("Python-urllib/3.x") con
+            # HTTP 403 "error code: 1010" — la petición ni llega a Resend, así
+            # que el correo falla siempre. Hay que mandar un UA propio.
+            "User-Agent":    "miportafolio/1.0 (+https://miportafolio.uk)",
+            "Accept":        "application/json",
         },
         method="POST",
     )
