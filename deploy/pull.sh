@@ -146,11 +146,18 @@ done
 verde "$SERVICIO active (running)."
 
 # --- 7. Verificación funcional ---------------------------------------------
-paso "Verificando que la app responde"
+# systemd reporta "active" en cuanto forkea, pero gunicorn tarda ~20s en hacer
+# bind (importa el stack de datos y encola el warmup). La comprobación real es
+# HTTP, con presupuesto de sobra: quedarse corto aquí da falsas alarmas de
+# deploy roto cuando en realidad solo faltaba esperar.
+paso "Verificando que la app responde (puede tardar ~20-30s en escuchar)"
 salud=""
-for i in $(seq 1 10); do
+for i in $(seq 1 40); do
   salud="$(curl -fsS -m 10 "$SALUD" 2>/dev/null || true)"
-  [[ "$salud" == *'"ok"'* ]] && break
+  if [[ "$salud" == *'"ok"'* ]]; then
+    echo "  respondió al intento $i (~$((i * 2))s)"
+    break
+  fi
   sleep 2
 done
 [[ "$salud" == *'"ok"'* ]] || {
