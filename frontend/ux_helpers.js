@@ -582,6 +582,12 @@
       setTimeout(() => el.remove(), 300);
     }, duration);
   };
+  // Azúcar toast.success(msg) / .error / .info / .warn. La forma canónica sigue
+  // siendo toast(msg, tipo), pero es fácil escribir la variante con punto por
+  // costumbre y antes eso lanzaba TypeError silencioso.
+  ['success', 'error', 'info', 'warn'].forEach((t) => {
+    window.toast[t] = (msg, duration) => window.toast(msg, t, duration);
+  });
 
   // ============================================================
   // 5. ERROR HUMANIZATION — wrapper de fetch que traduce errores

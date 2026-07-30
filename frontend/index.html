@@ -235,7 +235,16 @@
   </div>
 
   <!-- ============================================================ -->
-  <header class="border-b border-surface-border bg-surface/80 backdrop-blur sticky top-0 z-40">
+  <!-- BARRA SUPERIOR — header + sub-nav pegados como UN SOLO bloque  -->
+  <!-- ============================================================ -->
+  <!-- Antes cada uno era sticky por separado: el header en top-0 z-40 y la
+       sub-nav en top-[64px] z-30. Cuando paywall.js inserta la franja del trial
+       DENTRO del header, este crece (~121px en iPhone) y la nav, pegada a 64px y
+       con z menor, se metía DEBAJO del header al hacer scroll: el usuario perdía
+       la navegación. Pegando el contenedor completo no hay offset que calcular
+       ni z-index que competir, y la altura variable deja de importar. -->
+  <div id="mp-topbar" class="sticky top-0 z-40">
+  <header class="border-b border-surface-border bg-surface/80 backdrop-blur">
     <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
       <!-- min-w-0: permite que este cluster se encoja (trunca el nombre del
            portafolio) en vez de desbordar bajo el botón Premium/racha -->
@@ -305,7 +314,7 @@
   <!-- ============================================================ -->
   <!-- SUB-NAV — primarios prominentes + secundarios bajo "Más"      -->
   <!-- ============================================================ -->
-  <nav class="border-b border-surface-border bg-surface/60 backdrop-blur sticky top-[64px] z-30 mp-nav-scroll">
+  <nav class="border-b border-surface-border bg-surface/60 backdrop-blur mp-nav-scroll">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-2 flex-nowrap sm:flex-wrap overflow-x-auto">
 
       <!-- ── PRIMARIOS (grandes, destacados) — Periódico es el default ── -->
@@ -345,6 +354,7 @@
       </div>
     </div>
   </nav>
+  </div><!-- /#mp-topbar -->
 
   <main id="vista-portafolio" class="hidden">
 

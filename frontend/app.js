@@ -1919,9 +1919,12 @@ const PortafolioOptimo = (() => {
           // Fallback: localStorage
           localStorage.setItem('mp.portafolioOptimoPropuesto', JSON.stringify(tickers));
         }
-        if (window.toast) window.toast.success(`Portafolio óptimo cargado: ${tickers.length} acciones`);
+        // window.toast(msg, tipo) — la forma canónica de ux_helpers.js. Antes
+        // llamaba a window.toast.success(...), que no existe: lanzaba
+        // TypeError y se comía el resultado en el catch de abajo.
+        if (window.toast) window.toast(`Portafolio óptimo cargado: ${tickers.length} acciones`, 'success');
       } catch (e) {
-        if (window.toast) window.toast.error('No pude cargar el portafolio');
+        if (window.toast) window.toast('No pude cargar el portafolio', 'error');
       }
     });
     // Carga inicial a σ 14% (≈ mercado)
