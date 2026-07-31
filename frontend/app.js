@@ -242,7 +242,13 @@ function leerCfgAlertas() {
   } catch { return null; }
 }
 
+// Último correo de alertas que el backend llegó a registrar, para poder pedirle
+// que borre ese snapshot cuando el usuario cambia de dirección.
+let _destinatarioPrevio = (() => { try { return (leerCfgAlertas() || {}).destinatario || ''; } catch { return ''; } })();
+
 function guardarCfgAlertas(cfg) {
+  const previo = (leerCfgAlertas() || {}).destinatario || '';
+  if (previo && previo !== (cfg.destinatario || '')) _destinatarioPrevio = previo;
   try { localStorage.setItem(LS_KEY_ALERTAS_CFG, JSON.stringify(cfg)); } catch {}
   return enviarSnapshotBackend();
 }
@@ -296,6 +302,10 @@ function enviarSnapshotBackend() {
       const cfg = leerCfgAlertas() || { destinatario: '', activas: {drift:false, precio:false, semanal:false} };
       const body = {
         destinatario:    cfg.destinatario || '',
+        // Para que el backend borre el snapshot del correo anterior: si no, la
+        // dirección vieja sigue recibiendo alertas para siempre (y puede ser de
+        // alguien más si hubo un dedazo al teclearla).
+        destinatario_anterior: _destinatarioPrevio || '',
         nombre:          'Charlie',
         pesos_objetivo,
         posiciones,

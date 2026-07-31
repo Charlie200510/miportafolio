@@ -40,6 +40,8 @@ venv/
 
 # Snapshots de usuario y datos generados localmente (vivirán en Postgres en producción)
 backend/portafolio_snapshot.json
+backend/portafolio_snapshot.json.migrado
+backend/_snapshots/
 backend/_data/
 backend/_datos/
 backend/cache_precios/

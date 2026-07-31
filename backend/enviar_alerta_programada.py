@@ -49,19 +49,33 @@ _cargar_env()
 import alertas  # noqa: E402
 
 BACKEND_DIR = Path(__file__).parent
-SNAPSHOT_PATH = BACKEND_DIR / "portafolio_snapshot.json"
+
+import snapshots as _snaps  # noqa: E402  (contrato compartido con app.py)
 
 
-def _cargar_snapshot() -> dict | None:
-    if not SNAPSHOT_PATH.exists():
-        print(f"× No existe {SNAPSHOT_PATH}.")
+def _cargar_snapshot(email: str | None = None) -> dict | None:
+    """Con `email`, carga el snapshot de ESE destinatario. Sin él, usa el único
+    que haya (comodidad para correr a mano); si hay varios, exige elegir para no
+    mandarle a la persona equivocada."""
+    if email:
+        snap = _snaps.cargar(email)
+        if snap is None:
+            print(f"× No hay snapshot para {email}.")
+            print("  Esa persona debe abrir la app y guardar su portafolio una vez.")
+        return snap
+
+    todos = list(_snaps.listar())
+    if not todos:
+        print(f"× No hay ningún snapshot en {_snaps.DIR_SNAPSHOTS}.")
         print("  Abre la app y guarda tu portafolio una vez para crearlo.")
         return None
-    try:
-        return json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8"))
-    except Exception as e:
-        print(f"× No se pudo leer snapshot: {e}")
+    if len(todos) > 1:
+        print(f"× Hay {len(todos)} snapshots y no dijiste a quién enviar.")
+        print("  Usa: --email <correo>. Destinatarios disponibles:")
+        for s in todos:
+            print(f"    - {s.get('destinatario')}")
         return None
+    return todos[0]
 
 
 def _refrescar_precios(posiciones: list) -> list:
@@ -196,11 +210,21 @@ def _construir_payload(tipo: str, snap: dict) -> dict:
 
 def main():
     if len(sys.argv) < 2:
-        print("Uso: python3 enviar_alerta_programada.py <drift|precio|semanal|periodico>")
+        print("Uso: python3 enviar_alerta_programada.py <drift|precio|semanal|periodico> [--email <correo>]")
         sys.exit(1)
     tipo = sys.argv[1].strip().lower()
 
-    snap = _cargar_snapshot()
+    # --email <correo>: cuál de los snapshots usar. El cron lo pasa siempre,
+    # porque hay uno por destinatario.
+    email = None
+    if "--email" in sys.argv:
+        i = sys.argv.index("--email")
+        if i + 1 >= len(sys.argv):
+            print("× --email requiere un correo.")
+            sys.exit(1)
+        email = sys.argv[i + 1].strip().lower()
+
+    snap = _cargar_snapshot(email)
     if not snap:
         sys.exit(1)
 

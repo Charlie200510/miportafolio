@@ -716,42 +716,64 @@ def api_cron_dispatch(tipo):
         return jsonify({"error": f"tipo desconocido: {tipo}",
                         "validos": ["drift", "precio", "semanal", "periodico", "newsletter"]}), 400
 
-    # Verificar que existe el snapshot del usuario (escrito por el frontend)
-    snap_path = _Path_cron(__file__).parent / "portafolio_snapshot.json"
-    if not snap_path.exists():
-        return jsonify({"ok": True, "skipped": True,
-                        "razon": "no hay snapshot del portafolio aún"}), 200
-
-    # Verificar que esta alerta está activada en el snapshot
+    # Un snapshot POR DESTINATARIO: hay que atender a TODOS los que tengan esta
+    # alerta encendida, no solo al último que guardó (antes era un archivo
+    # global y los demás usuarios simplemente no recibían nada).
     try:
-        with open(snap_path, encoding="utf-8") as f:
-            snap = _json_cron.load(f)
-        activas = snap.get("alertas_activas") or {}
-        if not activas.get(tipo, False):
-            return jsonify({"ok": True, "skipped": True,
-                            "razon": f"alerta '{tipo}' desactivada por el usuario"}), 200
+        import snapshots as _snaps
+        pendientes, omitidos = _snaps.con_alerta_activa(tipo)
     except Exception as e:
-        return jsonify({"error": f"no se pudo leer snapshot: {e}"}), 500
+        print(f"[cron/{tipo}] FALLO leyendo snapshots: {e}", flush=True)
+        return jsonify({"error": f"no se pudo leer snapshots: {e}"}), 500
 
-    # Disparar el script CLI
-    try:
-        script = _Path_cron(__file__).parent / "enviar_alerta_programada.py"
-        result = _sub_cron.run(
-            ["python3", str(script), tipo],
-            capture_output=True, text=True, timeout=45,
-            cwd=str(_Path_cron(__file__).parent),
-        )
-        return jsonify({
-            "ok":        result.returncode == 0,
-            "tipo":      tipo,
-            "exit_code": result.returncode,
-            "stdout":    result.stdout[-1000:],  # últimas 1000 chars
-            "stderr":    result.stderr[-500:],
-        }), 200 if result.returncode == 0 else 500
-    except _sub_cron.TimeoutExpired:
-        return jsonify({"error": "timeout en script de alerta"}), 504
-    except Exception as e:
-        return jsonify({"error": f"fallo ejecutando: {e}"}), 500
+    if not pendientes:
+        # Se responde 200 para no llenar de falsas alarmas al cron externo (que
+        # nadie haya activado esta alerta es normal), pero SÍ queda en el log:
+        # antes este caso era invisible para todos y un snapshot borrado podía
+        # dejar las alertas muertas durante semanas sin señal alguna.
+        print(f"[cron/{tipo}] nada que enviar: ningún snapshot tiene "
+              f"'{tipo}' activa (revisados: {len(list(_snaps.listar()))})", flush=True)
+        return jsonify({"ok": True, "skipped": True, "destinatarios": 0,
+                        "razon": f"ningún usuario tiene la alerta '{tipo}' activa"}), 200
+
+    if omitidos:
+        print(f"[cron/{tipo}] AVISO: {omitidos} destinatario(s) quedaron fuera de esta "
+              f"corrida por el tope de {_snaps.MAX_POR_CORRIDA}", flush=True)
+
+    # El envío va en segundo plano: con varios destinatarios la petición del cron
+    # se pasaría de su propio timeout. Cada resultado queda en el log del
+    # servidor, que es donde se puede auditar después
+    # (journalctl -u miportafolio | grep 'cron/').
+    script = _Path_cron(__file__).parent / "enviar_alerta_programada.py"
+    correos = [s.get("destinatario") for s in pendientes]
+
+    def _enviar_a_todos():
+        for correo in correos:
+            try:
+                r = _sub_cron.run(
+                    ["python3", str(script), tipo, "--email", correo],
+                    capture_output=True, text=True, timeout=90,
+                    cwd=str(_Path_cron(__file__).parent),
+                )
+                if r.returncode == 0:
+                    print(f"[cron/{tipo}] OK -> {correo}", flush=True)
+                else:
+                    print(f"[cron/{tipo}] FALLO -> {correo} (exit {r.returncode}): "
+                          f"{(r.stderr or r.stdout or '')[-300:]}", flush=True)
+            except _sub_cron.TimeoutExpired:
+                print(f"[cron/{tipo}] TIMEOUT -> {correo}", flush=True)
+            except Exception as e:
+                print(f"[cron/{tipo}] FALLO -> {correo}: {e}", flush=True)
+
+    # `import threading` local, igual que las ramas de prewarm-mx y
+    # descubrir-emergentes más arriba: esos imports dentro de la función hacen
+    # que `threading` sea un nombre LOCAL en todo su scope, así que el módulo
+    # importado arriba no se ve desde aquí (UnboundLocalError si no se importa).
+    import threading
+    threading.Thread(target=_enviar_a_todos, daemon=True).start()
+    return jsonify({"ok": True, "tipo": tipo, "destinatarios": len(correos),
+                    "omitidos_por_tope": omitidos,
+                    "status": "encolado en segundo plano"}), 202
 
 
 # ── PWA: service worker desde la raíz para tener scope "/" ──────
@@ -2431,11 +2453,26 @@ def api_portafolio_snapshot():
             "drift": False, "precio": False, "semanal": False,
         },
     }
+    # Un snapshot POR DESTINATARIO. Antes era un archivo global y cada usuario
+    # sobrescribía el del anterior: solo el último en guardar recibía alertas.
+    if not snap["destinatario"] or "@" not in snap["destinatario"]:
+        # Sin correo no hay alertas que programar. No es un error: el frontend
+        # llama a este endpoint en cada guardado del portafolio, incluso sin
+        # alertas configuradas.
+        return jsonify({"ok": True, "actualizado": snap["actualizado"],
+                        "sin_destinatario": True})
     try:
-        ruta = Path(__file__).parent / "portafolio_snapshot.json"
-        ruta.write_text(json.dumps(snap, indent=2, ensure_ascii=False), encoding="utf-8")
+        import snapshots as _snaps
+        _snaps.guardar(snap)
+        # Si cambió su correo de alertas, hay que quitar el snapshot anterior:
+        # si no, la dirección vieja sigue recibiendo alertas para siempre (y
+        # puede ser de otra persona si hubo un dedazo).
+        anterior = (body.get("destinatario_anterior") or "").strip().lower()
+        if anterior and "@" in anterior and anterior != snap["destinatario"]:
+            _snaps.borrar(anterior)
         return jsonify({"ok": True, "actualizado": snap["actualizado"]})
     except Exception as e:
+        print(f"[snapshot] FALLO al guardar el de {snap['destinatario']}: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
 
 
