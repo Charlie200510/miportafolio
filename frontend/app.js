@@ -5653,7 +5653,15 @@ const Alertas = (() => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error');
-      if (msgEl) msgEl.textContent = data.mensaje || ('Enviado a ' + email);
+      // No afirmar "Enviado a X" sin mirar el resultado: alertas.enviar_alerta()
+      // responde ok:false cuando el envío falló, y antes se ignoraba.
+      if (msgEl) {
+        if (data && data.ok === false) {
+          msgEl.textContent = 'No se pudo enviar' + (data.error ? ': ' + data.error : '.');
+        } else {
+          msgEl.textContent = data.mensaje || ('Enviado a ' + (data.enviado_a || email));
+        }
+      }
     } catch (e) {
       if (msgEl) msgEl.textContent = 'Error: ' + (e.message || e);
     } finally {

@@ -231,19 +231,25 @@ def verificar_token(token: str) -> dict[str, Any]:
         if email in usuarios:
             es_primera_sesion = usuarios[email].get("ultima_sesion") is None
             usuarios[email]["ultima_sesion"] = ahora
-            if es_primera_sesion:
-                usuarios[email]["bienvenida_enviada"] = True
         _guardar(data)
 
     # Email de bienvenida (solo primera sesion). Fuera del lock para no
     # bloquear otras requests si el envio tarda.
+    # La marca `bienvenida_enviada` se escribe DESPUÉS de que el envío salió: si
+    # se pone antes (como estaba) y el envío falla, queda marcado como enviado y
+    # nadie lo reintenta nunca. No bloquea el login: si falla, solo se registra.
     if es_primera_sesion:
         try:
             asunto = "Bienvenido a Mi Portafolio"
             cuerpo = _html_bienvenida(email)
             _alertas.enviar_correo(email, asunto, cuerpo)
+            with _LOCK:
+                data = _cargar()
+                if email in data.get("usuarios", {}):
+                    data["usuarios"][email]["bienvenida_enviada"] = True
+                    _guardar(data)
         except Exception as exc:
-            print(f"[auth] no se pudo enviar email de bienvenida a {email}: {exc}")
+            print(f"[auth] no se pudo enviar email de bienvenida a {email}: {exc}", flush=True)
 
     return {
         "ok": True,

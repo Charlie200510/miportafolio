@@ -643,15 +643,25 @@
       localStorage.setItem('miPortafolio.pushActivo', '1');
       window.toast && window.toast('✅ Notificaciones activadas. Te llegará una de prueba en 5 seg.', 'success', 5000);
 
-      // 5) Mandar push de prueba
+      // 5) Mandar push de prueba. Se verifica el resultado: antes era
+      // fire-and-forget con `catch {}` después de haber prometido "te llegará
+      // una de prueba en 5 seg", así que si el envío fallaba el usuario se
+      // quedaba esperando una notificación que nunca iba a llegar y concluía
+      // que sus notificaciones no funcionan.
       setTimeout(async () => {
         try {
-          await fetch('/api/push/test', {
+          const r = await fetch('/api/push/test', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify({email, titulo: '🚀 Mi Portafolio', body: 'Push notifications funcionando correctamente.'}),
           });
-        } catch {}
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok || (d && d.ok === false)) throw new Error(d.error || ('HTTP ' + r.status));
+        } catch (e) {
+          window.toast && window.toast(
+            'Tus notificaciones quedaron activadas, pero la de prueba no salió ('
+            + (e.message || 'error') + '). Puede ser algo temporal del servidor.', 'warn', 7000);
+        }
       }, 5000);
     } catch (e) {
       window.toast && window.toast(`Error: ${e.message}`, 'error', 6000);
