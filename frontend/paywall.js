@@ -230,9 +230,11 @@
   }
 
   // -------------------------------------------------- UI
-  function toast(msg, tipo) {
+  function toast(msg, tipo, duracion) {
     // window.toast lo define ux_helpers.js (se carga antes que este archivo).
-    try { if (window.toast) return window.toast(msg, tipo || 'info'); } catch (_) {}
+    // Se reenvía la duración: los mensajes de error de envío son largos y con
+    // los 3.5s por defecto no alcanzan a leerse.
+    try { if (window.toast) return window.toast(msg, tipo || 'info', duracion); } catch (_) {}
     try { if (window.MP && MP.toast) return MP.toast(msg); } catch (_) {}
     alert(msg);
   }
@@ -335,6 +337,13 @@
   // font-size:16px en inputs evita el auto-zoom de iOS al enfocar.
   const INP = 'width:100%;background:#18181b;border:1px solid #3f3f46;border-radius:12px;padding:13px 14px;font-size:16px;color:#fafafa;outline:none;box-sizing:border-box';
   const BTN_LINK = 'background:none;border:0;color:#71717a;font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 0;width:100%';
+
+  // El correo se interpola en varias plantillas de este archivo; lo escapamos
+  // para no romper el HTML con un valor raro tecleado en el input.
+  function _esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
   // En nativo el bundle local no sirve /terminos ni /privacidad (el WKWebView
   // caería al index): se enlaza a la web de producción y el click se abre con
   // el plugin Browser (ver act === 'legal' en los handlers).
@@ -481,7 +490,45 @@
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'No se pudo enviar el código.');
+    // El endpoint responde 200 {ok:true, enviado:false} cuando el código se
+    // generó pero el correo NO salió (proveedor caído, credencial inválida).
+    // Antes se avanzaba a "Revisa tu correo" de todos modos y el usuario se
+    // quedaba esperando para siempre un código que nunca iba a llegar, sin
+    // ninguna salida visible. Lo tratamos como error con bandera propia para
+    // poder ofrecer la contraseña como alternativa.
+    //
+    // OJO con el orden: en AUTH_MOCK_MODE (desarrollo) el backend también manda
+    // enviado:false, pero incluye codigo_debug porque el código va a la consola
+    // en lugar del correo. Eso NO es un fallo. Mismo criterio y mismo orden que
+    // signup.html con enlace_debug.
+    if (j && j.codigo_debug) return j;
+    if (j && j.enviado === false) {
+      const err = new Error('No pudimos enviarte el código por correo.');
+      err.noEnviado = true;
+      throw err;
+    }
     return j;
+  }
+
+  // Pantalla de fallo de envío. NUNCA dejar al usuario en "Revisa tu correo"
+  // cuando sabemos que el correo no salió: aquí se le dice la verdad y se le
+  // da la ruta que sí funciona (correo + contraseña, el flujo principal de la
+  // app nativa, que no depende de que salga ningún correo).
+  function _otpFalloCuerpo(correo) {
+    return `
+      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">No pudimos enviarte el código</h2>
+      <p style="color:#a1a1aa;margin:0 0 12px;font-size:14px;line-height:1.55">
+        Generamos tu código, pero el correo a
+        <span style="color:#e4e4e7">${_esc(correo)}</span> no salió: el servicio de
+        envíos no está respondiendo. No es tu culpa y no tiene que ver con tu cuenta.</p>
+      <p style="color:#a1a1aa;margin:0 0 14px;font-size:14px;line-height:1.55">
+        Puedes entrar ahora mismo con tu <strong style="color:#e4e4e7">contraseña</strong>,
+        que no depende del correo. Si aún no tienes una, puedes crear tu cuenta ahí mismo.</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button data-x="otp-usar-password" style="${BTN_PRI}">Entrar con contraseña</button>
+        <button data-x="otp-reintentar-envio" style="${BTN_SEC}">Reintentar el envío</button>
+        <button data-x="volver" style="${BTN_LINK}">Volver a los planes</button>
+      </div>`;
   }
 
   function _otpCuerpo(correo, err) {
@@ -489,7 +536,7 @@
     return `
       <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Revisa tu correo</h2>
       <p style="color:#a1a1aa;margin:0 0 14px;font-size:14px">Enviamos un código de 6 dígitos a
-        <span style="color:#e4e4e7">${correo}</span>. Expira en 10 minutos.</p>
+        <span style="color:#e4e4e7">${_esc(correo)}</span>. Expira en 10 minutos.</p>
       ${errHTML}
       <div style="display:flex;flex-direction:column;gap:8px">
         <input data-x="otp-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6"
@@ -620,15 +667,39 @@
         }
         return;
       }
-      if (act === 'otp-reenviar') {
+      if (act === 'otp-reenviar' || act === 'otp-reintentar-envio') {
+        const etiqueta = el.textContent;
         el.disabled = true; el.textContent = 'Enviando…';
         try {
           await _pedirOTP(_email);
+          // Volvemos (o regresamos) a la pantalla del código: si veníamos del
+          // fallo y el reintento funcionó, hay que dejar el input a la vista.
+          const body = _overlay.querySelector('[data-x="body"]');
+          if (body) {
+            body.innerHTML = _otpCuerpo(_email, '');
+            const oi = _overlay.querySelector('[data-x="otp-input"]');
+            if (oi) oi.focus();
+          }
           toast('Te enviamos un código nuevo a ' + _email + '.');
         } catch (e) {
+          if (e && e.noEnviado) {
+            // El correo sigue sin salir: pantalla honesta con la alternativa,
+            // no un toast que se desvanece y deja la misma pantalla mintiendo.
+            const body = _overlay.querySelector('[data-x="body"]');
+            if (body) body.innerHTML = _otpFalloCuerpo(_email);
+            return;
+          }
+          el.disabled = false; el.textContent = etiqueta;
           toast(e.message || 'No se pudo enviar el código.');
         }
-        el.disabled = false; el.textContent = 'Reenviar código';
+        return;
+      }
+      if (act === 'otp-usar-password') {
+        // El gate de correo+contraseña es el flujo principal de la app nativa y
+        // no depende de que salga ningún correo. Lo abrimos en modo "ingresar";
+        // si la persona no tiene contraseña, ahí mismo puede crear la cuenta.
+        _authModo = 'ingresar';
+        abrirAuth();
         return;
       }
       if (act === 'volver') {
@@ -653,19 +724,40 @@
             const oi = _overlay.querySelector('[data-x="otp-input"]');
             if (oi) oi.focus();
           } catch (e) {
+            if (e && e.noEnviado) {
+              // No mandar a "Revisa tu correo" cuando el correo no salió.
+              if (body) body.innerHTML = _otpFalloCuerpo(v);
+              return;
+            }
             el.disabled = false; el.textContent = prev;
             toast(e.message || 'No se pudo enviar el código.');
           }
           return;
         }
-        // Web: magic link para acceso multi-dispositivo. Fire-and-forget: el
-        // pago con MercadoPago no depende de abrir el correo.
-        fetch('/api/auth/login', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: v })
-        }).catch(() => {});
-        toast('Te enviamos un enlace de acceso a ' + v + '.');
+        // Web: magic link para acceso multi-dispositivo. El pago con
+        // MercadoPago no depende de abrir el correo, así que no bloqueamos el
+        // flujo — pero tampoco afirmamos que se envió sin saberlo: antes era
+        // fire-and-forget con un toast de éxito incondicional.
         if (body) body.innerHTML = vista(_email, false, _bloqueante);
+        (async () => {
+          try {
+            const r = await fetch('/api/auth/login', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: v })
+            });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(j.error || 'falló la solicitud');
+            if (j && j.enlace_debug) { toast('Modo prueba: el enlace salió en la consola del servidor.'); return; }
+            if (j && j.enviado === false) {
+              toast('No pudimos enviarte el enlace a ' + v + '. Puedes seguir aquí y suscribirte; '
+                  + 'para entrar desde otro dispositivo intenta más tarde.', 'error', 7000);
+              return;
+            }
+            toast('Te enviamos un enlace de acceso a ' + v + '.');
+          } catch (_) {
+            toast('No pudimos enviarte el enlace a ' + v + '. Revisa tu conexión e intenta de nuevo.', 'error', 6000);
+          }
+        })();
         return;
       }
       if (act === 'buy') {

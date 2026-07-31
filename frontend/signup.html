@@ -180,9 +180,15 @@
           estado.innerHTML = `<span class="text-amber-400 font-semibold">Modo prueba:</span> <a href="${data.enlace_debug}" class="text-brand-400 underline break-all">entra con este link</a>`;
           return;
         }
-        // Si el correo NO se pudo enviar, mostrar el motivo real (no fingir éxito)
+        // Si el correo NO se pudo enviar, decirlo y dar una salida. NO se
+        // imprime data.detalle: trae el error crudo del proveedor de envíos
+        // ("Resend HTTP 401 ...") que no le sirve a quien se está registrando y
+        // expone infraestructura. El detalle queda en el log del servidor.
         if (data.enviado === false) {
-          estado.innerHTML = `<span class="text-red-400">No se pudo enviar el correo.</span> <span class="text-zinc-500 text-[12px]">${(data.detalle || 'revisa la configuración de email').toString()}</span>`;
+          estado.innerHTML = '<span class="text-red-400">No pudimos enviarte el correo.</span> '
+            + '<span class="text-zinc-400 text-[13px]">El servicio de envíos no está respondiendo; no es problema de tu cuenta. '
+            + 'Puedes <a href="/" class="text-brand-400 underline">entrar a la app</a> y crear tu cuenta con contraseña, '
+            + 'o intentar de nuevo en unos minutos.</span>';
           return;
         }
         estado.innerHTML = `<span class="text-brand-400 font-semibold">✓ Listo.</span> <span class="text-zinc-400">Revisa tu correo (${email}). El link es válido por 15 minutos.</span>`;

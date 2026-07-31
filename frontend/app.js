@@ -244,14 +244,29 @@ function leerCfgAlertas() {
 
 function guardarCfgAlertas(cfg) {
   try { localStorage.setItem(LS_KEY_ALERTAS_CFG, JSON.stringify(cfg)); } catch {}
-  enviarSnapshotBackend();
+  return enviarSnapshotBackend();
 }
 
 let _snapshotPending = null;
-async function enviarSnapshotBackend() {
+let _snapshotEspera = null;
+// Devuelve una promesa que resuelve {ok, error} cuando el POST (después del
+// debounce) termina. Antes era fire-and-forget con `catch {}` y el comentario
+// "no es crítico", que era falso: este snapshot es lo ÚNICO que habilita las
+// alertas recurrentes por correo (el cron lee alertas_activas de ahí). Si el
+// POST se perdía, la UI seguía prometiendo "se mandan automáticamente" y no
+// llegaba ningún correo nunca, sin señal para nadie.
+function enviarSnapshotBackend() {
   // Debounce 1.5s para no spamear cada cambio
   if (_snapshotPending) clearTimeout(_snapshotPending);
+  if (!_snapshotEspera) {
+    const e = {};
+    e.promesa = new Promise((res) => { e.resolver = res; });
+    _snapshotEspera = e;
+  }
+  const espera = _snapshotEspera;
   _snapshotPending = setTimeout(async () => {
+    _snapshotEspera = null;
+    let resultado = { ok: false, error: 'no se intentó' };
     try {
       const tickers = leerPortafolioGuardado() || [];
       const pesosFrac = leerPesosGuardados() || {};
@@ -288,15 +303,22 @@ async function enviarSnapshotBackend() {
         alertas_activas: cfg.activas || {drift:false, precio:false, semanal:false},
         metricas:        {},
       };
-      await fetch('/api/portafolio/snapshot', {
+      const res = await fetch('/api/portafolio/snapshot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      if (!res.ok) throw new Error('el servidor respondió ' + res.status);
+      const j = await res.json().catch(() => ({}));
+      if (j && j.ok === false) throw new Error(j.error || 'el servidor no lo guardó');
+      resultado = { ok: true };
     } catch (e) {
-      // silent fail — no es crítico
+      resultado = { ok: false, error: (e && e.message) || 'sin conexión' };
+      console.warn('[snapshot] no se pudo guardar en el servidor:', resultado.error);
     }
+    espera.resolver(resultado);
   }, 1500);
+  return espera.promesa;
 }
 
 function borrarPortafolioGuardado() {
@@ -5641,15 +5663,38 @@ const Alertas = (() => {
     actualizarMsgAuto(cfg);
   }
 
-  function actualizarMsgAuto(cfg) {
+  // estado: 'guardando' | 'ok' | 'error'. Solo con 'ok' se afirma que las
+  // alertas van a llegar: el registro vive en el servidor (el cron lee el
+  // snapshot), así que hasta confirmarlo no podemos prometer nada. Antes se
+  // afirmaba de inmediato leyendo solo localStorage.
+  function actualizarMsgAuto(cfg, estado, error) {
     const el = $('al-auto-msg');
     if (!el) return;
     const activos = Object.entries(cfg.activas || {}).filter(([_,v]) => v).map(([k]) => k);
+    el.classList.remove('text-zinc-600', 'text-amber-400', 'text-red-400');
     if (!cfg.destinatario || !activos.length) {
+      el.classList.add('text-zinc-600');
       el.textContent = 'Sin alertas automáticas activadas. Pon tu email arriba y marca al menos una opción.';
-    } else {
-      el.textContent = `${activos.length} alerta(s) activa(s) — se mandan a ${cfg.destinatario} automáticamente.`;
+      return;
     }
+    if (estado === 'guardando') {
+      el.classList.add('text-zinc-600');
+      el.textContent = 'Guardando en el servidor…';
+      return;
+    }
+    if (estado === 'error') {
+      el.classList.add('text-red-400');
+      el.textContent = 'No pudimos guardar tus alertas en el servidor'
+        + (error ? ' (' + error + ')' : '') + ', así que NO se van a enviar. '
+        + 'Revisa tu conexión y vuelve a marcar la opción.';
+      return;
+    }
+    // Confirmado por el servidor.
+    el.classList.add(state.disponible === false ? 'text-amber-400' : 'text-zinc-600');
+    el.textContent = `${activos.length} alerta(s) activa(s) — se mandan a ${cfg.destinatario} automáticamente.`
+      + (state.disponible === false
+          ? ' Ojo: el envío de correo no está disponible en el servidor ahora mismo, así que podrían no llegar.'
+          : '');
   }
 
   function persistirCfg() {
@@ -5661,8 +5706,13 @@ const Alertas = (() => {
         semanal: $('al-auto-semanal')?.checked || false,
       },
     };
-    guardarCfgAlertas(cfg);
-    actualizarMsgAuto(cfg);
+    const espera = guardarCfgAlertas(cfg);
+    actualizarMsgAuto(cfg, 'guardando');
+    if (espera && espera.then) {
+      espera.then((r) => actualizarMsgAuto(cfg, r && r.ok ? 'ok' : 'error', r && r.error));
+    } else {
+      actualizarMsgAuto(cfg, 'ok');
+    }
   }
 
   function bind() {

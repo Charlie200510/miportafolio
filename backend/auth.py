@@ -187,6 +187,10 @@ def solicitar_magic_link(email: str) -> dict[str, Any]:
             detalle = "enviado"
         except Exception as exc:
             detalle = f"smtp_error: {exc}"
+            # Al log del servidor: antes el único rastro de un fallo de envío
+            # era el cuerpo de la respuesta HTTP, así que el correo podía estar
+            # caído durante días sin que apareciera nada en journalctl.
+            print(f"[auth] FALLO al enviar magic link a {email}: {exc}", flush=True)
 
     return {
         "ok": True,
@@ -474,6 +478,10 @@ def solicitar_otp(email: str) -> dict[str, Any]:
             detalle = "enviado"
         except Exception as exc:
             detalle = f"smtp_error: {exc}"
+            # Idem magic link: sin esto un OTP que nunca sale es invisible en el
+            # log. El login nativo depende de este correo, así que el operador
+            # necesita verlo (journalctl -u miportafolio | grep FALLO).
+            print(f"[auth] FALLO al enviar OTP a {email}: {exc}", flush=True)
 
     return {
         "ok": True,
