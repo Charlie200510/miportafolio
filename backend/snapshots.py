@@ -113,6 +113,39 @@ def borrar(email: str) -> bool:
         return False
 
 
+def borrar_de_cuenta(email: str) -> list[str]:
+    """Borra TODO snapshot que pertenezca a esta cuenta, para App Store 5.1.1(v):
+    al eliminar la cuenta no puede sobrevivir nada asociado.
+
+    Busca por dos campos porque el correo de ALERTAS puede no ser el de la
+    cuenta (el panel de alertas deja poner otro):
+      - `destinatario`  = a dónde se mandan las alertas
+      - `cuenta_email`  = la sesión que guardó el snapshot, cuando había una
+
+    Si no se borrara, quedarían en el servidor el correo, las posiciones, los
+    pesos y las transacciones de una cuenta ya eliminada, y el cron le seguiría
+    mandando alertas. Devuelve la lista de correos cuyos snapshots se borraron.
+    """
+    email = _normalizar(email)
+    if not email:
+        return []
+    borrados: list[str] = []
+    if not DIR_SNAPSHOTS.exists():
+        return borrados
+    for p in sorted(DIR_SNAPSHOTS.glob("*.json")):
+        try:
+            snap = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(snap, dict):
+            continue
+        if email in (_normalizar(snap.get("destinatario")),
+                     _normalizar(snap.get("cuenta_email"))):
+            p.unlink(missing_ok=True)
+            borrados.append(_normalizar(snap.get("destinatario")))
+    return borrados
+
+
 def migrar_legacy() -> str | None:
     """Mueve el archivo global viejo al esquema por destinatario. Idempotente.
     Devuelve el correo migrado, o None si no había nada que migrar."""

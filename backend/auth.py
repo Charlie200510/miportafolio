@@ -648,6 +648,15 @@ def eliminar_cuenta(email: str) -> dict[str, Any]:
     except Exception as exc:
         errores.append(f"push: {exc}")
 
+    # Snapshot del portafolio (correo, posiciones, pesos, transacciones y la
+    # config de alertas). Si no se borra, sobrevive al borrado de la cuenta y el
+    # cron le sigue mandando alertas a una cuenta que ya no existe.
+    try:
+        import snapshots as _snaps  # type: ignore
+        _snaps.borrar_de_cuenta(email)
+    except Exception as exc:
+        errores.append(f"snapshots: {exc}")
+
     # El detalle del fallo se queda en el log del servidor; al cliente solo le
     # decimos que la limpieza fue parcial (no filtramos errores internos).
     if errores:

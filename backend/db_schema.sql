@@ -21,9 +21,9 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at      TIMESTAMPTZ
 );
-CREATE INDEX idx_users_email     ON users(email) WHERE deleted_at IS NULL;
-CREATE INDEX idx_users_plan      ON users(plan)  WHERE deleted_at IS NULL;
-CREATE INDEX idx_users_mp_sub    ON users(mp_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_users_email     ON users(email) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_users_plan      ON users(plan)  WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_users_mp_sub    ON users(mp_subscription_id);
 
 
 -- ============================================================
@@ -39,9 +39,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_seen_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_sessions_user   ON sessions(user_id);
-CREATE INDEX idx_sessions_token  ON sessions(token_hash);
-CREATE INDEX idx_sessions_expiry ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_user   ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_token  ON sessions(token_hash);
+CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
 
 
 -- ============================================================
@@ -55,8 +55,8 @@ CREATE TABLE IF NOT EXISTS magic_links (
     used_at         TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_magic_token ON magic_links(token_hash);
-CREATE INDEX idx_magic_email ON magic_links(email);
+CREATE INDEX IF NOT EXISTS idx_magic_token ON magic_links(token_hash);
+CREATE INDEX IF NOT EXISTS idx_magic_email ON magic_links(email);
 
 
 -- ============================================================
@@ -74,8 +74,8 @@ CREATE TABLE IF NOT EXISTS portafolios (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at      TIMESTAMPTZ
 );
-CREATE INDEX idx_port_user       ON portafolios(user_id) WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX uniq_port_principal ON portafolios(user_id) WHERE es_principal = true AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_port_user       ON portafolios(user_id) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_port_principal ON portafolios(user_id) WHERE es_principal = true AND deleted_at IS NULL;
 
 
 -- ============================================================
@@ -94,8 +94,8 @@ CREATE TABLE IF NOT EXISTS transacciones (
     notas           TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_tx_portafolio ON transacciones(portafolio_id);
-CREATE INDEX idx_tx_fecha      ON transacciones(portafolio_id, fecha);
+CREATE INDEX IF NOT EXISTS idx_tx_portafolio ON transacciones(portafolio_id);
+CREATE INDEX IF NOT EXISTS idx_tx_fecha      ON transacciones(portafolio_id, fecha);
 
 
 -- ============================================================
@@ -136,8 +136,8 @@ CREATE TABLE IF NOT EXISTS backups_nube (
     tamano_bytes    INTEGER,                         -- tamaño del JSON serializado
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_backups_email_fecha ON backups_nube(user_email, created_at DESC);
-CREATE INDEX idx_backups_auto ON backups_nube(user_email, es_automatico, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_backups_email_fecha ON backups_nube(user_email, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_backups_auto ON backups_nube(user_email, es_automatico, created_at DESC);
 
 
 -- ============================================================
@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
     last_used_at    TIMESTAMPTZ,
     activo          BOOLEAN NOT NULL DEFAULT true
 );
-CREATE INDEX idx_push_email ON push_subscriptions(user_email) WHERE activo = true;
+CREATE INDEX IF NOT EXISTS idx_push_email ON push_subscriptions(user_email) WHERE activo = true;
 
 
 -- ============================================================
@@ -169,8 +169,8 @@ CREATE TABLE IF NOT EXISTS pagos_eventos (
     raw_payload     JSONB,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_pagos_user ON pagos_eventos(user_id);
-CREATE INDEX idx_pagos_event ON pagos_eventos(mp_event_id);
+CREATE INDEX IF NOT EXISTS idx_pagos_user ON pagos_eventos(user_id);
+CREATE INDEX IF NOT EXISTS idx_pagos_event ON pagos_eventos(mp_event_id);
 
 
 -- ============================================================
@@ -195,8 +195,17 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Postgres no acepta CREATE TRIGGER IF NOT EXISTS: se hace DROP + CREATE, que sí
+-- es idempotente. Importa porque init_schema() ejecuta este archivo completo como
+-- UN SOLO batch: cualquier statement que falle aborta la transacción entera y las
+-- tablas que vienen después NUNCA se crean. Así se quedaron sin crear backups_nube
+-- y push_subscriptions en producción durante semanas (backups en la nube y push
+-- fallando con "relation does not exist"). Todo aquí debe ser re-ejecutable.
+DROP TRIGGER IF EXISTS tr_users_updated ON users;
 CREATE TRIGGER tr_users_updated      BEFORE UPDATE ON users        FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+DROP TRIGGER IF EXISTS tr_portafolios_updated ON portafolios;
 CREATE TRIGGER tr_portafolios_updated BEFORE UPDATE ON portafolios FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+DROP TRIGGER IF EXISTS tr_alertas_updated ON alertas_config;
 CREATE TRIGGER tr_alertas_updated    BEFORE UPDATE ON alertas_config FOR EACH ROW EXECUTE FUNCTION update_modified_column();
 
 

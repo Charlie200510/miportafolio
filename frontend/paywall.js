@@ -357,7 +357,15 @@
     ev.preventDefault();
     const url = el.getAttribute('href');
     const B = (Caps && Caps.Plugins && Caps.Plugins.Browser);
-    try { if (B && B.open) await B.open({ url }); else window.open(url, '_blank'); } catch (_) {}
+    // Si el plugin Browser falla, se cae a window.open en vez de no hacer nada:
+    // Apple exige que los links a Términos y Privacidad funcionen (3.1.2), y un
+    // toque que no abre nada se lee como app incompleta (2.2).
+    try {
+      if (B && B.open) await B.open({ url });
+      else window.open(url, '_blank');
+    } catch (_) {
+      try { window.open(url, '_blank'); } catch (_) {}
+    }
   }
 
   // Portal de gestión de la suscripción (App Store / Google Play). Lo usa el

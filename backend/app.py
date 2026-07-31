@@ -2453,6 +2453,20 @@ def api_portafolio_snapshot():
             "drift": False, "precio": False, "semanal": False,
         },
     }
+    # Si hay sesión, se anota a qué cuenta pertenece. Este endpoint NO exige
+    # sesión (la app funciona sin cuenta y el portafolio vive en el dispositivo),
+    # pero cuando la hay hace falta la liga para poder borrar el snapshot si esa
+    # cuenta se elimina: el correo de alertas puede ser distinto al de la cuenta,
+    # y sin esta liga quedaría huérfano recibiendo alertas (App Store 5.1.1(v)).
+    try:
+        _ses_snap = _sesion_actual()
+        if _ses_snap and (_ses_snap.get("usuario") or {}).get("email"):
+            snap["cuenta_email"] = str(_ses_snap["usuario"]["email"]).strip().lower()
+        elif _ses_snap and _ses_snap.get("email"):
+            snap["cuenta_email"] = str(_ses_snap["email"]).strip().lower()
+    except Exception:
+        pass
+
     # Un snapshot POR DESTINATARIO. Antes era un archivo global y cada usuario
     # sobrescribía el del anterior: solo el último en guardar recibía alertas.
     if not snap["destinatario"] or "@" not in snap["destinatario"]:
