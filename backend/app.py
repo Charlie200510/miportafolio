@@ -434,6 +434,66 @@ def _gc_after_heavy(response):
 # ------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------
+import re as _re_assets
+import hashlib as _hashlib_assets
+
+# Cache-busting de los assets de la WEB.
+#
+# El origen ya manda Cache-Control: no-cache en todo (default de Flask), pero
+# Cloudflare lo SOBRESCRIBE con su Browser Cache TTL (max-age=14400 = 4h) en los
+# .js y .css: respeta el no-cache del HTML pero no el de los assets. Comprobado
+# comparando el origen (127.0.0.1:8000 → no-cache) contra el público
+# (miportafolio.uk → max-age=14400).
+#
+# Consecuencia real: tras un deploy un navegador podía seguir hasta 4 horas
+# ejecutando el JS viejo. Se detectó verificando el arreglo del header: el
+# servidor ya tenía el fix y el navegador seguía corriendo la versión anterior,
+# con el traslape todavía presente.
+#
+# Como el HTML SÍ llega fresco, se le inyecta ?v=<huella> a las referencias
+# locales: si cambia cualquier asset cambia la URL, y ninguna caché (ni del
+# navegador ni de Cloudflare) la tiene todavía.
+#
+# Se hace AL SERVIR, no reescribiendo el archivo en disco, para que el bundle
+# nativo de Capacitor quede intacto: ahí los archivos se cargan localmente, no
+# hay HTTP ni cachés que invalidar, y no queremos arriesgar ese camino.
+#
+# El arreglo de fondo es del lado de Cloudflare (Caching → Configuration →
+# Browser Cache TTL → "Respect Existing Headers"), que requiere acceso al panel.
+_INDEX_CACHE: dict[str, str] = {}
+
+
+def _index_con_assets_versionados():
+    """index.html con ?v=<huella> en los /static/*.js|css. None si algo falla."""
+    try:
+        index = FRONTEND_DIR / "index.html"
+        html = index.read_text(encoding="utf-8")
+        refs = sorted(set(_re_assets.findall(r'/static/([\w./-]+\.(?:js|css))', html)))
+        # La huella se deriva de la fecha de modificación más reciente entre el
+        # index y sus assets: cambia sola en cada deploy, sin tener que acordarse
+        # de bumpear nada a mano.
+        mtimes = [index.stat().st_mtime]
+        for r in refs:
+            p = FRONTEND_DIR / r
+            if p.exists():
+                mtimes.append(p.stat().st_mtime)
+        semilla = f"{max(mtimes):.0f}|" + "|".join(refs)
+        huella = _hashlib_assets.sha256(semilla.encode("utf-8")).hexdigest()[:10]
+        if huella in _INDEX_CACHE:
+            return _INDEX_CACHE[huella]
+        out = _re_assets.sub(
+            r'(/static/[\w./-]+\.(?:js|css))(?=")',
+            lambda m: m.group(1) + "?v=" + huella,
+            html,
+        )
+        _INDEX_CACHE.clear()          # solo se guarda la versión vigente
+        _INDEX_CACHE[huella] = out
+        return out
+    except Exception as exc:
+        print(f"[index] no se pudo versionar los assets: {exc}", flush=True)
+        return None
+
+
 def _leer_json(ruta: Path):
     """Lee un JSON y lo devuelve como dict. None si no existe."""
     if not ruta.exists():
@@ -447,13 +507,21 @@ def _leer_json(ruta: Path):
 # ------------------------------------------------------------
 @app.route("/")
 def home():
-    """Sirve el index.html del frontend."""
+    """Sirve el index.html del frontend, con los assets versionados (ver
+    _index_con_assets_versionados)."""
     index = FRONTEND_DIR / "index.html"
     if not index.exists():
         return (
             "<h1>Frontend no encontrado</h1>"
             f"<p>No existe: {index}</p>", 500
         )
+    html = _index_con_assets_versionados()
+    if html is not None:
+        resp = Response(html, mimetype="text/html")
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+    # Fail-safe: si el versionado falla por cualquier razón, se sirve el archivo
+    # tal cual, que es el comportamiento de siempre.
     return send_from_directory(str(FRONTEND_DIR), "index.html")
 
 
