@@ -105,14 +105,63 @@
   }
   async function esPremium() {
     const e = await estadoUsuario();
-    if (_esPremiumEstado(e)) return true;               // servidor: usuario con sesión
-    if (esNativo()) return await refrescarSDKPremium(); // nativo: SDK (anónimo o identificado)
+    if (_esPremiumEstado(e)) return true;               // servidor: fuente de verdad
+    // El entitlement del SDK solo cuenta si hay sesión que lo respalde: sin ella
+    // la app no puede afirmar que alguien es premium (ver _premiumEfectivo).
+    if (esNativo() && e && e.autenticado) return await refrescarSDKPremium();
     return false;
   }
   function _esPremiumEstado(e) {
     if (!e) return false;
     if (e.premium === true) return true;               // campo del gate (backend)
     return ((e.usuario && e.usuario.plan) || '') === 'premium';
+  }
+
+  // Premium EFECTIVO para la interfaz: EXIGE sesión.
+  //
+  // El entitlement del SDK por sí solo NO alcanza. Sin esta regla la app podía
+  // afirmar "suscrito" sin ninguna sesión detrás: la compra vive en el Apple ID,
+  // así que sobrevive a eliminar la cuenta de la app, y quedaba un estado
+  // imposible (premium + sin sesión + sin gate) del que no había salida.
+  // Con sesión, el servidor sigue siendo la fuente de verdad y el SDK solo
+  // adelanta el desbloqueo tras comprar.
+  function _premiumEfectivo(e) {
+    if (!(e && e.autenticado)) return false;
+    return _esPremiumEstado(e) || _sdkPremium;
+  }
+
+  // Re-vincula a la cuenta ACTUAL una compra que ya vive en el Apple ID.
+  // Se llama tras iniciar sesión o crear cuenta: es lo que evita que alguien que
+  // pagó pierda lo que pagó al cambiar de cuenta (p.ej. después de eliminar la
+  // anterior). restorePurchases() adjunta el recibo del dispositivo al appUserID
+  // actual, y el servidor lo confirma contra la REST API de RevenueCat.
+  // Silencioso salvo que SÍ encuentre una compra: tras un registro normal (sin
+  // compra) no debe salir ningún aviso.
+  async function _revincularCompra(email) {
+    if (!esNativo() || !email) return false;
+    try {
+      const RC = await rcInit(email);                 // logIn: aliasa lo anónimo
+      let premium = false;
+      try {
+        const r = await conTimeout(RC.restorePurchases(), TIMEOUT_OFFERINGS_MS, null);
+        premium = entitlementActiva((r && (r.customerInfo || r)) || null);
+      } catch (_) {}
+      // El servidor manda: verifica la entitlement server-side y marca la cuenta.
+      try {
+        const rs = await fetch('/api/payments/revenuecat/sync', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const j = await rs.json().catch(() => ({}));
+        if (j && typeof j.premium === 'boolean') premium = j.premium;
+      } catch (_) {}
+      _sdkPremium = premium;
+      if (premium) {
+        toast('Recuperamos tu suscripción y quedó ligada a esta cuenta.', 'success', 6000);
+        try { window.dispatchEvent(new Event('mp:premium-actualizado')); } catch (_) {}
+      }
+      return premium;
+    } catch (_) { return false; }
   }
 
   // -------------------------------------------------- RevenueCat (nativo)
@@ -588,8 +637,9 @@
     (async () => {
       const e = await estadoUsuario();
       const email = (e && e.email) ? String(e.email).toLowerCase() : '';
-      let esPrem = _esPremiumEstado(e) || _sdkPremium;
-      if (!esPrem && esNativo()) esPrem = await refrescarSDKPremium();
+      let esPrem = _premiumEfectivo(e);
+      // El SDK solo se consulta si hay sesión: sin ella no se afirma premium.
+      if (!esPrem && esNativo() && e && e.autenticado) esPrem = await refrescarSDKPremium();
       if (_overlay !== _propio) return;                      // se cerró o se reabrió
       if (email === _email && !esPrem) return;               // nada nuevo que pintar
       _email = email;
@@ -852,6 +902,12 @@
              compras in-app (Guideline 2.1(b)). La compra sí pide cuenta. -->
         <button data-x="auth-planes" style="${BTN_SEC}">Ver planes y precios</button>
       </div>
+      <!-- Quien ya compró y llega aquí sin cuenta (p.ej. eliminó la anterior)
+           necesita saber que su compra no se perdió: al entrar se re-vincula
+           sola con _revincularCompra(). -->
+      <p style="color:#71717a;font-size:11px;margin:12px 0 0;text-align:center;line-height:1.5">
+        ¿Ya compraste una suscripción? Entra o crea tu cuenta y la recuperamos
+        automáticamente.</p>
       ${_legalHTML()}`;
   }
 
@@ -899,11 +955,16 @@
           const j = await r.json().catch(() => ({}));
           if (!r.ok) return setErr(j.error || 'No se pudo completar. Intenta de nuevo.');
           if (j.token) { try { localStorage.setItem('mp.jwt.v1', j.token); } catch (_) {} }
-          // Identifica la cuenta en RevenueCat (aliasa una compra anónima previa).
-          if (esNativo()) { try { await rcInit(email); } catch (_) {} }
           cerrarAuth();
           notificarSesion();     // re-render de "Mi cuenta" sin recargar
-          verificarAcceso();
+          // Re-vincula a esta cuenta una compra que ya viva en el Apple ID (por
+          // ejemplo si eliminó su cuenta anterior y creó una nueva): así quien
+          // pagó no pierde lo que pagó. No bloquea el acceso si falla.
+          if (esNativo()) {
+            _revincularCompra(email).finally(() => verificarAcceso());
+          } else {
+            verificarAcceso();
+          }
         } catch (_) {
           setErr('Sin conexión. Intenta de nuevo.');
         }
@@ -921,7 +982,7 @@
     const btn = document.getElementById('btn-premium-header');
     if (!btn) return;
     if (_btnHTMLOriginal === null) _btnHTMLOriginal = btn.innerHTML;
-    if (_esPremiumEstado(e) || _sdkPremium) {          // servidor O compra (SDK)
+    if (_premiumEfectivo(e)) {        // servidor O compra (SDK), pero CON sesión
       if (!btn.dataset.premium) { btn.dataset.premium = '1'; btn.textContent = 'Suscrito ✓'; }
     } else if (btn.dataset.premium) {
       delete btn.dataset.premium; btn.innerHTML = _btnHTMLOriginal;
@@ -952,12 +1013,25 @@
     try { e = await estadoUsuario(); } catch (_) {}
     const authed = !!(e && e.autenticado);
 
-    // NATIVO sin cuenta: exige registro/login (el trial se cuenta por-cuenta).
-    // Excepción: si ya compró de forma anónima (p.ej. revisor de Apple probando
-    // la compra), NO lo forzamos a crear cuenta.
+    // NATIVO sin cuenta: SIEMPRE exige registro/login (el trial se cuenta
+    // por-cuenta), incluso si hay una compra activa en el Apple ID.
+    //
+    // Antes había una excepción: si _sdkPremium era true se cerraba el gate y se
+    // devolvía, para no forzar a crear cuenta a quien hubiera comprado anónimo.
+    // El problema es que la compra vive en el Apple ID y sobrevive a eliminar la
+    // cuenta de la app, así que tras el borrado el entitlement seguía activo, el
+    // gate no volvía NUNCA y la app quedaba en un limbo: "premium", sin sesión y
+    // sin forma de iniciar sesión ni crear cuenta. Es la ruta exacta que recorre
+    // el revisor de Apple (le exigen probar el borrado de cuenta), o sea rechazo.
+    //
+    // Ahora el gate siempre vuelve. La compra NO se pierde: al iniciar sesión o
+    // crear cuenta, _revincularCompra() la restaura y la liga a la cuenta nueva.
     if (esNativo() && !authed) {
-      _refrescarBotonHeader(e);
-      if (_sdkPremium) { cerrarAuth(); _renderTrialStrip(null); return; }
+      // Sin sesión no se afirma premium, y se olvida lo que el SDK dijo de la
+      // cuenta anterior (si no, quedaba en memoria durante toda la sesión).
+      _sdkPremium = false;
+      _rcUser = null;
+      _refrescarBotonHeader(null);
       _renderTrialStrip(null);
       abrirAuth();
       return;
@@ -967,7 +1041,7 @@
     _renderTrialStrip(e);
     _refrescarBotonHeader(e);
     if (!authed) return;                                 // WEB anónimo: sin candado (flujo intacto)
-    if (_esPremiumEstado(e) || _sdkPremium || e.plan !== 'expirado') {
+    if (_premiumEfectivo(e) || e.plan !== 'expirado') {
       if (_bloqueante) cerrar(true);                     // trial vigente / suscrito: liberar candado
       return;
     }
