@@ -1131,24 +1131,68 @@
   function _renderStreakWidget() {
     const data = _updateStreak();
     if (data.count < 2) return;  // solo se ve a partir del día 2
-    // Insertar widget al lado del logo
-    const host = document.querySelector('header .flex.items-center.gap-3');
-    if (!host || document.getElementById('mp-streak-widget')) return;
+    if (document.getElementById('mp-streak-widget')) return;
+
+    // Se inserta en el cluster IZQUIERDO del header, junto al logo, por id.
+    //
+    // OJO: antes esto era querySelector('header .flex.items-center.gap-3'), que
+    // matchea DOS elementos —el wrapper externo (que además lleva
+    // justify-between) y el cluster izquierdo— y querySelector devuelve el
+    // PRIMERO, o sea el equivocado. El chip quedaba como tercer hijo de un
+    // contenedor space-between, así que Flex repartía tres bloques en vez de
+    // dos: el cluster derecho se iba al centro y "Suscribirse" terminaba encima
+    // del avatar del portafolio. Por eso hay que anclar por id y NO por clases.
+    const host = document.getElementById('header-left');
+    // Sin el ancla no se inserta en ningún otro lado: es mejor quedarse sin chip
+    // (es decorativo) que volver a romper el header.
+    if (!host) return;
+
     const widget = document.createElement('div');
     widget.id = 'mp-streak-widget';
+    widget.className = 'mp-streak-chip';
     widget.title = `Llevas ${data.count} días seguidos checando tu portafolio. Sigue así.`;
-    widget.style.cssText = `
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 4px 10px; margin-left: 8px;
+    // El número va en su propio span para poder ocultarlo por CSS en la variante
+    // compacta sin volver a tocar el DOM.
+    widget.innerHTML = `<span class="mp-streak-ico">🔥</span><span class="mp-streak-num">${data.count}d</span>`;
+    host.appendChild(widget);
+  }
+
+  // Estilos del chip de racha. Van en CSS (no inline) para poder degradarlo por
+  // ancho de pantalla con media queries.
+  //
+  // PRIORIDAD del header en pantallas angostas: "Suscribirse" y "Mi cuenta"
+  // siempre completos y clickeables — son lo que el revisor de Apple tiene que
+  // encontrar (2.1(b) y 5.1.1(v)). La racha es decorativa y cede primero:
+  //   < 500px  (iPhone vertical): oculta. Medido: el header necesita 399px solo
+  //            para logo+avatar+chip+botones y no caben ni sin el chip a 375px.
+  //   500-767px: compacta, solo el fuego (el contador vive en el tooltip).
+  //   >= 768px (iPad y iPhone horizontal): completa con el contador.
+  const streakCSS = `
+    .mp-streak-chip {
+      display: none;                 /* por defecto oculta: se habilita por MQ */
+      align-items: center; gap: 4px;
+      flex: none;                    /* nunca se comprime ni corta el número */
+      padding: 4px 10px;
       background: linear-gradient(135deg, rgba(251,146,60,0.15), rgba(245,158,11,0.1));
       border: 1px solid rgba(251,146,60,0.3);
       border-radius: 999px;
-      font-size: 11px; font-weight: 600;
+      font-size: 11px; font-weight: 600; line-height: 1;
       color: #fb923c;
-    `;
-    widget.innerHTML = `<span style="font-size:13px;">🔥</span><span>${data.count}d</span>`;
-    host.appendChild(widget);
-  }
+      white-space: nowrap;
+    }
+    .mp-streak-ico { font-size: 13px; line-height: 1; }
+    @media (min-width: 500px) {
+      .mp-streak-chip { display: inline-flex; padding: 4px 8px; }
+      .mp-streak-chip .mp-streak-num { display: none; }   /* compacta */
+    }
+    @media (min-width: 768px) {
+      .mp-streak-chip { padding: 4px 10px; }
+      .mp-streak-chip .mp-streak-num { display: inline; } /* completa */
+    }
+  `;
+  const streakStyle = document.createElement('style');
+  streakStyle.textContent = streakCSS;
+  document.head.appendChild(streakStyle);
   // Defer hasta que header exista
   window.addEventListener('load', () => setTimeout(_renderStreakWidget, 100));
 

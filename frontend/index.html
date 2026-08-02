@@ -247,8 +247,20 @@
   <header class="border-b border-surface-border bg-surface/80 backdrop-blur">
     <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
       <!-- min-w-0: permite que este cluster se encoja (trunca el nombre del
-           portafolio) en vez de desbordar bajo el botón Premium/racha -->
-      <div class="flex items-center gap-3 min-w-0 flex-1">
+           portafolio) en vez de desbordar bajo el botón Premium/racha.
+           id="header-left": ancla ESTABLE para que ux_helpers.js inserte aquí el
+           chip de racha. Antes lo buscaba por clases ('header .flex.items-center
+           .gap-3'), pero ese selector también matchea el wrapper de afuera —y lo
+           matchea PRIMERO—, así que el chip terminaba como tercer hijo de un
+           contenedor justify-between: Flex repartía tres bloques, el cluster
+           derecho se iba al centro y "Suscribirse" caía encima del avatar. -->
+      <!-- overflow-hidden es la garantía ESTRUCTURAL: si el contenido no cabe,
+           se recorta DENTRO de esta caja en vez de encimarse sobre el cluster
+           derecho. Junto con shrink-0 en "Suscribirse"/"Mi cuenta" (que son lo
+           que el revisor de Apple debe encontrar), eso hace imposible el
+           traslape en cualquier combinación de racha / franja de trial /
+           avatar / sesión / premium. -->
+      <div id="header-left" class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
         <!-- Logo Mi Portafolio -->
         <img src="/static/logo.png" alt="Mi Portafolio" class="w-10 h-10 rounded-xl shadow-glow-green object-cover" />
         <!-- En teléfonos el logo identifica la app; el texto se oculta para
