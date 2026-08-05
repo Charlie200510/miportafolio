@@ -262,11 +262,18 @@ done
 }
 verde "/api/health -> ok"
 
-# El código en disco debe corresponder al commit desplegado: si el worktree
+# El CÓDIGO en disco debe corresponder al commit desplegado: si el worktree
 # quedó a medias, esto lo caza.
-if ! git diff --quiet HEAD -- frontend backend; then
+#
+# Los DATA_FILES quedan FUERA de la comprobación a propósito: el paso 5b acaba
+# de reescribirlos con los precios de hoy, así que por diseño difieren de HEAD
+# justo después del deploy. (Aun sin el paso 5b diferirían en cuanto corriera el
+# timer esa noche.) Incluirlos hacía fallar un deploy que en realidad salió bien.
+_rutas_codigo=()
+while IFS= read -r r; do _rutas_codigo+=(":(exclude)$r"); done < <(printf '%s\n' "${DATA_FILES[@]}")
+if ! git diff --quiet HEAD -- frontend backend "${_rutas_codigo[@]}"; then
   rojo "ADVERTENCIA: frontend/ o backend/ difieren de HEAD justo después del deploy:"
-  git status --porcelain --untracked-files=no -- frontend backend
+  git status --porcelain --untracked-files=no -- frontend backend "${_rutas_codigo[@]}"
   fallo "el árbol no corresponde al commit desplegado."
 fi
 
