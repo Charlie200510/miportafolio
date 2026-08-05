@@ -75,6 +75,23 @@ verde() { printf '\033[32m%s\033[0m\n' "$*"; }
 paso()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
 fallo() { rojo "FALLO: $*"; exit 1; }
+
+# Última fecha con precios del universo lite. Se usa el python del venv porque
+# es el único que tiene pandas. Devuelve vacío si algo falla: quien llama
+# decide, esto nunca debe tumbar el deploy.
+_fecha_universo() {
+  local py="$REPO/.venv/bin/python"
+  [[ -x "$py" ]] || py="$(command -v python3 || true)"
+  [[ -x "$py" ]] || return 0
+  "$py" - <<'PY' 2>/dev/null || true
+import pandas as pd
+try:
+    df = pd.read_csv('backend/universo_lite_precios.csv', index_col=0, parse_dates=True)
+    print(df.index.max().date())
+except Exception:
+    pass
+PY
+}
 trap 'rojo "FALLO en la línea $LINENO. El deploy quedó INCOMPLETO — revísalo."' ERR
 
 cd "$REPO"
@@ -111,12 +128,19 @@ for f in "${DATA_FILES[@]}"; do
 done
 
 # --- 2. Descartar SOLO los archivos de datos --------------------------------
+# Se descartan para que el fast-forward no aborte, PERO eso devuelve el CSV a la
+# versión commiteada — que suele ir semanas atrás, porque el timer lo reescribe
+# a diario mientras que el repo solo se refresca ~cada mes (workflow
+# refrescar-universo). Antes eso dejaba producción sirviendo precios viejos
+# hasta la corrida nocturna del timer; el paso 5b de abajo lo rehidrata.
+datos_revertidos=0
 paso "Descartando cambios locales de los archivos de datos"
 for f in "${DATA_FILES[@]}"; do
   git ls-files --error-unmatch "$f" >/dev/null 2>&1 || continue
   if ! git diff --quiet HEAD -- "$f"; then
-    echo "  $f estaba modificado (corrida del timer) -> descarto; el timer lo regenera hoy en la noche"
+    echo "  $f estaba modificado (corrida del timer) -> descarto y lo rehidrato tras el pull"
     git checkout -- "$f"
+    datos_revertidos=1
   else
     echo "  $f sin cambios"
   fi
@@ -151,6 +175,49 @@ fi
 ahora="$(git rev-parse HEAD)"
 [[ "$ahora" == "$objetivo" ]] || fallo "HEAD ($ahora) != origin/$RAMA ($objetivo) después del merge."
 verde "HEAD = origin/$RAMA = $(git rev-parse --short HEAD)"
+
+# --- 5a. Purgar cachés DERIVADOS -------------------------------------------
+# backend/_cache_topmovers sobrevive reinicios a propósito (TTL 30 min). Tras un
+# deploy seguía sirviendo payloads calculados por el código ANTERIOR: el arreglo
+# de top-movers parecía no haber subido porque la respuesta cacheada aún traía
+# el ranking viejo. Son datos derivados y se regeneran en la primera petición.
+paso "Purgando cachés derivados"
+for d in backend/_cache_topmovers backend/_cache_periodico backend/_cache_accion_dia; do
+  [[ -d "$d" ]] || continue
+  n="$(find "$d" -name '*.json' -type f | wc -l | tr -d ' ')"
+  find "$d" -name '*.json' -type f -delete 2>/dev/null || true
+  echo "  $d -> $n archivo(s) borrados"
+done
+
+# --- 5b. Rehidratar el universo si el checkout lo dejó viejo ----------------
+# El paso 2 devolvió los DATA_FILES a la versión commiteada. Si eso los hizo
+# retroceder, se refresca AHORA en vez de esperar a la corrida nocturna del
+# timer. actualizar_lite_diario.py es seguro por diseño: si la descarga falla o
+# viene vacía, NO sobrescribe, así que en el peor caso nos quedamos como
+# estábamos. El servicio hace su propio restart de gunicorn al terminar.
+if [[ "$datos_revertidos" == "1" ]]; then
+  paso "Rehidratando el universo (el checkout lo dejó en la versión del repo)"
+  fecha_antes="$(_fecha_universo)"
+  echo "  fecha en el CSV commiteado: ${fecha_antes:-desconocida}"
+  if sudo systemctl start miportafolio-universo.service; then
+    for i in $(seq 1 90); do
+      sleep 2
+      [[ "$(systemctl is-active miportafolio-universo.service)" != "active" ]] && break
+    done
+    fecha_despues="$(_fecha_universo)"
+    if [[ -n "$fecha_despues" && "$fecha_despues" != "$fecha_antes" ]]; then
+      verde "  universo al día: ${fecha_antes:-?} -> ${fecha_despues}"
+    else
+      rojo "  AVISO: el refresco no adelantó la fecha (quedó en ${fecha_despues:-?})."
+      rojo "  No es fatal —el timer reintenta esta noche— pero revísalo:"
+      rojo "    sudo journalctl -u miportafolio-universo.service -n 30 --no-pager"
+    fi
+  else
+    rojo "  AVISO: no se pudo lanzar miportafolio-universo.service; el timer lo hará de noche."
+  fi
+else
+  echo "  (los archivos de datos no retrocedieron: nada que rehidratar)"
+fi
 
 # --- 6. Restart ------------------------------------------------------------
 paso "Reiniciando $SERVICIO"
