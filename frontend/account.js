@@ -26,15 +26,15 @@
   const TIMEOUT_MS = 8000;
 
   // ---------------------------------------------------------- estilos
-  const CARD   = 'background:#111114;border:1px solid #1f1f24;border-radius:16px;padding:18px;margin:0 0 14px';
-  const H2     = 'margin:0 0 6px;font-size:16px;font-weight:700;color:#fafafa';
-  const P      = 'margin:0 0 12px;font-size:13px;color:#a1a1aa;line-height:1.55';
-  const BTN_PRI = 'width:100%;background:#10b981;color:#052e16;font-weight:700;border:0;border-radius:12px;padding:14px;font-size:15px;cursor:pointer;font-family:inherit';
-  const BTN_SEC = 'width:100%;background:transparent;color:#d4d4d8;font-weight:600;border:1px solid #27272a;border-radius:12px;padding:12px;font-size:14px;cursor:pointer;font-family:inherit';
-  const BTN_DAN = 'width:100%;background:transparent;color:#f43f5e;font-weight:700;border:1px solid rgba(244,63,94,.45);border-radius:12px;padding:13px;font-size:14px;cursor:pointer;font-family:inherit';
-  const BTN_DAN_SOLIDO = 'width:100%;background:#f43f5e;color:#fff;font-weight:700;border:0;border-radius:12px;padding:14px;font-size:15px;cursor:pointer;font-family:inherit';
+  const CARD   = 'background:#131210;border:1px solid #2A2721;border-radius:2px;padding:18px;margin:0 0 14px';
+  const H2     = 'margin:0 0 6px;font-size:16px;font-weight:700;color:#F2EEE4';
+  const P      = 'margin:0 0 12px;font-size:13px;color:#9A9284;line-height:1.55';
+  const BTN_PRI = 'width:100%;background:#D79A3C;color:#0B0B0A;font-weight:700;border:0;border-radius:2px;padding:14px;font-size:15px;cursor:pointer;font-family:inherit';
+  const BTN_SEC = 'width:100%;background:transparent;color:#CFC8B8;font-weight:600;border:1px solid #2A2721;border-radius:2px;padding:12px;font-size:14px;cursor:pointer;font-family:inherit';
+  const BTN_DAN = 'width:100%;background:transparent;color:#DB7B68;font-weight:700;border:1px solid rgba(219,123,104,.45);border-radius:2px;padding:13px;font-size:14px;cursor:pointer;font-family:inherit';
+  const BTN_DAN_SOLIDO = 'width:100%;background:#DB7B68;color:#F2EEE4;font-weight:700;border:0;border-radius:2px;padding:14px;font-size:15px;cursor:pointer;font-family:inherit';
   // font-size:16px evita el auto-zoom de iOS al enfocar el input.
-  const INP    = 'width:100%;background:#18181b;border:1px solid #3f3f46;border-radius:12px;padding:13px 14px;font-size:16px;color:#fafafa;outline:none;box-sizing:border-box;font-family:inherit';
+  const INP    = 'width:100%;background:#131210;border:1px solid #4A443A;border-radius:2px;padding:13px 14px;font-size:16px;color:#F2EEE4;outline:none;box-sizing:border-box;font-family:inherit';
   const COL    = 'display:flex;flex-direction:column;gap:8px';
 
   function escapeHTML(s) {
@@ -110,11 +110,11 @@
   // Texto del plan + fecha cuando aplica (trial: fin de la prueba).
   function textoPlan(e) {
     if (e && e._sinRespuesta && e._emailLocal) {
-      return { titulo: 'Sin confirmar', detalle: 'No pudimos leer tu plan porque el servidor no respondió.', color: '#a1a1aa' };
+      return { titulo: 'Sin confirmar', detalle: 'No pudimos leer tu plan porque el servidor no respondió.', color: '#9A9284' };
     }
-    if (!e || !e.autenticado) return { titulo: 'Sin sesión', detalle: '', color: '#a1a1aa' };
+    if (!e || !e.autenticado) return { titulo: 'Sin sesión', detalle: '', color: '#9A9284' };
     if (e.plan === 'premium' || e.premium === true) {
-      return { titulo: 'Premium activo', detalle: 'Tienes acceso a todas las funciones.', color: '#10b981' };
+      return { titulo: 'Premium activo', detalle: 'Tienes acceso a todas las funciones.', color: '#D79A3C' };
     }
     const dias = (e.dias_restantes == null) ? null : Number(e.dias_restantes);
     let fin = '';
@@ -130,17 +130,17 @@
       return {
         titulo: 'Prueba gratis',
         detalle: (d + (fin ? ' Finaliza el ' + fin + '.' : '')).trim(),
-        color: '#f59e0b',
+        color: '#D79A3C',
       };
     }
     if (e.plan === 'expirado') {
       return {
         titulo: 'Prueba terminada',
         detalle: (fin ? 'Finalizó el ' + fin + '. ' : '') + 'Suscríbete para seguir usando el análisis completo.',
-        color: '#f43f5e',
+        color: '#DB7B68',
       };
     }
-    return { titulo: 'Cuenta activa', detalle: '', color: '#a1a1aa' };
+    return { titulo: 'Cuenta activa', detalle: '', color: '#9A9284' };
   }
 
   function legalHTML() {
@@ -163,15 +163,15 @@
     const premium = !!(e && e.autenticado) && (e.plan === 'premium' || e.premium === true);
 
     const avisoRed = sinRespuesta
-      ? `<p style="margin:0 0 12px;font-size:12px;color:#f59e0b;line-height:1.5">No pudimos contactar al servidor para confirmar tu sesión. Puede estar despertando: vuelve a intentar en unos segundos.</p>`
+      ? `<p style="margin:0 0 12px;font-size:12px;color:#D79A3C;line-height:1.5">No pudimos contactar al servidor para confirmar tu sesión. Puede estar despertando: vuelve a intentar en unos segundos.</p>`
       : '';
 
     // ── Sesión ────────────────────────────────────────────────
     const sesion = autenticado
       ? `<div style="${CARD}">
-           <p style="margin:0 0 2px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#71717a">Sesión</p>
-           <p style="margin:0 0 14px;font-size:16px;font-weight:600;color:#fafafa;word-break:break-all">${escapeHTML(correo)}</p>
-           <p style="margin:0 0 2px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#71717a">Plan</p>
+           <p style="margin:0 0 2px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#847D70">Sesión</p>
+           <p style="margin:0 0 14px;font-size:16px;font-weight:600;color:#F2EEE4;word-break:break-all">${escapeHTML(correo)}</p>
+           <p style="margin:0 0 2px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#847D70">Plan</p>
            <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:${plan.color}">${plan.titulo}</p>
            ${plan.detalle ? `<p style="${P}">${escapeHTML(plan.detalle)}</p>` : ''}
            ${avisoRed}
@@ -181,8 +181,8 @@
            </div>
          </div>`
       : `<div style="${CARD}">
-           <p style="margin:0 0 2px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#71717a">Sesión</p>
-           <p style="margin:0 0 10px;font-size:16px;font-weight:600;color:#fafafa">No has iniciado sesión</p>
+           <p style="margin:0 0 2px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#847D70">Sesión</p>
+           <p style="margin:0 0 10px;font-size:16px;font-weight:600;color:#F2EEE4">No has iniciado sesión</p>
            <p style="${P}">Sin cuenta no guardamos ningún dato tuyo en el servidor: tu portafolio vive solo en este
              dispositivo. Crea una cuenta para sincronizarlo y respaldarlo.</p>
            ${avisoRed}
@@ -214,25 +214,25 @@
 
     // ── Eliminar cuenta (5.1.1v) ─────────────────────────────
     const eliminar = autenticado
-      ? `<div style="background:rgba(244,63,94,.05);border:1px solid rgba(244,63,94,.28);border-radius:16px;padding:18px;margin:0 0 14px">
+      ? `<div style="background:rgba(219,123,104,.05);border:1px solid rgba(219,123,104,.28);border-radius:2px;padding:18px;margin:0 0 14px">
            <h2 style="${H2}">Eliminar mi cuenta</h2>
-           <p style="${P}">Al eliminar tu cuenta borramos de forma <strong style="color:#fafafa">permanente e irreversible</strong>
+           <p style="${P}">Al eliminar tu cuenta borramos de forma <strong style="color:#F2EEE4">permanente e irreversible</strong>
              todos tus datos en el servidor:</p>
-           <ul style="list-style:none;padding:0;margin:0 0 12px;font-size:13px;color:#d4d4d8">
-             <li style="display:flex;gap:8px;margin:5px 0"><span style="color:#f43f5e">•</span><span>Tu cuenta y tu correo (${escapeHTML(correo)})</span></li>
-             <li style="display:flex;gap:8px;margin:5px 0"><span style="color:#f43f5e">•</span><span>Todas tus sesiones abiertas y códigos de acceso pendientes</span></li>
-             <li style="display:flex;gap:8px;margin:5px 0"><span style="color:#f43f5e">•</span><span>Tus respaldos del portafolio en la nube</span></li>
-             <li style="display:flex;gap:8px;margin:5px 0"><span style="color:#f43f5e">•</span><span>Tus suscripciones a notificaciones</span></li>
-             <li style="display:flex;gap:8px;margin:5px 0"><span style="color:#f43f5e">•</span><span>Los datos guardados en este dispositivo</span></li>
+           <ul style="list-style:none;padding:0;margin:0 0 12px;font-size:13px;color:#CFC8B8">
+             <li style="display:flex;gap:8px;margin:5px 0"><span style="color:#DB7B68">•</span><span>Tu cuenta y tu correo (${escapeHTML(correo)})</span></li>
+             <li style="display:flex;gap:8px;margin:5px 0"><span style="color:#DB7B68">•</span><span>Todas tus sesiones abiertas y códigos de acceso pendientes</span></li>
+             <li style="display:flex;gap:8px;margin:5px 0"><span style="color:#DB7B68">•</span><span>Tus respaldos del portafolio en la nube</span></li>
+             <li style="display:flex;gap:8px;margin:5px 0"><span style="color:#DB7B68">•</span><span>Tus suscripciones a notificaciones</span></li>
+             <li style="display:flex;gap:8px;margin:5px 0"><span style="color:#DB7B68">•</span><span>Los datos guardados en este dispositivo</span></li>
            </ul>
-           <p style="margin:0 0 14px;font-size:12px;color:#a1a1aa;line-height:1.55">
+           <p style="margin:0 0 14px;font-size:12px;color:#9A9284;line-height:1.55">
              No se puede deshacer y no podremos recuperar la información después.
              ${nativo ? 'Si tienes una suscripción activa, recuerda cancelarla aparte en Ajustes → Apple ID → Suscripciones de la App Store: eliminar la cuenta no cancela el cobro.' : 'Si tienes una suscripción activa, cancélala también desde la tienda donde la contrataste.'}</p>
            <button data-a="eliminar" style="${BTN_DAN}">Eliminar mi cuenta</button>
          </div>`
       : `<div style="${CARD}">
            <h2 style="${H2}">Eliminar mi cuenta</h2>
-           <p style="margin:0;font-size:13px;color:#a1a1aa;line-height:1.55">Inicia sesión para poder eliminar tu cuenta y todos tus datos del servidor.</p>
+           <p style="margin:0;font-size:13px;color:#9A9284;line-height:1.55">Inicia sesión para poder eliminar tu cuenta y todos tus datos del servidor.</p>
          </div>`;
 
     return sesion + suscripcion + eliminar +
@@ -323,25 +323,25 @@
   }
 
   function caja(inner) {
-    return `<div style="position:relative;max-width:440px;width:100%;background:#0f0f11;border:1px solid #27272a;border-radius:20px;padding:24px;color:#fafafa;font-family:system-ui,-apple-system,sans-serif;max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch">${inner}</div>`;
+    return `<div style="position:relative;max-width:440px;width:100%;background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:24px;color:#F2EEE4;font-family:system-ui,-apple-system,sans-serif;max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch">${inner}</div>`;
   }
 
   function paso1(email) {
     return caja(`
       <h2 style="margin:0 0 8px;font-size:20px;font-weight:700">¿Eliminar tu cuenta?</h2>
-      <p style="margin:0 0 12px;font-size:14px;color:#a1a1aa;line-height:1.6">
-        Vas a eliminar <strong style="color:#fafafa">${escapeHTML(email)}</strong>.
-        Esta acción es <strong style="color:#f43f5e">permanente e irreversible</strong>.</p>
-      <div style="background:#18181b;border:1px solid #27272a;border-radius:12px;padding:14px;margin:0 0 14px">
-        <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#fafafa">Se borrará:</p>
-        <ul style="list-style:none;padding:0;margin:0;font-size:13px;color:#d4d4d8">
-          <li style="display:flex;gap:8px;margin:4px 0"><span style="color:#f43f5e">•</span><span>Tu cuenta y tu correo</span></li>
-          <li style="display:flex;gap:8px;margin:4px 0"><span style="color:#f43f5e">•</span><span>Tus sesiones y códigos de acceso</span></li>
-          <li style="display:flex;gap:8px;margin:4px 0"><span style="color:#f43f5e">•</span><span>Tus respaldos del portafolio en la nube</span></li>
-          <li style="display:flex;gap:8px;margin:4px 0"><span style="color:#f43f5e">•</span><span>Tus notificaciones y los datos de este dispositivo</span></li>
+      <p style="margin:0 0 12px;font-size:14px;color:#9A9284;line-height:1.6">
+        Vas a eliminar <strong style="color:#F2EEE4">${escapeHTML(email)}</strong>.
+        Esta acción es <strong style="color:#DB7B68">permanente e irreversible</strong>.</p>
+      <div style="background:#131210;border:1px solid #2A2721;border-radius:2px;padding:14px;margin:0 0 14px">
+        <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#F2EEE4">Se borrará:</p>
+        <ul style="list-style:none;padding:0;margin:0;font-size:13px;color:#CFC8B8">
+          <li style="display:flex;gap:8px;margin:4px 0"><span style="color:#DB7B68">•</span><span>Tu cuenta y tu correo</span></li>
+          <li style="display:flex;gap:8px;margin:4px 0"><span style="color:#DB7B68">•</span><span>Tus sesiones y códigos de acceso</span></li>
+          <li style="display:flex;gap:8px;margin:4px 0"><span style="color:#DB7B68">•</span><span>Tus respaldos del portafolio en la nube</span></li>
+          <li style="display:flex;gap:8px;margin:4px 0"><span style="color:#DB7B68">•</span><span>Tus notificaciones y los datos de este dispositivo</span></li>
         </ul>
       </div>
-      <p style="margin:0 0 16px;font-size:12px;color:#a1a1aa;line-height:1.55">
+      <p style="margin:0 0 16px;font-size:12px;color:#9A9284;line-height:1.55">
         ${esNativo()
           ? 'Si tienes una suscripción activa, cancélala aparte en Ajustes → Apple ID → Suscripciones de la App Store. Eliminar la cuenta no cancela el cobro.'
           : 'Si tienes una suscripción activa, cancélala también desde la tienda donde la contrataste. Eliminar la cuenta no cancela el cobro.'}</p>
@@ -354,10 +354,10 @@
   function paso2(email, err) {
     return caja(`
       <h2 style="margin:0 0 8px;font-size:20px;font-weight:700">Confirma la eliminación</h2>
-      <p style="margin:0 0 14px;font-size:14px;color:#a1a1aa;line-height:1.6">
-        Para eliminar <strong style="color:#fafafa">${escapeHTML(email)}</strong> escribe
-        <strong style="color:#fafafa">ELIMINAR</strong> en el campo de abajo.</p>
-      ${err ? `<p data-m="err" style="margin:0 0 10px;font-size:13px;color:#f87171">${escapeHTML(err)}</p>` : ''}
+      <p style="margin:0 0 14px;font-size:14px;color:#9A9284;line-height:1.6">
+        Para eliminar <strong style="color:#F2EEE4">${escapeHTML(email)}</strong> escribe
+        <strong style="color:#F2EEE4">ELIMINAR</strong> en el campo de abajo.</p>
+      ${err ? `<p data-m="err" style="margin:0 0 10px;font-size:13px;color:#DB7B68">${escapeHTML(err)}</p>` : ''}
       <div style="${COL}">
         <input data-m="input" type="text" autocapitalize="characters" autocorrect="off" spellcheck="false"
           autocomplete="off" placeholder="ELIMINAR" aria-label="Escribe ELIMINAR para confirmar"
@@ -370,14 +370,14 @@
   function paso3(email) {
     return caja(`
       <div style="text-align:center">
-        <div style="width:56px;height:56px;margin:0 auto 14px;border-radius:999px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.4);display:flex;align-items:center;justify-content:center">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <div style="width:56px;height:56px;margin:0 auto 14px;border-radius:999px;background:rgba(215,154,60,.12);border:1px solid rgba(215,154,60,.4);display:flex;align-items:center;justify-content:center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D79A3C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <h2 style="margin:0 0 8px;font-size:20px;font-weight:700">Tu cuenta fue eliminada</h2>
-        <p style="margin:0 0 14px;font-size:14px;color:#a1a1aa;line-height:1.6">
-          Eliminamos <strong style="color:#e4e4e7">${escapeHTML(email)}</strong> y todos sus datos de nuestros
+        <p style="margin:0 0 14px;font-size:14px;color:#9A9284;line-height:1.6">
+          Eliminamos <strong style="color:#CFC8B8">${escapeHTML(email)}</strong> y todos sus datos de nuestros
           servidores, junto con los datos guardados en este dispositivo. La app quedó sin sesión.</p>
-        <p style="margin:0 0 18px;font-size:12px;color:#71717a;line-height:1.55">
+        <p style="margin:0 0 18px;font-size:12px;color:#847D70;line-height:1.55">
           ${esNativo()
             ? 'Recuerda: si tenías una suscripción activa, cancélala en Ajustes → Apple ID → Suscripciones.'
             : 'Recuerda: si tenías una suscripción activa, cancélala en la tienda donde la contrataste.'}</p>

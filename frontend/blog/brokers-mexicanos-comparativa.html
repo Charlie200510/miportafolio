@@ -48,11 +48,36 @@
   </script>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/blog/_styles.css">
+  <script>
+    /* Mismo remapeo de tema que la app: tinta y papel sobre las utilidades
+       que ya reparte el markup, sin renombrar clases. */
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: {
+          serif: ['Source Serif 4', 'Georgia', 'serif'],
+          sans:  ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono:  ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          zinc:    { 50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
+                     500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' },
+          emerald: { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B', 600:'#C98A2B' },
+          green:   { 300:'#6FAE7E', 400:'#6FAE7E', 500:'#6FAE7E' },
+          red:     { 300:'#DB7B68', 400:'#DB7B68', 500:'#DB7B68' },
+          amber:   { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+          sky:     { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+        },
+        borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px', xl:'2px', '2xl':'2px', '3xl':'2px' },
+        boxShadow: { none:'none', sm:'none', DEFAULT:'none', md:'none', lg:'none', xl:'none', '2xl':'none' },
+      } }
+    };
+  </script>
+  <link rel="stylesheet" href="/static/css/mp-tokens.css">
+  <link rel="stylesheet" href="/static/css/mp-editorial.css">
+  <link rel="stylesheet" href="/static/blog/_styles.css">
 </head>
 <body class="min-h-screen">
-  <header class="border-b border-zinc-800 sticky top-0 bg-zinc-950/80 backdrop-blur z-10">
+  <header class="border-b border-zinc-800 sticky top-0 bg-surface z-10">
     <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
       <a href="/" class="flex items-center gap-2 text-sm font-semibold text-zinc-100 hover:text-emerald-400 transition">
         <img src="/static/logo.png" alt="Mi Portafolio" class="w-8 h-8 rounded-lg">Mi Portafolio
@@ -66,11 +91,11 @@
 
   <article class="max-w-3xl mx-auto px-6 py-12">
     <div class="mb-8">
-      <p class="text-xs uppercase tracking-wider text-blue-400 font-semibold">🏦 Brokers</p>
+      <p class="text-xs uppercase tracking-wider text-blue-400 font-semibold"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9.5 12 4l9 5.5"/><path d="M5 9.5V19M9.5 9.5V19M14.5 9.5V19M19 9.5V19"/><path d="M2.5 19h19"/></svg></span> Brokers</p>
       <h1 class="display text-3xl sm:text-5xl font-bold text-zinc-100 mt-3 leading-tight">Comparativa de brokers mexicanos 2026</h1>
       <p class="text-xl text-zinc-400 mt-4 leading-relaxed">GBM Plus, Kuspit, Hapi, Bursanet, Actinver, Vector, Schwab e IBKR. Los 8 brokers más usados, comparados de verdad — no patrocinado.</p>
       <div class="flex items-center gap-3 mt-6 text-xs text-zinc-500 border-b border-zinc-800 pb-6">
-        <span>📅 Junio 2026</span><span>·</span><span>⏱ 12 min de lectura</span>
+        <span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/></svg></span> Junio 2026</span><span>·</span><span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2"/><path d="M9 2h6"/></svg></span> 12 min de lectura</span>
       </div>
     </div>
 
@@ -104,37 +129,37 @@
 
       <h2>3. Análisis broker por broker</h2>
 
-      <h3>🟢 GBM Plus</h3>
+      <h3>● GBM Plus</h3>
       <p><strong>Ideal para:</strong> el inversionista mexicano promedio que quiere todo en una sola app.</p>
       <p><strong>Fortalezas:</strong> apertura desde $100 MXN, app móvil moderna, acceso completo a BMV + SIC + crypto, soporte chat 24/7, fraccional shares en acciones US, reportes fiscales bien hechos.</p>
       <p><strong>Debilidades:</strong> spread cambiario de 0.5% (no es el mejor), cobra por extracción a cuentas en otros bancos.</p>
       <p><strong>Veredicto:</strong> es el "default" recomendable para 70% de mexicanos retail. Si tienes dudas, empieza aquí.</p>
 
-      <h3>🔵 Kuspit</h3>
+      <h3>● Kuspit</h3>
       <p><strong>Ideal para:</strong> quien quiere algo simple, sin sobrecargas, y no le interesa crypto.</p>
       <p><strong>Fortalezas:</strong> comisiones idénticas a GBM, UX limpia, plataforma estable.</p>
       <p><strong>Debilidades:</strong> catálogo de ETFs internacionales más limitado, sin crypto, sin opciones/futuros.</p>
       <p><strong>Veredicto:</strong> excelente alternativa si GBM no te gustó por X razón. Mismo perfil, menos features.</p>
 
-      <h3>🟡 Hapi</h3>
+      <h3>● Hapi</h3>
       <p><strong>Ideal para:</strong> quien empieza con poco capital y quiere comprar fracciones de Apple, Tesla, NVIDIA.</p>
       <p><strong>Fortalezas:</strong> comisión $0 USD en acciones US, fraccional shares (puedes comprar 0.1 acción de Berkshire Hathaway), mejor spread cambiario del retail (0.4%), sin mínimo, UX mobile-first muy pulida.</p>
       <p><strong>Debilidades:</strong> solo USA + crypto, NO accede a BMV mexicano, catálogo de ETFs limitado.</p>
       <p><strong>Veredicto:</strong> mi recomendación #1 si solo te interesa acciones gringas con poco capital ($1k-$50k MXN).</p>
 
-      <h3>🔴 Bursanet (Banorte Casa de Bolsa)</h3>
+      <h3>● Bursanet (Banorte Casa de Bolsa)</h3>
       <p><strong>Ideal para:</strong> cliente Banorte que quiere todo bajo el mismo techo y prefiere institución tradicional.</p>
       <p><strong>Fortalezas:</strong> respaldo de Banorte, acceso a IPOs locales, reportes fiscales pulidos, sin mínimo de apertura.</p>
       <p><strong>Debilidades:</strong> UX más anticuada, comisión $2 USD por trade en SIC, app más torpe.</p>
       <p><strong>Veredicto:</strong> bueno si ya eres cliente Banorte y valoras consolidación. Si no, hay opciones más modernas.</p>
 
-      <h3>🟠 Actinver</h3>
+      <h3>● Actinver</h3>
       <p><strong>Ideal para:</strong> inversionista con capital &gt;$200k que valora asesoría humana.</p>
       <p><strong>Fortalezas:</strong> asesoría personal incluida (con cierto saldo), análisis fundamental propio, acceso pleno a CETES/Udibonos/AAA.</p>
       <p><strong>Debilidades:</strong> mínimo de $100k MXN, comisiones más caras (0.30%), cobra $500 anuales por inactividad.</p>
       <p><strong>Veredicto:</strong> el "private banking light" mexicano. Solo si tienes capital y valoras el contacto humano.</p>
 
-      <h3>🟣 Vector Casa de Bolsa</h3>
+      <h3>● Vector Casa de Bolsa</h3>
       <p><strong>Ideal para:</strong> inversionista con experiencia que quiere hedging o derivados.</p>
       <p><strong>Fortalezas:</strong> acceso a derivados (futuros, opciones), buena ejecución institucional, reportes fiscales pulidos.</p>
       <p><strong>Debilidades:</strong> mínimo medio-alto ($50k MXN), app menos pulida que GBM/Kuspit.</p>
@@ -146,7 +171,7 @@
       <p><strong>Debilidades:</strong> mínimo $25,000 USD (~$425k MXN), necesitas transferencia internacional, NO accede a BMV, declaración compleja por tax forms USA.</p>
       <p><strong>Veredicto:</strong> el broker premium para mexicanos con capital. Vale la pena si entras al rango.</p>
 
-      <h3>⚡ Interactive Brokers (IBKR)</h3>
+      <h3><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span> Interactive Brokers (IBKR)</h3>
       <p><strong>Ideal para:</strong> inversionista avanzado, operador algorítmico, multi-mercados.</p>
       <p><strong>Fortalezas:</strong> 150+ mercados mundiales, comisiones más bajas de la industria, spread cambiario casi inexistente (0.02%), API para algos, margen barato.</p>
       <p><strong>Debilidades:</strong> plataforma compleja (curva de aprendizaje fuerte), no es para principiantes, sin acceso directo a BMV.</p>
@@ -181,7 +206,7 @@
       </div>
 
       <h2>Disclaimer</h2>
-      <p style="font-size: 14px; color: #71717a;">Datos referenciales actualizados a junio 2026. Las comisiones cambian — verifica con cada broker antes de abrir cuenta. Esta comparativa es educativa, no asesoría financiera personalizada. Mi Portafolio NO recibe comisión por mencionar estos brokers.</p>
+      <p style="font-size: 14px; color: #847D70;">Datos referenciales actualizados a junio 2026. Las comisiones cambian — verifica con cada broker antes de abrir cuenta. Esta comparativa es educativa, no asesoría financiera personalizada. Mi Portafolio NO recibe comisión por mencionar estos brokers.</p>
     </div>
 
     <div class="mt-12 pt-8 border-t border-zinc-800">

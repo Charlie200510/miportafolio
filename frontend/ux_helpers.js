@@ -25,25 +25,26 @@
     }
     .mp-toast {
       pointer-events: auto;
-      background: #1a1a1c; border: 1px solid #2a2a2f;
-      border-radius: 12px; padding: 12px 16px;
+      background: #131210; border: 1px solid #2A2721;
+      border-radius: 2px; padding: 12px 16px;
       display: flex; align-items: center; gap: 10px;
-      font-size: 13px; color: #e5e7eb;
+      font-size: 13px; color: #F2EEE4;
       min-width: 260px; max-width: 380px;
       box-shadow: 0 12px 32px -8px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
-      animation: mpToastIn .35s cubic-bezier(.16,.95,.3,1) both;
+      animation: mpToastIn .16s cubic-bezier(.2,0,.2,1) both;
     }
-    .mp-toast.out { animation: mpToastOut .25s ease-in forwards; }
+    .mp-toast.out { animation: mpToastOut .12s cubic-bezier(.2,0,.2,1) forwards; }
     .mp-toast .mp-toast-icon { flex-shrink: 0; width: 18px; height: 18px; }
-    .mp-toast.success { border-color: rgba(34,197,94,.4); }
-    .mp-toast.success .mp-toast-icon { color: #22c55e; }
-    .mp-toast.error   { border-color: rgba(244,63,94,.4); }
-    .mp-toast.error   .mp-toast-icon { color: #f43f5e; }
-    .mp-toast.info    .mp-toast-icon { color: #38bdf8; }
-    .mp-toast.warn    { border-color: rgba(245,158,11,.4); }
-    .mp-toast.warn    .mp-toast-icon { color: #f59e0b; }
-    @keyframes mpToastIn  { from { opacity:0; transform: translateY(20px) scale(.95); } to { opacity:1; transform: translateY(0) scale(1); } }
-    @keyframes mpToastOut { to { opacity:0; transform: translateY(20px) scale(.95); } }
+    .mp-toast.success { border-color: rgba(215,154,60,.4); }
+    .mp-toast.success .mp-toast-icon { color: #D79A3C; }
+    .mp-toast.error   { border-color: rgba(219,123,104,.4); }
+    .mp-toast.error   .mp-toast-icon { color: #DB7B68; }
+    .mp-toast.info    .mp-toast-icon { color: #D79A3C; }
+    .mp-toast.warn    { border-color: rgba(215,154,60,.4); }
+    .mp-toast.warn    .mp-toast-icon { color: #D79A3C; }
+    /* Sin rebote ni escalado: sólo un desplazamiento corto de 160ms. */
+    @keyframes mpToastIn  { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+    @keyframes mpToastOut { to { opacity:0; transform: translateY(8px); } }
 
     /* ── 2. TOOLTIPS ── */
     [data-tooltip] { position: relative; cursor: help; }
@@ -51,9 +52,9 @@
       content: attr(data-tooltip);
       position: absolute; bottom: calc(100% + 6px); left: 50%;
       transform: translateX(-50%);
-      background: #1a1a1c; color: #e5e7eb;
-      padding: 8px 12px; border-radius: 8px;
-      border: 1px solid #2a2a2f;
+      background: #131210; color: #F2EEE4;
+      padding: 8px 12px; border-radius: 2px;
+      border: 1px solid #2A2721;
       font-size: 11px; line-height: 1.4;
       white-space: normal; width: max-content; max-width: 240px;
       z-index: 100;
@@ -72,28 +73,23 @@
       100% { background-position: -200% 0; }
     }
     .bbg-skel {
-      background: linear-gradient(
-        90deg,
-        rgba(255,255,255,0.04) 0%,
-        rgba(255,255,255,0.10) 50%,
-        rgba(255,255,255,0.04) 100%
-      );
+      background: #131210;
       background-size: 200% 100%;
       animation: mpSkeletonShimmer 1.6s ease-in-out infinite;
-      border-radius: 4px;
+      border-radius: 2px;
       display: inline-block;
       vertical-align: middle;
     }
-    .bbg-skel-line { display: block; height: 10px; margin: 6px 0; border-radius: 3px; }
+    .bbg-skel-line { display: block; height: 10px; margin: 6px 0; border-radius: 2px; }
     .bbg-skel-line.lg { height: 14px; }
     .bbg-skel-line.sm { height: 8px; }
-    .bbg-skel-pill { display:inline-block; width: 56px; height: 18px; border-radius: 9px; }
+    .bbg-skel-pill { display:inline-block; width: 56px; height: 18px; border-radius: 2px; }
 
     /* Card skeleton — caja con borde tenue + líneas internas */
     .bbg-skel-card {
       background: rgba(255,255,255,0.02);
       border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 10px;
+      border-radius: 2px;
       padding: 14px;
       display: flex; flex-direction: column; gap: 6px;
       min-height: 86px;
@@ -104,7 +100,7 @@
     .bbg-skel-tile {
       background: rgba(255,255,255,0.02);
       border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 8px;
+      border-radius: 2px;
       padding: 10px 12px;
       display: flex; flex-direction: column; gap: 4px;
       min-height: 64px;
@@ -116,7 +112,7 @@
       padding: 8px 12px;
       background: rgba(255,255,255,0.02);
       border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 8px;
+      border-radius: 2px;
     }
     .bbg-tape .bbg-skel-line { margin: 0; }
 
@@ -125,7 +121,7 @@
       background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.04) 100%);
       background-size: 200% 100%;
       animation: mpSkeletonShimmer 1.6s ease-in-out infinite;
-      border-radius: 6px;
+      border-radius: 2px;
       display: inline-block;
     }
 
@@ -137,9 +133,9 @@
     }
     #mp-tour-tooltip {
       position: fixed; z-index: 10001; max-width: 320px;
-      background: #1a1a1c; border: 1px solid #22c55e;
-      border-radius: 14px; padding: 18px 20px;
-      box-shadow: 0 0 0 4px rgba(34,197,94,0.15), 0 24px 64px -12px rgba(0,0,0,0.6);
+      background: #131210; border: 1px solid #D79A3C;
+      border-radius: 2px; padding: 18px 20px;
+      box-shadow: 0 0 0 4px rgba(215,154,60,0.15), 0 24px 64px -12px rgba(0,0,0,0.6);
       display: none;
     }
     #mp-tour-tooltip.mp-tour-anim {
@@ -147,24 +143,24 @@
     }
     @keyframes mpTourPop { from { opacity:0; transform: scale(.92); } to { opacity:1; transform: scale(1); } }
     #mp-tour-tooltip h4 {
-      font-size: 14px; font-weight: 600; color: #f4f4f5; margin: 0 0 6px 0;
+      font-size: 14px; font-weight: 600; color: #F2EEE4; margin: 0 0 6px 0;
     }
     #mp-tour-tooltip p {
-      font-size: 12px; color: #a1a1aa; line-height: 1.5; margin: 0 0 14px 0;
+      font-size: 12px; color: #9A9284; line-height: 1.5; margin: 0 0 14px 0;
     }
     #mp-tour-tooltip .mp-tour-actions {
       display: flex; justify-content: space-between; align-items: center;
     }
     #mp-tour-tooltip .mp-tour-progress {
-      font-size: 10px; color: #71717a; letter-spacing: 0.1em;
+      font-size: 10px; color: #847D70; letter-spacing: 0.1em;
     }
     #mp-tour-tooltip button {
-      background: #22c55e; color: #0a0a0b; font-weight: 600; font-size: 13px;
-      border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;
+      background: #D79A3C; color: #0B0B0A; font-weight: 600; font-size: 13px;
+      border: none; padding: 8px 16px; border-radius: 2px; cursor: pointer;
       min-height: 36px;
     }
     #mp-tour-tooltip button.skip {
-      background: transparent; color: #71717a; padding: 8px 10px;
+      background: transparent; color: #847D70; padding: 8px 10px;
     }
     #mp-tour-tooltip button:hover { filter: brightness(1.1); }
     /* Mobile: bottom-sheet full-width, NO box-shadow 9999px trick */
@@ -174,8 +170,8 @@
       }
       #mp-tour-tooltip {
         padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
-        border-radius: 16px 16px 0 0;
-        border-top: 2px solid #22c55e;
+        border-radius: 2px 16px 0 0;
+        border-top: 2px solid #D79A3C;
         border-left: none; border-right: none; border-bottom: none;
       }
       #mp-tour-tooltip h4 { font-size: 17px; margin-bottom: 8px; line-height: 1.3; }
@@ -185,7 +181,7 @@
       }
       #mp-tour-tooltip button {
         font-size: 15px; padding: 12px 22px; min-height: 48px;
-        border-radius: 10px;
+        border-radius: 2px;
       }
       #mp-tour-tooltip button.skip {
         font-size: 14px;
@@ -193,18 +189,18 @@
       /* En mobile el highlight es solo un outline verde — el backdrop
          oscurece todo lo de atrás, así no necesitamos el shadow trick */
       .mp-tour-highlight {
-        outline: 3px solid #22c55e !important;
+        outline: 3px solid #D79A3C !important;
         outline-offset: 4px;
         box-shadow: none !important;
-        border-radius: 8px;
+        border-radius: 2px;
       }
     }
     /* Desktop: highlight con shadow trick */
     @media (min-width: 640px) {
       .mp-tour-highlight {
         position: relative; z-index: 9999 !important;
-        box-shadow: 0 0 0 4px rgba(34,197,94,0.5), 0 0 0 9999px rgba(0,0,0,0.7) !important;
-        border-radius: 8px;
+        box-shadow: 0 0 0 4px rgba(215,154,60,0.5), 0 0 0 9999px rgba(0,0,0,0.7) !important;
+        border-radius: 2px;
         transition: box-shadow .3s;
       }
     }
@@ -216,7 +212,7 @@
     @media (max-width: 767px) {
       /* --- Base: tap feedback nativo y safe areas iOS --- */
       html {
-        -webkit-tap-highlight-color: rgba(34, 197, 94, 0.15);
+        -webkit-tap-highlight-color: rgba(215,154,60,0.15);
         -webkit-text-size-adjust: 100%;
       }
       body {
@@ -239,7 +235,7 @@
         font-size: 16px !important;
         min-height: 44px;
         padding: 10px 12px;
-        border-radius: 10px;
+        border-radius: 2px;
       }
       textarea { min-height: 80px; }
       /* Inputs especiales para teclados móviles inteligentes */
@@ -270,7 +266,7 @@
       /* --- Padding mobile-first en cards --- */
       .bg-surface-card {
         padding: 14px !important;
-        border-radius: 12px !important;
+        border-radius: 2px !important;
       }
       .bg-surface-card.p-3, .bg-surface-card.p-3\\.5 {
         padding: 12px !important;
@@ -400,7 +396,7 @@
       header img[alt="Mi Portafolio"], header img[alt*="Portafolio"] {
         width: 30px !important;
         height: 30px !important;
-        border-radius: 8px !important;
+        border-radius: 2px !important;
       }
       /* Ocultar el subtítulo "Análisis de inversión" en mobile (espacio precioso) */
       header h1 + p { display: none !important; }
@@ -430,8 +426,18 @@
         min-width: 32px;
       }
 
-      /* --- NAV TABS: forzar 1 línea con scroll horizontal --- */
-      nav.sticky > div {
+      /* --- NAV TABS: forzar 1 línea con scroll horizontal ---
+         Los selectores se anclan a #mp-topbar y NO a nav.sticky: desde que
+         header y sub-nav se pegaron como un solo bloque, el sticky vive en
+         #mp-topbar y el nav ya no lleva esa clase, así que estas reglas
+         habían dejado de aplicar por completo.
+
+         Y el ancla importa por otra razón: .nav-tab no es solo la pestaña
+         de navegación, es el hook de ruteo de bindNav(), así que también lo
+         llevan tarjetas de contenido dentro de main. Sin acotar, el
+         white-space:nowrap de aquí impedía que sus párrafos rompieran
+         línea y metía hasta 371px de scroll horizontal en iPhone. */
+      #mp-topbar nav > div {
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
         overflow-y: hidden;
@@ -440,13 +446,13 @@
         padding-left: 12px !important;
         padding-right: 12px !important;
       }
-      nav.sticky > div::-webkit-scrollbar { display: none; }
-      nav.sticky .hidden.sm\\:block { display: none !important; } /* Divider vertical: oculto */
-      .nav-tab {
+      #mp-topbar nav > div::-webkit-scrollbar { display: none; }
+      #mp-topbar nav .hidden.sm\\:block { display: none !important; } /* Divider vertical: oculto */
+      #mp-topbar .nav-tab {
         flex-shrink: 0 !important;
         white-space: nowrap !important;
         padding: 8px 12px !important;
-        font-size: 12.5px !important;
+        font-size: 11px !important;
         min-height: 44px !important;
       }
 
@@ -488,7 +494,7 @@
         z-index: 20;
         margin-left: -14px;
         margin-right: -14px;
-        border-radius: 14px 14px 0 0;
+        border-radius: 2px 14px 0 0;
         border-bottom: none;
         padding: 12px 14px !important;
         background: rgba(17, 17, 20, 0.95) !important;
@@ -733,7 +739,7 @@
     t.id = 'mp-tour-tooltip';
     t.innerHTML = `
       <button id="mp-tour-close-x" aria-label="Cerrar tutorial"
-        style="position:absolute;top:8px;right:10px;background:transparent;border:none;color:#71717a;font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;min-height:auto;">×</button>
+        style="position:absolute;top:8px;right:10px;background:transparent;border:none;color:#847D70;font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;min-height:auto;">×</button>
       <h4 id="mp-tour-title"></h4>
       <p id="mp-tour-body"></p>
       <div class="mp-tour-actions">
@@ -914,7 +920,7 @@
     const html = `
       <div id="mp-tour-mobile" style="
         position: fixed; inset: 0; z-index: 999999;
-        background: #0a0a0b;
+        background: #0B0B0A;
         display: flex; flex-direction: column;
         padding: env(safe-area-inset-top, 16px) 20px env(safe-area-inset-bottom, 16px);
         overflow-y: auto;
@@ -922,10 +928,10 @@
       ">
         <!-- Header con close -->
         <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;">
-          <span id="mpm-progreso" style="font-size:11px;font-weight:600;letter-spacing:0.15em;color:#22c55e;text-transform:uppercase;"></span>
+          <span id="mpm-progreso" style="font-size:11px;font-weight:600;letter-spacing:0.15em;color:#D79A3C;text-transform:uppercase;"></span>
           <button id="mpm-cerrar" aria-label="Cerrar tutorial" style="
             background: rgba(255,255,255,0.08);
-            border: none; color: #f4f4f5;
+            border: none; color: #F2EEE4;
             width: 36px; height: 36px; border-radius: 50%;
             font-size: 20px; cursor: pointer; padding: 0;
             display: flex; align-items: center; justify-content: center;
@@ -935,18 +941,18 @@
         <!-- Contenido central -->
         <div style="flex:1; display:flex; flex-direction:column; justify-content:center; padding: 40px 0;">
           <div id="mpm-icono" style="
-            width: 64px; height: 64px; border-radius: 18px;
-            background: linear-gradient(135deg, #16a34a, #22c55e);
+            width: 64px; height: 64px; border-radius: 2px;
+            background: #131210;
             display: flex; align-items: center; justify-content: center;
             font-size: 32px; margin-bottom: 24px;
-            box-shadow: 0 0 40px rgba(34,197,94,0.3);
-          ">📊</div>
+            box-shadow: 0 0 40px rgba(215,154,60,0.3);
+          "><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 19V11"/><path d="M10 19V6"/><path d="M16 19V14"/><path d="M22 19H2"/></svg></span></div>
           <h2 id="mpm-titulo" style="
-            font-size: 26px; font-weight: 700; color: #fff;
+            font-size: 26px; font-weight: 700; color: #F2EEE4;
             margin: 0 0 14px; letter-spacing: -0.02em; line-height: 1.2;
           "></h2>
           <p id="mpm-cuerpo" style="
-            font-size: 16px; color: #a1a1aa;
+            font-size: 16px; color: #9A9284;
             margin: 0; line-height: 1.55;
           "></p>
         </div>
@@ -956,17 +962,17 @@
           <div id="mpm-dots" style="display:flex;justify-content:center;gap:6px;margin-bottom:20px;"></div>
           <button id="mpm-siguiente" style="
             display: block; width: 100%;
-            background: #22c55e; color: #0a0a0b;
-            border: none; border-radius: 14px;
+            background: #D79A3C; color: #0B0B0A;
+            border: none; border-radius: 2px;
             padding: 18px;
             font-size: 17px; font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 8px 24px -8px rgba(34,197,94,0.6);
+            box-shadow: 0 8px 24px -8px rgba(215,154,60,0.6);
             -webkit-tap-highlight-color: transparent;
           "></button>
           <button id="mpm-saltar" style="
             display: block; width: 100%;
-            background: transparent; color: #71717a;
+            background: transparent; color: #847D70;
             border: none; padding: 14px;
             font-size: 14px; cursor: pointer; margin-top: 4px;
           ">Saltar tutorial</button>
@@ -975,18 +981,18 @@
     document.body.insertAdjacentHTML('beforeend', html);
     document.body.style.overflow = 'hidden';
 
-    const ICONOS = ['📊', '🔍', '📰', '⚡'];
+    const ICONOS = ['<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 19V11"/><path d="M10 19V6"/><path d="M16 19V14"/><path d="M22 19H2"/></svg></span>', '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg></span>', '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="2.5" y="5" width="19" height="14"/><path d="M6 9h7"/><path d="M6 13h7"/><path d="M6 16h4"/><path d="M16 9h3v7h-3z"/></svg></span>', '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>'];
 
     function render() {
       const step = TOUR_STEPS[idx];
       document.getElementById('mpm-progreso').textContent = `Paso ${idx+1} de ${total}`;
       document.getElementById('mpm-titulo').textContent = step.title;
       document.getElementById('mpm-cuerpo').textContent = step.body;
-      document.getElementById('mpm-icono').textContent = ICONOS[idx] || '📊';
+      document.getElementById('mpm-icono').innerHTML = ICONOS[idx] || ICONOS[0];
       document.getElementById('mpm-siguiente').textContent = (idx === total-1) ? 'Empezar a usar la app' : 'Siguiente';
       // Dots
       const dots = TOUR_STEPS.map((_, i) =>
-        `<span style="width:${i===idx?'24':'8'}px;height:8px;border-radius:4px;background:${i===idx?'#22c55e':'#3f3f46'};transition:width .25s;"></span>`
+        `<span style="width:${i===idx?'24':'8'}px;height:8px;border-radius:2px;background:${i===idx?'#D79A3C':'#4A443A'};transition:width .25s;"></span>`
       ).join('');
       document.getElementById('mpm-dots').innerHTML = dots;
     }
@@ -1041,15 +1047,15 @@
   const splashCSS = `
     #mp-splash {
       position: fixed; inset: 0; z-index: 10000;
-      background: radial-gradient(ellipse at center, #0d1f15 0%, #050807 70%);
+      background: radial-gradient(ellipse at center, #131210 0%, #050807 70%);
       display: flex; align-items: center; justify-content: center;
       flex-direction: column; gap: 16px;
       animation: mpSplashOut .5s ease-in .9s forwards;
     }
     @keyframes mpSplashOut { to { opacity: 0; pointer-events: none; visibility: hidden; } }
     #mp-splash img {
-      width: 80px; height: 80px; border-radius: 18px;
-      box-shadow: 0 0 60px rgba(34,197,94,0.5);
+      width: 80px; height: 80px; border-radius: 2px;
+      box-shadow: 0 0 60px rgba(215,154,60,0.5);
       animation: mpSplashLogo .6s cubic-bezier(.18,.95,.32,1) both;
     }
     @keyframes mpSplashLogo {
@@ -1057,17 +1063,17 @@
       to   { opacity: 1; transform: scale(1); }
     }
     #mp-splash .mp-splash-name {
-      font-family: 'Outfit', 'Inter', sans-serif; font-weight: 700;
+      font-family: 'Source Serif 4', Georgia, serif; font-weight: 700;
       font-size: 22px; letter-spacing: -0.02em;
-      background: linear-gradient(135deg, #fff 0%, #22c55e 60%, #6ee7b7 100%);
+      background: #131210;
       -webkit-background-clip: text; background-clip: text; color: transparent;
       animation: mpSplashName .5s ease-out .25s both;
     }
     @keyframes mpSplashName { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     #mp-splash .mp-splash-dot {
-      width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+      width: 6px; height: 6px; border-radius: 50%; background: #D79A3C;
       animation: mpSplashDot 1s ease-in-out infinite;
-      box-shadow: 0 0 12px rgba(34,197,94,0.8);
+      box-shadow: 0 0 12px rgba(215,154,60,0.8);
     }
     @keyframes mpSplashDot { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
   `;
@@ -1153,7 +1159,14 @@
     widget.title = `Llevas ${data.count} días seguidos checando tu portafolio. Sigue así.`;
     // El número va en su propio span para poder ocultarlo por CSS en la variante
     // compacta sin volver a tocar el DOM.
-    widget.innerHTML = `<span class="mp-streak-ico">🔥</span><span class="mp-streak-num">${data.count}d</span>`;
+    // Marca gráfica propia (barras ascendentes) en vez del emoji del fuego:
+    // la app no debe apoyarse en el set de emoji del sistema para su identidad.
+    widget.innerHTML =
+      `<span class="mp-streak-ico mp-marca" aria-hidden="true">` +
+        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">` +
+          `<path d="M4 19V13"/><path d="M10 19V9"/><path d="M16 19V5"/><path d="M22 19H2"/>` +
+        `</svg>` +
+      `</span><span class="mp-streak-num">${data.count}d</span>`;
     host.appendChild(widget);
   }
 
@@ -1170,17 +1183,21 @@
   const streakCSS = `
     .mp-streak-chip {
       display: none;                 /* por defecto oculta: se habilita por MQ */
-      align-items: center; gap: 4px;
+      align-items: center; gap: 5px;
       flex: none;                    /* nunca se comprime ni corta el número */
-      padding: 4px 10px;
-      background: linear-gradient(135deg, rgba(251,146,60,0.15), rgba(245,158,11,0.1));
-      border: 1px solid rgba(251,146,60,0.3);
-      border-radius: 999px;
-      font-size: 11px; font-weight: 600; line-height: 1;
-      color: #fb923c;
+      padding: 3px 7px;
+      background: transparent;
+      border: 1px solid rgba(215,154,60,0.4);
+      border-radius: 2px;
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-variant-numeric: tabular-nums lining-nums;
+      font-size: 10.5px; font-weight: 500; line-height: 1;
+      letter-spacing: 0.04em;
+      color: #D79A3C;
       white-space: nowrap;
     }
-    .mp-streak-ico { font-size: 13px; line-height: 1; }
+    .mp-streak-ico { width: 11px; height: 11px; line-height: 1; }
+    .mp-streak-ico svg { width: 100%; height: 100%; }
     @media (min-width: 500px) {
       .mp-streak-chip { display: inline-flex; padding: 4px 8px; }
       .mp-streak-chip .mp-streak-num { display: none; }   /* compacta */
@@ -1233,23 +1250,23 @@
     if (document.getElementById('mp-faq-modal')) return;
     const html = `
       <div id="mp-faq-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
-        <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;max-width:640px;width:100%;max-height:85vh;overflow-y:auto;">
-          <div style="position:sticky;top:0;background:#0a0a0b;border-bottom:1px solid #2a2a2f;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;">
-            <h2 style="margin:0;font-size:18px;font-weight:600;color:#f4f4f5;">Preguntas frecuentes</h2>
-            <button onclick="document.getElementById('mp-faq-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;line-height:1;">×</button>
+        <div style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;max-width:640px;width:100%;max-height:85vh;overflow-y:auto;">
+          <div style="position:sticky;top:0;background:#0B0B0A;border-bottom:1px solid #2A2721;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;">
+            <h2 style="margin:0;font-size:18px;font-weight:600;color:#F2EEE4;">Preguntas frecuentes</h2>
+            <button onclick="document.getElementById('mp-faq-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;line-height:1;">×</button>
           </div>
           <div style="padding:8px 24px 24px;">
             ${FAQ_DATA.map(item => `
-              <details style="border-bottom:1px solid #1f1f24;padding:14px 0;">
-                <summary style="cursor:pointer;font-weight:500;font-size:14px;color:#e5e7eb;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+              <details style="border-bottom:1px solid #2A2721;padding:14px 0;">
+                <summary style="cursor:pointer;font-weight:500;font-size:14px;color:#F2EEE4;list-style:none;display:flex;justify-content:space-between;align-items:center;">
                   <span>${item.q}</span>
-                  <span style="color:#22c55e;font-size:18px;font-weight:300;">+</span>
+                  <span style="color:#D79A3C;font-size:18px;font-weight:300;">+</span>
                 </summary>
-                <p style="margin:10px 0 0;font-size:13px;color:#a1a1aa;line-height:1.6;">${item.a}</p>
+                <p style="margin:10px 0 0;font-size:13px;color:#9A9284;line-height:1.6;">${item.a}</p>
               </details>
             `).join('')}
-            <p style="margin-top:24px;padding-top:16px;border-top:1px solid #1f1f24;font-size:11px;color:#71717a;text-align:center;">
-              ¿Otra duda? Escríbenos a <a href="mailto:soporte@miportafolio.app" style="color:#22c55e;">soporte@miportafolio.app</a>
+            <p style="margin-top:24px;padding-top:16px;border-top:1px solid #2A2721;font-size:11px;color:#847D70;text-align:center;">
+              ¿Otra duda? Escríbenos a <a href="mailto:soporte@miportafolio.app" style="color:#D79A3C;">soporte@miportafolio.app</a>
             </p>
           </div>
         </div>
@@ -1293,9 +1310,9 @@
     if (!host || document.getElementById('mp-fiscal-widget')) return;
     const fechas = _proximasFechasFiscales(3);
     const tipoColor = {
-      isr:  { bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.3)',  color: '#f59e0b', label: 'ISR' },
-      sat:  { bg: 'rgba(99,102,241,0.1)',  border: 'rgba(99,102,241,0.3)',  color: '#818cf8', label: 'SAT' },
-      tip:  { bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.3)',   color: '#22c55e', label: 'TIP' },
+      isr:  { bg: 'rgba(215,154,60,0.1)',  border: 'rgba(215,154,60,0.3)',  color: '#D79A3C', label: 'ISR' },
+      sat:  { bg: 'rgba(99,102,241,0.1)',  border: 'rgba(99,102,241,0.3)',  color: '#D79A3C', label: 'SAT' },
+      tip:  { bg: 'rgba(215,154,60,0.1)',   border: 'rgba(215,154,60,0.3)',   color: '#D79A3C', label: 'TIP' },
     };
     const widget = document.createElement('div');
     widget.id = 'mp-fiscal-widget';
@@ -1442,21 +1459,21 @@
     if (document.getElementById('mp-gloss-modal')) return;
     const html = `
       <div id="mp-gloss-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
-        <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;">
-          <div style="position:sticky;top:0;background:#0a0a0b;border-bottom:1px solid #2a2a2f;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;">
+          <div style="position:sticky;top:0;background:#0B0B0A;border-bottom:1px solid #2A2721;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;">
             <div>
-              <h2 style="margin:0;font-size:18px;font-weight:600;color:#f4f4f5;">Glosario financiero</h2>
-              <p style="margin:2px 0 0;font-size:11px;color:#71717a;">${GLOSARIO.length} términos en español plano</p>
+              <h2 style="margin:0;font-size:18px;font-weight:600;color:#F2EEE4;">Glosario financiero</h2>
+              <p style="margin:2px 0 0;font-size:11px;color:#847D70;">${GLOSARIO.length} términos en español plano</p>
             </div>
-            <button onclick="document.getElementById('mp-gloss-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;line-height:1;">×</button>
+            <button onclick="document.getElementById('mp-gloss-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;line-height:1;">×</button>
           </div>
           <div style="padding:8px 24px 24px;">
-            <input type="text" id="mp-gloss-search" placeholder="Filtrar términos..." style="width:100%;background:#161616;border:1px solid #2a2a2f;color:#e5e7eb;padding:10px 14px;border-radius:8px;font-size:13px;margin:12px 0 16px;outline:none;">
+            <input type="text" id="mp-gloss-search" placeholder="Filtrar términos..." style="width:100%;background:#131210;border:1px solid #2A2721;color:#F2EEE4;padding:10px 14px;border-radius:2px;font-size:13px;margin:12px 0 16px;outline:none;">
             <div id="mp-gloss-list">
               ${GLOSARIO.map(item => `
-                <div class="gloss-item" style="border-bottom:1px solid #1f1f24;padding:12px 0;">
-                  <p style="margin:0 0 4px;font-weight:600;font-size:13px;color:#22c55e;">${item.termino}</p>
-                  <p style="margin:0;font-size:12px;color:#a1a1aa;line-height:1.55;">${item.def}</p>
+                <div class="gloss-item" style="border-bottom:1px solid #2A2721;padding:12px 0;">
+                  <p style="margin:0 0 4px;font-weight:600;font-size:13px;color:#D79A3C;">${item.termino}</p>
+                  <p style="margin:0;font-size:12px;color:#9A9284;line-height:1.55;">${item.def}</p>
                 </div>
               `).join('')}
             </div>
@@ -1533,25 +1550,25 @@
     }
     const html = `
       <div id="mp-curso-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);">
-        <div style="background:#0a0a0b;border:1px solid #22c55e;border-radius:18px;max-width:480px;width:100%;box-shadow:0 0 80px -20px rgba(34,197,94,0.4);">
-          <div style="padding:16px 20px 12px;border-bottom:1px solid #1f1f24;display:flex;align-items:center;justify-content:space-between;">
+        <div style="background:#0B0B0A;border:1px solid #D79A3C;border-radius:2px;max-width:480px;width:100%;box-shadow:0 0 80px -20px rgba(215,154,60,0.4);">
+          <div style="padding:16px 20px 12px;border-bottom:1px solid #2A2721;display:flex;align-items:center;justify-content:space-between;">
             <div>
-              <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;">Mini-curso</p>
-              <h3 style="margin:2px 0 0;font-size:14px;color:#f4f4f5;font-weight:600;">${curso.titulo}</h3>
+              <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#D79A3C;">Mini-curso</p>
+              <h3 style="margin:2px 0 0;font-size:14px;color:#F2EEE4;font-weight:600;">${curso.titulo}</h3>
             </div>
-            <button onclick="document.getElementById('mp-curso-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;line-height:1;">×</button>
+            <button onclick="document.getElementById('mp-curso-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;line-height:1;">×</button>
           </div>
-          <div style="height:3px;background:#1f1f24;">
-            <div class="mp-curso-progress-fill" style="height:100%;background:#22c55e;transition:width .3s;width:0;"></div>
+          <div style="height:3px;background:#2A2721;">
+            <div class="mp-curso-progress-fill" style="height:100%;background:#D79A3C;transition:width .3s;width:0;"></div>
           </div>
           <div style="padding:32px 28px;min-height:200px;">
-            <h2 class="mp-curso-titulo-slide" style="margin:0 0 14px;font-size:22px;font-weight:700;color:#f4f4f5;letter-spacing:-0.01em;line-height:1.2;"></h2>
-            <p class="mp-curso-cuerpo" style="margin:0;font-size:14px;color:#a1a1aa;line-height:1.65;"></p>
+            <h2 class="mp-curso-titulo-slide" style="margin:0 0 14px;font-size:22px;font-weight:700;color:#F2EEE4;letter-spacing:-0.01em;line-height:1.2;"></h2>
+            <p class="mp-curso-cuerpo" style="margin:0;font-size:14px;color:#9A9284;line-height:1.65;"></p>
           </div>
-          <div style="padding:14px 20px;border-top:1px solid #1f1f24;display:flex;align-items:center;justify-content:space-between;">
-            <button class="mp-curso-prev" style="background:transparent;border:1px solid #2a2a2f;color:#a1a1aa;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;">← Atrás</button>
-            <span class="mp-curso-pos" style="font-size:11px;color:#71717a;font-weight:600;letter-spacing:0.1em;"></span>
-            <button class="mp-curso-next" style="background:#22c55e;border:none;color:#0a0a0b;padding:6px 18px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;"></button>
+          <div style="padding:14px 20px;border-top:1px solid #2A2721;display:flex;align-items:center;justify-content:space-between;">
+            <button class="mp-curso-prev" style="background:transparent;border:1px solid #2A2721;color:#9A9284;padding:6px 14px;border-radius:2px;font-size:12px;cursor:pointer;">← Atrás</button>
+            <span class="mp-curso-pos" style="font-size:11px;color:#847D70;font-weight:600;letter-spacing:0.1em;"></span>
+            <button class="mp-curso-next" style="background:#D79A3C;border:none;color:#0B0B0A;padding:6px 18px;border-radius:2px;font-size:12px;font-weight:600;cursor:pointer;"></button>
           </div>
         </div>
       </div>`;
@@ -1567,25 +1584,25 @@
   };
   window.abrirCursosIndex = function() {
     const items = Object.entries(CURSOS).map(([id, c]) => `
-      <button onclick="document.getElementById('mp-cursos-index').remove(); window.abrirCurso('${id}')" style="display:block;width:100%;text-align:left;background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:14px 16px;margin-bottom:8px;cursor:pointer;color:#e5e7eb;transition:border-color .2s;" onmouseover="this.style.borderColor='#22c55e'" onmouseout="this.style.borderColor='#2a2a2f'">
+      <button onclick="document.getElementById('mp-cursos-index').remove(); window.abrirCurso('${id}')" style="display:block;width:100%;text-align:left;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:14px 16px;margin-bottom:8px;cursor:pointer;color:#F2EEE4;transition:border-color .2s;" onmouseover="this.style.borderColor='#D79A3C'" onmouseout="this.style.borderColor='#2A2721'">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div>
-            <p style="margin:0;font-size:14px;font-weight:600;color:#f4f4f5;">${c.titulo}</p>
-            <p style="margin:2px 0 0;font-size:11px;color:#71717a;">${c.slides.length} slides · ~3 min</p>
+            <p style="margin:0;font-size:14px;font-weight:600;color:#F2EEE4;">${c.titulo}</p>
+            <p style="margin:2px 0 0;font-size:11px;color:#847D70;">${c.slides.length} slides · ~3 min</p>
           </div>
-          <span style="color:#22c55e;">→</span>
+          <span style="color:#D79A3C;">→</span>
         </div>
       </button>
     `).join('');
     document.body.insertAdjacentHTML('beforeend', `
       <div id="mp-cursos-index" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
-        <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;max-width:440px;width:100%;padding:20px 24px;">
+        <div style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;max-width:440px;width:100%;padding:20px 24px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div>
-              <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;">Aprende rápido</p>
-              <h2 style="margin:2px 0 0;font-size:18px;color:#f4f4f5;font-weight:600;">Mini-cursos</h2>
+              <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#D79A3C;">Aprende rápido</p>
+              <h2 style="margin:2px 0 0;font-size:18px;color:#F2EEE4;font-weight:600;">Mini-cursos</h2>
             </div>
-            <button onclick="document.getElementById('mp-cursos-index').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;line-height:1;">×</button>
+            <button onclick="document.getElementById('mp-cursos-index').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;line-height:1;">×</button>
           </div>
           ${items}
         </div>
@@ -1625,18 +1642,18 @@
     badge.id = 'mp-comparativa-widget';
     badge.style.cssText = `
       margin-top: 8px; padding: 6px 10px;
-      background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(99,102,241,0.05));
-      border: 1px solid rgba(168,85,247,0.25);
-      border-radius: 6px; font-size: 10px; line-height: 1.4;
-      color: #c4b5fd;
+      background: #131210;
+      border: 1px solid rgba(215,154,60,0.25);
+      border-radius: 2px; font-size: 10px; line-height: 1.4;
+      color: #D79A3C;
     `;
     let msg;
-    if (pct >= 95) msg = `Tu Sharpe está en el <strong style="color:#fff;">top ${100-pct}%</strong> — élite.`;
-    else if (pct >= 80) msg = `Mejor que el <strong style="color:#fff;">${pct}%</strong> de inversionistas retail.`;
-    else if (pct >= 50) msg = `Mejor que el <strong style="color:#fff;">${pct}%</strong> de inversionistas retail.`;
-    else if (pct >= 25) msg = `Mejor que el <strong style="color:#fff;">${pct}%</strong> — hay margen.`;
+    if (pct >= 95) msg = `Tu Sharpe está en el <strong style="color:#F2EEE4;">top ${100-pct}%</strong> — élite.`;
+    else if (pct >= 80) msg = `Mejor que el <strong style="color:#F2EEE4;">${pct}%</strong> de inversionistas retail.`;
+    else if (pct >= 50) msg = `Mejor que el <strong style="color:#F2EEE4;">${pct}%</strong> de inversionistas retail.`;
+    else if (pct >= 25) msg = `Mejor que el <strong style="color:#F2EEE4;">${pct}%</strong> — hay margen.`;
     else msg = `Top ${100-pct}% inferior — revisa tu mezcla.`;
-    badge.innerHTML = msg + ' <span style="color:#71717a;">vs benchmarks públicos</span>';
+    badge.innerHTML = msg + ' <span style="color:#847D70;">vs benchmarks públicos</span>';
     host.appendChild(badge);
   }
   // Auto-render cuando los KPIs ya están listos

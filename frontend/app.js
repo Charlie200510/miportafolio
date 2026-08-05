@@ -185,12 +185,155 @@ const $ = (id) => document.getElementById(id);
 // la evaluacion de app.js -> no se registraba el DOMContentLoaded -> ningun
 // boton se enlazaba -> SPA congelado. Aplicamos de forma guardada y de nuevo
 // en 'load', cuando el script diferido ya ejecuto.
+// ============================================================================
+//  MP_GRAFICA — tema ÚNICO de Chart.js (estética de prensa)
+// ============================================================================
+// Un solo objeto de configuración para TODAS las gráficas de la app, en vez de
+// estilos dispersos por cada `new Chart(...)`:
+//   · líneas de 1.5–2px, sin relleno de gradiente
+//   · el benchmark siempre punteado y recesivo
+//   · sin gridlines verticales en ejes de tiempo
+//   · etiquetas de eje y tooltip en monoespaciada con cifras tabulares
+//   · ejes recesivos (hairline cálido, nunca blanco puro)
+// Cambiar aquí cambia la app entera.
+const MP_GRAFICA = {
+  tinta:       '#0B0B0A',
+  panel:       '#131210',
+  regla:       '#2A2721',
+  reglaFuerte: '#4A443A',
+  papel:       '#F2EEE4',
+  papel2:      '#CFC8B8',
+  papel3:      '#9A9284',
+  sello:       '#D79A3C',
+  alza:        '#6FAE7E',
+  baja:        '#DB7B68',
+  mono:        "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace",
+  sans:        "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif",
+
+  /* Trazo principal: la serie del usuario. */
+  serie(color, opts = {}) {
+    return {
+      borderColor: color || this.sello,
+      backgroundColor: 'transparent',
+      fill: false,              // nunca relleno con gradiente
+      tension: 0,               // trazo de prensa: recto, sin suavizado
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 3,
+      pointHoverBackgroundColor: color || this.sello,
+      pointHoverBorderWidth: 0,
+      ...opts,
+    };
+  },
+
+  /* Trazo de referencia: benchmark punteado y en tinta apagada. */
+  referencia(opts = {}) {
+    return {
+      borderColor: this.papel3,
+      borderDash: [3, 3],
+      backgroundColor: 'transparent',
+      fill: false,
+      tension: 0,
+      borderWidth: 1.5,
+      pointRadius: 0,
+      pointHoverRadius: 3,
+      ...opts,
+    };
+  },
+
+  /* Tooltip común: ficha de datos, mono y cuadrada. */
+  tooltip(callbacks = {}) {
+    return {
+      backgroundColor: this.tinta,
+      borderColor: this.reglaFuerte,
+      borderWidth: 1,
+      cornerRadius: 2,
+      padding: 9,
+      displayColors: false,
+      titleColor: this.papel,
+      titleFont: { family: this.mono, size: 10, weight: '600' },
+      bodyColor: this.papel2,
+      bodyFont: { family: this.mono, size: 11 },
+      ...(Object.keys(callbacks).length ? { callbacks } : {}),
+    };
+  },
+
+  /* Eje de tiempo: sin gridlines verticales, etiquetas mono. */
+  ejeTiempo(extra = {}) {
+    return {
+      grid: { display: false, drawTicks: false },
+      border: { color: this.regla },
+      ticks: {
+        color: this.papel3,
+        font: { family: this.mono, size: 9.5 },
+        maxTicksLimit: 6,
+        autoSkip: true,
+        maxRotation: 0,
+        padding: 6,
+      },
+      ...extra,
+    };
+  },
+
+  /* Eje de valor: hairlines horizontales tenues, etiquetas mono. */
+  ejeValor(extra = {}) {
+    return {
+      grid: { color: this.regla, drawTicks: false, lineWidth: 1 },
+      border: { display: false },
+      ticks: {
+        color: this.papel3,
+        font: { family: this.mono, size: 9.5 },
+        maxTicksLimit: 5,
+        padding: 8,
+      },
+      ...extra,
+    };
+  },
+
+  /* Leyenda: rótulos mono, marcas cuadradas y pequeñas. */
+  leyenda(display = false) {
+    return {
+      display,
+      labels: {
+        color: this.papel3,
+        font: { family: this.mono, size: 10 },
+        boxWidth: 8, boxHeight: 2, usePointStyle: false, padding: 14,
+      },
+    };
+  },
+
+  /* Base compartida por cualquier gráfica de la app. */
+  base(opts = {}) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 160 },     // micro-interacción sobria
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: this.leyenda(false), tooltip: this.tooltip() },
+      ...opts,
+    };
+  },
+};
+window.MP_GRAFICA = MP_GRAFICA;
+
+// Defaults de Chart.js para tema oscuro.
+// OJO: Chart.js carga con `defer` (ver index.html), asi que puede NO estar
+// definido cuando app.js se evalua. Sin la guarda, esta linea lanzaba
+// "Cannot set properties of undefined (setting 'color')", lo que abortaba TODA
+// la evaluacion de app.js -> no se registraba el DOMContentLoaded -> ningun
+// boton se enlazaba -> SPA congelado. Aplicamos de forma guardada y de nuevo
+// en 'load', cuando el script diferido ya ejecuto.
 function _aplicarChartDefaults() {
   if (typeof Chart === 'undefined' || !Chart.defaults) return;
-  Chart.defaults.color = '#a1a1aa';
-  Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
-  Chart.defaults.font.family = "Inter, ui-sans-serif, system-ui, sans-serif";
-  Chart.defaults.font.size = 11;
+  Chart.defaults.color = MP_GRAFICA.papel3;
+  Chart.defaults.borderColor = MP_GRAFICA.regla;
+  Chart.defaults.font.family = MP_GRAFICA.mono;
+  Chart.defaults.font.size = 10;
+  Chart.defaults.elements.line.tension = 0;
+  Chart.defaults.elements.point.radius = 0;
+  Chart.defaults.elements.arc.borderColor = MP_GRAFICA.tinta;
+  Chart.defaults.elements.arc.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.cornerRadius = 2;
 }
 _aplicarChartDefaults();
 window.addEventListener('load', _aplicarChartDefaults);
@@ -511,6 +654,7 @@ async function analizarYRender(tickers, pesos /* dict opcional */) {
 
   renderMeta(data);
   renderHero(data);
+  renderCuadernilloMexico(data);
   renderInsights(data);
   renderBenchmark(data);
   renderPortafolioOptimo(data);
@@ -564,6 +708,87 @@ function renderMeta(data) {
   }
 }
 
+// --- TITULAR ---------------------------------------------------------------
+// Convierte los números que ya calculó el backend en una frase con voz de nota
+// periodística ("Tu cartera le gana al mercado por doce puntos") en vez del
+// típico rótulo de dashboard. No inventa nada: sólo redacta lo que hay en
+// `data` — spread contra el benchmark, drawdown, Sharpe y las observaciones.
+
+const _NUM_PALABRA = ['cero','un','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
+  'once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte',
+  'veintiún','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete',
+  'veintiocho','veintinueve','treinta'];
+
+// Los diarios escriben con letra las cantidades pequeñas.
+function _enPalabras(n) {
+  const e = Math.round(Math.abs(n));
+  return e <= 30 ? _NUM_PALABRA[e] : String(e);
+}
+
+function redactarTitular(data) {
+  const p = data.portafolio || {};
+  const m = data.metadata || {};
+  const b = data.benchmark || {};
+  const activos = m.activos || [];
+  const insights = Array.isArray(data.insights) ? data.insights : [];
+
+  if (!activos.length) {
+    return { titular: 'Tu portafolio, todavía sin posiciones',
+             balazo: 'Agrega al menos dos emisoras para que podamos analizarlo.' };
+  }
+
+  const ret1y   = p.rendimiento_1y_pct ?? p.rendimiento_anualizado_pct;
+  const sharpe  = p.sharpe_ratio;
+  const ddMax   = p.max_drawdown_pct;
+  // /api/analizar devuelve el exceso ya calculado en benchmark.alpha_portafolio_pct.
+  const alpha   = b.alpha_portafolio_pct ??
+                  ((p.rendimiento_anualizado_pct != null && b.rendimiento_anualizado_pct != null)
+                    ? p.rendimiento_anualizado_pct - b.rendimiento_anualizado_pct : null);
+  const nombreB = b.ticker === '^GSPC' ? 'el S&P 500'
+                : b.ticker === '^MXX'  ? 'el IPC'
+                : b.ticker ? b.ticker : 'el mercado';
+
+  // "a el S&P 500" → "al S&P 500"; "de el IPC" → "del IPC".
+  const contraer = (s) => s.replace(/\ba el\b/g, 'al').replace(/\bde el\b/g, 'del');
+  const capitalizar = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  let titular;
+  if (alpha != null && Math.abs(alpha) >= 1) {
+    const puntos = _enPalabras(alpha);
+    const plural = Math.round(Math.abs(alpha)) === 1 ? 'punto' : 'puntos';
+    titular = alpha > 0
+      ? `Tu cartera le gana a ${nombreB} por ${puntos} ${plural}`
+      : `${nombreB} le saca ${puntos} ${plural} a tu cartera`;
+  } else if (alpha != null) {
+    titular = `Tu cartera va a la par de ${nombreB}`;
+  } else if (ret1y != null && ret1y >= 0) {
+    titular = `Tu cartera cierra el año en terreno positivo`;
+  } else if (ret1y != null) {
+    titular = `Tu cartera cierra el año en números rojos`;
+  } else {
+    titular = `${activos.length} ${activos.length === 1 ? 'posición' : 'posiciones'} bajo análisis`;
+  }
+
+  // Balazo: la segunda línea de una nota, con el matiz que falta.
+  const partes = [];
+  if (sharpe != null) {
+    partes.push(sharpe >= 1
+      ? `El Sharpe de ${sharpe.toFixed(2)} dice que el rendimiento sí paga el riesgo asumido.`
+      : sharpe >= 0.5
+        ? `Con un Sharpe de ${sharpe.toFixed(2)}, el rendimiento apenas compensa el riesgo.`
+        : sharpe >= 0
+          ? `Un Sharpe de ${sharpe.toFixed(2)} deja a los CETES peleando de tú a tú.`
+          : `Un Sharpe negativo (${sharpe.toFixed(2)}) significa que los CETES te habrían ido mejor.`);
+  }
+  if (ddMax != null && Math.abs(ddMax) >= 5) {
+    partes.push(`La peor caída del periodo llegó a ${Math.abs(ddMax).toFixed(1)}%.`);
+  }
+  const critico = insights.find(i => i.severidad === 'critico' || i.severidad === 'alto');
+  if (critico && critico.titulo) partes.push(`${critico.titulo}.`);
+
+  return { titular: capitalizar(contraer(titular)), balazo: partes.slice(0, 2).join(' ') };
+}
+
 // --- HERO ------------------------------------------------------------------
 
 function renderHero(data) {
@@ -571,10 +796,15 @@ function renderHero(data) {
   const m = data.metadata || {};
   const activos = m.activos || [];
 
-  $('hero-titulo').textContent = activos.length
-    ? `${activos.length} ${activos.length === 1 ? 'posición' : 'posiciones'} analizadas`
-    : 'Tu portafolio';
-  $('hero-subtitulo').textContent = activos.join(' · ');
+  // El titular se redacta con voz de nota sobre los datos ya calculados; la
+  // enumeración de tickers baja a la línea de firma.
+  const { titular, balazo } = redactarTitular(data);
+  $('hero-titulo').textContent = titular;
+  const balazoEl = $('hero-balazo');
+  if (balazoEl) balazoEl.textContent = balazo;
+  $('hero-subtitulo').textContent = activos.length
+    ? `${activos.length} ${activos.length === 1 ? 'posición' : 'posiciones'} · ${activos.join(' · ')}`
+    : '';
 
   // Retorno del último año (en hero, NO el total)
   // Si la serie de tiempo tiene los datos, calculamos el retorno de los últimos 252 días hábiles.
@@ -872,40 +1102,13 @@ function renderChartAcumulado(data) {
 
   const fechas = st.fechas;
 
+  // Serie del usuario en tinta de sello; benchmark punteado y recesivo.
   const datasets = [
-    {
-      label: 'Portafolio',
-      data: port,
-      borderColor: '#10b981',
-      backgroundColor: (ctx) => {
-        const chart = ctx.chart;
-        const { ctx: c, chartArea } = chart;
-        if (!chartArea) return 'rgba(16,185,129,0.1)';
-        const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-        gradient.addColorStop(0, 'rgba(16,185,129,0.25)');
-        gradient.addColorStop(1, 'rgba(16,185,129,0)');
-        return gradient;
-      },
-      fill: true,
-      tension: 0.25,
-      borderWidth: 2,
-      pointRadius: 0,
-      pointHoverRadius: 4,
-    },
+    { label: 'Portafolio', data: port, ...MP_GRAFICA.serie(MP_GRAFICA.papel) },
   ];
 
   if (bench.length) {
-    datasets.push({
-      label: 'Benchmark',
-      data: bench,
-      borderColor: '#38bdf8',
-      borderDash: [4, 4],
-      fill: false,
-      tension: 0.25,
-      borderWidth: 1.5,
-      pointRadius: 0,
-      pointHoverRadius: 4,
-    });
+    datasets.push({ label: 'Benchmark', data: bench, ...MP_GRAFICA.referencia() });
   }
 
   _charts['chart-acumulado'] = new Chart(canvas, {
@@ -941,20 +1144,8 @@ function renderChartDrawdown(data) {
       datasets: [{
         label: 'Drawdown',
         data: dd,
-        borderColor: '#f43f5e',
-        backgroundColor: (ctx) => {
-          const chart = ctx.chart;
-          const { ctx: c, chartArea } = chart;
-          if (!chartArea) return 'rgba(244,63,94,0.12)';
-          const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-          gradient.addColorStop(0, 'rgba(244,63,94,0)');
-          gradient.addColorStop(1, 'rgba(244,63,94,0.3)');
-          return gradient;
-        },
-        fill: true,
-        tension: 0.2,
-        borderWidth: 2,
-        pointRadius: 0,
+        // El drawdown es dirección de mercado: rojo legítimo, sin relleno.
+        ...MP_GRAFICA.serie(MP_GRAFICA.baja),
       }],
     },
     options: chartOptionsPct({ y_max: 0 }),
@@ -991,12 +1182,7 @@ function renderChartRollingVol(data) {
       datasets: [{
         label: 'Vol 30d',
         data: vol30,
-        borderColor: '#f59e0b',
-        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-        fill: true,
-        tension: 0.3,
-        borderWidth: 1.5,
-        pointRadius: 0,
+        ...MP_GRAFICA.serie(MP_GRAFICA.sello, { borderWidth: 1.5 }),
       }],
     },
     options: chartOptionsPct(),
@@ -1005,32 +1191,23 @@ function renderChartRollingVol(data) {
 
 // --- opciones comunes chart.js --------------------------------------------
 
+// Opciones para series en porcentaje. Todo el estilo sale de MP_GRAFICA: aquí
+// solo queda lo específico de estas gráficas (formato de fecha y de %).
 function chartOptionsPct(opts = {}) {
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
+  return MP_GRAFICA.base({
     plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#111114',
-        borderColor: '#1f1f24',
-        borderWidth: 1,
-        padding: 10,
-        titleColor: '#e5e7eb',
-        bodyColor: '#a1a1aa',
-        callbacks: {
-          label: (c) => `${c.dataset.label}: ${c.parsed.y === null ? '—' : c.parsed.y.toFixed(2) + '%'}`,
-        },
-      },
+      legend: MP_GRAFICA.leyenda(false),
+      tooltip: MP_GRAFICA.tooltip({
+        label: (c) => `${c.dataset.label}: ${c.parsed.y === null ? '—' : c.parsed.y.toFixed(2) + '%'}`,
+      }),
     },
     scales: {
-      x: {
-        grid: { display: false },
+      x: MP_GRAFICA.ejeTiempo({
         ticks: {
-          maxTicksLimit: 6,
-          autoSkip: true,
-          callback: function (val, idx) {
+          color: MP_GRAFICA.papel3,
+          font: { family: MP_GRAFICA.mono, size: 9.5 },
+          maxTicksLimit: 6, autoSkip: true, maxRotation: 0, padding: 6,
+          callback: function (val) {
             const label = this.getLabelForValue(val);
             if (!label) return '';
             // formato "MMM YY"
@@ -1039,14 +1216,18 @@ function chartOptionsPct(opts = {}) {
             return `${mes} ${y.slice(2)}`;
           },
         },
-      },
-      y: {
-        grid: { color: 'rgba(255,255,255,0.04)' },
-        ticks: { callback: (v) => `${v.toFixed(0)}%` },
+      }),
+      y: MP_GRAFICA.ejeValor({
+        ticks: {
+          color: MP_GRAFICA.papel3,
+          font: { family: MP_GRAFICA.mono, size: 9.5 },
+          maxTicksLimit: 5, padding: 8,
+          callback: (v) => `${v.toFixed(0)}%`,
+        },
         ...(opts.y_max !== undefined ? { max: opts.y_max } : {}),
-      },
+      }),
     },
-  };
+  });
 }
 
 // --- TABLA de activos -----------------------------------------------------
@@ -1112,8 +1293,8 @@ function renderCorrelaciones(data) {
   // Color interpola entre rojo (correlación alta, malo para diversificación) y azul (negativa)
   const color = (v) => {
     // rango esperado: -1..1
-    if (v === null || v === undefined) return '#18181b';
-    if (v >= 1 - 0.001) return 'rgba(244, 63, 94, 0.5)';  // diagonal
+    if (v === null || v === undefined) return '#131210';
+    if (v >= 1 - 0.001) return 'rgba(219,123,104,0.5)';  // diagonal
     if (v >= 0) {
       // 0 → zinc-900, 1 → rojo intenso
       const a = Math.min(1, v);
@@ -1149,7 +1330,7 @@ function renderCorrelaciones(data) {
   html += `
     <div class="flex items-center justify-between mt-4 text-[10px] text-zinc-500">
       <div class="flex items-center gap-1.5">
-        <span class="w-3 h-3 rounded" style="background: rgba(56,189,248,0.5)"></span>
+        <span class="w-3 h-3 rounded" style="background: rgba(215,154,60,0.5)"></span>
         <span>Negativa</span>
       </div>
       <div class="flex items-center gap-1.5">
@@ -1158,7 +1339,7 @@ function renderCorrelaciones(data) {
       </div>
       <div class="flex items-center gap-1.5">
         <span>Alta</span>
-        <span class="w-3 h-3 rounded" style="background: rgba(244,63,94,0.5)"></span>
+        <span class="w-3 h-3 rounded" style="background: rgba(219,123,104,0.5)"></span>
       </div>
     </div>
   `;
@@ -1309,7 +1490,7 @@ function renderBarGroup(titulo, obj) {
   if (!entries.length) return '';
 
   const maxPeso = entries[0][1];
-  const palette = ['#38bdf8', '#10b981', '#f59e0b', '#f43f5e', '#a78bfa', '#ec4899', '#14b8a6'];
+  const palette = ['#D79A3C', '#D79A3C', '#D79A3C', '#DB7B68', '#D79A3C', '#D79A3C', '#D79A3C'];
 
   const rows = entries.map(([k, v], idx) => `
     <div>
@@ -1525,14 +1706,14 @@ const Explorador = (() => {
     const col = colorMap[sc.veredicto.color] || colorMap.blue;
 
     const compLabels = {
-      sharpe:           ['Sharpe del óptimo',  '🎯'],
-      correlacion:      ['Diversificación',    '🌐'],
-      mejora_markowitz: ['Mejora vs equal-weight', '⚙️'],
-      geografia:        ['Regiones',           '🌎'],
-      sectores:         ['Sectores',           '📊'],
-      monedas:          ['Monedas',            '💱'],
-      'tamaño':         ['Tamaño',             '📐'],
-      volatilidad:      ['Volatilidad',        '📉'],
+      sharpe:           ['Sharpe del óptimo',  '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/></svg></span>'],
+      correlacion:      ['Diversificación',    '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z"/></svg></span>'],
+      mejora_markowitz: ['Mejora vs equal-weight', '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></span>'],
+      geografia:        ['Regiones',           '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z"/></svg></span>'],
+      sectores:         ['Sectores',           '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 19V11"/><path d="M10 19V6"/><path d="M16 19V14"/><path d="M22 19H2"/></svg></span>'],
+      monedas:          ['Monedas',            '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v10"/><path d="M14.5 9.5H10.7a1.8 1.8 0 0 0 0 3.6h2.6a1.8 1.8 0 0 1 0 3.6H9.5"/></svg></span>'],
+      'tamaño':         ['Tamaño',             '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="2.5" y="8" width="19" height="8"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></svg></span>'],
+      volatilidad:      ['Volatilidad',        '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 7 9 13l4-4 8 8"/><path d="M15 17h6v-6"/></svg></span>'],
     };
 
     const componentes = Object.entries(sc.componentes).map(([k, v]) => {
@@ -1747,9 +1928,9 @@ const PortafolioOptimo = (() => {
 
   // Colores rotativos para la barra apilada (más distinguibles que random)
   const PALETA = [
-    '#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#f43f5e',
-    '#06b6d4', '#84cc16', '#ec4899', '#8b5cf6', '#14b8a6',
-    '#f97316', '#0ea5e9',
+    '#D79A3C', '#D79A3C', '#D79A3C', '#D79A3C', '#DB7B68',
+    '#D79A3C', '#6FAE7E', '#D79A3C', '#D79A3C', '#D79A3C',
+    '#D79A3C', '#D79A3C',
   ];
 
   function pintarSkeletons() {
@@ -1830,7 +2011,7 @@ const PortafolioOptimo = (() => {
       const color = PALETA[i % PALETA.length];
       return `<div style="width:${a.peso*100}%;background:${color}" title="${a.ticker} ${a.peso_pct.toFixed(1)}%"></div>`;
     }).join('') + (d.peso_cash > 0.005
-      ? `<div style="width:${d.peso_cash*100}%;background:#3f3f46" title="Cash ${(d.peso_cash*100).toFixed(1)}%"></div>`
+      ? `<div style="width:${d.peso_cash*100}%;background:#4A443A" title="Cash ${(d.peso_cash*100).toFixed(1)}%"></div>`
       : '');
   }
 
@@ -1871,25 +2052,28 @@ const PortafolioOptimo = (() => {
     _frontChart = new Chart(cv.getContext('2d'), {
       type: 'scatter',
       data: { datasets: [
-        { type: 'line', label: 'Frontera eficiente', data: curva, borderColor: '#f59e0b', borderWidth: 2, pointRadius: 0, tension: 0.2, fill: false, order: 1 },
-        { label: 'Tu portafolio', data: opt, backgroundColor: '#f59e0b', pointStyle: 'star', radius: 12, borderColor: '#fff', borderWidth: 1, order: 0 },
-        { label: 'En el portafolio', data: selPts, backgroundColor: '#22c55e', radius: 4, order: 2 },
-        { label: 'Otras candidatas', data: otros, backgroundColor: 'rgba(120,120,130,0.45)', radius: 3, order: 3 },
+        { type: 'line', label: 'Frontera eficiente', data: curva, order: 1,
+          ...MP_GRAFICA.serie(MP_GRAFICA.sello) },
+        { label: 'Tu portafolio', data: opt, backgroundColor: MP_GRAFICA.sello,
+          pointStyle: 'rectRot', radius: 9, borderColor: MP_GRAFICA.papel, borderWidth: 1, order: 0 },
+        { label: 'En el portafolio', data: selPts, backgroundColor: MP_GRAFICA.papel,
+          pointStyle: 'rect', radius: 3.5, order: 2 },
+        { label: 'Otras candidatas', data: otros, backgroundColor: MP_GRAFICA.reglaFuerte,
+          pointStyle: 'rect', radius: 2.5, order: 3 },
       ] },
-      options: {
-        responsive: true, maintainAspectRatio: false,
+      options: MP_GRAFICA.base({
         plugins: {
-          legend: { labels: { color: '#a1a1aa', boxWidth: 10, font: { size: 10 }, usePointStyle: true } },
-          tooltip: { callbacks: { label: (ctx) => {
+          legend: MP_GRAFICA.leyenda(true),
+          tooltip: MP_GRAFICA.tooltip({ label: (ctx) => {
             const r = ctx.raw; const tk = r.ticker ? r.ticker + ': ' : '';
             return `${tk}σ ${r.x}% · ret ${r.y}%`;
-          } } },
+          } }),
         },
         scales: {
-          x: { title: { display: true, text: 'Volatilidad σ (%)', color: '#71717a', font: { size: 10 } }, ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-          y: { title: { display: true, text: 'Retorno esperado (%)', color: '#71717a', font: { size: 10 } }, ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          x: MP_GRAFICA.ejeValor({ title: { display: true, text: 'Volatilidad σ (%)', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
+          y: MP_GRAFICA.ejeValor({ title: { display: true, text: 'Retorno esperado (%)', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
         },
-      },
+      }),
     });
   }
 
@@ -1968,7 +2152,7 @@ const PortafolioOptimo = (() => {
 
 // ============================================================
 // PICKER: onboarding de "Mi portafolio" (paso 1 tickers + paso 2 pesos)
-//  - Lista del universo completo (S&P 500 + IPC) con precio y ⭐ recomendadas
+//  - Lista del universo completo (S&P 500 + IPC) con precio y ✦ recomendadas
 //  - Buscador con fallback a Yahoo Finance (cualquier ticker)
 //  - Paso 2: editor de pesos (inputs + slider) antes de analizar
 // ============================================================
@@ -2122,7 +2306,7 @@ const Picker = (() => {
         <span class="text-[9px] font-semibold tracking-wider px-1.5 py-0.5 rounded border ${flagCls}">${flag}</span>
         <span class="flex-1 min-w-0">
           <span class="flex items-center gap-1">
-            ${reco ? '<span class="text-accent-amber text-[11px] leading-none">⭐</span>' : ''}
+            ${reco ? '<span class="text-accent-amber text-[11px] leading-none">✦</span>' : ''}
             <span class="text-[13px] font-medium text-zinc-100 truncate">${t.ticker}</span>
           </span>
           <span class="block text-[10px] text-zinc-500 truncate">${escapeHtml(t.nombre || '')}</span>
@@ -2267,7 +2451,7 @@ const Picker = (() => {
         <div class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_160px_auto] gap-3 items-center">
           <div class="min-w-0">
             <div class="flex items-center gap-2">
-              ${meta.recomendada ? '<span class="text-accent-amber text-[11px]">⭐</span>' : ''}
+              ${meta.recomendada ? '<span class="text-accent-amber text-[11px]">✦</span>' : ''}
               <span class="text-sm font-medium text-zinc-100 truncate">${t}</span>
               <span class="text-[11px] text-zinc-500 truncate">${escapeHtml(meta.nombre || '')}</span>
             </div>
@@ -2707,7 +2891,7 @@ function _sparklineSVG(vals, w = 70, h = 22) {
   const pts = vals.map((v, i) =>
     `${(i / (vals.length - 1) * w).toFixed(1)},${(h - (v - min) / rng * (h - 2) - 1).toFixed(1)}`
   ).join(' ');
-  const col = vals[vals.length - 1] >= vals[0] ? '#22c55e' : '#f43f5e';
+  const col = vals[vals.length - 1] >= vals[0] ? '#D79A3C' : '#DB7B68';
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
 }
 async function renderWatchlist() {
@@ -2771,7 +2955,7 @@ async function renderWatchlist() {
 // ============================================================
 window.iniciarComparar = (function () {
   let inited = false;
-  const PAL = ['#38bdf8', '#22c55e', '#a78bfa', '#f59e0b'];
+  const PAL = ['#D79A3C', '#D79A3C', '#D79A3C', '#D79A3C'];
   const state = { tickers: [], rango: '1A', chart: null };
   let universo = [];
   async function _cargarUniverso() {
@@ -2853,7 +3037,7 @@ window.iniciarComparar = (function () {
     const datasets = validos.map(d => {
       const serie = d.h.precios.slice(-L);
       const base = serie[0] || 1;
-      const col = PAL[state.tickers.indexOf(d.t)] || '#38bdf8';
+      const col = PAL[state.tickers.indexOf(d.t)] || '#D79A3C';
       return { label: d.t, data: serie.map(v => v / base * 100), borderColor: col, borderWidth: 1.5, pointRadius: 0, tension: 0.1, fill: false };
     });
     if (cv && typeof Chart !== 'undefined') {
@@ -2861,22 +3045,20 @@ window.iniciarComparar = (function () {
       state.chart = new Chart(cv.getContext('2d'), {
         type: 'line',
         data: { labels, datasets },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: '#a1a1aa', boxWidth: 10, font: { size: 11 } } }, tooltip: { mode: 'index', intersect: false } },
-          interaction: { mode: 'index', intersect: false },
+        options: MP_GRAFICA.base({
+          plugins: { legend: MP_GRAFICA.leyenda(true), tooltip: MP_GRAFICA.tooltip() },
           scales: {
-            x: { ticks: { maxTicksLimit: 6, color: '#71717a', font: { size: 10 } }, grid: { display: false } },
-            y: { ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Base 100', color: '#71717a', font: { size: 10 } } },
+            x: MP_GRAFICA.ejeTiempo(),
+            y: MP_GRAFICA.ejeValor({ title: { display: true, text: 'Base 100', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
           },
-        },
+        }),
       });
     }
     if (tabla) {
       const pct = v => (v == null || isNaN(v)) ? '—' : `${(v * 100).toFixed(1)}%`;
       const num = v => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(2);
       const rows = validos.map(d => {
-        const col = PAL[state.tickers.indexOf(d.t)] || '#38bdf8';
+        const col = PAL[state.tickers.indexOf(d.t)] || '#D79A3C';
         const serie = d.h.precios.slice(-L);
         const ret = serie[serie.length - 1] / serie[0] - 1;
         const sc = (d.s && d.s.ok) ? d.s : {};
@@ -2960,7 +3142,7 @@ const Periodico = (() => {
       const y = h - pad - ((v - min) / rng) * (h - 2 * pad);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
-    const stroke = positivo ? '#10b981' : '#f43f5e';
+    const stroke = positivo ? '#D79A3C' : '#DB7B68';
     return `
       <svg viewBox="0 0 ${w} ${h}" class="w-20 h-6" aria-hidden="true">
         <polyline fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="${pts}"></polyline>
@@ -3260,18 +3442,20 @@ const Periodico = (() => {
     }
     cont.innerHTML = items.map(i => {
       const cambio = i.cambio_pct || 0;
-      // Intensidad de color según magnitud
+      // Trama de tinta, no semáforo: el verde/rojo de mercado se aplica muy
+      // diluido sobre el panel y la intensidad la lleva la magnitud. Así el
+      // mapa sigue leyéndose de un vistazo sin gritar como un dashboard.
       const absCambio = Math.min(Math.abs(cambio), 3) / 3;  // 0-1
-      const opacity = 0.15 + absCambio * 0.55;  // 0.15 a 0.7
-      const colorBase = cambio >= 0 ? '34, 197, 94' : '239, 68, 68';
+      const opacity = (0.06 + absCambio * 0.26).toFixed(3); // 0.06 a 0.32
+      const colorBase = cambio >= 0 ? '111, 174, 126' : '219, 123, 104';
       const signo = cambio >= 0 ? '+' : '';
-      const textColor = absCambio > 0.5 ? '#fff' : (cambio >= 0 ? '#86efac' : '#fca5a5');
+      const textColor = cambio >= 0 ? '#6FAE7E' : '#DB7B68';
       return `
-        <div class="rounded-lg p-3 flex flex-col items-center justify-center text-center"
-             style="background: rgba(${colorBase}, ${opacity}); border: 1px solid rgba(${colorBase}, ${opacity + 0.1});">
-          <p class="text-[10px] font-semibold tabular" style="color: ${textColor};">${escapeHtml(i.etiqueta || '')}</p>
-          <p class="text-xs font-medium leading-tight mt-1 truncate w-full" style="color: ${textColor}; opacity: 0.85;">${escapeHtml(i.nombre)}</p>
-          <p class="text-base font-bold tabular mt-1" style="color: ${textColor};">${signo}${cambio.toFixed(2)}%</p>
+        <div class="p-3 flex flex-col items-center justify-center text-center"
+             style="background: rgba(${colorBase}, ${opacity}); border: 1px solid rgba(${colorBase}, ${(Number(opacity) + 0.18).toFixed(3)}); border-radius: 2px;">
+          <p class="mp-etq" style="color: var(--papel-3);">${escapeHtml(i.etiqueta || '')}</p>
+          <p class="text-[11px] leading-tight mt-1 truncate w-full" style="color: var(--papel-2);">${escapeHtml(i.nombre)}</p>
+          <p class="text-base font-semibold tabular mt-1" style="color: ${textColor};">${signo}${cambio.toFixed(2)}%</p>
         </div>
       `;
     }).join('');
@@ -3478,7 +3662,7 @@ const Periodico = (() => {
           el.innerHTML = Array.from({length:3}, () => `
             <div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-zinc-900/30">
               <div class="flex items-center gap-2 flex-1 min-w-0">
-                <span class="bbg-skel" style="width:24px;height:14px;border-radius:3px"></span>
+                <span class="bbg-skel" style="width:24px;height:14px;border-radius:2px"></span>
                 <div class="flex-1 min-w-0">
                   ${S.line('60%','sm')}${S.line('80%','sm')}
                 </div>
@@ -3619,7 +3803,7 @@ const Periodico = (() => {
         precioEl.textContent = `${moneda}${data.precio.toFixed(2)}`;
         // Flash sutil al actualizar
         precioEl.style.transition = 'color .3s';
-        precioEl.style.color = data.change_pct >= 0 ? '#22c55e' : '#f43f5e';
+        precioEl.style.color = data.change_pct >= 0 ? '#D79A3C' : '#DB7B68';
         setTimeout(() => { precioEl.style.color = ''; }, 600);
       }
       if (changeEl) {
@@ -5079,7 +5263,7 @@ const Metas = (() => {
         </div>
         <div class="bg-surface-card border border-surface-border rounded-xl p-5">
           <div class="flex items-start gap-3">
-            <div class="text-2xl">💡</div>
+            <div class="text-2xl" style="color:var(--sello)"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 1 3.6 10.8V16h-7.2v-2.2A6 6 0 0 1 12 3z"/></svg></span></div>
             <div>
               <p class="text-sm text-zinc-200 font-medium mb-1">Ninguna de tus acciones paga dividendos actualmente</p>
               <p class="text-xs text-zinc-500 leading-relaxed">
@@ -5306,9 +5490,9 @@ const Metas = (() => {
     if (!cont) return;
 
     const colores = {
-      'Pesimista': { borde: 'border-accent-red/30',   color: 'text-accent-red',   emoji: '🌧️' },
-      'Esperado':  { borde: 'border-zinc-600',        color: 'text-zinc-200',     emoji: '⛅' },
-      'Optimista': { borde: 'border-accent-green/30', color: 'text-accent-green', emoji: '☀️' },
+      'Pesimista': { borde: 'border-accent-red/30',   color: 'text-accent-red',   emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 15a4.5 4.5 0 0 1 .6-9A6 6 0 0 1 19 8.5a3.5 3.5 0 0 1-.5 6.5"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/></svg></span>' },
+      'Esperado':  { borde: 'border-zinc-600',        color: 'text-zinc-200',     emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="8" cy="8" r="3"/><path d="M8 1.5V3M2.5 8H4M4.1 4.1l1 1M11.9 4.1l-1 1"/><path d="M9 19a4 4 0 0 1 .5-8A5.5 5.5 0 0 1 20 12.5a3.2 3.2 0 0 1-.5 6.5z"/></svg></span>' },
+      'Optimista': { borde: 'border-accent-green/30', color: 'text-accent-green', emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></span>' },
     };
 
     cont.innerHTML = escenarios.map(esc => {
@@ -5359,8 +5543,8 @@ const Metas = (() => {
       {
         label: 'P90 (optimista)',
         data: p90,
-        borderColor: 'rgba(16, 185, 129, 0.4)',
-        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+        borderColor: 'rgba(215,154,60,0.4)',
+        backgroundColor: 'rgba(215,154,60,0.08)',
         borderWidth: 1,
         fill: '+2',  // llena entre p90 y p10
         pointRadius: 0,
@@ -5369,7 +5553,7 @@ const Metas = (() => {
       {
         label: 'P50 (mediana)',
         data: p50,
-        borderColor: '#fb7185',
+        borderColor: '#DB7B68',
         backgroundColor: 'rgba(251, 113, 133, 0.1)',
         borderWidth: 2.5,
         fill: false,
@@ -5379,8 +5563,8 @@ const Metas = (() => {
       {
         label: 'P10 (pesimista)',
         data: p10,
-        borderColor: 'rgba(244, 63, 94, 0.4)',
-        backgroundColor: 'rgba(244, 63, 94, 0.08)',
+        borderColor: 'rgba(219,123,104,0.4)',
+        backgroundColor: 'rgba(219,123,104,0.08)',
         borderWidth: 1,
         fill: false,
         pointRadius: 0,
@@ -5404,42 +5588,25 @@ const Metas = (() => {
     state.chart = new Chart(canvas.getContext('2d'), {
       type: 'line',
       data: { labels, datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
+      options: MP_GRAFICA.base({
         plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { color: '#a1a1aa', font: { size: 11 }, usePointStyle: true, boxWidth: 8 },
-          },
-          tooltip: {
-            backgroundColor: 'rgba(17, 17, 20, 0.95)',
-            borderColor: '#27272a',
-            borderWidth: 1,
-            titleColor: '#f4f4f5',
-            bodyColor: '#d4d4d8',
-            padding: 10,
-            callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${fmtMoneyFull(ctx.parsed.y)}`,
-            },
-          },
+          legend: { ...MP_GRAFICA.leyenda(true), position: 'bottom' },
+          tooltip: MP_GRAFICA.tooltip({
+            label: (ctx) => `${ctx.dataset.label}: ${fmtMoneyFull(ctx.parsed.y)}`,
+          }),
         },
         scales: {
-          x: {
-            grid: { color: 'rgba(255,255,255,0.03)' },
-            ticks: { color: '#71717a', font: { size: 10 } },
-          },
-          y: {
-            grid: { color: 'rgba(255,255,255,0.05)' },
+          x: MP_GRAFICA.ejeTiempo(),
+          y: MP_GRAFICA.ejeValor({
             ticks: {
-              color: '#71717a',
-              font: { size: 10 },
+              color: MP_GRAFICA.papel3,
+              font: { family: MP_GRAFICA.mono, size: 9.5 },
+              maxTicksLimit: 5, padding: 8,
               callback: (v) => fmtMoney(v),
             },
-          },
+          }),
         },
-      },
+      }),
     });
   }
 
@@ -5775,12 +5942,12 @@ const RentaFija = (() => {
     if (mx.length) ds.push({
       label: 'CETES (MX)',
       data: mx.map(p => ({ x: p.anios, y: p.tasa, plazo: p.plazo })),
-      borderColor: '#2dd4bf', backgroundColor: '#2dd4bf', tension: 0.3, pointRadius: 4,
+      borderColor: '#D79A3C', backgroundColor: '#D79A3C', tension: 0.3, pointRadius: 4,
     });
     if (us.length) ds.push({
       label: 'Tesoro (US)',
       data: us.map(p => ({ x: p.anios, y: p.tasa, plazo: p.plazo })),
-      borderColor: '#a78bfa', backgroundColor: '#a78bfa', tension: 0.3, pointRadius: 3,
+      borderColor: '#D79A3C', backgroundColor: '#D79A3C', tension: 0.3, pointRadius: 3,
     });
     if (_curvaChart) { _curvaChart.destroy(); _curvaChart = null; }
     if (!ds.length) {
@@ -5790,20 +5957,20 @@ const RentaFija = (() => {
     _curvaChart = new Chart(cv.getContext('2d'), {
       type: 'line',
       data: { datasets: ds },
-      options: {
-        responsive: true, maintainAspectRatio: false,
+      options: MP_GRAFICA.base({
         interaction: { intersect: false, mode: 'nearest' },
         scales: {
-          x: { type: 'linear', title: { display: true, text: 'Plazo (años)', color: '#71717a' },
-               ticks: { color: '#71717a' }, grid: { color: 'rgba(255,255,255,.05)' } },
-          y: { title: { display: true, text: 'Tasa anual', color: '#71717a' },
-               ticks: { color: '#71717a', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,.05)' } },
+          x: MP_GRAFICA.ejeValor({ type: 'linear',
+               title: { display: true, text: 'Plazo (años)', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
+          y: MP_GRAFICA.ejeValor({
+               title: { display: true, text: 'Tasa anual', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } },
+               ticks: { color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 }, maxTicksLimit: 5, padding: 8, callback: v => v + '%' } }),
         },
         plugins: {
-          legend: { labels: { color: '#a1a1aa' } },
-          tooltip: { callbacks: { label: c => `${c.dataset.label} ${c.raw.plazo}: ${c.raw.y}%` } },
+          legend: MP_GRAFICA.leyenda(true),
+          tooltip: MP_GRAFICA.tooltip({ label: c => `${c.dataset.label} ${c.raw.plazo}: ${c.raw.y}%` }),
         },
-      },
+      }),
     });
     if (fuenteEl) {
       const parts = [];
@@ -6301,11 +6468,11 @@ const Backtest = (() => {
     const datasets = [{
       label: 'Tu portafolio',
       data: d.serie_valor.map(p => p.valor),
-      borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)',
+      borderColor: '#D79A3C', backgroundColor: 'rgba(215,154,60,0.1)',
       borderWidth: 2, tension: 0.2, pointRadius: 0, fill: true,
     }];
     Object.entries(d.serie_benchmarks || {}).forEach(([label, serie], i) => {
-      const colors = ['#38bdf8', '#a78bfa'];
+      const colors = ['#D79A3C', '#D79A3C'];
       datasets.push({
         label, data: serie.map(p => p.valor),
         borderColor: colors[i % colors.length],
@@ -6316,14 +6483,10 @@ const Backtest = (() => {
     chart = new Chart(ctx, {
       type: 'line',
       data: { labels, datasets },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#a1a1aa', font: {size: 10} } } },
-        scales: {
-          x: { ticks: { color: '#52525b', font: {size: 9}, maxTicksLimit: 6 }, grid: { color: 'rgba(255,255,255,0.03)' } },
-          y: { ticks: { color: '#52525b', font: {size: 9} }, grid: { color: 'rgba(255,255,255,0.03)' } },
-        },
-      },
+      options: MP_GRAFICA.base({
+        plugins: { legend: MP_GRAFICA.leyenda(true), tooltip: MP_GRAFICA.tooltip() },
+        scales: { x: MP_GRAFICA.ejeTiempo(), y: MP_GRAFICA.ejeValor() },
+      }),
     });
   }
   return { bind };
@@ -6407,17 +6570,17 @@ const Brokers = (() => {
   }
   // Mapping ID broker → color del avatar (en lugar de emoji)
   const _BROKER_COLORS = {
-    gbm:      'linear-gradient(135deg, #16a34a, #22c55e)',
-    kuspit:   'linear-gradient(135deg, #1d4ed8, #38bdf8)',
-    hapi:     'linear-gradient(135deg, #d97706, #fbbf24)',
-    bursanet: 'linear-gradient(135deg, #be123c, #fb7185)',
-    actinver: 'linear-gradient(135deg, #c2410c, #fb923c)',
-    vector:   'linear-gradient(135deg, #7c3aed, #a78bfa)',
-    schwab:   'linear-gradient(135deg, #0d9488, #2dd4bf)',
-    ibkr:     'linear-gradient(135deg, #4338ca, #818cf8)',
+    gbm:      '#131210',
+    kuspit:   '#131210',
+    hapi:     '#131210',
+    bursanet: '#131210',
+    actinver: '#131210',
+    vector:   '#131210',
+    schwab:   '#131210',
+    ibkr:     '#131210',
   };
   function _brokerAvatar(b, size = 28) {
-    const grad = _BROKER_COLORS[b.id] || 'linear-gradient(135deg, #475569, #94a3b8)';
+    const grad = _BROKER_COLORS[b.id] || '#131210';
     const initial = (b.nombre || 'X').charAt(0).toUpperCase();
     return `<span class="inline-flex items-center justify-center rounded-md font-semibold text-white text-xs shrink-0" style="width:${size}px;height:${size}px;background:${grad};">${initial}</span>`;
   }
@@ -6617,21 +6780,19 @@ const Aportaciones = (() => {
       type: 'line',
       data: { labels, datasets: [
         { label: 'Valor nominal', data: d.serie.map(p => p.valor),
-          borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)',
-          borderWidth: 2, tension: 0.2, pointRadius: 0, fill: true },
+          ...MP_GRAFICA.serie(MP_GRAFICA.papel) },
         { label: 'Valor real (ajustado por inflación)', data: d.serie.map(p => p.valor_real),
-          borderColor: '#f59e0b', borderWidth: 1.5, tension: 0.2, pointRadius: 0, borderDash: [4,4] },
+          ...MP_GRAFICA.serie(MP_GRAFICA.sello, { borderWidth: 1.5, borderDash: [4, 4] }) },
         { label: 'Aportado', data: d.serie.map(p => p.aportado),
-          borderColor: '#71717a', borderWidth: 1.5, tension: 0, pointRadius: 0 },
+          ...MP_GRAFICA.referencia({ borderDash: [1, 3] }) },
       ]},
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#a1a1aa', font: {size: 10} } } },
+      options: MP_GRAFICA.base({
+        plugins: { legend: MP_GRAFICA.leyenda(true), tooltip: MP_GRAFICA.tooltip() },
         scales: {
-          x: { ticks: { color: '#52525b', font: {size: 9}, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.03)' }, title: { display: true, text: 'Años', color: '#52525b', font: {size: 9} } },
-          y: { ticks: { color: '#52525b', font: {size: 9}, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          x: MP_GRAFICA.ejeTiempo({ title: { display: true, text: 'Años', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
+          y: MP_GRAFICA.ejeValor({ ticks: { color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 }, maxTicksLimit: 5, padding: 8, callback: v => '$' + (v / 1000).toFixed(0) + 'k' } }),
         },
-      },
+      }),
     });
   }
   return { bind };
@@ -6645,16 +6806,16 @@ const PortfolioManager = (() => {
   const META_KEY = 'miPortafolio.portfolios.v2';
   // Paleta de colores para avatares (en lugar de emojis)
   const COLORS = [
-    { id: 'green',   gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', name: 'Verde' },
-    { id: 'blue',    gradient: 'linear-gradient(135deg, #1d4ed8, #38bdf8)', name: 'Azul' },
-    { id: 'purple',  gradient: 'linear-gradient(135deg, #7c3aed, #a78bfa)', name: 'Púrpura' },
-    { id: 'amber',   gradient: 'linear-gradient(135deg, #d97706, #fbbf24)', name: 'Ámbar' },
-    { id: 'rose',    gradient: 'linear-gradient(135deg, #be123c, #fb7185)', name: 'Rosa' },
-    { id: 'teal',    gradient: 'linear-gradient(135deg, #0d9488, #2dd4bf)', name: 'Teal' },
-    { id: 'orange',  gradient: 'linear-gradient(135deg, #c2410c, #fb923c)', name: 'Naranja' },
-    { id: 'indigo',  gradient: 'linear-gradient(135deg, #4338ca, #818cf8)', name: 'Índigo' },
-    { id: 'slate',   gradient: 'linear-gradient(135deg, #475569, #94a3b8)', name: 'Gris' },
-    { id: 'crimson', gradient: 'linear-gradient(135deg, #991b1b, #ef4444)', name: 'Carmesí' },
+    { id: 'green',   gradient: '#131210', name: 'Verde' },
+    { id: 'blue',    gradient: '#131210', name: 'Azul' },
+    { id: 'purple',  gradient: '#131210', name: 'Púrpura' },
+    { id: 'amber',   gradient: '#131210', name: 'Ámbar' },
+    { id: 'rose',    gradient: '#131210', name: 'Rosa' },
+    { id: 'teal',    gradient: '#131210', name: 'Teal' },
+    { id: 'orange',  gradient: '#131210', name: 'Naranja' },
+    { id: 'indigo',  gradient: '#131210', name: 'Índigo' },
+    { id: 'slate',   gradient: '#131210', name: 'Gris' },
+    { id: 'crimson', gradient: '#131210', name: 'Carmesí' },
   ];
   function _colorFromId(id) {
     return COLORS.find(c => c.id === id) || COLORS[0];
@@ -6662,16 +6823,16 @@ const PortfolioManager = (() => {
   // ── Avatares de animalitos (estilo Netflix) ──
   // Cada portafolio guarda un `animal`. Reemplazan al viejo color+inicial.
   const ANIMALS = [
-    { id: 'zorro', name: 'Zorro', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#ea580c"/><path d="M15 33 18 12 33 27Z" fill="#fb923c"/><path d="M49 33 46 12 31 27Z" fill="#fb923c"/><path d="M19 27 20 17 27 25Z" fill="#7c2d12"/><path d="M45 27 44 17 37 25Z" fill="#7c2d12"/><path d="M32 22c10 0 15 8 15 16 0 9-7 15-15 15s-15-6-15-15c0-8 5-16 15-16Z" fill="#fb923c"/><path d="M32 37c6 0 11 4 11 10 0 4-5 8-11 8s-11-4-11-8c0-6 5-10 11-10Z" fill="#fff7ed"/><circle cx="25" cy="36" r="2.8" fill="#1c1917"/><circle cx="39" cy="36" r="2.8" fill="#1c1917"/><path d="M32 45l3.5 3-3.5 2.5-3.5-2.5Z" fill="#1c1917"/></svg>` },
-    { id: 'panda', name: 'Panda', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#64748b"/><circle cx="20" cy="20" r="8" fill="#1c1917"/><circle cx="44" cy="20" r="8" fill="#1c1917"/><circle cx="32" cy="36" r="18" fill="#f8fafc"/><ellipse cx="24" cy="33" rx="5" ry="6.5" fill="#1c1917" transform="rotate(-18 24 33)"/><ellipse cx="40" cy="33" rx="5" ry="6.5" fill="#1c1917" transform="rotate(18 40 33)"/><circle cx="24" cy="34" r="2" fill="#f8fafc"/><circle cx="40" cy="34" r="2" fill="#f8fafc"/><ellipse cx="32" cy="42" rx="3" ry="2.2" fill="#1c1917"/></svg>` },
-    { id: 'leon', name: 'León', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#b45309"/><g fill="#d97706"><circle cx="32" cy="13" r="4.5"/><circle cx="13" cy="22" r="4.5"/><circle cx="51" cy="22" r="4.5"/><circle cx="13" cy="46" r="4.5"/><circle cx="51" cy="46" r="4.5"/><circle cx="32" cy="55" r="4.5"/></g><circle cx="32" cy="34" r="19" fill="#f59e0b"/><circle cx="32" cy="34" r="13" fill="#fcd34d"/><circle cx="26" cy="32" r="2.4" fill="#1c1917"/><circle cx="38" cy="32" r="2.4" fill="#1c1917"/><path d="M32 36l3 3h-6Z" fill="#7c2d12"/><path d="M32 39c0 3 3 3 4 1M32 39c0 3-3 3-4 1" stroke="#7c2d12" stroke-width="1.3" fill="none"/></svg>` },
-    { id: 'tigre', name: 'Tigre', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#c2410c"/><path d="M18 22 16 12 26 20Z" fill="#fb923c"/><path d="M46 22 48 12 38 20Z" fill="#fb923c"/><circle cx="32" cy="34" r="18" fill="#fb923c"/><path d="M32 16v8M22 18l2 7M42 18l-2 7" stroke="#1c1917" stroke-width="2.2" stroke-linecap="round"/><path d="M15 32l6 2M49 32l-6 2" stroke="#1c1917" stroke-width="2.2" stroke-linecap="round"/><path d="M32 38c6 0 9 3 9 7 0 4-4 6-9 6s-9-2-9-6c0-4 3-7 9-7Z" fill="#fff7ed"/><circle cx="26" cy="33" r="2.6" fill="#1c1917"/><circle cx="38" cy="33" r="2.6" fill="#1c1917"/><path d="M32 43l3 2.5-3 2-3-2Z" fill="#1c1917"/></svg>` },
-    { id: 'koala', name: 'Koala', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#475569"/><circle cx="15" cy="24" r="9" fill="#94a3b8"/><circle cx="49" cy="24" r="9" fill="#94a3b8"/><circle cx="15" cy="24" r="4.5" fill="#f9a8d4"/><circle cx="49" cy="24" r="4.5" fill="#f9a8d4"/><circle cx="32" cy="36" r="16" fill="#cbd5e1"/><circle cx="25" cy="34" r="2.6" fill="#1c1917"/><circle cx="39" cy="34" r="2.6" fill="#1c1917"/><path d="M32 38c4 0 7 3 7 6 0 3-3 5-7 5s-7-2-7-5c0-3 3-6 7-6Z" fill="#334155"/></svg>` },
-    { id: 'buho', name: 'Búho', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#7c3aed"/><path d="M16 20 20 10 26 20Z" fill="#a78bfa"/><path d="M48 20 44 10 38 20Z" fill="#a78bfa"/><path d="M32 16c12 0 18 9 18 19 0 11-8 18-18 18s-18-7-18-18c0-10 6-19 18-19Z" fill="#a78bfa"/><circle cx="24" cy="32" r="8" fill="#f8fafc"/><circle cx="40" cy="32" r="8" fill="#f8fafc"/><circle cx="24" cy="32" r="3.6" fill="#1c1917"/><circle cx="40" cy="32" r="3.6" fill="#1c1917"/><path d="M32 38l4 5h-8Z" fill="#f59e0b"/></svg>` },
-    { id: 'pinguino', name: 'Pingüino', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#0ea5e9"/><ellipse cx="32" cy="36" rx="17" ry="20" fill="#1f2937"/><ellipse cx="32" cy="40" rx="11" ry="15" fill="#f8fafc"/><circle cx="26" cy="27" r="3.6" fill="#f8fafc"/><circle cx="38" cy="27" r="3.6" fill="#f8fafc"/><circle cx="26" cy="27" r="1.8" fill="#1f2937"/><circle cx="38" cy="27" r="1.8" fill="#1f2937"/><path d="M32 31l5 3-5 3-5-3Z" fill="#f59e0b"/></svg>` },
-    { id: 'conejo', name: 'Conejo', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#ec4899"/><rect x="22" y="6" width="8" height="26" rx="4" fill="#f8fafc"/><rect x="34" y="6" width="8" height="26" rx="4" fill="#f8fafc"/><rect x="24" y="9" width="4" height="20" rx="2" fill="#f9a8d4"/><rect x="36" y="9" width="4" height="20" rx="2" fill="#f9a8d4"/><circle cx="32" cy="40" r="15" fill="#f8fafc"/><circle cx="26" cy="38" r="2.4" fill="#1c1917"/><circle cx="38" cy="38" r="2.4" fill="#1c1917"/><path d="M32 43l2.5 2-2.5 2-2.5-2Z" fill="#f472b6"/></svg>` },
-    { id: 'rana', name: 'Rana', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#16a34a"/><path d="M32 24c12 0 18 7 18 15 0 9-8 14-18 14s-18-5-18-14c0-8 6-15 18-15Z" fill="#4ade80"/><circle cx="22" cy="20" r="9" fill="#4ade80"/><circle cx="42" cy="20" r="9" fill="#4ade80"/><circle cx="22" cy="19" r="4.2" fill="#f8fafc"/><circle cx="42" cy="19" r="4.2" fill="#f8fafc"/><circle cx="22" cy="20" r="2" fill="#1c1917"/><circle cx="42" cy="20" r="2" fill="#1c1917"/><path d="M22 41c4 5 16 5 20 0" stroke="#15803d" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>` },
-    { id: 'gato', name: 'Gato', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#6366f1"/><path d="M16 18 18 38 32 28Z" fill="#c7d2fe"/><path d="M48 18 46 38 32 28Z" fill="#c7d2fe"/><path d="M20 24 21 34 28 28Z" fill="#a5b4fc"/><path d="M44 24 43 34 36 28Z" fill="#a5b4fc"/><circle cx="32" cy="38" r="16" fill="#c7d2fe"/><path d="M25 35c1.5-2 4-2 5 0M34 35c1.5-2 4-2 5 0" stroke="#312e81" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M32 41l2.5 2-2.5 2-2.5-2Z" fill="#f472b6"/><path d="M28 42h-8M36 42h8" stroke="#a5b4fc" stroke-width="1.2" stroke-linecap="round"/></svg>` },
+    { id: 'zorro', name: 'Zorro', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><path d="M15 33 18 12 33 27Z" fill="#D79A3C"/><path d="M49 33 46 12 31 27Z" fill="#D79A3C"/><path d="M19 27 20 17 27 25Z" fill="#D79A3C"/><path d="M45 27 44 17 37 25Z" fill="#D79A3C"/><path d="M32 22c10 0 15 8 15 16 0 9-7 15-15 15s-15-6-15-15c0-8 5-16 15-16Z" fill="#D79A3C"/><path d="M32 37c6 0 11 4 11 10 0 4-5 8-11 8s-11-4-11-8c0-6 5-10 11-10Z" fill="#F2EEE4"/><circle cx="25" cy="36" r="2.8" fill="#131210"/><circle cx="39" cy="36" r="2.8" fill="#131210"/><path d="M32 45l3.5 3-3.5 2.5-3.5-2.5Z" fill="#131210"/></svg>` },
+    { id: 'panda', name: 'Panda', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#847D70"/><circle cx="20" cy="20" r="8" fill="#131210"/><circle cx="44" cy="20" r="8" fill="#131210"/><circle cx="32" cy="36" r="18" fill="#F2EEE4"/><ellipse cx="24" cy="33" rx="5" ry="6.5" fill="#131210" transform="rotate(-18 24 33)"/><ellipse cx="40" cy="33" rx="5" ry="6.5" fill="#131210" transform="rotate(18 40 33)"/><circle cx="24" cy="34" r="2" fill="#F2EEE4"/><circle cx="40" cy="34" r="2" fill="#F2EEE4"/><ellipse cx="32" cy="42" rx="3" ry="2.2" fill="#131210"/></svg>` },
+    { id: 'leon', name: 'León', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><g fill="#D79A3C"><circle cx="32" cy="13" r="4.5"/><circle cx="13" cy="22" r="4.5"/><circle cx="51" cy="22" r="4.5"/><circle cx="13" cy="46" r="4.5"/><circle cx="51" cy="46" r="4.5"/><circle cx="32" cy="55" r="4.5"/></g><circle cx="32" cy="34" r="19" fill="#D79A3C"/><circle cx="32" cy="34" r="13" fill="#D79A3C"/><circle cx="26" cy="32" r="2.4" fill="#131210"/><circle cx="38" cy="32" r="2.4" fill="#131210"/><path d="M32 36l3 3h-6Z" fill="#D79A3C"/><path d="M32 39c0 3 3 3 4 1M32 39c0 3-3 3-4 1" stroke="#D79A3C" stroke-width="1.3" fill="none"/></svg>` },
+    { id: 'tigre', name: 'Tigre', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><path d="M18 22 16 12 26 20Z" fill="#D79A3C"/><path d="M46 22 48 12 38 20Z" fill="#D79A3C"/><circle cx="32" cy="34" r="18" fill="#D79A3C"/><path d="M32 16v8M22 18l2 7M42 18l-2 7" stroke="#131210" stroke-width="2.2" stroke-linecap="round"/><path d="M15 32l6 2M49 32l-6 2" stroke="#131210" stroke-width="2.2" stroke-linecap="round"/><path d="M32 38c6 0 9 3 9 7 0 4-4 6-9 6s-9-2-9-6c0-4 3-7 9-7Z" fill="#F2EEE4"/><circle cx="26" cy="33" r="2.6" fill="#131210"/><circle cx="38" cy="33" r="2.6" fill="#131210"/><path d="M32 43l3 2.5-3 2-3-2Z" fill="#131210"/></svg>` },
+    { id: 'koala', name: 'Koala', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#4A443A"/><circle cx="15" cy="24" r="9" fill="#9A9284"/><circle cx="49" cy="24" r="9" fill="#9A9284"/><circle cx="15" cy="24" r="4.5" fill="#D79A3C"/><circle cx="49" cy="24" r="4.5" fill="#D79A3C"/><circle cx="32" cy="36" r="16" fill="#CFC8B8"/><circle cx="25" cy="34" r="2.6" fill="#131210"/><circle cx="39" cy="34" r="2.6" fill="#131210"/><path d="M32 38c4 0 7 3 7 6 0 3-3 5-7 5s-7-2-7-5c0-3 3-6 7-6Z" fill="#4A443A"/></svg>` },
+    { id: 'buho', name: 'Búho', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><path d="M16 20 20 10 26 20Z" fill="#D79A3C"/><path d="M48 20 44 10 38 20Z" fill="#D79A3C"/><path d="M32 16c12 0 18 9 18 19 0 11-8 18-18 18s-18-7-18-18c0-10 6-19 18-19Z" fill="#D79A3C"/><circle cx="24" cy="32" r="8" fill="#F2EEE4"/><circle cx="40" cy="32" r="8" fill="#F2EEE4"/><circle cx="24" cy="32" r="3.6" fill="#131210"/><circle cx="40" cy="32" r="3.6" fill="#131210"/><path d="M32 38l4 5h-8Z" fill="#D79A3C"/></svg>` },
+    { id: 'pinguino', name: 'Pingüino', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><ellipse cx="32" cy="36" rx="17" ry="20" fill="#131210"/><ellipse cx="32" cy="40" rx="11" ry="15" fill="#F2EEE4"/><circle cx="26" cy="27" r="3.6" fill="#F2EEE4"/><circle cx="38" cy="27" r="3.6" fill="#F2EEE4"/><circle cx="26" cy="27" r="1.8" fill="#131210"/><circle cx="38" cy="27" r="1.8" fill="#131210"/><path d="M32 31l5 3-5 3-5-3Z" fill="#D79A3C"/></svg>` },
+    { id: 'conejo', name: 'Conejo', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><rect x="22" y="6" width="8" height="26" rx="4" fill="#F2EEE4"/><rect x="34" y="6" width="8" height="26" rx="4" fill="#F2EEE4"/><rect x="24" y="9" width="4" height="20" rx="2" fill="#D79A3C"/><rect x="36" y="9" width="4" height="20" rx="2" fill="#D79A3C"/><circle cx="32" cy="40" r="15" fill="#F2EEE4"/><circle cx="26" cy="38" r="2.4" fill="#131210"/><circle cx="38" cy="38" r="2.4" fill="#131210"/><path d="M32 43l2.5 2-2.5 2-2.5-2Z" fill="#D79A3C"/></svg>` },
+    { id: 'rana', name: 'Rana', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><path d="M32 24c12 0 18 7 18 15 0 9-8 14-18 14s-18-5-18-14c0-8 6-15 18-15Z" fill="#D79A3C"/><circle cx="22" cy="20" r="9" fill="#D79A3C"/><circle cx="42" cy="20" r="9" fill="#D79A3C"/><circle cx="22" cy="19" r="4.2" fill="#F2EEE4"/><circle cx="42" cy="19" r="4.2" fill="#F2EEE4"/><circle cx="22" cy="20" r="2" fill="#131210"/><circle cx="42" cy="20" r="2" fill="#131210"/><path d="M22 41c4 5 16 5 20 0" stroke="#6FAE7E" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>` },
+    { id: 'gato', name: 'Gato', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><path d="M16 18 18 38 32 28Z" fill="#D79A3C"/><path d="M48 18 46 38 32 28Z" fill="#D79A3C"/><path d="M20 24 21 34 28 28Z" fill="#D79A3C"/><path d="M44 24 43 34 36 28Z" fill="#D79A3C"/><circle cx="32" cy="38" r="16" fill="#D79A3C"/><path d="M25 35c1.5-2 4-2 5 0M34 35c1.5-2 4-2 5 0" stroke="#131210" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M32 41l2.5 2-2.5 2-2.5-2Z" fill="#D79A3C"/><path d="M28 42h-8M36 42h8" stroke="#D79A3C" stroke-width="1.2" stroke-linecap="round"/></svg>` },
   ];
   function _animalFromId(id) { return ANIMALS.find(a => a.id === id) || ANIMALS[0]; }
   function _animalParaPortafolio(p) {
@@ -6893,7 +7054,7 @@ const CetesBench = (() => {
     $('cetes-spread').className = `text-2xl font-bold tabular mt-0.5 ${cls}`;
     $('cetes-spread').textContent = (spread >= 0 ? '+' : '') + spread.toFixed(2) + ' pp';
     let veredicto;
-    if (spread >= 5) veredicto = '🚀 Tu portafolio aplasta a CETES — el riesgo extra está pagando.';
+    if (spread >= 5) veredicto = '▲ Tu portafolio aplasta a CETES — el riesgo extra está pagando.';
     else if (spread >= 2) veredicto = '✓ Sí compensa el riesgo: ganas más que la tasa libre.';
     else if (spread >= 0) veredicto = '≈ Apenas igualas a CETES — revisa si vale la volatilidad.';
     else if (spread >= -3) veredicto = '⚠ CETES te gana sin riesgo. Considera rebalancear.';
@@ -6946,8 +7107,8 @@ const TuMes = (() => {
         100% { opacity: 1; transform: scale(1) rotateY(0) rotateZ(0); }
       }
       @keyframes mesGlowPulse {
-        0%, 100% { box-shadow: 0 0 60px 0 rgba(192,132,252,.5), 0 0 120px 20px rgba(168,85,247,.25); }
-        50% { box-shadow: 0 0 80px 10px rgba(192,132,252,.7), 0 0 160px 30px rgba(168,85,247,.4); }
+        0%, 100% { box-shadow: 0 0 60px 0 rgba(192,132,252,.5), 0 0 120px 20px rgba(215,154,60,.25); }
+        50% { box-shadow: 0 0 80px 10px rgba(192,132,252,.7), 0 0 160px 30px rgba(215,154,60,.4); }
       }
       @keyframes mesFloatY { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
       @keyframes mesParticle {
@@ -6961,11 +7122,11 @@ const TuMes = (() => {
 
       .mes-slide { animation: mesSlideIn .65s cubic-bezier(.18,.95,.32,1) both; will-change: transform, opacity, filter; }
       .mes-blob { position: absolute; border-radius: 50%; filter: blur(40px); animation: mesBlob 12s infinite ease-in-out; pointer-events: none; }
-      .mes-bignum { font-family: 'Outfit', system-ui, sans-serif; font-weight: 800; letter-spacing: -0.04em; line-height: .88; }
-      .mes-eyebrow { font-family: 'Outfit', system-ui, sans-serif; font-weight: 600; letter-spacing: .26em; text-transform: uppercase; font-size: 11px; }
-      .mes-confetti-piece { position: absolute; width: 8px; height: 14px; animation: mesConfetti 3s ease-out forwards; border-radius: 1px; }
+      .mes-bignum { font-family: 'Source Serif 4', Georgia, serif; font-weight: 800; letter-spacing: -0.04em; line-height: .88; }
+      .mes-eyebrow { font-family: 'Source Serif 4', Georgia, serif; font-weight: 600; letter-spacing: .26em; text-transform: uppercase; font-size: 11px; }
+      .mes-confetti-piece { position: absolute; width: 8px; height: 14px; animation: mesConfetti 3s ease-out forwards; border-radius: 2px; }
       .mes-tap-zone { position: absolute; top: 0; bottom: 0; width: 35%; cursor: pointer; z-index: 10; }
-      .mes-modal-bg { background: radial-gradient(ellipse at top, rgba(34,197,94,.15), rgba(0,0,0,.96) 60%), rgba(0,0,0,.96); }
+      .mes-modal-bg { background: radial-gradient(ellipse at top, rgba(215,154,60,.15), rgba(0,0,0,.96) 60%), rgba(0,0,0,.96); }
 
       /* Reveals secuenciales por slide */
       .mes-reveal-1 { animation: mesFadeUp .55s cubic-bezier(.18,.95,.32,1) .15s both; }
@@ -6977,7 +7138,7 @@ const TuMes = (() => {
       /* Marquee de texto en background */
       .mes-marquee {
         position: absolute; left: 0; right: 0; top: 50%;
-        font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 130px;
+        font-family: 'Source Serif 4', Georgia, serif; font-weight: 900; font-size: 130px;
         letter-spacing: -.04em; text-transform: uppercase;
         color: rgba(255,255,255,.07); white-space: nowrap;
         transform: translateY(-50%) rotate(-12deg); pointer-events: none;
@@ -7010,74 +7171,68 @@ const TuMes = (() => {
       }
       .mes-card {
         position: relative; width: 290px; aspect-ratio: 5/7;
-        border-radius: 24px;
+        border-radius: 2px;
         animation: mesGlowPulse 3.5s ease-in-out infinite, mesFloatY 4s ease-in-out infinite;
-        background: #0a0a0b;
+        background: #0B0B0A;
         overflow: hidden;
       }
       .mes-card::before {
         content: ''; position: absolute; inset: -3px;
-        border-radius: 26px;
-        background: linear-gradient(120deg,
-          #f0abfc 0%, #c084fc 12%, #818cf8 24%, #38bdf8 36%,
-          #34d399 48%, #fde047 60%, #fb923c 72%, #f87171 84%, #f0abfc 96%);
+        border-radius: 2px;
+        background: #131210;
         background-size: 300% 100%;
         animation: mesHolo 6s linear infinite;
         z-index: -1;
       }
       .mes-card-inner {
         position: absolute; inset: 3px;
-        border-radius: 21px;
+        border-radius: 2px;
         background:
-          radial-gradient(ellipse at top, rgba(168,85,247,.3), transparent 60%),
-          linear-gradient(160deg, #1a0840 0%, #0a0114 60%, #2e1065 100%);
+          radial-gradient(ellipse at top, rgba(215,154,60,.3), transparent 60%),
+          #131210;
         display: flex; flex-direction: column; padding: 18px 16px;
         overflow: hidden;
       }
       .mes-card-shine {
         position: absolute; inset: 3px;
-        border-radius: 21px;
-        background: linear-gradient(115deg,
-          transparent 35%,
-          rgba(255,255,255,.18) 48%,
-          rgba(255,255,255,.04) 52%,
-          transparent 65%);
+        border-radius: 2px;
+        background: #131210;
         background-size: 200% 100%;
         animation: mesShimmer 4s linear infinite;
         pointer-events: none;
       }
       .mes-card-rarity {
-        font-family: 'Outfit', sans-serif; font-weight: 700;
+        font-family: 'Source Serif 4', Georgia, serif; font-weight: 700;
         font-size: 9px; letter-spacing: .25em; text-transform: uppercase;
-        color: #fde047;
+        color: #D79A3C;
         text-shadow: 0 0 8px rgba(253,224,71,.4);
       }
       .mes-card-illustration {
         flex: 1;
         display: flex; align-items: center; justify-content: center;
         margin: 12px 0;
-        background: radial-gradient(circle at center, rgba(168,85,247,.25), transparent 70%);
-        border-radius: 14px;
+        background: radial-gradient(circle at center, rgba(215,154,60,.25), transparent 70%);
+        border-radius: 2px;
         position: relative;
       }
       .mes-card-illustration::before {
         content: ''; position: absolute; inset: 0;
-        background: repeating-conic-gradient(from 0deg, rgba(168,85,247,.08) 0 5deg, transparent 5deg 15deg);
+        background: repeating-conic-gradient(from 0deg, rgba(215,154,60,.08) 0 5deg, transparent 5deg 15deg);
         animation: mesRayRotate 30s linear infinite;
         opacity: .6;
-        border-radius: 14px;
+        border-radius: 2px;
       }
       .mes-card-illustration svg { position: relative; z-index: 1; filter: drop-shadow(0 4px 16px rgba(192,132,252,.6)); }
       .mes-card-title {
-        font-family: 'Outfit', sans-serif; font-weight: 800;
+        font-family: 'Source Serif 4', Georgia, serif; font-weight: 800;
         font-size: 26px; letter-spacing: -.02em;
         color: white; line-height: 1;
         text-align: center;
-        background: linear-gradient(135deg, #fff 0%, #fde047 50%, #f0abfc 100%);
+        background: #131210;
         -webkit-background-clip: text; background-clip: text; color: transparent;
       }
       .mes-card-desc {
-        font-family: 'Outfit', sans-serif; font-weight: 400;
+        font-family: 'Source Serif 4', Georgia, serif; font-weight: 400;
         font-size: 11px; line-height: 1.4;
         color: rgba(255,255,255,.75);
         text-align: center; margin-top: 8px;
@@ -7091,16 +7246,16 @@ const TuMes = (() => {
       .mes-card-stat {
         background: rgba(255,255,255,.06);
         border: 1px solid rgba(255,255,255,.1);
-        border-radius: 8px; padding: 6px 8px;
+        border-radius: 2px; padding: 6px 8px;
         text-align: center;
       }
       .mes-card-stat-label {
-        font-family: 'Outfit', sans-serif; font-weight: 600;
+        font-family: 'Source Serif 4', Georgia, serif; font-weight: 600;
         font-size: 8px; letter-spacing: .15em; text-transform: uppercase;
         color: rgba(255,255,255,.5);
       }
       .mes-card-stat-value {
-        font-family: 'Outfit', sans-serif; font-weight: 700;
+        font-family: 'Source Serif 4', Georgia, serif; font-weight: 700;
         font-size: 16px; color: white; line-height: 1;
         margin-top: 2px;
       }
@@ -7109,7 +7264,7 @@ const TuMes = (() => {
         margin-top: 6px;
         animation: mesPopIn .6s cubic-bezier(.18,.95,.32,1) 1.5s both;
       }
-      .mes-card-star { color: #fde047; font-size: 11px; filter: drop-shadow(0 0 4px rgba(253,224,71,.6)); }
+      .mes-card-star { color: #D79A3C; font-size: 11px; filter: drop-shadow(0 0 4px rgba(253,224,71,.6)); }
 
       /* Partículas decorativas */
       .mes-particle {
@@ -7142,7 +7297,7 @@ const TuMes = (() => {
       /* Trending arrow grande */
       .mes-trend-arrow {
         animation: mesPopIn .8s cubic-bezier(.18,.95,.32,1) .3s both;
-        filter: drop-shadow(0 6px 20px rgba(251,146,60,.5));
+        filter: drop-shadow(0 6px 20px rgba(215,154,60,.5));
       }
     `;
     document.head.appendChild(style);
@@ -7250,7 +7405,7 @@ const TuMes = (() => {
       return ticker;
     })();
 
-    const portData = (typeof PortfolioManager !== 'undefined') ? PortfolioManager.activoData() : { nombre: 'Mi portafolio', emoji: '📊' };
+    const portData = (typeof PortfolioManager !== 'undefined') ? PortfolioManager.activoData() : { nombre: 'Mi portafolio', emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 19V11"/><path d="M10 19V6"/><path d="M16 19V14"/><path d="M22 19H2"/></svg></span>' };
 
     return {
       nombreMes, yyyymmAnt,
@@ -7272,104 +7427,104 @@ const TuMes = (() => {
   const _SVG = {
     cazador: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="bullseye" cx=".5" cy=".5"><stop offset="0%" stop-color="#fff"/><stop offset="60%" stop-color="#fde047"/><stop offset="100%" stop-color="#f97316"/></radialGradient>
-        <linearGradient id="arrow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#fde047"/></linearGradient>
+        <radialGradient id="bullseye" cx=".5" cy=".5"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="60%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></radialGradient>
+        <linearGradient id="arrow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
       </defs>
-      <circle cx="80" cy="80" r="62" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="2"/>
-      <circle cx="80" cy="80" r="48" fill="none" stroke="#f0abfc" stroke-width="3"/>
-      <circle cx="80" cy="80" r="34" fill="none" stroke="#c084fc" stroke-width="3"/>
+      <circle cx="80" cy="80" r="62" fill="none" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="2"/>
+      <circle cx="80" cy="80" r="48" fill="none" stroke="#D79A3C" stroke-width="3"/>
+      <circle cx="80" cy="80" r="34" fill="none" stroke="#D79A3C" stroke-width="3"/>
       <circle cx="80" cy="80" r="20" fill="url(#bullseye)"/>
-      <circle cx="80" cy="80" r="6" fill="#fff"/>
+      <circle cx="80" cy="80" r="6" fill="#F2EEE4"/>
       <line x1="20" y1="20" x2="78" y2="78" stroke="url(#arrow)" stroke-width="3" stroke-linecap="round"/>
-      <polygon points="80,80 70,68 78,72 76,64" fill="#fde047"/>
-      <polygon points="22,18 14,14 18,22" fill="#fff"/>
+      <polygon points="80,80 70,68 78,72 76,64" fill="#D79A3C"/>
+      <polygon points="22,18 14,14 18,22" fill="#F2EEE4"/>
     </svg>`,
     sabio: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="zenG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+        <linearGradient id="zenG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
       </defs>
       <circle cx="80" cy="80" r="60" fill="none" stroke="url(#zenG)" stroke-width="3"/>
-      <circle cx="80" cy="80" r="48" fill="none" stroke="#fff" stroke-opacity=".4" stroke-width="1.5" stroke-dasharray="4 6"/>
-      <path d="M 30 80 Q 30 50 80 50 Q 130 50 130 80" fill="#fff"/>
-      <path d="M 30 80 Q 30 110 80 110 Q 130 110 130 80" fill="#1a0840"/>
-      <circle cx="80" cy="55" r="6" fill="#1a0840"/>
-      <circle cx="80" cy="105" r="6" fill="#fff"/>
-      <circle cx="80" cy="80" r="2" fill="#fff" opacity=".8"><animate attributeName="r" values="2;4;2" dur="3s" repeatCount="indefinite"/></circle>
+      <circle cx="80" cy="80" r="48" fill="none" stroke="#F2EEE4" stroke-opacity=".4" stroke-width="1.5" stroke-dasharray="4 6"/>
+      <path d="M 30 80 Q 30 50 80 50 Q 130 50 130 80" fill="#F2EEE4"/>
+      <path d="M 30 80 Q 30 110 80 110 Q 130 110 130 80" fill="#0B0B0A"/>
+      <circle cx="80" cy="55" r="6" fill="#0B0B0A"/>
+      <circle cx="80" cy="105" r="6" fill="#F2EEE4"/>
+      <circle cx="80" cy="80" r="2" fill="#F2EEE4" opacity=".8"><animate attributeName="r" values="2;4;2" dur="3s" repeatCount="indefinite"/></circle>
     </svg>`,
     trader: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="boltG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fde047"/><stop offset="100%" stop-color="#fb923c"/></linearGradient>
-        <radialGradient id="coreG" cx=".5" cy=".5"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#fde047"/></radialGradient>
+        <linearGradient id="boltG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
+        <radialGradient id="coreG" cx=".5" cy=".5"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="100%" stop-color="#D79A3C"/></radialGradient>
       </defs>
       <circle cx="80" cy="80" r="50" fill="url(#coreG)" opacity=".15"/>
-      <polygon points="65,20 95,75 75,75 90,140 50,80 70,80" fill="url(#boltG)" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
-      <polygon points="115,40 130,75 122,75 130,110 110,82 118,82" fill="#fb923c" opacity=".7"/>
-      <polygon points="35,55 45,80 38,80 44,110 28,85 34,85" fill="#fb923c" opacity=".7"/>
+      <polygon points="65,20 95,75 75,75 90,140 50,80 70,80" fill="url(#boltG)" stroke="#F2EEE4" stroke-width="2" stroke-linejoin="round"/>
+      <polygon points="115,40 130,75 122,75 130,110 110,82 118,82" fill="#D79A3C" opacity=".7"/>
+      <polygon points="35,55 45,80 38,80 44,110 28,85 34,85" fill="#D79A3C" opacity=".7"/>
     </svg>`,
     rentista: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="coinG" cx=".4" cy=".3"><stop offset="0%" stop-color="#fef3c7"/><stop offset="50%" stop-color="#fde047"/><stop offset="100%" stop-color="#a16207"/></radialGradient>
+        <radialGradient id="coinG" cx=".4" cy=".3"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="50%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></radialGradient>
       </defs>
-      <ellipse cx="80" cy="125" rx="40" ry="9" fill="url(#coinG)" stroke="#854d0e" stroke-width="2"/>
-      <ellipse cx="80" cy="120" rx="40" ry="9" fill="url(#coinG)" stroke="#854d0e" stroke-width="2"/>
-      <ellipse cx="80" cy="105" rx="42" ry="10" fill="url(#coinG)" stroke="#854d0e" stroke-width="2"/>
-      <ellipse cx="80" cy="100" rx="42" ry="10" fill="url(#coinG)" stroke="#854d0e" stroke-width="2"/>
-      <ellipse cx="80" cy="83" rx="44" ry="11" fill="url(#coinG)" stroke="#854d0e" stroke-width="2"/>
-      <ellipse cx="80" cy="78" rx="44" ry="11" fill="url(#coinG)" stroke="#854d0e" stroke-width="2"/>
-      <text x="80" y="84" text-anchor="middle" font-family="Outfit" font-weight="800" font-size="18" fill="#854d0e">$</text>
-      <ellipse cx="80" cy="58" rx="46" ry="12" fill="url(#coinG)" stroke="#854d0e" stroke-width="2"/>
-      <ellipse cx="80" cy="52" rx="46" ry="12" fill="url(#coinG)" stroke="#854d0e" stroke-width="2"/>
-      <text x="80" y="58" text-anchor="middle" font-family="Outfit" font-weight="800" font-size="20" fill="#854d0e">$</text>
-      <circle cx="50" cy="35" r="3" fill="#fde047"><animate attributeName="cy" values="35;25;35" dur="2.5s" repeatCount="indefinite"/></circle>
-      <circle cx="115" cy="40" r="2" fill="#fde047"><animate attributeName="cy" values="40;30;40" dur="2s" repeatCount="indefinite" begin="0.3s"/></circle>
+      <ellipse cx="80" cy="125" rx="40" ry="9" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
+      <ellipse cx="80" cy="120" rx="40" ry="9" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
+      <ellipse cx="80" cy="105" rx="42" ry="10" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
+      <ellipse cx="80" cy="100" rx="42" ry="10" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
+      <ellipse cx="80" cy="83" rx="44" ry="11" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
+      <ellipse cx="80" cy="78" rx="44" ry="11" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
+      <text x="80" y="84" text-anchor="middle" font-family="Source Serif 4" font-weight="800" font-size="18" fill="#D79A3C">$</text>
+      <ellipse cx="80" cy="58" rx="46" ry="12" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
+      <ellipse cx="80" cy="52" rx="46" ry="12" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
+      <text x="80" y="58" text-anchor="middle" font-family="Source Serif 4" font-weight="800" font-size="20" fill="#D79A3C">$</text>
+      <circle cx="50" cy="35" r="3" fill="#D79A3C"><animate attributeName="cy" values="35;25;35" dur="2.5s" repeatCount="indefinite"/></circle>
+      <circle cx="115" cy="40" r="2" fill="#D79A3C"><animate attributeName="cy" values="40;30;40" dur="2s" repeatCount="indefinite" begin="0.3s"/></circle>
     </svg>`,
     diversificador: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="planetG" cx=".4" cy=".4"><stop offset="0%" stop-color="#5eead4"/><stop offset="100%" stop-color="#0d9488"/></radialGradient>
+        <radialGradient id="planetG" cx=".4" cy=".4"><stop offset="0%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></radialGradient>
       </defs>
-      <line x1="35" y1="35" x2="80" y2="55" stroke="#fff" stroke-opacity=".3" stroke-width="1"/>
-      <line x1="125" y1="40" x2="80" y2="55" stroke="#fff" stroke-opacity=".3" stroke-width="1"/>
-      <line x1="80" y1="55" x2="50" y2="105" stroke="#fff" stroke-opacity=".3" stroke-width="1"/>
-      <line x1="80" y1="55" x2="120" y2="100" stroke="#fff" stroke-opacity=".3" stroke-width="1"/>
-      <line x1="50" y1="105" x2="80" y2="130" stroke="#fff" stroke-opacity=".3" stroke-width="1"/>
-      <line x1="120" y1="100" x2="80" y2="130" stroke="#fff" stroke-opacity=".3" stroke-width="1"/>
-      <circle cx="80" cy="80" r="50" fill="none" stroke="#fff" stroke-opacity=".15" stroke-dasharray="2 4"/>
-      <circle cx="80" cy="55" r="22" fill="url(#planetG)" stroke="#fff" stroke-width="2"/>
-      <ellipse cx="80" cy="55" rx="32" ry="6" fill="none" stroke="#fde047" stroke-width="1.5" opacity=".7" transform="rotate(-15 80 55)"/>
-      <circle cx="35" cy="35" r="4" fill="#fde047"/>
-      <circle cx="125" cy="40" r="3" fill="#f0abfc"/>
-      <circle cx="50" cy="105" r="3" fill="#38bdf8"/>
-      <circle cx="120" cy="100" r="4" fill="#fb923c"/>
-      <circle cx="80" cy="130" r="3" fill="#34d399"/>
+      <line x1="35" y1="35" x2="80" y2="55" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
+      <line x1="125" y1="40" x2="80" y2="55" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
+      <line x1="80" y1="55" x2="50" y2="105" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
+      <line x1="80" y1="55" x2="120" y2="100" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
+      <line x1="50" y1="105" x2="80" y2="130" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
+      <line x1="120" y1="100" x2="80" y2="130" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
+      <circle cx="80" cy="80" r="50" fill="none" stroke="#F2EEE4" stroke-opacity=".15" stroke-dasharray="2 4"/>
+      <circle cx="80" cy="55" r="22" fill="url(#planetG)" stroke="#F2EEE4" stroke-width="2"/>
+      <ellipse cx="80" cy="55" rx="32" ry="6" fill="none" stroke="#D79A3C" stroke-width="1.5" opacity=".7" transform="rotate(-15 80 55)"/>
+      <circle cx="35" cy="35" r="4" fill="#D79A3C"/>
+      <circle cx="125" cy="40" r="3" fill="#D79A3C"/>
+      <circle cx="50" cy="105" r="3" fill="#D79A3C"/>
+      <circle cx="120" cy="100" r="4" fill="#D79A3C"/>
+      <circle cx="80" cy="130" r="3" fill="#D79A3C"/>
     </svg>`,
     convencido: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="diamG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="50%" stop-color="#a5f3fc"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient>
+        <linearGradient id="diamG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="50%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
       </defs>
-      <polygon points="80,20 130,55 110,140 50,140 30,55" fill="url(#diamG)" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>
-      <line x1="30" y1="55" x2="130" y2="55" stroke="#fff" stroke-width="2"/>
-      <line x1="80" y1="20" x2="80" y2="140" stroke="#fff" stroke-opacity=".5" stroke-width="1"/>
-      <line x1="60" y1="55" x2="80" y2="140" stroke="#fff" stroke-opacity=".5" stroke-width="1"/>
-      <line x1="100" y1="55" x2="80" y2="140" stroke="#fff" stroke-opacity=".5" stroke-width="1"/>
-      <polygon points="80,20 100,55 60,55" fill="#fff" opacity=".5"/>
-      <circle cx="50" cy="40" r="2" fill="#fff" opacity=".8"><animate attributeName="opacity" values=".3;1;.3" dur="2s" repeatCount="indefinite"/></circle>
-      <circle cx="115" cy="80" r="2" fill="#fff" opacity=".8"><animate attributeName="opacity" values="1;.3;1" dur="1.8s" repeatCount="indefinite"/></circle>
+      <polygon points="80,20 130,55 110,140 50,140 30,55" fill="url(#diamG)" stroke="#F2EEE4" stroke-width="2.5" stroke-linejoin="round"/>
+      <line x1="30" y1="55" x2="130" y2="55" stroke="#F2EEE4" stroke-width="2"/>
+      <line x1="80" y1="20" x2="80" y2="140" stroke="#F2EEE4" stroke-opacity=".5" stroke-width="1"/>
+      <line x1="60" y1="55" x2="80" y2="140" stroke="#F2EEE4" stroke-opacity=".5" stroke-width="1"/>
+      <line x1="100" y1="55" x2="80" y2="140" stroke="#F2EEE4" stroke-opacity=".5" stroke-width="1"/>
+      <polygon points="80,20 100,55 60,55" fill="#F2EEE4" opacity=".5"/>
+      <circle cx="50" cy="40" r="2" fill="#F2EEE4" opacity=".8"><animate attributeName="opacity" values=".3;1;.3" dur="2s" repeatCount="indefinite"/></circle>
+      <circle cx="115" cy="80" r="2" fill="#F2EEE4" opacity=".8"><animate attributeName="opacity" values="1;.3;1" dur="1.8s" repeatCount="indefinite"/></circle>
     </svg>`,
     constructor: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="brickG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#86efac"/><stop offset="100%" stop-color="#16a34a"/></linearGradient>
+        <linearGradient id="brickG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6FAE7E"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
       </defs>
-      <rect x="30" y="120" width="100" height="14" rx="2" fill="url(#brickG)" stroke="#fff" stroke-width="1.5"/>
-      <line x1="80" y1="120" x2="80" y2="134" stroke="#0a0a0b" stroke-width="1.5"/>
-      <rect x="40" y="100" width="80" height="14" rx="2" fill="url(#brickG)" stroke="#fff" stroke-width="1.5"/>
-      <line x1="80" y1="100" x2="80" y2="114" stroke="#0a0a0b" stroke-width="1.5"/>
-      <rect x="50" y="80" width="60" height="14" rx="2" fill="url(#brickG)" stroke="#fff" stroke-width="1.5"/>
-      <line x1="80" y1="80" x2="80" y2="94" stroke="#0a0a0b" stroke-width="1.5"/>
-      <rect x="60" y="60" width="40" height="14" rx="2" fill="url(#brickG)" stroke="#fff" stroke-width="1.5"/>
-      <line x1="80" y1="60" x2="80" y2="74" stroke="#0a0a0b" stroke-width="1.5"/>
-      <rect x="68" y="40" width="24" height="14" rx="2" fill="url(#brickG)" stroke="#fff" stroke-width="1.5"/>
-      <polygon points="68,40 80,28 92,40" fill="#fde047" stroke="#fff" stroke-width="1.5"/>
-      <circle cx="80" cy="22" r="3" fill="#fff" opacity=".9"><animate attributeName="opacity" values=".5;1;.5" dur="2s" repeatCount="indefinite"/></circle>
+      <rect x="30" y="120" width="100" height="14" rx="2" fill="url(#brickG)" stroke="#F2EEE4" stroke-width="1.5"/>
+      <line x1="80" y1="120" x2="80" y2="134" stroke="#0B0B0A" stroke-width="1.5"/>
+      <rect x="40" y="100" width="80" height="14" rx="2" fill="url(#brickG)" stroke="#F2EEE4" stroke-width="1.5"/>
+      <line x1="80" y1="100" x2="80" y2="114" stroke="#0B0B0A" stroke-width="1.5"/>
+      <rect x="50" y="80" width="60" height="14" rx="2" fill="url(#brickG)" stroke="#F2EEE4" stroke-width="1.5"/>
+      <line x1="80" y1="80" x2="80" y2="94" stroke="#0B0B0A" stroke-width="1.5"/>
+      <rect x="60" y="60" width="40" height="14" rx="2" fill="url(#brickG)" stroke="#F2EEE4" stroke-width="1.5"/>
+      <line x1="80" y1="60" x2="80" y2="74" stroke="#0B0B0A" stroke-width="1.5"/>
+      <rect x="68" y="40" width="24" height="14" rx="2" fill="url(#brickG)" stroke="#F2EEE4" stroke-width="1.5"/>
+      <polygon points="68,40 80,28 92,40" fill="#D79A3C" stroke="#F2EEE4" stroke-width="1.5"/>
+      <circle cx="80" cy="22" r="3" fill="#F2EEE4" opacity=".9"><animate attributeName="opacity" values=".5;1;.5" dur="2s" repeatCount="indefinite"/></circle>
     </svg>`,
   };
 
@@ -7442,7 +7597,7 @@ const TuMes = (() => {
 
   // Genera confetti dentro de un contenedor
   function _confetti(host, n) {
-    const colors = ['#fde047','#22c55e','#fb7185','#a78bfa','#38bdf8','#fb923c'];
+    const colors = ['#D79A3C','#D79A3C','#DB7B68','#D79A3C','#D79A3C','#D79A3C'];
     for (let i = 0; i < n; i++) {
       const piece = document.createElement('div');
       piece.className = 'mes-confetti-piece';
@@ -7465,10 +7620,10 @@ const TuMes = (() => {
     return [
       // ───────────── 1. APERTURA ─────────────
       {
-        bg: 'linear-gradient(135deg, #064e3b 0%, #16a34a 50%, #fde047 100%)',
+        bg: '#131210',
         blobs: [
-          { color: '#fde047', size: 280, top: '-50px', left: '-80px' },
-          { color: '#22c55e', size: 220, bottom: '-60px', right: '-60px' },
+          { color: '#D79A3C', size: 280, top: '-50px', left: '-80px' },
+          { color: '#D79A3C', size: 220, bottom: '-60px', right: '-60px' },
         ],
         html: `
           <div class="mes-marquee"><div class="mes-marquee-track">${('TU MES · TU MES · TU MES · ').repeat(8)}</div></div>
@@ -7489,10 +7644,10 @@ const TuMes = (() => {
 
       // ───────────── 2. SHARPE TOP X% ─────────────
       {
-        bg: 'linear-gradient(135deg, #831843 0%, #a21caf 50%, #d946ef 100%)',
+        bg: '#131210',
         blobs: [
-          { color: '#fbcfe8', size: 200, top: '60px', right: '-40px' },
-          { color: '#d946ef', size: 280, bottom: '-100px', left: '-80px' },
+          { color: '#D79A3C', size: 200, top: '60px', right: '-40px' },
+          { color: '#D79A3C', size: 280, bottom: '-100px', left: '-80px' },
         ],
         html: `
           <!-- Sunburst rays detrás del número -->
@@ -7500,7 +7655,7 @@ const TuMes = (() => {
             <svg width="500" height="500" viewBox="0 0 500 500" style="opacity:.18; animation: mesRayRotate 60s linear infinite;">
               ${Array.from({length: 16}, (_, i) => {
                 const a = (i * 22.5) * Math.PI / 180;
-                return `<polygon points="250,250 ${250 + Math.cos(a)*250},${250 + Math.sin(a)*250} ${250 + Math.cos(a + 0.06)*240},${250 + Math.sin(a + 0.06)*240}" fill="#fde047"/>`;
+                return `<polygon points="250,250 ${250 + Math.cos(a)*250},${250 + Math.sin(a)*250} ${250 + Math.cos(a + 0.06)*240},${250 + Math.sin(a + 0.06)*240}" fill="#D79A3C"/>`;
               }).join('')}
             </svg>
           </div>
@@ -7526,20 +7681,20 @@ const TuMes = (() => {
 
       // ───────────── 3. RETORNO ANUALIZADO ─────────────
       {
-        bg: 'linear-gradient(135deg, #7c2d12 0%, #ea580c 50%, #fbbf24 100%)',
+        bg: '#131210',
         blobs: [
-          { color: '#fde68a', size: 240, top: '-40px', right: '-60px' },
-          { color: '#fb923c', size: 280, bottom: '-80px', left: '-60px' },
+          { color: '#D79A3C', size: 240, top: '-40px', right: '-60px' },
+          { color: '#D79A3C', size: 280, bottom: '-80px', left: '-60px' },
         ],
         html: `
           <!-- Trending arrow gigante atrás -->
           <div class="absolute inset-0 flex items-center justify-center pointer-events-none mes-trend-arrow">
             <svg width="380" height="380" viewBox="0 0 200 200" style="opacity:.18;">
               <defs>
-                <linearGradient id="arrG3" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#fff" stop-opacity="0"/><stop offset="100%" stop-color="#fff"/></linearGradient>
+                <linearGradient id="arrG3" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#F2EEE4" stop-opacity="0"/><stop offset="100%" stop-color="#F2EEE4"/></linearGradient>
               </defs>
               <path d="M 20 160 L 80 100 L 110 130 L 175 50" fill="none" stroke="url(#arrG3)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-              <polygon points="175,50 145,55 165,75" fill="#fff" opacity=".8"/>
+              <polygon points="175,50 145,55 165,75" fill="#F2EEE4" opacity=".8"/>
             </svg>
           </div>
           <p class="mes-eyebrow text-orange-100 mes-reveal-1">Retorno anualizado</p>
@@ -7561,10 +7716,10 @@ const TuMes = (() => {
 
       // ───────────── 4. OPERACIONES ─────────────
       {
-        bg: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #06b6d4 100%)',
+        bg: '#131210',
         blobs: [
-          { color: '#22d3ee', size: 260, bottom: '-80px', right: '-80px' },
-          { color: '#3b82f6', size: 220, top: '-40px', left: '-50px' },
+          { color: '#D79A3C', size: 260, bottom: '-80px', right: '-80px' },
+          { color: '#D79A3C', size: 220, top: '-40px', left: '-50px' },
         ],
         html: `
           <p class="mes-eyebrow text-sky-100">${s.totalOps > 10 ? 'Hyperactivo' : (s.totalOps > 0 ? 'Operaciones del mes' : 'Mes zen')}</p>
@@ -7588,10 +7743,10 @@ const TuMes = (() => {
 
       // ───────────── 5. DIVIDENDOS ─────────────
       ...(s.dividendosMes > 0 || s.dividendosAno > 0 ? [{
-        bg: 'linear-gradient(135deg, #422006 0%, #ca8a04 50%, #fde047 100%)',
+        bg: '#131210',
         blobs: [
-          { color: '#fef08a', size: 280, top: '-60px', right: '-80px' },
-          { color: '#facc15', size: 220, bottom: '-60px', left: '-60px' },
+          { color: '#F2EEE4', size: 280, top: '-60px', right: '-80px' },
+          { color: '#D79A3C', size: 220, bottom: '-60px', left: '-60px' },
         ],
         html: `
           <p class="mes-eyebrow text-yellow-100">Dividendos cobrados</p>
@@ -7612,10 +7767,10 @@ const TuMes = (() => {
 
       // ───────────── 6. CAPITAL MOVIDO ─────────────
       ...(s.capitalMovido > 0 ? [{
-        bg: 'linear-gradient(135deg, #4c0519 0%, #db2777 50%, #f472b6 100%)',
+        bg: '#131210',
         blobs: [
-          { color: '#fbcfe8', size: 240, top: '0', right: '-60px' },
-          { color: '#ec4899', size: 280, bottom: '-100px', left: '-60px' },
+          { color: '#D79A3C', size: 240, top: '0', right: '-60px' },
+          { color: '#D79A3C', size: 280, bottom: '-100px', left: '-60px' },
         ],
         html: `
           <p class="mes-eyebrow text-pink-100">Capital en movimiento</p>
@@ -7631,10 +7786,10 @@ const TuMes = (() => {
 
       // ───────────── 7. TICKERS ÚNICOS OPERADOS ─────────────
       ...(s.tickersUnicosOperados > 0 ? [{
-        bg: 'linear-gradient(135deg, #134e4a 0%, #0d9488 50%, #5eead4 100%)',
+        bg: '#131210',
         blobs: [
-          { color: '#5eead4', size: 280, top: '-50px', left: '-70px' },
-          { color: '#14b8a6', size: 240, bottom: '-60px', right: '-80px' },
+          { color: '#D79A3C', size: 280, top: '-50px', left: '-70px' },
+          { color: '#D79A3C', size: 240, bottom: '-60px', right: '-80px' },
         ],
         html: `
           <p class="mes-eyebrow text-teal-100">Tu paleta del mes</p>
@@ -7650,10 +7805,10 @@ const TuMes = (() => {
 
       // ───────────── 8. PERSONALIDAD — TARJETA DE COLECCIÓN ─────────────
       {
-        bg: 'linear-gradient(160deg, #1a0840 0%, #0a0114 35%, #2e1065 100%)',
+        bg: '#131210',
         blobs: [
-          { color: '#c084fc', size: 260, top: '-40px', right: '-60px' },
-          { color: '#a78bfa', size: 280, bottom: '-100px', left: '-80px' },
+          { color: '#D79A3C', size: 260, top: '-40px', right: '-60px' },
+          { color: '#D79A3C', size: 280, bottom: '-100px', left: '-80px' },
         ],
         html: `
           <!-- Particles flotando -->
@@ -7664,7 +7819,7 @@ const TuMes = (() => {
               const left = Math.random() * 100;
               const top = 50 + Math.random() * 50;
               const delay = Math.random() * 2.4;
-              const colors = ['#fde047', '#c084fc', '#f0abfc', '#fff'];
+              const colors = ['#D79A3C', '#D79A3C', '#D79A3C', '#F2EEE4'];
               const color = colors[Math.floor(Math.random()*colors.length)];
               return `<span class="mes-particle" style="left:${left}%; top:${top}%; background:${color}; box-shadow:0 0 8px ${color}; --tx:${tx}px; --ty:${ty}px; animation-delay:${delay}s;"></span>`;
             }).join('')}
@@ -7712,11 +7867,11 @@ const TuMes = (() => {
 
       // ───────────── 9. CIERRE ─────────────
       {
-        bg: 'linear-gradient(135deg, #064e3b 0%, #059669 50%, #6ee7b7 100%)',
+        bg: '#131210',
         blobs: [
-          { color: '#86efac', size: 280, top: '-50px', left: '-80px' },
-          { color: '#fde047', size: 220, bottom: '-60px', right: '-50px' },
-          { color: '#22c55e', size: 200, top: '40%', right: '-40px' },
+          { color: '#6FAE7E', size: 280, top: '-50px', left: '-80px' },
+          { color: '#D79A3C', size: 220, bottom: '-60px', right: '-50px' },
+          { color: '#D79A3C', size: 200, top: '40%', right: '-40px' },
         ],
         html: `
           <!-- Rays detrás -->
@@ -7724,7 +7879,7 @@ const TuMes = (() => {
             <svg width="500" height="500" viewBox="0 0 500 500" style="opacity:.22; animation: mesRayRotate 90s linear infinite;">
               ${Array.from({length: 24}, (_, i) => {
                 const a = (i * 15) * Math.PI / 180;
-                return `<polygon points="250,250 ${250 + Math.cos(a)*250},${250 + Math.sin(a)*250} ${250 + Math.cos(a + 0.04)*240},${250 + Math.sin(a + 0.04)*240}" fill="#fff"/>`;
+                return `<polygon points="250,250 ${250 + Math.cos(a)*250},${250 + Math.sin(a)*250} ${250 + Math.cos(a + 0.04)*240},${250 + Math.sin(a + 0.04)*240}" fill="#F2EEE4"/>`;
               }).join('')}
             </svg>
           </div>
@@ -7732,15 +7887,15 @@ const TuMes = (() => {
           <div class="mes-medal mes-reveal-1">
             <svg width="160" height="160" viewBox="0 0 160 160">
               <defs>
-                <linearGradient id="trophyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fef3c7"/><stop offset="50%" stop-color="#fde047"/><stop offset="100%" stop-color="#a16207"/></linearGradient>
-                <radialGradient id="shineT" cx=".3" cy=".3"><stop offset="0%" stop-color="#fff" stop-opacity=".8"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient>
+                <linearGradient id="trophyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="50%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
+                <radialGradient id="shineT" cx=".3" cy=".3"><stop offset="0%" stop-color="#F2EEE4" stop-opacity=".8"/><stop offset="100%" stop-color="#F2EEE4" stop-opacity="0"/></radialGradient>
               </defs>
-              <path d="M50 40 Q50 100 80 100 Q110 100 110 40 Z" fill="url(#trophyG)" stroke="#854d0e" stroke-width="2.5"/>
+              <path d="M50 40 Q50 100 80 100 Q110 100 110 40 Z" fill="url(#trophyG)" stroke="#D79A3C" stroke-width="2.5"/>
               <path d="M40 50 Q30 60 30 75 Q30 85 40 88" fill="none" stroke="url(#trophyG)" stroke-width="6" stroke-linecap="round"/>
               <path d="M120 50 Q130 60 130 75 Q130 85 120 88" fill="none" stroke="url(#trophyG)" stroke-width="6" stroke-linecap="round"/>
-              <rect x="68" y="100" width="24" height="14" fill="url(#trophyG)" stroke="#854d0e" stroke-width="2"/>
-              <rect x="55" y="113" width="50" height="10" rx="2" fill="url(#trophyG)" stroke="#854d0e" stroke-width="2"/>
-              <text x="80" y="74" text-anchor="middle" font-family="Outfit" font-weight="900" font-size="22" fill="#854d0e">★</text>
+              <rect x="68" y="100" width="24" height="14" fill="url(#trophyG)" stroke="#D79A3C" stroke-width="2"/>
+              <rect x="55" y="113" width="50" height="10" rx="2" fill="url(#trophyG)" stroke="#D79A3C" stroke-width="2"/>
+              <text x="80" y="74" text-anchor="middle" font-family="Source Serif 4" font-weight="900" font-size="22" fill="#D79A3C">★</text>
               <ellipse cx="64" cy="55" rx="10" ry="14" fill="url(#shineT)"/>
             </svg>
           </div>
@@ -7788,7 +7943,7 @@ const TuMes = (() => {
           <!-- Action footer -->
           <div class="absolute -bottom-14 left-0 right-0 flex items-center justify-center gap-3">
             <button id="mes-share" class="text-xs text-white/80 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur rounded-full px-4 py-2 border border-white/20 transition flex items-center gap-1.5">
-              <span>📲</span> Compartir slide
+              <span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="6.5" y="2.5" width="11" height="19"/><path d="M10.5 18.5h3"/></svg></span> Compartir slide
             </button>
             ${esAuto ? '<span class="text-[10px] text-white/40 italic">Aparecerá cada día 1 del mes</span>' : ''}
           </div>
@@ -7801,7 +7956,7 @@ const TuMes = (() => {
       const host = $('mes-slide-host');
       // Construir slide
       host.innerHTML = `
-        <div class="mes-slide w-full h-full relative overflow-hidden flex flex-col items-center justify-center text-center px-8" style="background: ${slide.bg}; font-family: 'Outfit', system-ui, sans-serif;">
+        <div class="mes-slide w-full h-full relative overflow-hidden flex flex-col items-center justify-center text-center px-8" style="background: ${slide.bg}; font-family: 'Source Serif 4', Georgia, serif;">
           ${(slide.blobs || []).map(b => `<div class="mes-blob" style="
             background:${b.color};
             width:${b.size}px; height:${b.size}px;
@@ -8056,13 +8211,13 @@ const TuAno = TuMes;
   }
 
   function _vibePersonalidad(s) {
-    if (s.sharpe >= 1.5 && s.totalOps >= 5) return { emoji: '🎯', tipo: 'El Cazador', desc: 'Activo, calculador y con buen ratio riesgo/recompensa.' };
-    if (s.sharpe >= 1.5) return { emoji: '🧘', tipo: 'El Sabio', desc: 'Pocas operaciones, gran visión. Tu Sharpe habla por ti.' };
-    if (s.totalOps >= 15) return { emoji: '⚡', tipo: 'El Trader', desc: 'Mueves mucho. Cuidado con las comisiones — podrían comerse tu alfa.' };
-    if (s.dividendosMes > 100) return { emoji: '💰', tipo: 'El Rentista', desc: 'Buscas flujo, no glamour. Los dividendos siguen llegando.' };
-    if (s.tickers >= 10) return { emoji: '🌍', tipo: 'El Diversificador', desc: 'No pones todos los huevos en una canasta. Bien jugado.' };
-    if (s.tickers <= 3) return { emoji: '🎲', tipo: 'El Convencido', desc: 'Pocos tickers, mucha convicción. Si funciona, funciona en grande.' };
-    return { emoji: '📊', tipo: 'El Constructor', desc: 'Estás armando tu portafolio con paciencia. Eso es lo que cuenta.' };
+    if (s.sharpe >= 1.5 && s.totalOps >= 5) return { emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/></svg></span>', tipo: 'El Cazador', desc: 'Activo, calculador y con buen ratio riesgo/recompensa.' };
+    if (s.sharpe >= 1.5) return { emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="6" r="2.4"/><path d="M12 9v6"/><path d="M6.5 20c1-3 3-4.5 5.5-4.5S16.5 17 17.5 20"/><path d="M4 20h16"/></svg></span>', tipo: 'El Sabio', desc: 'Pocas operaciones, gran visión. Tu Sharpe habla por ti.' };
+    if (s.totalOps >= 15) return { emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>', tipo: 'El Trader', desc: 'Mueves mucho. Cuidado con las comisiones — podrían comerse tu alfa.' };
+    if (s.dividendosMes > 100) return { emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v10"/><path d="M14.5 9.5H10.7a1.8 1.8 0 0 0 0 3.6h2.6a1.8 1.8 0 0 1 0 3.6H9.5"/></svg></span>', tipo: 'El Rentista', desc: 'Buscas flujo, no glamour. Los dividendos siguen llegando.' };
+    if (s.tickers >= 10) return { emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z"/></svg></span>', tipo: 'El Diversificador', desc: 'No pones todos los huevos en una canasta. Bien jugado.' };
+    if (s.tickers <= 3) return { emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="4" y="4" width="16" height="16"/><circle cx="9" cy="9" r="1.1"/><circle cx="15" cy="15" r="1.1"/><circle cx="12" cy="12" r="1.1"/></svg></span>', tipo: 'El Convencido', desc: 'Pocos tickers, mucha convicción. Si funciona, funciona en grande.' };
+    return { emoji: '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 19V11"/><path d="M10 19V6"/><path d="M16 19V14"/><path d="M22 19H2"/></svg></span>', tipo: 'El Constructor', desc: 'Estás armando tu portafolio con paciencia. Eso es lo que cuenta.' };
   }
 
   function mostrar(esAuto) {
@@ -8073,25 +8228,25 @@ const TuAno = TuMes;
     const slides = [];
 
     // 1. Apertura
-    slides.push(_slide('🎁', 'Tu mes en Mi Portafolio',
+    slides.push(_slide('<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="3" y="9" width="18" height="12"/><path d="M2 9h20v3H2z"/><path d="M12 9v12"/><path d="M12 9C10 9 7.5 8 7.5 6A2.5 2.5 0 0 1 12 5a2.5 2.5 0 0 1 4.5 1c0 2-2.5 3-4.5 3z"/></svg></span>', 'Tu mes en Mi Portafolio',
       s.nombreMes,
       `Hola Charlie. Esto es lo que pasó en tu portafolio "<span class="text-accent-green">${escapeHtml(s.portafolio.nombre)}</span>".`,
       'Desliza para ver más →'));
 
     // 2. Top X% Sharpe
-    slides.push(_slide('🏆', 'Tu Sharpe del mes',
+    slides.push(_slide('<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/><path d="M10 14h4v3h-4z"/><path d="M7.5 20h9"/></svg></span>', 'Tu Sharpe del mes',
       `Top ${s.pctSharpe}%`,
       `Tu Sharpe ratio fue de <span class="text-accent-green font-semibold tabular">${s.sharpe.toFixed(2)}</span>. Mejor que el ${100 - s.pctSharpe}% de portafolios diversificados.`,
       s.pctSharpe <= 10 ? 'Estás entre la élite del retorno ajustado al riesgo.' : 'Hay margen de subir esto el próximo mes.'));
 
     // 3. Retorno anualizado
-    slides.push(_slide('📈', 'Retorno anualizado',
+    slides.push(_slide('<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg></span>', 'Retorno anualizado',
       (s.retAnual >= 0 ? '+' : '') + s.retAnual.toFixed(1) + '%',
       `Estás en el top ${s.pctRetorno}% de inversionistas en términos de retorno.`,
       'Recuerda: rentabilidad pasada no garantiza la futura.'));
 
     // 4. Operaciones
-    slides.push(_slide(s.totalOps > 10 ? '⚡' : (s.totalOps > 0 ? '💼' : '🧘'),
+    slides.push(_slide(s.totalOps > 10 ? '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>' : (s.totalOps > 0 ? '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="2.5" y="7" width="19" height="13"/><path d="M9 7V4h6v3"/><path d="M2.5 12.5h19"/></svg></span>' : '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="6" r="2.4"/><path d="M12 9v6"/><path d="M6.5 20c1-3 3-4.5 5.5-4.5S16.5 17 17.5 20"/><path d="M4 20h16"/></svg></span>'),
       'Operaciones del mes',
       String(s.totalOps),
       `${s.compras} compras · ${s.ventas} ventas. ${s.totalOps > 10 ? 'Más activo que el ' + (100 - s.pctOps) + '% de inversionistas.' : (s.totalOps > 0 ? 'Movimiento moderado.' : 'No moviste el portafolio. A veces no hacer nada es lo mejor.')}`,
@@ -8099,7 +8254,7 @@ const TuAno = TuMes;
 
     // 5. Dividendos
     if (s.dividendosMes > 0 || s.dividendosAno > 0) {
-      slides.push(_slide('💰', 'Dividendos cobrados',
+      slides.push(_slide('<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v10"/><path d="M14.5 9.5H10.7a1.8 1.8 0 0 0 0 3.6h2.6a1.8 1.8 0 0 1 0 3.6H9.5"/></svg></span>', 'Dividendos cobrados',
         fmt$(s.dividendosMes),
         s.dividendosAno > s.dividendosMes ? `En lo que va del año: <span class="text-accent-green font-semibold">${fmt$(s.dividendosAno)}</span>` : 'Tu primer flujo pasivo del año.',
         'Cada peso de dividendo es un peso que no necesitas vender.'));
@@ -8107,7 +8262,7 @@ const TuAno = TuMes;
 
     // 6. Capital movido
     if (s.capitalMovido > 0) {
-      slides.push(_slide('💸', 'Capital movido',
+      slides.push(_slide('<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="2.5" y="6" width="19" height="12"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9v6M18 9v6"/></svg></span>', 'Capital movido',
         fmt$(s.capitalMovido),
         `Compraste y vendiste por un total de ${fmt$(s.capitalMovido)} este mes.`,
         s.capitalMovido > 50000 ? 'Inversor activo. Revisa que las comisiones no te estén comiendo.' : 'Movimiento sano y medido.'));
@@ -8115,7 +8270,7 @@ const TuAno = TuMes;
 
     // 7. Tickers únicos
     if (s.tickersUnicosOperados > 0) {
-      slides.push(_slide('🎨', 'Tickers operados',
+      slides.push(_slide('<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3a9 9 0 0 0 0 18c1.4 0 2-.9 2-1.8 0-1.5-1-1.8-1-3 0-.9.7-1.6 1.7-1.6H17a4.5 4.5 0 0 0 4.5-4.5C21.5 6.2 17.3 3 12 3z"/><circle cx="8" cy="9" r="1"/><circle cx="12.5" cy="7" r="1"/><circle cx="7" cy="13.5" r="1"/></svg></span>', 'Tickers operados',
         String(s.tickersUnicosOperados),
         `Tocaste ${s.tickersUnicosOperados} ${s.tickersUnicosOperados === 1 ? 'ticker distinto' : 'tickers distintos'} este mes.`,
         s.tickersUnicosOperados > 7 ? 'Muy diversificado en tu actividad.' : ''));
@@ -8133,7 +8288,7 @@ const TuAno = TuMes;
       : s.pctSharpe <= 25
       ? 'Tu mes fue sólido. La consistencia es la mejor estrategia.'
       : 'Cada mes es un nuevo capítulo. El siguiente es tuyo.';
-    slides.push(_slide('✨', 'Hasta el próximo mes',
+    slides.push(_slide('<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg></span>', 'Hasta el próximo mes',
       `Top ${Math.min(s.pctSharpe, s.pctRetorno)}%`,
       tagline,
       'Mi Portafolio · Tu compañero financiero'));
@@ -8439,23 +8594,17 @@ const Analizador = (() => {
     if (!d || !d.ok || !Array.isArray(d.precios) || !d.precios.length) return;
     if (_chartPrecio) { _chartPrecio.destroy(); _chartPrecio = null; }
     const sube = d.precios[d.precios.length - 1] >= d.precios[0];
-    const col = sube ? '#22c55e' : '#f43f5e';
+    const col = sube ? MP_GRAFICA.alza : MP_GRAFICA.baja;
     _chartPrecio = new Chart(cv.getContext('2d'), {
       type: 'line',
       data: { labels: d.fechas, datasets: [{
-        data: d.precios, borderColor: col, borderWidth: 1.5,
-        backgroundColor: sube ? 'rgba(34,197,94,0.08)' : 'rgba(244,63,94,0.08)',
-        fill: true, pointRadius: 0, tension: 0.1,
+        // `col` ya viene en verde/rojo de mercado según la dirección del precio.
+        data: d.precios, ...MP_GRAFICA.serie(col, { borderWidth: 1.5 }),
       }] },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-        interaction: { mode: 'index', intersect: false },
-        scales: {
-          x: { ticks: { maxTicksLimit: 6, color: '#71717a', font: { size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        },
-      },
+      options: MP_GRAFICA.base({
+        plugins: { legend: MP_GRAFICA.leyenda(false), tooltip: MP_GRAFICA.tooltip() },
+        scales: { x: MP_GRAFICA.ejeTiempo(), y: MP_GRAFICA.ejeValor() },
+      }),
     });
   }
 
@@ -8785,14 +8934,16 @@ const Analizador = (() => {
   }
 
   // Paleta warm-muted (colores reales hex)
+  // Paleta del dashboard financiero: apunta al tema central para que no exista
+  // una segunda identidad cromática dentro de la app.
   const _palette = {
-    gold:       '#c9a96e',
-    sage:       '#8a9a7b',
-    terracotta: '#c2746e',
-    slate:      '#7a8a99',
-    mauve:      '#a08aa3',
-    posGreen:   '#4ade80',
-    negRed:     '#f87171',
+    gold:       MP_GRAFICA.sello,
+    sage:       MP_GRAFICA.papel3,
+    terracotta: MP_GRAFICA.baja,
+    slate:      MP_GRAFICA.reglaFuerte,
+    mauve:      MP_GRAFICA.papel2,
+    posGreen:   MP_GRAFICA.alza,
+    negRed:     MP_GRAFICA.baja,
   };
 
   function _fmtMoney(v, moneda) {
@@ -8817,13 +8968,13 @@ const Analizador = (() => {
     else                        valTxt = _fmtMoney(v, moneda);
     let yoyHTML = '';
     if (yoy != null && !isNaN(yoy)) {
-      const cls = yoy >= 0 ? 'text-[#4ade80]' : 'text-[#f87171]';
+      const cls = yoy >= 0 ? 'text-[#D79A3C]' : 'text-[#DB7B68]';
       const arrow = yoy >= 0 ? '▲' : '▼';
       yoyHTML = `<span class="${cls} text-[11px] font-semibold tabular ml-1">${arrow} ${Math.abs(yoy*100).toFixed(1)}% YoY</span>`;
     }
     return `
-      <div class="rounded-xl p-4" style="background:#161616; border:1px solid #222;">
-        <p class="text-[10px] uppercase tracking-[0.18em] font-semibold" style="color:#a08aa3;">${escapeHtml(kpi.label)}</p>
+      <div class="rounded-xl p-4" style="background:#131210; border:1px solid #222;">
+        <p class="text-[10px] uppercase tracking-[0.18em] font-semibold" style="color:#CFC8B8;">${escapeHtml(kpi.label)}</p>
         <p class="text-2xl font-semibold tabular mt-1.5 text-zinc-100">${valTxt}</p>
         <div class="mt-1">${yoyHTML}</div>
       </div>
@@ -8836,17 +8987,17 @@ const Analizador = (() => {
       .map(k => _kpiCard(d.kpis[k], moneda)).join('');
 
     host.innerHTML = `
-      <section class="rounded-2xl p-6 mt-6" style="background:#0a0a0a; border:1px solid #222; max-width:100%;">
+      <section class="rounded-2xl p-6 mt-6" style="background:#0B0B0A; border:1px solid #222; max-width:100%;">
         <div class="flex items-baseline justify-between flex-wrap gap-2 mb-1 pb-4" style="border-bottom:1px solid #222;">
           <div>
-            <h3 style="font-family: 'Libre Baskerville', Georgia, serif; font-weight:700; color:#c9a96e;" class="text-2xl">
+            <h3 style="font-family: 'Libre Baskerville', Georgia, serif; font-weight:700; color:#D79A3C;" class="text-2xl">
               Dashboard financiero
             </h3>
-            <p class="text-xs text-zinc-500 mt-1" style="font-family: 'Inter', sans-serif;">
+            <p class="text-xs text-zinc-500 mt-1" style="font-family: 'IBM Plex Sans', sans-serif;">
               Fiscal Year ${escapeHtml(d.fy_actual || '—')} · datos en ${escapeHtml(moneda)} · ${escapeHtml(d.nombre || d.ticker)}
             </p>
           </div>
-          <span class="text-[9px] uppercase tracking-[0.2em] font-semibold px-2.5 py-1 rounded" style="color:#c9a96e; background:rgba(201,169,110,0.08); border:1px solid rgba(201,169,110,0.25);">10-K resumido</span>
+          <span class="text-[9px] uppercase tracking-[0.2em] font-semibold px-2.5 py-1 rounded" style="color:#D79A3C; background:rgba(201,169,110,0.08); border:1px solid rgba(201,169,110,0.25);">10-K resumido</span>
         </div>
 
         <!-- KPI ROW -->
@@ -8856,24 +9007,24 @@ const Analizador = (() => {
 
         <!-- CHARTS GRID -->
         <div class="grid lg:grid-cols-2 gap-4 mt-6">
-          <div class="rounded-xl p-5" style="background:#161616; border:1px solid #222;">
-            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:#c9a96e;" class="text-base font-bold">Revenue 5Y</h4>
-            <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'Inter', sans-serif;">Crecimiento anual de ingresos.</p>
+          <div class="rounded-xl p-5" style="background:#131210; border:1px solid #222;">
+            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:#D79A3C;" class="text-base font-bold">Revenue 5Y</h4>
+            <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'IBM Plex Sans', sans-serif;">Crecimiento anual de ingresos.</p>
             <canvas id="dash-revenue" class="mt-3" style="max-height:220px;"></canvas>
           </div>
-          <div class="rounded-xl p-5" style="background:#161616; border:1px solid #222;">
-            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:#c9a96e;" class="text-base font-bold">Free Cash Flow 5Y</h4>
-            <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'Inter', sans-serif;">Cuánto efectivo libre genera tras capex.</p>
+          <div class="rounded-xl p-5" style="background:#131210; border:1px solid #222;">
+            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:#D79A3C;" class="text-base font-bold">Free Cash Flow 5Y</h4>
+            <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'IBM Plex Sans', sans-serif;">Cuánto efectivo libre genera tras capex.</p>
             <canvas id="dash-fcf" class="mt-3" style="max-height:220px;"></canvas>
           </div>
-          <div class="rounded-xl p-5 lg:col-span-2" style="background:#161616; border:1px solid #222;">
-            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:#c9a96e;" class="text-base font-bold">Márgenes 5Y</h4>
-            <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'Inter', sans-serif;">Bruto · Operativo · Neto. La eficiencia operativa en una sola gráfica.</p>
+          <div class="rounded-xl p-5 lg:col-span-2" style="background:#131210; border:1px solid #222;">
+            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:#D79A3C;" class="text-base font-bold">Márgenes 5Y</h4>
+            <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'IBM Plex Sans', sans-serif;">Bruto · Operativo · Neto. La eficiencia operativa en una sola gráfica.</p>
             <canvas id="dash-margenes" class="mt-3" style="max-height:240px;"></canvas>
           </div>
         </div>
 
-        <p class="text-[10px] text-zinc-600 mt-5 italic" style="font-family: 'Inter', sans-serif;">
+        <p class="text-[10px] text-zinc-600 mt-5 italic" style="font-family: 'IBM Plex Sans', sans-serif;">
           Datos de Yahoo Finance · presentación tipo 10-K resumido
         </p>
       </section>
@@ -8895,22 +9046,25 @@ const Analizador = (() => {
   function _construirCharts(d) {
     const _common = {
       responsive: true, maintainAspectRatio: false,
+      animation: { duration: 160 },
       plugins: {
-        legend: { display: false },
+        legend: MP_GRAFICA.leyenda(false),
         tooltip: {
-          backgroundColor: '#161616',
-          titleColor: '#c9a96e',
-          bodyColor: '#e5e5e5',
-          borderColor: '#222',
+          backgroundColor: MP_GRAFICA.tinta,
+          titleColor: MP_GRAFICA.papel,
+          bodyColor: MP_GRAFICA.papel2,
+          borderColor: MP_GRAFICA.reglaFuerte,
           borderWidth: 1,
-          padding: 10,
-          titleFont: { family: 'Libre Baskerville, serif', weight: '700', size: 12 },
-          bodyFont: { family: 'Inter, sans-serif', size: 12 },
+          cornerRadius: 2,
+          displayColors: false,
+          padding: 9,
+          titleFont: { family: MP_GRAFICA.mono, weight: '600', size: 10 },
+          bodyFont: { family: MP_GRAFICA.mono, size: 11 },
         },
       },
       scales: {
-        x: { ticks: { color: '#71717a', font: { family: 'Inter', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { ticks: { color: '#71717a', font: { family: 'Inter', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        x: MP_GRAFICA.ejeTiempo(),
+        y: MP_GRAFICA.ejeValor(),
       },
     };
 
@@ -8931,7 +9085,7 @@ const Analizador = (() => {
         data: { labels: labRev, datasets: [{
           data: valRev,
           backgroundColor: colors,
-          borderRadius: 4, borderSkipped: false,
+          borderRadius: 0, borderSkipped: false,
         }] },
         options: {
           ..._common,
@@ -8963,11 +9117,7 @@ const Analizador = (() => {
         type: 'line',
         data: { labels: labFcf, datasets: [{
           data: valFcf,
-          borderColor: _palette.gold, backgroundColor: 'rgba(201,169,110,0.12)',
-          borderWidth: 2.5, tension: 0.3, fill: true,
-          pointRadius: 4, pointHoverRadius: 7,
-          pointBackgroundColor: '#0a0a0a', pointBorderColor: _palette.gold, pointBorderWidth: 2,
-          pointHoverBackgroundColor: _palette.gold, pointHoverBorderColor: '#fff',
+          ...MP_GRAFICA.serie(_palette.gold),
         }] },
         options: {
           ..._common,
@@ -9001,16 +9151,16 @@ const Analizador = (() => {
         data: {
           labels: labM,
           datasets: [
-            { label: 'Bruto',     data: labM.map(a => mg[a] != null ? mg[a]*100 : null), backgroundColor: _palette.gold,       borderRadius: 4 },
-            { label: 'Operativo', data: labM.map(a => mo[a] != null ? mo[a]*100 : null), backgroundColor: _palette.sage,       borderRadius: 4 },
-            { label: 'Neto',      data: labM.map(a => mn[a] != null ? mn[a]*100 : null), backgroundColor: _palette.terracotta, borderRadius: 4 },
+            { label: 'Bruto',     data: labM.map(a => mg[a] != null ? mg[a]*100 : null), backgroundColor: _palette.gold,       borderRadius: 0 },
+            { label: 'Operativo', data: labM.map(a => mo[a] != null ? mo[a]*100 : null), backgroundColor: _palette.sage,       borderRadius: 0 },
+            { label: 'Neto',      data: labM.map(a => mn[a] != null ? mn[a]*100 : null), backgroundColor: _palette.terracotta, borderRadius: 0 },
           ],
         },
         options: {
           ..._common,
           plugins: {
             ..._common.plugins,
-            legend: { display: true, labels: { color: '#a1a1aa', font: { family: 'Inter', size: 11 }, boxWidth: 10, boxHeight: 10 } },
+            legend: MP_GRAFICA.leyenda(true),
             tooltip: {
               ..._common.plugins.tooltip,
               callbacks: {
@@ -9318,6 +9468,14 @@ document.addEventListener('DOMContentLoaded', () => {
     try { Periodico.cargar(); } catch (_) {}  // vista default: Periódico
   });
 
+  // ── Masthead: fecha de edición + cintilla de mercados ───────
+  fecharEdicion();
+  renderCintillaMercados();
+  // El cuadernillo se pinta ya (CETES, FIBRAS, ISR) sin esperar al análisis;
+  // renderResultados() lo vuelve a llamar con los datos del portafolio para
+  // completar los spreads contra CETES y AFORE.
+  renderCuadernilloMexico(null);
+
   // ── PWA: registrar service worker ───────────────────────────
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -9326,3 +9484,190 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+
+// ============================================================================
+//  CUADERNILLO MÉXICO — la retícula de diferenciación de la pantalla principal
+// ============================================================================
+// Rellena #mx-reticula con datos reales de los endpoints que ya existen. Cada
+// celda se pinta en cuanto llega su fetch: ninguna espera a las demás.
+function renderCuadernilloMexico(analisis) {
+  const sec = document.getElementById('seccion-mexico');
+  if (!sec) return;
+  const set = (id, txt, cls) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = txt;
+    if (cls) el.className = el.className.replace(/\bmp-(alza|baja|plano)\b/g, '') + ' ' + cls;
+  };
+  // Las variantes de fmtMoney del archivo viven dentro de módulos (IIFE), así
+  // que aquí arriba hace falta una propia.
+  const pesos = (v) => (v == null || isNaN(v)) ? '—'
+    : (v < 0 ? '−' : '') + '$' + Math.abs(v).toLocaleString('es-MX', { maximumFractionDigits: 0 });
+
+  // ── ISR del año y tax-loss harvesting ──────────────────────────
+  let txs = [];
+  try { txs = JSON.parse(localStorage.getItem(LS_KEY_TX) || '[]'); } catch {}
+  set('mx-isr-ano', String(new Date().getFullYear()));
+  if (!txs.length) {
+    set('mx-isr-valor', 'Sin registrar');
+    set('mx-isr-nota', 'Captura tus operaciones →');
+    set('mx-tlh-valor', '—');
+    set('mx-tlh-nota', 'Requiere transacciones');
+  } else {
+    fetch('/api/impuestos/calcular', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transacciones: txs, incluir_harvest: true }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        const t = (d && d.totales) || {};
+        const isr = t.isr_estimado_ano_actual;
+        set('mx-isr-valor', isr != null ? pesos(isr) : '—');
+        set('mx-isr-nota', `Sobre ${pesos(t.ganancia_neta_ano_actual || 0)} de utilidad`);
+
+        const h = (d && d.harvest) || {};
+        const n = (h.oportunidades || []).length;
+        set('mx-tlh-valor', n ? String(n) : 'Ninguna');
+        set('mx-tlh-nota', n
+          ? `${n === 1 ? 'oportunidad' : 'oportunidades'} · ${pesos(h.total_perdida_latente || 0)} latente`
+          : 'Sin pérdidas que cosechar');
+      })
+      .catch(() => { set('mx-isr-valor', '—'); set('mx-tlh-valor', '—'); });
+  }
+
+  // ── CETES 28d y FIBRAS ─────────────────────────────────────────
+  const retorno = analisis && analisis.portafolio
+    ? (analisis.portafolio.rendimiento_prom_anual_5y_pct ?? analisis.portafolio.rendimiento_anualizado_pct)
+    : null;
+
+  fetch('/api/renta-fija/mx')
+    .then(r => r.json())
+    .then(d => {
+      const t28 = d && d.cetes && d.cetes.tasas && d.cetes.tasas['28'];
+      if (t28 && t28.tasa_pct != null) {
+        set('mx-cetes-valor', t28.tasa_pct.toFixed(2) + '%');
+        if (retorno != null) {
+          const spread = retorno - t28.tasa_pct;
+          set('mx-cetes-nota',
+            `${spread >= 0 ? 'Le ganas por' : 'Te gana por'} ${Math.abs(spread).toFixed(1)} pts`);
+        }
+      }
+      if (d && d.yield_fibras_prom != null) {
+        // El backend devuelve el yield como fracción (0.0617 = 6.17%).
+        set('mx-fibras-valor', (Number(d.yield_fibras_prom) * 100).toFixed(2) + '%');
+        set('mx-fibras-nota', `${(d.fibras || []).length} FIBRAS en BMV`);
+      }
+    })
+    .catch(() => {});
+
+  // ── Comparativa contra la SIEFORE equivalente ──────────────────
+  if (retorno != null && typeof window.compararAfore === 'function') {
+    try {
+      const sf = window.compararAfore(retorno);
+      // La SIEFORE "de en medio" (SB75, 35-39 años) es la referencia por
+      // defecto: es el perfil más común entre quienes usan la app.
+      const ref = sf.find(s => s.siefore === 'SB75') || sf[0];
+      if (ref) {
+        const d = ref.diff;
+        set('mx-afore-valor', (d >= 0 ? '+' : '') + d.toFixed(1) + ' pts',
+            d > 0 ? 'mp-alza' : d < 0 ? 'mp-baja' : 'mp-plano');
+        set('mx-afore-nota', `${ref.siefore} (${ref.edad}) rinde ${ref.retorno}% real`);
+      }
+    } catch {}
+  } else {
+    set('mx-afore-nota', 'Analiza tu portafolio para comparar');
+  }
+}
+
+// ============================================================================
+//  MASTHEAD — fecha de edición y cintilla de mercados
+// ============================================================================
+
+// "lunes 4 de agosto de 2026", como el fechado de un diario.
+function fecharEdicion() {
+  const el = document.getElementById('mp-edicion-fecha');
+  if (!el) return;
+  try {
+    const f = new Date().toLocaleDateString('es-MX', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+    el.textContent = f;
+  } catch {
+    el.textContent = new Date().toISOString().slice(0, 10);
+  }
+}
+
+// Cintilla fija bajo el masthead: IPC, S&P 500, USD/MXN y CETES 28d con datos
+// reales de los endpoints que ya existen. Cada dato entra en cuanto llega
+// (render progresivo) para que la cintilla no espere al más lento.
+function renderCintillaMercados() {
+  const pista = document.getElementById('mp-cintilla-pista');
+  if (!pista) return;
+
+  // El backend cotiza los índices vía ETF (NAFTRAC para el IPC, SPY para el
+  // S&P 500) porque yfinance los sirve más consistentes que ^MXX / ^GSPC. La
+  // variación % es la del índice, pero el precio es el del ETF: por eso la
+  // cintilla nombra el instrumento real y no promete un nivel de índice que
+  // no está mostrando.
+  const CLAVES = [
+    { id: 'ipc',    nombre: 'IPC · NAFTRAC', dec: 2 },
+    { id: 'spx',    nombre: 'S&P · SPY',     dec: 2 },
+    { id: 'usdmxn', nombre: 'USD/MXN',       dec: 4 },
+    { id: 'cetes',  nombre: 'CETES 28d',     dec: 2, sufijo: '%', sinVar: true },
+  ];
+  const estado = {};
+
+  function pintar() {
+    pista.innerHTML = CLAVES.map(c => {
+      const d = estado[c.id];
+      if (!d) {
+        return `<div class="mp-cintilla-item"><span class="mp-cintilla-nom">${escapeHtml(c.nombre)}</span><span class="mp-cintilla-val">—</span></div>`;
+      }
+      const val = Number(d.valor).toLocaleString('en-US', {
+        minimumFractionDigits: c.dec, maximumFractionDigits: c.dec,
+      });
+      let var_ = '';
+      if (!c.sinVar && d.pct != null) {
+        const cls = d.pct > 0 ? 'mp-alza' : d.pct < 0 ? 'mp-baja' : 'mp-plano';
+        const signo = d.pct > 0 ? '+' : '';
+        var_ = `<span class="mp-cintilla-var mp-dir ${cls}">${signo}${d.pct.toFixed(2)}%</span>`;
+      }
+      return `<div class="mp-cintilla-item">
+        <span class="mp-cintilla-nom">${escapeHtml(c.nombre)}</span>
+        <span class="mp-cintilla-val">${val}${c.sufijo || ''}</span>${var_}
+      </div>`;
+    }).join('');
+  }
+
+  // Índices y divisas — mismo endpoint que ya alimenta el Periódico.
+  fetch('/api/periodico/mercados')
+    .then(r => r.json())
+    .then(m => {
+      if (!m || m.error) return;
+      const todos = [].concat(m.indices_us || [], m.indices_mundo || [], m.divisas || []);
+      // Se busca por ticker Y por nombre: el backend usa ETFs líquidos en vez
+      // de los símbolos de índice (SPY en lugar de ^GSPC, NAFTRAC.MX para el
+      // IPC), así que anclarse solo al ticker deja huecos en la cintilla.
+      const buscar = (tickers, nombres) => todos.find(i =>
+        tickers.includes(i.ticker) || nombres.includes(i.nombre));
+      const ipc = buscar(['NAFTRAC.MX', '^MXX'], ['IPC México']);
+      const spx = buscar(['SPY', '^GSPC'], ['S&P 500']);
+      const fx  = buscar(['MXN=X', 'USDMXN=X'], ['USD/MXN']);
+      if (ipc) estado.ipc    = { valor: ipc.precio, pct: ipc.cambio_pct };
+      if (spx) estado.spx    = { valor: spx.precio, pct: spx.cambio_pct };
+      if (fx)  estado.usdmxn = { valor: fx.precio,  pct: fx.cambio_pct };
+      pintar();
+    })
+    .catch(() => {});
+
+  // CETES 28d — Banxico SIE vía el backend.
+  fetch('/api/renta-fija/mx')
+    .then(r => r.json())
+    .then(d => {
+      const t = d && d.cetes && d.cetes.tasas && d.cetes.tasas['28'];
+      if (t && t.tasa_pct != null) { estado.cetes = { valor: t.tasa_pct }; pintar(); }
+    })
+    .catch(() => {});
+}

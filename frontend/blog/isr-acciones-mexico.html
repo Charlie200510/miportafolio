@@ -112,31 +112,42 @@
   </script>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    /* Mismo remapeo de tema que la app: tinta y papel sobre las utilidades
+       que ya reparte el markup, sin renombrar clases. */
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: {
+          serif: ['Source Serif 4', 'Georgia', 'serif'],
+          sans:  ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono:  ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          zinc:    { 50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
+                     500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' },
+          emerald: { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B', 600:'#C98A2B' },
+          green:   { 300:'#6FAE7E', 400:'#6FAE7E', 500:'#6FAE7E' },
+          red:     { 300:'#DB7B68', 400:'#DB7B68', 500:'#DB7B68' },
+          amber:   { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+          sky:     { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+        },
+        borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px', xl:'2px', '2xl':'2px', '3xl':'2px' },
+        boxShadow: { none:'none', sm:'none', DEFAULT:'none', md:'none', lg:'none', xl:'none', '2xl':'none' },
+      } }
+    };
+  </script>
+  <link rel="stylesheet" href="/static/css/mp-tokens.css">
+  <link rel="stylesheet" href="/static/css/mp-editorial.css">
+  <link rel="stylesheet" href="/static/blog/_styles.css">
   <style>
-    body { font-family: 'Inter', system-ui, sans-serif; background: #0a0a0b; color: #d4d4d8; }
-    .display { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
-    .prose h2 { font-family: 'Outfit', sans-serif; color: #f4f4f5; font-size: 28px; font-weight: 700; margin-top: 48px; margin-bottom: 16px; letter-spacing: -0.01em; }
-    .prose h3 { font-family: 'Outfit', sans-serif; color: #f4f4f5; font-size: 20px; font-weight: 600; margin-top: 32px; margin-bottom: 12px; }
-    .prose p  { color: #d4d4d8; font-size: 16px; line-height: 1.7; margin-bottom: 16px; }
-    .prose ul { margin-bottom: 16px; padding-left: 24px; }
-    .prose ul li { color: #d4d4d8; font-size: 16px; line-height: 1.7; margin-bottom: 8px; list-style: disc; }
-    .prose strong { color: #f4f4f5; font-weight: 600; }
-    .prose a { color: #34d399; text-decoration: underline; text-decoration-color: rgba(52,211,153,0.4); text-underline-offset: 3px; }
-    .prose a:hover { color: #6ee7b7; }
-    .prose code { background: #18181b; padding: 2px 6px; border-radius: 4px; font-size: 14px; color: #34d399; font-family: 'JetBrains Mono', ui-monospace, monospace; }
-    .prose blockquote { border-left: 3px solid #34d399; padding: 12px 20px; background: rgba(52,211,153,0.05); margin: 20px 0; font-style: italic; color: #a1a1aa; border-radius: 0 8px 8px 0; }
-    .prose table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
-    .prose th { background: #18181b; padding: 10px 12px; text-align: left; color: #f4f4f5; font-weight: 600; border-bottom: 1px solid #27272a; }
-    .prose td { padding: 10px 12px; border-bottom: 1px solid #18181b; color: #d4d4d8; }
-    .prose tr:hover td { background: rgba(255,255,255,0.02); }
-    .prose .calc-box { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; margin: 20px 0; font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+    body { background: #0B0B0A; color: #CFC8B8; }
+    .display { font-family: var(--ff-serif); letter-spacing: -0.02em; }
   </style>
 </head>
 <body class="min-h-screen">
 
   <!-- Header -->
-  <header class="border-b border-zinc-800 sticky top-0 bg-zinc-950/80 backdrop-blur z-10">
+  <header class="border-b border-zinc-800 sticky top-0 bg-surface z-10">
     <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
       <a href="/" class="flex items-center gap-2 text-sm font-semibold text-zinc-100 hover:text-emerald-400 transition">
         <img src="/static/logo.png" alt="Mi Portafolio" class="w-8 h-8 rounded-lg">
@@ -154,7 +165,7 @@
   <article class="max-w-3xl mx-auto px-6 py-12">
     <!-- Meta -->
     <div class="mb-8">
-      <p class="text-xs uppercase tracking-wider text-amber-400 font-semibold">📊 Fiscal</p>
+      <p class="text-xs uppercase tracking-wider text-amber-400 font-semibold"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 19V11"/><path d="M10 19V6"/><path d="M16 19V14"/><path d="M22 19H2"/></svg></span> Fiscal</p>
       <h1 class="display text-3xl sm:text-5xl font-bold text-zinc-100 mt-3 leading-tight">
         Cómo calcular el ISR sobre acciones en México 2026
       </h1>
@@ -162,11 +173,11 @@
         Guía completa con fórmula exacta, ejemplos numéricos, tax-loss harvesting y plazos del SAT. Sin jerga legal innecesaria.
       </p>
       <div class="flex items-center gap-3 mt-6 text-xs text-zinc-500 border-b border-zinc-800 pb-6">
-        <span>📅 Publicado: abril 2026</span>
+        <span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/></svg></span> Publicado: abril 2026</span>
         <span>·</span>
-        <span>⏱ 10 min de lectura</span>
+        <span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2"/><path d="M9 2h6"/></svg></span> 10 min de lectura</span>
         <span>·</span>
-        <span>✏️ Actualizado: junio 2026</span>
+        <span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 20h4L20 8l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></span> Actualizado: junio 2026</span>
       </div>
     </div>
 
@@ -221,13 +232,13 @@
             <td>WALMEX.MX</td>
             <td>$60,000</td>
             <td>$78,000</td>
-            <td style="color: #34d399;">+$18,000 ganancia</td>
+            <td style="color: #D79A3C;">+$18,000 ganancia</td>
           </tr>
           <tr>
             <td>AAPL</td>
             <td>$45,000</td>
             <td>$62,000</td>
-            <td style="color: #34d399;">+$17,000 ganancia</td>
+            <td style="color: #D79A3C;">+$17,000 ganancia</td>
           </tr>
           <tr>
             <td>GFNORTEO.MX</td>
@@ -252,7 +263,7 @@
         Utilidad neta: $35,000 − $5,000 = $30,000<br>
         Comisiones brokers (aprox.): −$500<br>
         Base gravable: $29,500<br>
-        <strong style="color: #f4f4f5;">ISR a pagar: $29,500 × 10% = $2,950 MXN</strong>
+        <strong style="color: #F2EEE4;">ISR a pagar: $29,500 × 10% = $2,950 MXN</strong>
       </div>
 
       <h2>4. ¿Cuándo se causa y cuándo se paga?</h2>
@@ -277,7 +288,7 @@
       <div class="calc-box">
         Sin tax-loss harvesting: ISR = $30,000 × 10% = $3,000<br>
         Con tax-loss harvesting:  ISR = ($30,000 − $10,000) × 10% = $2,000<br>
-        <strong style="color: #34d399;">Ahorro real: $1,000 MXN</strong>
+        <strong style="color: #D79A3C;">Ahorro real: $1,000 MXN</strong>
       </div>
       <p>
         <strong>Importante:</strong> a diferencia de Estados Unidos, México NO tiene "wash sale rule" estricta. Puedes recomprar la misma acción el día siguiente sin perder el beneficio fiscal.
@@ -297,11 +308,11 @@
           </tr>
         </thead>
         <tbody>
-          <tr><td>GBM Plus</td><td>✅ 10% provisional</td><td>✅ 10%</td><td>Sí (ajuste anual)</td></tr>
-          <tr><td>Kuspit</td><td>✅ 10% provisional</td><td>✅ 10%</td><td>Sí (ajuste anual)</td></tr>
-          <tr><td>Bursanet</td><td>✅ 10% provisional</td><td>✅ 10%</td><td>Sí (ajuste anual)</td></tr>
-          <tr><td>Actinver / Vector</td><td>✅ 10% provisional</td><td>✅ 10%</td><td>Sí (ajuste anual)</td></tr>
-          <tr><td>Schwab / IBKR / Robinhood</td><td>❌ No retiene</td><td>❌ (varía por país)</td><td><strong>Sí, TODO tú</strong></td></tr>
+          <tr><td>GBM Plus</td><td>✓ 10% provisional</td><td>✓ 10%</td><td>Sí (ajuste anual)</td></tr>
+          <tr><td>Kuspit</td><td>✓ 10% provisional</td><td>✓ 10%</td><td>Sí (ajuste anual)</td></tr>
+          <tr><td>Bursanet</td><td>✓ 10% provisional</td><td>✓ 10%</td><td>Sí (ajuste anual)</td></tr>
+          <tr><td>Actinver / Vector</td><td>✓ 10% provisional</td><td>✓ 10%</td><td>Sí (ajuste anual)</td></tr>
+          <tr><td>Schwab / IBKR / Robinhood</td><td>✕ No retiene</td><td>✕ (varía por país)</td><td><strong>Sí, TODO tú</strong></td></tr>
         </tbody>
       </table>
       <p>
@@ -355,13 +366,13 @@
       </ul>
 
       <div style="margin: 40px 0; padding: 28px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(52,211,153,0.02)); border: 1px solid rgba(52,211,153,0.3); border-radius: 16px; text-align: center;">
-        <h3 style="font-family: 'Outfit', sans-serif; color: #f4f4f5; margin: 0 0 8px;">Calcula tu ISR sin Excel</h3>
-        <p style="color: #a1a1aa; margin: 0 0 16px; font-size: 14px;">Sube tus transacciones, te calculamos el ISR exacto y te decimos cuánto ahorras con tax-loss harvesting.</p>
-        <a href="/" style="display: inline-block; padding: 12px 24px; background: #22c55e; color: #0a0a0b; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">Abrir Mi Portafolio →</a>
+        <h3 style="font-family: 'Outfit', sans-serif; color: #F2EEE4; margin: 0 0 8px;">Calcula tu ISR sin Excel</h3>
+        <p style="color: #9A9284; margin: 0 0 16px; font-size: 14px;">Sube tus transacciones, te calculamos el ISR exacto y te decimos cuánto ahorras con tax-loss harvesting.</p>
+        <a href="/" style="display: inline-block; padding: 12px 24px; background: #D79A3C; color: #0B0B0A; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">Abrir Mi Portafolio →</a>
       </div>
 
       <h2>Disclaimer importante</h2>
-      <p style="font-size: 14px; color: #71717a;">
+      <p style="font-size: 14px; color: #847D70;">
         Esta guía es <strong>educativa</strong>, no asesoría fiscal personalizada. La interpretación de la Ley del ISR puede variar según tu situación (residencia, ingresos totales, tipo de instrumento). Para casos complejos consulta a un <strong>contador público certificado</strong> o asesor fiscal autorizado. Mi Portafolio NO es asesor fiscal ni asesor de inversiones registrado ante CNBV.
       </p>
 

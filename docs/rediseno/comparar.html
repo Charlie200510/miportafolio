@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Portafolio · antes y después del rediseño editorial</title>
+<style>
+  :root {
+    --tinta: #0B0B0A; --panel: #131210; --regla: #2A2721; --regla-f: #4A443A;
+    --papel: #F2EEE4; --papel2: #CFC8B8; --papel3: #9A9284; --sello: #D79A3C;
+    --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --sans: 'IBM Plex Sans', -apple-system, system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @font-face { font-family:'Source Serif 4'; font-weight:400 700; font-display:swap;
+    src:url('../../frontend/fonts/source-serif-4-400-700-latin.woff2') format('woff2'); }
+  @font-face { font-family:'IBM Plex Sans'; font-weight:400 700; font-display:swap;
+    src:url('../../frontend/fonts/ibm-plex-sans-400-700-latin.woff2') format('woff2'); }
+  @font-face { font-family:'IBM Plex Mono'; font-weight:500; font-display:swap;
+    src:url('../../frontend/fonts/ibm-plex-mono-500-latin.woff2') format('woff2'); }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--tinta); color:var(--papel2); font-family:var(--sans); }
+  .env { max-width: 1500px; margin:0 auto; padding: 28px 22px 90px; }
+
+  header h1 { font-family:var(--serif); font-size:clamp(26px,4.6vw,40px); font-weight:700;
+    color:var(--papel); letter-spacing:-.025em; line-height:1.03; margin:0; }
+  .doble { border:0; border-top:2px solid var(--papel); position:relative; height:4px; margin:14px 0 0; }
+  .doble::after { content:''; position:absolute; left:0; right:0; top:3px; border-top:1px solid var(--regla-f); }
+  .meta { font-family:var(--mono); font-size:10px; letter-spacing:.055em; text-transform:uppercase;
+    color:var(--papel3); margin:6px 0 0; }
+  .lede { font-family:var(--serif); font-style:italic; font-size:16px; line-height:1.5;
+    color:var(--papel2); max-width:62ch; margin:20px 0 0; }
+
+  .sec { display:flex; align-items:center; gap:10px; margin:46px 0 14px; }
+  .sec-etq { font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--papel3); white-space:nowrap; }
+  .sec-etq b { color:var(--sello); font-weight:600; }
+  .sec::after { content:''; flex:1; border-top:1px solid var(--regla); }
+
+  .par { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--regla);
+    border:1px solid var(--regla); }
+  @media (max-width:820px) { .par { grid-template-columns:1fr; } }
+  .lado { background:var(--panel); min-width:0; }
+  .lado h3 { font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--papel3); margin:0; padding:9px 12px;
+    border-bottom:1px solid var(--regla); display:flex; justify-content:space-between; }
+  .lado.despues h3 { color:var(--sello); }
+  .marco { max-height:74vh; overflow:auto; background:var(--tinta); }
+  .marco img { display:block; width:100%; height:auto; }
+  .nota { font-family:var(--mono); font-size:10.5px; color:var(--papel3);
+    padding:8px 12px; border-top:1px solid var(--regla); line-height:1.5; }
+
+  .tabla { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px;
+    font-variant-numeric:tabular-nums lining-nums; }
+  .tabla th { font-family:var(--mono); font-size:9.5px; font-weight:600; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--papel3); text-align:left; padding:8px 10px;
+    border-bottom:1px solid var(--regla-f); }
+  .tabla td { padding:8px 10px; border-bottom:.5px solid var(--regla); color:var(--papel2); }
+  .tabla td.n { font-family:var(--mono); }
+  .mal { color:#DB7B68; } .bien { color:#6FAE7E; }
+  .colofon { border-top:2px solid var(--papel); margin-top:56px; padding:16px 0 0;
+    font-family:var(--mono); font-size:10.5px; color:var(--papel3); line-height:1.65; }
+</style>
+</head>
+<body>
+<div class="env">
+
+  <header>
+    <p class="sec-etq" style="margin:0 0 8px"><b>Rama rediseno-editorial ·</b> respuesta al rechazo 4.3(a)</p>
+    <h1>Antes y después</h1>
+    <hr class="doble">
+    <p class="meta">Terminal financiera × prensa económica mexicana · seis pantallas clave · iPhone Pro Max 430×932 @2x</p>
+    <p class="lede">Mismo viewport, mismo portafolio de ejemplo y mismos datos en vivo en las dos
+      columnas, para que la comparación sea pareja. Desplaza dentro de cada marco.</p>
+  </header>
+
+  <div class="sec"><span class="sec-etq"><b>Sección A ·</b> Pantallas</span></div>
+  <div id="pantallas"></div>
+
+  <div class="sec"><span class="sec-etq"><b>Sección B ·</b> Verificación por viewport</span></div>
+  <table class="tabla">
+    <thead><tr>
+      <th>Dispositivo</th><th>Viewport</th><th>Orientación</th>
+      <th>Overflow antes</th><th>Overflow después</th>
+      <th>Desbordes antes</th><th>Después</th><th>Hit-test header</th>
+    </tr></thead>
+    <tbody id="verif"></tbody>
+  </table>
+
+  <div class="colofon">
+    <strong style="color:var(--papel2)">Cómo se midió.</strong>
+    Harness propio sobre el protocolo de depuración de Chrome: recorre las 8 vistas en cada
+    combinación de viewport y orientación, compara <code>scrollWidth</code> contra
+    <code>clientWidth</code>, busca elementos cuyo borde derecho salga del viewport ignorando
+    contenedores con scroll propio, y hace hit-testing real con <code>elementFromPoint</code>
+    sobre el centro de los botones «Suscribirse» y «Mi cuenta».<br>
+    Datos crudos en <code>verificacion-antes.json</code> y <code>verificacion-despues.json</code>.
+  </div>
+</div>
+
+<script>
+const PANTALLAS = [
+  ['01-principal', 'Mi portafolio', 'Portada con titular en serif, cifra protagonista y el Cuadernillo México arriba de todo.'],
+  ['05-periodico', 'Periódico · mercados', 'Cintilla fija con IPC, S&P, USD/MXN y CETES. Heatmap de sectores en trama de tinta.'],
+  ['06-isr', 'Transacciones e ISR', 'ISR del art. 129 y tax-loss harvesting, con cifras en monoespaciada tabular.'],
+  ['02-analisis', 'Analizar', 'Encabezados de sección con etiqueta mono y regla al ancho restante.'],
+  ['03-paywall', 'Paywall', 'Sin desenfoque ni sombras: la hoja se separa por contraste de tinta.'],
+  ['04-mi-cuenta', 'Mi cuenta', 'Borrado de cuenta a dos toques, con el colofón de fuentes de datos al pie.'],
+];
+
+document.getElementById('pantallas').innerHTML = PANTALLAS.map(([f, titulo, nota]) => `
+  <div class="sec" style="margin-top:34px"><span class="sec-etq">${titulo}</span></div>
+  <div class="par">
+    <div class="lado">
+      <h3><span>Antes</span><span>${f}</span></h3>
+      <div class="marco"><img loading="lazy" src="antes/${f}.png" alt="Antes — ${titulo}"></div>
+      <p class="nota">Tarjetas redondeadas con sombra, acentos morado/azul, Inter en todo, números no tabulares.</p>
+    </div>
+    <div class="lado despues">
+      <h3><span>Después</span><span>${f}</span></h3>
+      <div class="marco"><img loading="lazy" src="despues/${f}.png" alt="Después — ${titulo}"></div>
+      <p class="nota">${nota}</p>
+    </div>
+  </div>
+`).join('') + `
+  <div class="sec" style="margin-top:34px"><span class="sec-etq">Paywall nativo · 3 planes + Restaurar compra</span></div>
+  <div class="par" style="grid-template-columns:1fr">
+    <div class="lado despues">
+      <h3><span>Después · rama nativa (iOS)</span><span>03b-paywall-nativo</span></h3>
+      <div class="marco"><img loading="lazy" src="despues/03b-paywall-nativo.png" alt="Paywall nativo"></div>
+      <p class="nota">Mensual $65 · Anual $650 · Ilimitado $6,500, «Restaurar compra», Términos y
+        Privacidad, y cero mención de MercadoPago. Capturado forzando
+        <code>Capacitor.isNativePlatform()</code> antes de que cargue paywall.js.</p>
+    </div>
+  </div>`;
+
+fetch('verificacion-antes.json').then(r => r.json()).then(async antes => {
+  const despues = await (await fetch('verificacion-despues.json')).json();
+  document.getElementById('verif').innerHTML = antes.map((a, i) => {
+    const d = despues[i] || {};
+    const cls = v => (parseInt(v, 10) > 0 ? 'mal' : 'bien');
+    return `<tr>
+      <td>${a.etiqueta}</td>
+      <td class="n">${a.w}×${a.h}</td>
+      <td>${a.orient}</td>
+      <td class="n ${cls(a.overflow)}">${a.overflow}px</td>
+      <td class="n ${cls(d.overflow)}">${d.overflow}px</td>
+      <td class="n ${a.traslapes === '—' ? 'bien' : 'mal'}">${a.traslapes}</td>
+      <td class="n bien">${d.traslapes}</td>
+      <td class="n bien">${d.hits}</td>
+    </tr>`;
+  }).join('');
+}).catch(() => {
+  document.getElementById('verif').innerHTML =
+    '<tr><td colspan="8">Abre esta página desde un servidor local para cargar los JSON ' +
+    '(por ejemplo <code>python3 -m http.server</code> dentro de docs/rediseno).</td></tr>';
+});
+</script>
+</body>
+</html>

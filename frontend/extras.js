@@ -212,32 +212,32 @@
     if (document.getElementById('mp-import-modal')) return;
     document.body.insertAdjacentHTML('beforeend', `
       <div id="mp-import-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
-        <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;max-width:520px;width:100%;padding:24px;">
+        <div style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;max-width:520px;width:100%;padding:24px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-            <h2 style="margin:0;font-size:18px;font-weight:600;color:#f4f4f5;">Importar transacciones desde CSV</h2>
-            <button onclick="document.getElementById('mp-import-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;">×</button>
+            <h2 style="margin:0;font-size:18px;font-weight:600;color:#F2EEE4;">Importar transacciones desde CSV</h2>
+            <button onclick="document.getElementById('mp-import-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;">×</button>
           </div>
-          <p style="font-size:13px;color:#a1a1aa;line-height:1.6;margin:0 0 16px;">
-            Exporta tus operaciones desde tu broker (GBM, Kuspit, Bursanet, Hapi, Schwab, IBKR, etc.) como CSV y súbelo aquí. El parser <strong style="color:#22c55e;">detecta automáticamente el broker</strong> y mapea las columnas.
+          <p style="font-size:13px;color:#9A9284;line-height:1.6;margin:0 0 16px;">
+            Exporta tus operaciones desde tu broker (GBM, Kuspit, Bursanet, Hapi, Schwab, IBKR, etc.) como CSV y súbelo aquí. El parser <strong style="color:#D79A3C;">detecta automáticamente el broker</strong> y mapea las columnas.
           </p>
-          <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:8px;padding:10px 12px;margin-bottom:12px;">
-            <p style="font-size:11px;color:#22c55e;margin:0;font-weight:600;">✓ Brokers reconocidos automáticamente:</p>
-            <p style="font-size:11px;color:#a1a1aa;margin:4px 0 0;line-height:1.5;">GBM Plus · Kuspit · Bursanet (Banorte) · Hapi · Schwab · Interactive Brokers · y cualquier CSV genérico con columnas estándar.</p>
+          <div style="background:rgba(215,154,60,0.06);border:1px solid rgba(215,154,60,0.25);border-radius:2px;padding:10px 12px;margin-bottom:12px;">
+            <p style="font-size:11px;color:#D79A3C;margin:0;font-weight:600;">✓ Brokers reconocidos automáticamente:</p>
+            <p style="font-size:11px;color:#9A9284;margin:4px 0 0;line-height:1.5;">GBM Plus · Kuspit · Bursanet (Banorte) · Hapi · Schwab · Interactive Brokers · y cualquier CSV genérico con columnas estándar.</p>
           </div>
-          <div style="background:#161616;border:1px solid #2a2a2f;border-radius:8px;padding:12px;margin-bottom:16px;">
-            <p style="font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin:0 0 8px;">Columnas requeridas</p>
-            <p style="font-family:monospace;font-size:12px;color:#22c55e;margin:0;line-height:1.7;">
+          <div style="background:#131210;border:1px solid #2A2721;border-radius:2px;padding:12px;margin-bottom:16px;">
+            <p style="font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin:0 0 8px;">Columnas requeridas</p>
+            <p style="font-family:monospace;font-size:12px;color:#D79A3C;margin:0;line-height:1.7;">
               ticker, fecha, shares, precio
             </p>
-            <p style="font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin:12px 0 8px;">Columnas opcionales</p>
-            <p style="font-family:monospace;font-size:12px;color:#a1a1aa;margin:0;line-height:1.7;">
+            <p style="font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin:12px 0 8px;">Columnas opcionales</p>
+            <p style="font-family:monospace;font-size:12px;color:#9A9284;margin:0;line-height:1.7;">
               tipo (compra/venta/dividendo), moneda, comision, notas
             </p>
           </div>
-          <p style="font-size:11px;color:#71717a;margin:0 0 16px;line-height:1.5;">
+          <p style="font-size:11px;color:#847D70;margin:0 0 16px;line-height:1.5;">
             Acepta variantes de nombres: <code>symbol</code> = <code>ticker</code>, <code>quantity</code> = <code>shares</code>, etc.
           </p>
-          <button onclick="document.getElementById('mp-import-modal').remove(); window.importarCSVTransacciones()" style="display:block;width:100%;background:#22c55e;color:#0a0a0b;border:none;padding:10px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;">
+          <button onclick="document.getElementById('mp-import-modal').remove(); window.importarCSVTransacciones()" style="display:block;width:100%;background:#D79A3C;color:#0B0B0A;border:none;padding:10px;border-radius:2px;font-weight:600;font-size:13px;cursor:pointer;">
             Seleccionar archivo CSV →
           </button>
         </div>
@@ -319,9 +319,9 @@
     // Loading placeholder
     document.body.insertAdjacentHTML('beforeend', `
       <div id="mp-compra-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px);">
-        <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;max-width:540px;width:100%;max-height:90vh;overflow-y:auto;">
+        <div style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;max-width:540px;width:100%;max-height:90vh;overflow-y:auto;">
           <div id="mp-compra-content" style="padding:24px;">
-            <p style="color:#71717a;font-size:13px;text-align:center;">Buscando brokers compatibles con ${ticker}…</p>
+            <p style="color:#847D70;font-size:13px;text-align:center;">Buscando brokers compatibles con ${ticker}…</p>
           </div>
         </div>
       </div>`);
@@ -337,18 +337,18 @@
       brokers = Array.isArray(body) ? body : (body.comparativa || body.brokers || []);
     } catch (e) {
       const cont = document.getElementById('mp-compra-content');
-      if (cont) cont.innerHTML = `<p style="color:#ef4444;font-size:13px;">Error: ${e.message}</p>`;
+      if (cont) cont.innerHTML = `<p style="color:#DB7B68;font-size:13px;">Error: ${e.message}</p>`;
       return;
     }
 
     if (!brokers.length) {
       const cont = document.getElementById('mp-compra-content');
       if (cont) cont.innerHTML = `
-        <p style="color:#a1a1aa;font-size:13px;text-align:center;">
-          No tenemos brokers MX con datos para <strong style="color:#fff;">${ticker}</strong>.
+        <p style="color:#9A9284;font-size:13px;text-align:center;">
+          No tenemos brokers MX con datos para <strong style="color:#F2EEE4;">${ticker}</strong>.
           Verifica el ticker o búscalo manualmente en tu broker.
         </p>
-        <button onclick="document.getElementById('mp-compra-modal').remove()" style="margin-top:16px;display:block;width:100%;background:#22c55e;color:#0a0a0b;border:none;padding:10px;border-radius:8px;font-weight:600;cursor:pointer;">Cerrar</button>`;
+        <button onclick="document.getElementById('mp-compra-modal').remove()" style="margin-top:16px;display:block;width:100%;background:#D79A3C;color:#0B0B0A;border:none;padding:10px;border-radius:2px;font-weight:600;cursor:pointer;">Cerrar</button>`;
       return;
     }
 
@@ -360,20 +360,20 @@
                        minAp >= 1000    ? `$${(minAp/1000).toFixed(0)}k MXN` :
                        minAp > 0        ? `$${minAp} MXN` : 'Sin mínimo';
       return `
-        <div style="display:flex;gap:12px;align-items:center;padding:14px;background:${esTop ? 'rgba(34,197,94,0.06)' : '#161616'};border:1px solid ${esTop ? 'rgba(34,197,94,0.3)' : '#2a2a2f'};border-radius:12px;margin-bottom:8px;">
-          <span style="font-size:22px;flex-shrink:0;">${b.emoji || '🏦'}</span>
+        <div style="display:flex;gap:12px;align-items:center;padding:14px;background:${esTop ? 'rgba(215,154,60,0.06)' : '#131210'};border:1px solid ${esTop ? 'rgba(215,154,60,0.3)' : '#2A2721'};border-radius:2px;margin-bottom:8px;">
+          <span style="font-size:22px;flex-shrink:0;">${b.emoji || '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9.5 12 4l9 5.5"/><path d="M5 9.5V19M9.5 9.5V19M14.5 9.5V19M19 9.5V19"/><path d="M2.5 19h19"/></svg></span>'}</span>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;">
-              <p style="margin:0;font-weight:600;color:#f4f4f5;font-size:14px;">${b.broker}</p>
-              ${esTop ? '<span style="font-size:9px;background:#22c55e;color:#0a0a0b;padding:2px 6px;border-radius:4px;font-weight:700;text-transform:uppercase;">Más barato</span>' : ''}
+              <p style="margin:0;font-weight:600;color:#F2EEE4;font-size:14px;">${b.broker}</p>
+              ${esTop ? '<span style="font-size:9px;background:#D79A3C;color:#0B0B0A;padding:2px 6px;border-radius:2px;font-weight:700;text-transform:uppercase;">Más barato</span>' : ''}
             </div>
-            <p style="margin:3px 0 0;font-size:11px;color:#a1a1aa;">
-              Comisión: <strong style="color:#fff;">$${b.comision_estimada_mxn.toFixed(2)}</strong>
-              ${b.nota ? `<span style="color:#71717a;"> · ${b.nota}</span>` : ''}
+            <p style="margin:3px 0 0;font-size:11px;color:#9A9284;">
+              Comisión: <strong style="color:#F2EEE4;">$${b.comision_estimada_mxn.toFixed(2)}</strong>
+              ${b.nota ? `<span style="color:#847D70;"> · ${b.nota}</span>` : ''}
             </p>
-            <p style="margin:2px 0 0;font-size:10px;color:#71717a;">Mínimo apertura: ${minApStr}</p>
+            <p style="margin:2px 0 0;font-size:10px;color:#847D70;">Mínimo apertura: ${minApStr}</p>
           </div>
-          <a href="${b.url_compra}" target="_blank" rel="noopener noreferrer" style="flex-shrink:0;background:${esTop ? '#22c55e' : '#27272a'};color:${esTop ? '#0a0a0b' : '#f4f4f5'};border:none;padding:10px 14px;border-radius:8px;font-weight:600;font-size:12px;text-decoration:none;white-space:nowrap;">
+          <a href="${b.url_compra}" target="_blank" rel="noopener noreferrer" style="flex-shrink:0;background:${esTop ? '#D79A3C' : '#2A2721'};color:${esTop ? '#0B0B0A' : '#F2EEE4'};border:none;padding:10px 14px;border-radius:2px;font-weight:600;font-size:12px;text-decoration:none;white-space:nowrap;">
             Abrir →
           </a>
         </div>`;
@@ -382,25 +382,25 @@
     const content = `
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
         <div>
-          <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;">Cómo comprar</p>
-          <h2 style="margin:4px 0 0;font-size:22px;color:#f4f4f5;font-weight:700;letter-spacing:-0.01em;">${ticker}</h2>
+          <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#D79A3C;">Cómo comprar</p>
+          <h2 style="margin:4px 0 0;font-size:22px;color:#F2EEE4;font-weight:700;letter-spacing:-0.01em;">${ticker}</h2>
         </div>
-        <button onclick="document.getElementById('mp-compra-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;line-height:1;padding:4px 8px;">×</button>
+        <button onclick="document.getElementById('mp-compra-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;line-height:1;padding:4px 8px;">×</button>
       </div>
-      <p style="margin:0 0 16px;font-size:12px;color:#a1a1aa;line-height:1.5;">
-        Comisiones estimadas comprando <strong style="color:#fff;">$${monto.toLocaleString()} MXN</strong>. Ordenados de más barato a más caro.
+      <p style="margin:0 0 16px;font-size:12px;color:#9A9284;line-height:1.5;">
+        Comisiones estimadas comprando <strong style="color:#F2EEE4;">$${monto.toLocaleString()} MXN</strong>. Ordenados de más barato a más caro.
       </p>
       <div style="margin-bottom:16px;">
         ${items}
       </div>
-      <div style="padding:12px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.25);border-radius:8px;">
-        <p style="margin:0;font-size:11px;color:#c4b5fd;line-height:1.55;">
-          ⚖️ <strong>Mi Portafolio no ejecuta trades</strong> ni custodia tu dinero. Al picar "Abrir" vas al sitio/app de tu broker — ahí inicias sesión y ejecutas la compra tú mismo. No somos casa de bolsa registrada ante CNBV.
+      <div style="padding:12px;background:rgba(215,154,60,0.08);border:1px solid rgba(215,154,60,0.25);border-radius:2px;">
+        <p style="margin:0;font-size:11px;color:#D79A3C;line-height:1.55;">
+          <span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M8 21h8"/><path d="M5 7 2 14h6z"/><path d="M19 7l-3 7h6z"/></svg></span> <strong>Mi Portafolio no ejecuta trades</strong> ni custodia tu dinero. Al picar "Abrir" vas al sitio/app de tu broker — ahí inicias sesión y ejecutas la compra tú mismo. No somos casa de bolsa registrada ante CNBV.
         </p>
       </div>
       <details style="margin-top:12px;">
-        <summary style="cursor:pointer;font-size:11px;color:#71717a;">¿Y si quiero comparar más opciones?</summary>
-        <p style="margin:8px 0 0;font-size:11px;color:#a1a1aa;line-height:1.55;">
+        <summary style="cursor:pointer;font-size:11px;color:#847D70;">¿Y si quiero comparar más opciones?</summary>
+        <p style="margin:8px 0 0;font-size:11px;color:#9A9284;line-height:1.55;">
           La sección <strong>"Brokers MX"</strong> en la app principal tiene comparativa completa con fortalezas, debilidades, comisiones anuales y fees por inactividad de los 8 brokers documentados.
         </p>
       </details>`;

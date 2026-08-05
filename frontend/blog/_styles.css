@@ -1,25 +1,183 @@
-/* Estilos compartidos para todos los posts del blog Mi Portafolio */
-body { font-family: 'Inter', system-ui, sans-serif; background: #0a0a0b; color: #d4d4d8; }
-.display { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
-.prose h2 { font-family: 'Outfit', sans-serif; color: #f4f4f5; font-size: 28px; font-weight: 700; margin-top: 48px; margin-bottom: 16px; letter-spacing: -0.01em; }
-.prose h3 { font-family: 'Outfit', sans-serif; color: #f4f4f5; font-size: 20px; font-weight: 600; margin-top: 32px; margin-bottom: 12px; }
-.prose p  { color: #d4d4d8; font-size: 16px; line-height: 1.7; margin-bottom: 16px; }
-.prose ul { margin-bottom: 16px; padding-left: 24px; }
-.prose ul li { color: #d4d4d8; font-size: 16px; line-height: 1.7; margin-bottom: 8px; list-style: disc; }
-.prose ol { margin-bottom: 16px; padding-left: 24px; }
-.prose ol li { color: #d4d4d8; font-size: 16px; line-height: 1.7; margin-bottom: 8px; list-style: decimal; }
-.prose strong { color: #f4f4f5; font-weight: 600; }
-.prose em { color: #a1a1aa; font-style: italic; }
-.prose a { color: #34d399; text-decoration: underline; text-decoration-color: rgba(52,211,153,0.4); text-underline-offset: 3px; }
-.prose a:hover { color: #6ee7b7; }
-.prose code { background: #18181b; padding: 2px 6px; border-radius: 4px; font-size: 14px; color: #34d399; font-family: 'JetBrains Mono', ui-monospace, monospace; }
-.prose blockquote { border-left: 3px solid #34d399; padding: 12px 20px; background: rgba(52,211,153,0.05); margin: 20px 0; font-style: italic; color: #a1a1aa; border-radius: 0 8px 8px 0; }
-.prose table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
-.prose th { background: #18181b; padding: 10px 12px; text-align: left; color: #f4f4f5; font-weight: 600; border-bottom: 1px solid #27272a; }
-.prose td { padding: 10px 12px; border-bottom: 1px solid #18181b; color: #d4d4d8; vertical-align: top; }
-.prose tr:hover td { background: rgba(255,255,255,0.02); }
-.prose .calc-box { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; margin: 20px 0; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #d4d4d8; line-height: 1.7; }
-.cta-box { margin: 40px 0; padding: 28px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(52,211,153,0.02)); border: 1px solid rgba(52,211,153,0.3); border-radius: 16px; text-align: center; }
-.cta-box h3 { font-family: 'Outfit', sans-serif; color: #f4f4f5; margin: 0 0 8px; font-size: 22px; font-weight: 700; }
-.cta-box p { color: #a1a1aa; margin: 0 0 16px; font-size: 14px; }
-.cta-box a { display: inline-block; padding: 12px 24px; background: #22c55e; color: #0a0a0b; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; }
+/* Estilos compartidos para todos los posts del blog Mi Portafolio.
+   Depende de /static/css/mp-tokens.css: misma tinta, mismo papel y las mismas
+   tres familias que la app, para que el blog no se sienta otro producto.
+   Aquí el serif SÍ se usa en el texto corrido: es un artículo, no una UI. */
+
+body {
+  font-family: var(--ff-sans);
+  background: var(--tinta);
+  color: var(--papel-2);
+}
+
+.display { font-family: var(--ff-serif); letter-spacing: -0.02em; }
+
+/* ── Cuerpo del artículo ─────────────────────────────────────────────────── */
+.prose h2 {
+  font-family: var(--ff-serif);
+  color: var(--papel);
+  font-size: 27px;
+  font-weight: 700;
+  margin-top: 46px;
+  margin-bottom: 14px;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--regla);
+}
+.prose h3 {
+  font-family: var(--ff-serif);
+  color: var(--papel);
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 30px;
+  margin-bottom: 10px;
+  letter-spacing: -0.012em;
+}
+/* Texto corrido en serif, con medida de lectura de prensa. */
+.prose p {
+  font-family: var(--ff-serif);
+  color: var(--papel-2);
+  font-size: 17.5px;
+  line-height: 1.62;
+  margin-bottom: 16px;
+}
+.prose ul, .prose ol { margin-bottom: 16px; padding-left: 20px; }
+.prose ul li, .prose ol li {
+  font-family: var(--ff-serif);
+  color: var(--papel-2);
+  font-size: 17px;
+  line-height: 1.6;
+  margin-bottom: 7px;
+}
+/* Viñeta de cuadratín tipográfico en vez de la bolita del navegador. */
+.prose ul li { list-style: none; position: relative; padding-left: 14px; }
+.prose ul li::before {
+  content: '';
+  position: absolute; left: -4px; top: .68em;
+  width: 4px; height: 4px;
+  background: var(--sello);
+}
+.prose ol li { list-style: decimal; }
+.prose ol li::marker {
+  font-family: var(--ff-mono);
+  font-size: .82em;
+  color: var(--papel-3);
+}
+.prose strong { color: var(--papel); font-weight: 600; }
+.prose em { color: var(--papel-2); font-style: italic; }
+
+.prose a {
+  color: var(--sello);
+  text-decoration: underline;
+  text-decoration-color: rgba(215, 154, 60, .4);
+  text-underline-offset: 3px;
+}
+.prose a:hover { color: var(--sello-vivo); }
+
+/* ── Cifras y código: monoespaciada tabular ──────────────────────────────── */
+.prose code {
+  background: var(--tinta-panel);
+  padding: 2px 6px;
+  border-radius: var(--radio);
+  font-size: 14px;
+  color: var(--sello);
+  font-family: var(--ff-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Cita: filete a la izquierda, sin caja de color ni esquinas redondeadas. */
+.prose blockquote {
+  border-left: 2px solid var(--sello);
+  padding: 4px 0 4px 18px;
+  background: transparent;
+  margin: 22px 0;
+  font-family: var(--ff-serif);
+  font-style: italic;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--papel);
+  border-radius: 0;
+}
+
+/* ── Tablas de datos ────────────────────────────────────────────────────── */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.prose th {
+  background: transparent;
+  padding: 8px 10px;
+  text-align: left;
+  color: var(--papel-3);
+  font-family: var(--ff-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--regla-fuerte);
+}
+.prose td {
+  padding: 9px 10px;
+  border-bottom: var(--hairline) solid var(--regla);
+  color: var(--papel-2);
+  vertical-align: top;
+}
+.prose tr:hover td { background: var(--tinta-alta); }
+
+/* Caja de cálculo: hoja de terminal. */
+.prose .calc-box {
+  background: var(--tinta-honda);
+  border: var(--hairline) solid var(--regla);
+  border-left: 2px solid var(--sello);
+  border-radius: var(--radio);
+  padding: 16px 18px;
+  margin: 22px 0;
+  font-family: var(--ff-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 13px;
+  color: var(--papel-2);
+  line-height: 1.7;
+}
+
+/* ── Llamado a la acción: recuadro con regla doble, no tarjeta con glow ──── */
+.cta-box {
+  margin: 40px 0;
+  padding: 24px 0;
+  background: transparent;
+  border: 0;
+  border-top: 2px solid var(--papel);
+  border-bottom: 1px solid var(--regla-fuerte);
+  border-radius: 0;
+  text-align: left;
+}
+.cta-box h3 {
+  font-family: var(--ff-serif);
+  color: var(--papel);
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.015em;
+}
+.cta-box p {
+  color: var(--papel-3);
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-family: var(--ff-sans);
+}
+.cta-box a {
+  display: inline-block;
+  padding: 11px 18px;
+  background: var(--sello-solido);
+  color: var(--tinta);
+  text-decoration: none;
+  border: 1px solid var(--sello-solido);
+  border-radius: var(--radio);
+  font-family: var(--ff-sans);
+  font-weight: 600;
+  font-size: 13.5px;
+  transition: background-color var(--t-rapida) var(--easing);
+}
+.cta-box a:hover { background: var(--sello-vivo); border-color: var(--sello-vivo); }

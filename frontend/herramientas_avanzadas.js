@@ -23,7 +23,7 @@
     if (existente) existente.remove();
     document.body.insertAdjacentHTML('beforeend', `
       <div id="${id}" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:20px;backdrop-filter:blur(6px);overflow-y:auto;-webkit-overflow-scrolling:touch;">
-        <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;max-width:720px;width:100%;margin:20px 0;">
+        <div style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;max-width:720px;width:100%;margin:20px 0;">
           ${htmlContent}
         </div>
       </div>`);
@@ -40,15 +40,15 @@
       <div style="padding:24px;">
         <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:16px;">
           <div>
-            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#3b82f6;">Análisis profundo</p>
-            <h2 style="margin:4px 0 0;font-size:22px;color:#f4f4f5;font-weight:700;">Deep Dive de empresa</h2>
-            <p style="margin:6px 0 0;font-size:12px;color:#a1a1aa;">Métricas + comparativa vs peers + narrativa automática. Especialmente útil para BMV (WALMEX, GFNORTEO, AMX, etc).</p>
+            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#D79A3C;">Análisis profundo</p>
+            <h2 style="margin:4px 0 0;font-size:22px;color:#F2EEE4;font-weight:700;">Deep Dive de empresa</h2>
+            <p style="margin:6px 0 0;font-size:12px;color:#9A9284;">Métricas + comparativa vs peers + narrativa automática. Especialmente útil para BMV (WALMEX, GFNORTEO, AMX, etc).</p>
           </div>
-          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
+          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px;">
-          <input id="mp-dd-ticker" type="text" value="${tickerInicial}" placeholder="WALMEX.MX, AAPL, BIMBOA.MX..." style="flex:1;background:#161616;border:1px solid #2a2a2f;border-radius:8px;padding:10px 12px;font-size:14px;color:#f4f4f5;text-transform:uppercase;font-family:monospace;">
-          <button id="mp-dd-analizar" style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;">Analizar →</button>
+          <input id="mp-dd-ticker" type="text" value="${tickerInicial}" placeholder="WALMEX.MX, AAPL, BIMBOA.MX..." style="flex:1;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:10px 12px;font-size:14px;color:#F2EEE4;text-transform:uppercase;font-family:monospace;">
+          <button id="mp-dd-analizar" style="background:#D79A3C;color:#F2EEE4;border:none;border-radius:2px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;">Analizar →</button>
         </div>
         <div id="mp-dd-resultado"></div>
       </div>`;
@@ -57,17 +57,17 @@
       const t = document.getElementById('mp-dd-ticker').value.trim().toUpperCase();
       if (!t) return;
       const cont = document.getElementById('mp-dd-resultado');
-      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:20px;">Analizando ${t}… (15-30 seg)</p>`;
+      cont.innerHTML = `<p style="text-align:center;color:#847D70;font-size:13px;padding:20px;">Analizando ${t}… (15-30 seg)</p>`;
       try {
         const res = await fetch(`/api/deep-dive/${encodeURIComponent(t)}`);
         const d = await res.json();
         if (!d.ok) {
-          cont.innerHTML = `<p style="color:#ef4444;font-size:13px;">${d.error || 'Error'}</p>`;
+          cont.innerHTML = `<p style="color:#DB7B68;font-size:13px;">${d.error || 'Error'}</p>`;
           return;
         }
         cont.innerHTML = _renderDeepDive(d);
       } catch (e) {
-        cont.innerHTML = `<p style="color:#ef4444;font-size:13px;">Error: ${e.message}</p>`;
+        cont.innerHTML = `<p style="color:#DB7B68;font-size:13px;">Error: ${e.message}</p>`;
       }
     };
     document.getElementById('mp-dd-analizar').addEventListener('click', ejecutar);
@@ -84,24 +84,24 @@
       let cmp = '';
       if (compInfo && compInfo.diferencia_pct != null) {
         const pct = compInfo.diferencia_pct;
-        const color = pct > 0 ? '#fb923c' : pct < 0 ? '#22c55e' : '#71717a';
+        const color = pct > 0 ? '#D79A3C' : pct < 0 ? '#6FAE7E' : '#847D70';
         const signo = pct > 0 ? '+' : '';
         cmp = `<span style="color:${color};font-size:11px;margin-left:6px;">(${signo}${pct.toFixed(0)}% vs sector)</span>`;
       }
-      return `<tr><td style="padding:6px 12px;color:#a1a1aa;font-size:13px;">${label}</td><td style="padding:6px 12px;color:#f4f4f5;font-weight:600;text-align:right;font-family:monospace;font-size:13px;">${v}${cmp}</td></tr>`;
+      return `<tr><td style="padding:6px 12px;color:#9A9284;font-size:13px;">${label}</td><td style="padding:6px 12px;color:#F2EEE4;font-weight:600;text-align:right;font-family:monospace;font-size:13px;">${v}${cmp}</td></tr>`;
     };
-    const narr = (d.narrativa || []).map(n => `<li style="padding:6px 0;color:#d4d4d8;font-size:13px;line-height:1.6;list-style:none;">${n}</li>`).join('');
-    const peers = (d.peers || []).map(p => `<span style="display:inline-block;padding:3px 8px;background:#161616;border:1px solid #2a2a2f;border-radius:6px;font-size:11px;color:#a1a1aa;font-family:monospace;margin:2px;">${p.ticker}</span>`).join('');
+    const narr = (d.narrativa || []).map(n => `<li style="padding:6px 0;color:#CFC8B8;font-size:13px;line-height:1.6;list-style:none;">${n}</li>`).join('');
+    const peers = (d.peers || []).map(p => `<span style="display:inline-block;padding:3px 8px;background:#131210;border:1px solid #2A2721;border-radius:2px;font-size:11px;color:#9A9284;font-family:monospace;margin:2px;">${p.ticker}</span>`).join('');
     return `
-      <div style="background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(59,130,246,0.02));border:1px solid rgba(59,130,246,0.25);border-radius:12px;padding:16px;margin-bottom:16px;">
-        <h3 style="margin:0;font-size:18px;color:#f4f4f5;font-weight:700;">${emp.nombre || d.ticker}</h3>
-        <p style="margin:4px 0 0;font-size:11px;color:#a1a1aa;">${emp.sector || ''} · ${emp.industria || ''} · ${emp.pais || ''}</p>
-        ${emp.precio ? `<p style="margin:8px 0 0;font-size:24px;color:#3b82f6;font-weight:700;font-family:monospace;">$${emp.precio.toFixed(2)} ${emp.moneda || ''}</p>` : ''}
-        ${emp.descripcion ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-size:11px;color:#71717a;">Descripción de la empresa</summary><p style="margin:8px 0 0;font-size:12px;color:#a1a1aa;line-height:1.5;">${emp.descripcion.substring(0, 600)}${emp.descripcion.length > 600 ? '...' : ''}</p></details>` : ''}
+      <div style="background:#131210;border:1px solid rgba(215,154,60,0.25);border-radius:2px;padding:16px;margin-bottom:16px;">
+        <h3 style="margin:0;font-size:18px;color:#F2EEE4;font-weight:700;">${emp.nombre || d.ticker}</h3>
+        <p style="margin:4px 0 0;font-size:11px;color:#9A9284;">${emp.sector || ''} · ${emp.industria || ''} · ${emp.pais || ''}</p>
+        ${emp.precio ? `<p style="margin:8px 0 0;font-size:24px;color:#D79A3C;font-weight:700;font-family:monospace;">$${emp.precio.toFixed(2)} ${emp.moneda || ''}</p>` : ''}
+        ${emp.descripcion ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-size:11px;color:#847D70;">Descripción de la empresa</summary><p style="margin:8px 0 0;font-size:12px;color:#9A9284;line-height:1.5;">${emp.descripcion.substring(0, 600)}${emp.descripcion.length > 600 ? '...' : ''}</p></details>` : ''}
       </div>
 
-      <h4 style="font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Métricas vs ${peers ? 'peers del sector' : 'mercado'}</h4>
-      <table style="width:100%;border-collapse:collapse;background:#0a0a0b;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;">
+      <h4 style="font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Métricas vs ${peers ? 'peers del sector' : 'mercado'}</h4>
+      <table style="width:100%;border-collapse:collapse;background:#0B0B0A;border:1px solid #131210;border-radius:2px;overflow:hidden;">
         ${fila('P/E (trailing)',    met.pe,           v => _fmt.num(v, 2), comp.pe)}
         ${fila('P/B',               met.pb,           v => _fmt.num(v, 2), comp.pb)}
         ${fila('PEG',               met.peg,          v => _fmt.num(v, 2), null)}
@@ -114,16 +114,16 @@
       </table>
 
       ${narr ? `
-        <h4 style="font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Observaciones automáticas</h4>
-        <ul style="margin:0;padding:0;background:#161616;border:1px solid #2a2a2f;border-radius:8px;padding:8px 16px;">${narr}</ul>
+        <h4 style="font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Observaciones automáticas</h4>
+        <ul style="margin:0;padding:0;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:8px 16px;">${narr}</ul>
       ` : ''}
 
       ${peers ? `
-        <h4 style="font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Peers comparados</h4>
+        <h4 style="font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Peers comparados</h4>
         <div>${peers}</div>
       ` : ''}
 
-      <p style="margin:16px 0 0;font-size:10px;color:#71717a;text-align:center;font-style:italic;">${d.advertencia || ''}</p>
+      <p style="margin:16px 0 0;font-size:10px;color:#847D70;text-align:center;font-style:italic;">${d.advertencia || ''}</p>
     `;
   }
 
@@ -135,32 +135,32 @@
       <div style="padding:24px;">
         <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:16px;">
           <div>
-            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#a855f7;">Optimizador fiscal</p>
-            <h2 style="margin:4px 0 0;font-size:22px;color:#f4f4f5;font-weight:700;">¿Qué vender para pagar menos ISR?</h2>
-            <p style="margin:6px 0 0;font-size:12px;color:#a1a1aa;">Algoritmo que decide qué posiciones vender (y en qué orden) para minimizar tu ISR mexicano del 10%.</p>
+            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#D79A3C;">Optimizador fiscal</p>
+            <h2 style="margin:4px 0 0;font-size:22px;color:#F2EEE4;font-weight:700;">¿Qué vender para pagar menos ISR?</h2>
+            <p style="margin:6px 0 0;font-size:12px;color:#9A9284;">Algoritmo que decide qué posiciones vender (y en qué orden) para minimizar tu ISR mexicano del 10%.</p>
           </div>
-          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
+          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
-        <div style="background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:14px;margin-bottom:16px;">
-          <label style="display:block;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Monto a liquidar (MXN)</label>
-          <input id="mp-of-monto" type="number" min="100" step="1000" value="50000" style="width:100%;background:#0a0a0b;border:1px solid #2a2a2f;border-radius:6px;padding:10px;font-size:16px;color:#f4f4f5;font-family:monospace;">
-          <label style="display:block;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;margin:10px 0 6px;">Año fiscal</label>
-          <input id="mp-of-ano" type="number" min="2020" max="2030" value="${new Date().getFullYear()}" style="width:100%;background:#0a0a0b;border:1px solid #2a2a2f;border-radius:6px;padding:10px;font-size:16px;color:#f4f4f5;font-family:monospace;">
-          <label style="display:block;font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;margin:10px 0 6px;">Pérdidas de años anteriores (opcional, MXN)</label>
-          <input id="mp-of-perdidas" type="number" min="0" step="1000" value="0" style="width:100%;background:#0a0a0b;border:1px solid #2a2a2f;border-radius:6px;padding:10px;font-size:16px;color:#f4f4f5;font-family:monospace;">
+        <div style="background:#131210;border:1px solid #2A2721;border-radius:2px;padding:14px;margin-bottom:16px;">
+          <label style="display:block;font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Monto a liquidar (MXN)</label>
+          <input id="mp-of-monto" type="number" min="100" step="1000" value="50000" style="width:100%;background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:10px;font-size:16px;color:#F2EEE4;font-family:monospace;">
+          <label style="display:block;font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;margin:10px 0 6px;">Año fiscal</label>
+          <input id="mp-of-ano" type="number" min="2020" max="2030" value="${new Date().getFullYear()}" style="width:100%;background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:10px;font-size:16px;color:#F2EEE4;font-family:monospace;">
+          <label style="display:block;font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;margin:10px 0 6px;">Pérdidas de años anteriores (opcional, MXN)</label>
+          <input id="mp-of-perdidas" type="number" min="0" step="1000" value="0" style="width:100%;background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:10px;font-size:16px;color:#F2EEE4;font-family:monospace;">
         </div>
-        <button id="mp-of-calcular" style="display:block;width:100%;background:#a855f7;color:#fff;border:none;border-radius:8px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Calcular plan óptimo →</button>
+        <button id="mp-of-calcular" style="display:block;width:100%;background:#D79A3C;color:#F2EEE4;border:none;border-radius:2px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Calcular plan óptimo →</button>
         <div id="mp-of-resultado" style="margin-top:16px;"></div>
       </div>`;
     _abrirModal(formHTML);
     document.getElementById('mp-of-calcular').addEventListener('click', async () => {
       const cont = document.getElementById('mp-of-resultado');
-      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:14px;">Calculando…</p>`;
+      cont.innerHTML = `<p style="text-align:center;color:#847D70;font-size:13px;padding:14px;">Calculando…</p>`;
       try {
         // Recolectar transacciones y precios actuales del localStorage / state
         const txs = JSON.parse(localStorage.getItem('miPortafolio.transacciones.v1') || '[]');
         if (!txs.length) {
-          cont.innerHTML = `<p style="color:#fb923c;font-size:13px;padding:14px;background:rgba(251,146,60,0.08);border-radius:8px;">Primero registra tus transacciones en la pestaña <strong>Transacciones</strong> para que el optimizador sepa qué tienes.</p>`;
+          cont.innerHTML = `<p style="color:#D79A3C;font-size:13px;padding:14px;background:rgba(215,154,60,0.08);border-radius:2px;">Primero registra tus transacciones en la pestaña <strong>Transacciones</strong> para que el optimizador sepa qué tienes.</p>`;
           return;
         }
         // Precios actuales — pedimos al backend de info_activos del universo
@@ -187,72 +187,72 @@
         });
         const d = await res.json();
         if (!d.ok) {
-          cont.innerHTML = `<p style="color:#ef4444;font-size:13px;padding:14px;">${d.error || 'Error'}</p>`;
+          cont.innerHTML = `<p style="color:#DB7B68;font-size:13px;padding:14px;">${d.error || 'Error'}</p>`;
           return;
         }
         cont.innerHTML = _renderOptimizador(d);
       } catch (e) {
-        cont.innerHTML = `<p style="color:#ef4444;font-size:13px;padding:14px;">Error: ${e.message}</p>`;
+        cont.innerHTML = `<p style="color:#DB7B68;font-size:13px;padding:14px;">Error: ${e.message}</p>`;
       }
     });
   };
 
   function _renderOptimizador(d) {
     const plan = (d.plan || []).map((p, i) => {
-      const color = p.categoria === 'pérdida' ? '#22c55e' :
-                    p.categoria === 'ganancia' ? '#ef4444' : '#71717a';
+      const color = p.categoria === 'pérdida' ? '#6FAE7E' :
+                    p.categoria === 'ganancia' ? '#DB7B68' : '#847D70';
       const signo = p.ganancia_realizada >= 0 ? '+' : '';
       return `
         <tr>
-          <td style="padding:8px 12px;color:#a1a1aa;font-size:12px;text-align:center;">${i+1}</td>
-          <td style="padding:8px 12px;color:#f4f4f5;font-weight:600;font-family:monospace;font-size:13px;">${p.ticker}</td>
-          <td style="padding:8px 12px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:12px;">${p.shares_vender.toFixed(2)}</td>
-          <td style="padding:8px 12px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:12px;">$${p.monto_mxn.toLocaleString()}</td>
+          <td style="padding:8px 12px;color:#9A9284;font-size:12px;text-align:center;">${i+1}</td>
+          <td style="padding:8px 12px;color:#F2EEE4;font-weight:600;font-family:monospace;font-size:13px;">${p.ticker}</td>
+          <td style="padding:8px 12px;text-align:right;font-family:monospace;color:#CFC8B8;font-size:12px;">${p.shares_vender.toFixed(2)}</td>
+          <td style="padding:8px 12px;text-align:right;font-family:monospace;color:#CFC8B8;font-size:12px;">$${p.monto_mxn.toLocaleString()}</td>
           <td style="padding:8px 12px;text-align:right;font-family:monospace;color:${color};font-size:12px;">${signo}$${p.ganancia_realizada.toLocaleString()}</td>
           <td style="padding:8px 12px;text-align:center;font-size:10px;color:${color};text-transform:uppercase;font-weight:600;">${p.categoria}</td>
         </tr>`;
     }).join('');
 
     const ahorro = d.ahorro_isr_mxn;
-    const isrAhorroColor = ahorro > 0 ? '#22c55e' : ahorro < 0 ? '#fb923c' : '#71717a';
+    const isrAhorroColor = ahorro > 0 ? '#6FAE7E' : ahorro < 0 ? '#D79A3C' : '#847D70';
     return `
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;">
-        <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.25);border-radius:10px;padding:14px;text-align:center;">
-          <p style="margin:0;font-size:10px;color:#a855f7;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">ISR proyectado</p>
-          <p style="margin:6px 0 0;font-size:24px;font-weight:700;color:#fff;font-family:monospace;">$${d.isr_proyectado.toLocaleString()}</p>
-          <p style="margin:2px 0 0;font-size:11px;color:#a1a1aa;">con plan óptimo</p>
+        <div style="background:rgba(215,154,60,0.08);border:1px solid rgba(215,154,60,0.25);border-radius:2px;padding:14px;text-align:center;">
+          <p style="margin:0;font-size:10px;color:#D79A3C;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">ISR proyectado</p>
+          <p style="margin:6px 0 0;font-size:24px;font-weight:700;color:#F2EEE4;font-family:monospace;">$${d.isr_proyectado.toLocaleString()}</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#9A9284;">con plan óptimo</p>
         </div>
-        <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:14px;text-align:center;">
-          <p style="margin:0;font-size:10px;color:#22c55e;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Ahorro vs vender al azar</p>
+        <div style="background:rgba(215,154,60,0.08);border:1px solid rgba(215,154,60,0.25);border-radius:2px;padding:14px;text-align:center;">
+          <p style="margin:0;font-size:10px;color:#6FAE7E;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Ahorro vs vender al azar</p>
           <p style="margin:6px 0 0;font-size:24px;font-weight:700;color:${isrAhorroColor};font-family:monospace;">$${ahorro.toLocaleString()}</p>
-          <p style="margin:2px 0 0;font-size:11px;color:#a1a1aa;">menos ISR pagado</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#9A9284;">menos ISR pagado</p>
         </div>
       </div>
 
-      <h4 style="font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Plan ordenado de ventas (de menos a más impacto fiscal)</h4>
+      <h4 style="font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Plan ordenado de ventas (de menos a más impacto fiscal)</h4>
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-        <table style="width:100%;border-collapse:collapse;background:#0a0a0b;border:1px solid #1a1a1a;border-radius:8px;">
+        <table style="width:100%;border-collapse:collapse;background:#0B0B0A;border:1px solid #131210;border-radius:2px;">
           <thead>
-            <tr style="background:#161616;">
-              <th style="padding:8px 12px;font-size:10px;color:#71717a;text-transform:uppercase;">#</th>
-              <th style="padding:8px 12px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:left;">Ticker</th>
-              <th style="padding:8px 12px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">Shares</th>
-              <th style="padding:8px 12px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">$ MXN</th>
-              <th style="padding:8px 12px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">Ganancia</th>
-              <th style="padding:8px 12px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:center;">Cat.</th>
+            <tr style="background:#131210;">
+              <th style="padding:8px 12px;font-size:10px;color:#847D70;text-transform:uppercase;">#</th>
+              <th style="padding:8px 12px;font-size:10px;color:#847D70;text-transform:uppercase;text-align:left;">Ticker</th>
+              <th style="padding:8px 12px;font-size:10px;color:#847D70;text-transform:uppercase;text-align:right;">Shares</th>
+              <th style="padding:8px 12px;font-size:10px;color:#847D70;text-transform:uppercase;text-align:right;">$ MXN</th>
+              <th style="padding:8px 12px;font-size:10px;color:#847D70;text-transform:uppercase;text-align:right;">Ganancia</th>
+              <th style="padding:8px 12px;font-size:10px;color:#847D70;text-transform:uppercase;text-align:center;">Cat.</th>
             </tr>
           </thead>
-          <tbody>${plan || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#71717a;">Sin plan generado</td></tr>'}</tbody>
+          <tbody>${plan || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#847D70;">Sin plan generado</td></tr>'}</tbody>
         </table>
       </div>
 
-      <div style="margin-top:14px;padding:12px;background:rgba(0,0,0,0.3);border:1px solid #1a1a1a;border-radius:8px;font-size:11px;color:#a1a1aa;line-height:1.6;">
-        <p style="margin:0 0 4px;"><strong style="color:#f4f4f5;">Ganancia realizada del año:</strong> $${d.ganancia_realizada_ano.toLocaleString()}</p>
-        <p style="margin:0 0 4px;"><strong style="color:#f4f4f5;">Impacto del plan:</strong> ${d.impacto_plan_mxn >= 0 ? '+' : ''}$${d.impacto_plan_mxn.toLocaleString()}</p>
-        <p style="margin:0 0 4px;"><strong style="color:#f4f4f5;">Base gravable proyectada:</strong> $${d.base_gravable_proyectada.toLocaleString()}</p>
-        ${d.perdida_arrastrable > 0 ? `<p style="margin:0;color:#22c55e;"><strong>Pérdida arrastrable a años futuros:</strong> $${d.perdida_arrastrable.toLocaleString()}</p>` : ''}
+      <div style="margin-top:14px;padding:12px;background:rgba(0,0,0,0.3);border:1px solid #131210;border-radius:2px;font-size:11px;color:#9A9284;line-height:1.6;">
+        <p style="margin:0 0 4px;"><strong style="color:#F2EEE4;">Ganancia realizada del año:</strong> $${d.ganancia_realizada_ano.toLocaleString()}</p>
+        <p style="margin:0 0 4px;"><strong style="color:#F2EEE4;">Impacto del plan:</strong> ${d.impacto_plan_mxn >= 0 ? '+' : ''}$${d.impacto_plan_mxn.toLocaleString()}</p>
+        <p style="margin:0 0 4px;"><strong style="color:#F2EEE4;">Base gravable proyectada:</strong> $${d.base_gravable_proyectada.toLocaleString()}</p>
+        ${d.perdida_arrastrable > 0 ? `<p style="margin:0;color:#6FAE7E;"><strong>Pérdida arrastrable a años futuros:</strong> $${d.perdida_arrastrable.toLocaleString()}</p>` : ''}
       </div>
-      <p style="margin:12px 0 0;font-size:10px;color:#71717a;text-align:center;font-style:italic;">${d.advertencia}</p>
+      <p style="margin:12px 0 0;font-size:10px;color:#847D70;text-align:center;font-style:italic;">${d.advertencia}</p>
     `;
   }
 
@@ -264,28 +264,28 @@
       <div style="padding:24px;">
         <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:16px;">
           <div>
-            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#fb923c;">Screener</p>
-            <h2 style="margin:4px 0 0;font-size:22px;color:#f4f4f5;font-weight:700;">Filtra el universo de tickers</h2>
-            <p style="margin:6px 0 0;font-size:12px;color:#a1a1aa;">Encuentra acciones que cumplan tus criterios: P/E, yield, beta, market cap, sector...</p>
+            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#D79A3C;">Screener</p>
+            <h2 style="margin:4px 0 0;font-size:22px;color:#F2EEE4;font-weight:700;">Filtra el universo de tickers</h2>
+            <p style="margin:6px 0 0;font-size:12px;color:#9A9284;">Encuentra acciones que cumplan tus criterios: P/E, yield, beta, market cap, sector...</p>
           </div>
-          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
+          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;">
-          <label style="font-size:11px;color:#71717a;">Tipo<select id="mp-sc-tipo" style="display:block;width:100%;background:#161616;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-top:4px;"><option value="">Todos</option><option value="acciones">Acciones</option><option value="etfs">ETFs</option><option value="crypto">Crypto</option></select></label>
-          <label style="font-size:11px;color:#71717a;">Mercado<select id="mp-sc-mercado" style="display:block;width:100%;background:#161616;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-top:4px;"><option value="">Todos</option><option value="MX">México (BMV)</option><option value="US">USA</option><option value="INTL">Internacional</option><option value="Crypto">Crypto</option></select></label>
-          <label style="font-size:11px;color:#71717a;">Sector<input id="mp-sc-sector" type="text" placeholder="Technology, Financial..." style="display:block;width:100%;background:#161616;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-top:4px;"></label>
-          <label style="font-size:11px;color:#71717a;">Market cap mín. USD<input id="mp-sc-mc" type="number" placeholder="10000000000" style="display:block;width:100%;background:#161616;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-top:4px;font-family:monospace;"></label>
-          <label style="font-size:11px;color:#71717a;">P/E máx.<input id="mp-sc-pemax" type="number" placeholder="25" style="display:block;width:100%;background:#161616;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-top:4px;font-family:monospace;"></label>
-          <label style="font-size:11px;color:#71717a;">Yield mín. (%)<input id="mp-sc-ymin" type="number" step="0.5" placeholder="2" style="display:block;width:100%;background:#161616;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-top:4px;font-family:monospace;"></label>
-          <label style="font-size:11px;color:#71717a;">Beta máx.<input id="mp-sc-bmax" type="number" step="0.1" placeholder="1.2" style="display:block;width:100%;background:#161616;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-top:4px;font-family:monospace;"></label>
+          <label style="font-size:11px;color:#847D70;">Tipo<select id="mp-sc-tipo" style="display:block;width:100%;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:8px;color:#F2EEE4;margin-top:4px;"><option value="">Todos</option><option value="acciones">Acciones</option><option value="etfs">ETFs</option><option value="crypto">Crypto</option></select></label>
+          <label style="font-size:11px;color:#847D70;">Mercado<select id="mp-sc-mercado" style="display:block;width:100%;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:8px;color:#F2EEE4;margin-top:4px;"><option value="">Todos</option><option value="MX">México (BMV)</option><option value="US">USA</option><option value="INTL">Internacional</option><option value="Crypto">Crypto</option></select></label>
+          <label style="font-size:11px;color:#847D70;">Sector<input id="mp-sc-sector" type="text" placeholder="Technology, Financial..." style="display:block;width:100%;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:8px;color:#F2EEE4;margin-top:4px;"></label>
+          <label style="font-size:11px;color:#847D70;">Market cap mín. USD<input id="mp-sc-mc" type="number" placeholder="10000000000" style="display:block;width:100%;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:8px;color:#F2EEE4;margin-top:4px;font-family:monospace;"></label>
+          <label style="font-size:11px;color:#847D70;">P/E máx.<input id="mp-sc-pemax" type="number" placeholder="25" style="display:block;width:100%;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:8px;color:#F2EEE4;margin-top:4px;font-family:monospace;"></label>
+          <label style="font-size:11px;color:#847D70;">Yield mín. (%)<input id="mp-sc-ymin" type="number" step="0.5" placeholder="2" style="display:block;width:100%;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:8px;color:#F2EEE4;margin-top:4px;font-family:monospace;"></label>
+          <label style="font-size:11px;color:#847D70;">Beta máx.<input id="mp-sc-bmax" type="number" step="0.1" placeholder="1.2" style="display:block;width:100%;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:8px;color:#F2EEE4;margin-top:4px;font-family:monospace;"></label>
         </div>
-        <button id="mp-sc-buscar" style="display:block;width:100%;background:#fb923c;color:#0a0a0b;border:none;border-radius:8px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Buscar →</button>
+        <button id="mp-sc-buscar" style="display:block;width:100%;background:#D79A3C;color:#0B0B0A;border:none;border-radius:2px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Buscar →</button>
         <div id="mp-sc-resultado" style="margin-top:16px;"></div>
       </div>`;
     _abrirModal(formHTML);
     document.getElementById('mp-sc-buscar').addEventListener('click', async () => {
       const cont = document.getElementById('mp-sc-resultado');
-      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:14px;">Filtrando…</p>`;
+      cont.innerHTML = `<p style="text-align:center;color:#847D70;font-size:13px;padding:14px;">Filtrando…</p>`;
       const get = id => document.getElementById(id).value.trim();
       const num = id => { const v = parseFloat(get(id)); return isFinite(v) ? v : null; };
       const criterios = {
@@ -306,9 +306,9 @@
           body: JSON.stringify(criterios),
         });
         const d = await res.json();
-        if (!d.ok) { cont.innerHTML = `<p style="color:#ef4444;">${d.error || 'Error'}</p>`; return; }
+        if (!d.ok) { cont.innerHTML = `<p style="color:#DB7B68;">${d.error || 'Error'}</p>`; return; }
         cont.innerHTML = _renderScreener(d);
-      } catch (e) { cont.innerHTML = `<p style="color:#ef4444;">Error: ${e.message}</p>`; }
+      } catch (e) { cont.innerHTML = `<p style="color:#DB7B68;">Error: ${e.message}</p>`; }
     });
   };
 
@@ -316,29 +316,29 @@
     const filas = (d.resultados || []).map(r => {
       const sym = r.moneda === 'MXN' ? '$' : 'US$';
       const precio = r.precio != null ? `${sym}${Number(r.precio).toLocaleString('en-US',{maximumFractionDigits:2})}` : '—';
-      const score = r.score != null ? `<span style="font-weight:700;color:#f59e0b;">${Math.round(r.score)}</span>` : '—';
+      const score = r.score != null ? `<span style="font-weight:700;color:#D79A3C;">${Math.round(r.score)}</span>` : '—';
       return `<tr>
-        <td style="padding:6px 10px;font-family:monospace;color:#f4f4f5;font-weight:600;font-size:12px;">${r.ticker}</td>
-        <td style="padding:6px 10px;color:#a1a1aa;font-size:11px;">${r.mercado || '—'}</td>
+        <td style="padding:6px 10px;font-family:monospace;color:#F2EEE4;font-weight:600;font-size:12px;">${r.ticker}</td>
+        <td style="padding:6px 10px;color:#9A9284;font-size:11px;">${r.mercado || '—'}</td>
         <td style="padding:6px 10px;text-align:right;font-family:monospace;font-size:12px;">${score}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:11px;">${r.beta != null ? Number(r.beta).toFixed(2) : '—'}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#d4d4d8;font-size:11px;">${precio}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#CFC8B8;font-size:11px;">${r.beta != null ? Number(r.beta).toFixed(2) : '—'}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#CFC8B8;font-size:11px;">${precio}</td>
       </tr>`;
     }).join('');
     return `
-      <p style="font-size:12px;color:#a1a1aa;margin:0 0 8px;">${d.total} resultados (ordenados por score)</p>
+      <p style="font-size:12px;color:#9A9284;margin:0 0 8px;">${d.total} resultados (ordenados por score)</p>
       <div style="overflow-x:auto;max-height:400px;overflow-y:auto;-webkit-overflow-scrolling:touch;">
-        <table style="width:100%;border-collapse:collapse;background:#0a0a0b;border:1px solid #1a1a1a;border-radius:8px;">
-          <thead style="position:sticky;top:0;background:#161616;">
+        <table style="width:100%;border-collapse:collapse;background:#0B0B0A;border:1px solid #131210;border-radius:2px;">
+          <thead style="position:sticky;top:0;background:#131210;">
             <tr>
-              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:left;">Ticker</th>
-              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:left;">Mercado</th>
-              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">Score</th>
-              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">Beta</th>
-              <th style="padding:8px 10px;font-size:10px;color:#71717a;text-transform:uppercase;text-align:right;">Precio</th>
+              <th style="padding:8px 10px;font-size:10px;color:#847D70;text-transform:uppercase;text-align:left;">Ticker</th>
+              <th style="padding:8px 10px;font-size:10px;color:#847D70;text-transform:uppercase;text-align:left;">Mercado</th>
+              <th style="padding:8px 10px;font-size:10px;color:#847D70;text-transform:uppercase;text-align:right;">Score</th>
+              <th style="padding:8px 10px;font-size:10px;color:#847D70;text-transform:uppercase;text-align:right;">Beta</th>
+              <th style="padding:8px 10px;font-size:10px;color:#847D70;text-transform:uppercase;text-align:right;">Precio</th>
             </tr>
           </thead>
-          <tbody>${filas || '<tr><td colspan="5" style="padding:20px;text-align:center;color:#71717a;">Sin resultados con esos criterios</td></tr>'}</tbody>
+          <tbody>${filas || '<tr><td colspan="5" style="padding:20px;text-align:center;color:#847D70;">Sin resultados con esos criterios</td></tr>'}</tbody>
         </table>
       </div>
     `;
@@ -352,41 +352,41 @@
   window.abrirAlertasAvanzadas = function() {
     const reglas = JSON.parse(localStorage.getItem('miPortafolio.alertasAvanzadas.v1') || '[]');
     const reglasHTML = reglas.length === 0
-      ? `<p style="text-align:center;color:#71717a;font-size:13px;padding:24px;">Aún no tienes reglas custom. Crea una abajo.</p>`
+      ? `<p style="text-align:center;color:#847D70;font-size:13px;padding:24px;">Aún no tienes reglas custom. Crea una abajo.</p>`
       : reglas.map((r, i) => {
         const condStr = (r.condiciones || []).map(c => `${c.campo} ${c.operador} ${c.valor}`).join(` ${r.operador_logico || 'AND'} `);
-        return `<div style="background:#161616;border:1px solid #2a2a2f;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-          <div style="flex:1;min-width:0;"><p style="margin:0;font-size:13px;color:#f4f4f5;font-weight:600;">${r.nombre || `Regla ${i+1}`}</p><p style="margin:2px 0 0;font-size:11px;color:#a1a1aa;font-family:monospace;">${condStr}</p></div>
-          <button data-idx="${i}" class="mp-aa-del" style="background:transparent;border:1px solid #2a2a2f;color:#ef4444;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Eliminar</button>
+        return `<div style="background:#131210;border:1px solid #2A2721;border-radius:2px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="flex:1;min-width:0;"><p style="margin:0;font-size:13px;color:#F2EEE4;font-weight:600;">${r.nombre || `Regla ${i+1}`}</p><p style="margin:2px 0 0;font-size:11px;color:#9A9284;font-family:monospace;">${condStr}</p></div>
+          <button data-idx="${i}" class="mp-aa-del" style="background:transparent;border:1px solid #2A2721;color:#DB7B68;padding:4px 10px;border-radius:2px;font-size:11px;cursor:pointer;">Eliminar</button>
         </div>`;
       }).join('');
     const html = `
       <div style="padding:24px;">
         <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:16px;">
           <div>
-            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;">Alertas avanzadas</p>
-            <h2 style="margin:4px 0 0;font-size:22px;color:#f4f4f5;font-weight:700;">Reglas multi-condición</h2>
-            <p style="margin:6px 0 0;font-size:12px;color:#a1a1aa;">Crea reglas tipo "avísame si NVDA cae &lt;100 Y el VIX &gt; 25".</p>
+            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#6FAE7E;">Alertas avanzadas</p>
+            <h2 style="margin:4px 0 0;font-size:22px;color:#F2EEE4;font-weight:700;">Reglas multi-condición</h2>
+            <p style="margin:6px 0 0;font-size:12px;color:#9A9284;">Crea reglas tipo "avísame si NVDA cae &lt;100 Y el VIX &gt; 25".</p>
           </div>
-          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
+          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
 
-        <h4 style="font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 8px;">Tus reglas (${reglas.length})</h4>
+        <h4 style="font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 8px;">Tus reglas (${reglas.length})</h4>
         <div id="mp-aa-lista">${reglasHTML}</div>
 
-        <h4 style="font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;margin:18px 0 8px;">Nueva regla</h4>
-        <div style="background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:12px;">
-          <input id="mp-aa-nombre" type="text" placeholder="Nombre (ej. NVDA crítico)" style="display:block;width:100%;background:#0a0a0b;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-bottom:8px;">
-          <select id="mp-aa-logico" style="display:block;width:100%;background:#0a0a0b;border:1px solid #2a2a2f;border-radius:6px;padding:8px;color:#f4f4f5;margin-bottom:8px;">
+        <h4 style="font-size:11px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;margin:18px 0 8px;">Nueva regla</h4>
+        <div style="background:#131210;border:1px solid #2A2721;border-radius:2px;padding:12px;">
+          <input id="mp-aa-nombre" type="text" placeholder="Nombre (ej. NVDA crítico)" style="display:block;width:100%;background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:8px;color:#F2EEE4;margin-bottom:8px;">
+          <select id="mp-aa-logico" style="display:block;width:100%;background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:8px;color:#F2EEE4;margin-bottom:8px;">
             <option value="AND">Todas las condiciones (AND)</option>
             <option value="OR">Cualquier condición (OR)</option>
           </select>
-          <p style="margin:8px 0 6px;font-size:11px;color:#71717a;">Condiciones:</p>
+          <p style="margin:8px 0 6px;font-size:11px;color:#847D70;">Condiciones:</p>
           <div id="mp-aa-conds"></div>
-          <button id="mp-aa-addcond" style="background:transparent;border:1px dashed #2a2a2f;color:#71717a;padding:8px;width:100%;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:8px;">+ Agregar condición</button>
-          <button id="mp-aa-guardar" style="display:block;width:100%;background:#22c55e;color:#0a0a0b;border:none;border-radius:8px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;">Guardar regla</button>
+          <button id="mp-aa-addcond" style="background:transparent;border:1px dashed #2A2721;color:#847D70;padding:8px;width:100%;border-radius:2px;cursor:pointer;font-size:12px;margin-bottom:8px;">+ Agregar condición</button>
+          <button id="mp-aa-guardar" style="display:block;width:100%;background:#6FAE7E;color:#0B0B0A;border:none;border-radius:2px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;">Guardar regla</button>
         </div>
-        <p style="margin:14px 0 0;font-size:10px;color:#71717a;line-height:1.5;">
+        <p style="margin:14px 0 0;font-size:10px;color:#847D70;line-height:1.5;">
           Campos disponibles en el contexto: <code>precio_AAPL</code>, <code>precio_NVDA</code>, <code>cambio_AAPL</code>, <code>peso_AAPL</code>, <code>drift_pp</code>, <code>cetes_28d</code>, <code>vix</code>.
           Operadores: <code>mayor</code>, <code>menor</code>, <code>mayor_igual</code>, <code>menor_igual</code>, <code>igual</code>.
         </p>
@@ -398,12 +398,12 @@
       const cont = document.getElementById('mp-aa-conds');
       cont.innerHTML = conds.map((c, i) => `
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:4px;margin-bottom:4px;">
-          <input data-i="${i}" data-k="campo" type="text" value="${c.campo}" placeholder="precio_NVDA" style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:4px;padding:6px;color:#f4f4f5;font-size:11px;font-family:monospace;">
-          <select data-i="${i}" data-k="operador" style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:4px;padding:6px;color:#f4f4f5;font-size:11px;">
+          <input data-i="${i}" data-k="campo" type="text" value="${c.campo}" placeholder="precio_NVDA" style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:6px;color:#F2EEE4;font-size:11px;font-family:monospace;">
+          <select data-i="${i}" data-k="operador" style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:6px;color:#F2EEE4;font-size:11px;">
             ${['mayor','mayor_igual','menor','menor_igual','igual'].map(o => `<option value="${o}" ${c.operador===o?'selected':''}>${o}</option>`).join('')}
           </select>
-          <input data-i="${i}" data-k="valor" type="number" step="any" value="${c.valor}" style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:4px;padding:6px;color:#f4f4f5;font-size:11px;font-family:monospace;">
-          <button data-i="${i}" class="mp-aa-rmcond" style="background:transparent;border:1px solid #2a2a2f;color:#ef4444;padding:0 8px;border-radius:4px;cursor:pointer;font-size:14px;">×</button>
+          <input data-i="${i}" data-k="valor" type="number" step="any" value="${c.valor}" style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:6px;color:#F2EEE4;font-size:11px;font-family:monospace;">
+          <button data-i="${i}" class="mp-aa-rmcond" style="background:transparent;border:1px solid #2A2721;color:#DB7B68;padding:0 8px;border-radius:2px;cursor:pointer;font-size:14px;">×</button>
         </div>`).join('');
       cont.querySelectorAll('input,select').forEach(el => {
         el.addEventListener('change', (e) => {
@@ -466,16 +466,16 @@
       <div style="padding:24px;">
         <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:16px;">
           <div>
-            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#0ea5e9;">Backups</p>
-            <h2 style="margin:4px 0 0;font-size:22px;color:#f4f4f5;font-weight:700;">Backups en la nube</h2>
-            <p style="margin:6px 0 0;font-size:12px;color:#a1a1aa;">Guarda snapshots de tu portafolio para restaurar si pierdes el navegador o quieres revertir cambios.</p>
-            <p style="margin:6px 0 0;font-size:11px;color:#0ea5e9;font-family:monospace;">📧 ${email}</p>
+            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#D79A3C;">Backups</p>
+            <h2 style="margin:4px 0 0;font-size:22px;color:#F2EEE4;font-weight:700;">Backups en la nube</h2>
+            <p style="margin:6px 0 0;font-size:12px;color:#9A9284;">Guarda snapshots de tu portafolio para restaurar si pierdes el navegador o quieres revertir cambios.</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#D79A3C;font-family:monospace;"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="2.5" y="5" width="19" height="14"/><path d="M2.5 6l9.5 7 9.5-7"/></svg></span> ${email}</p>
           </div>
-          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
+          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px;">
-          <input id="mp-bk-nombre" type="text" placeholder="Nombre del backup (opcional, ej. Antes del rebalanceo)" style="flex:1;background:#161616;border:1px solid #2a2a2f;border-radius:8px;padding:10px;font-size:13px;color:#f4f4f5;">
-          <button id="mp-bk-crear" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;">+ Crear backup</button>
+          <input id="mp-bk-nombre" type="text" placeholder="Nombre del backup (opcional, ej. Antes del rebalanceo)" style="flex:1;background:#131210;border:1px solid #2A2721;border-radius:2px;padding:10px;font-size:13px;color:#F2EEE4;">
+          <button id="mp-bk-crear" style="background:#D79A3C;color:#F2EEE4;border:none;border-radius:2px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;">+ Crear backup</button>
         </div>
         <div id="mp-bk-lista" style="margin-top:12px;"></div>
       </div>`;
@@ -483,32 +483,32 @@
 
     async function recargar() {
       const cont = document.getElementById('mp-bk-lista');
-      cont.innerHTML = `<p style="color:#71717a;font-size:12px;text-align:center;padding:14px;">Cargando…</p>`;
+      cont.innerHTML = `<p style="color:#847D70;font-size:12px;text-align:center;padding:14px;">Cargando…</p>`;
       try {
         const res = await fetch(`/api/backups?email=${encodeURIComponent(email)}`);
         const d = await res.json();
-        if (!d.ok) { cont.innerHTML = `<p style="color:#ef4444;">${d.error}</p>`; return; }
+        if (!d.ok) { cont.innerHTML = `<p style="color:#DB7B68;">${d.error}</p>`; return; }
         if (!d.backups || !d.backups.length) {
-          cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:24px;">Aún no tienes backups. Crea uno arriba.</p>`;
+          cont.innerHTML = `<p style="text-align:center;color:#847D70;font-size:13px;padding:24px;">Aún no tienes backups. Crea uno arriba.</p>`;
           return;
         }
         cont.innerHTML = d.backups.map(b => {
           const fecha = new Date(b.created_at).toLocaleString('es-MX', {dateStyle:'short', timeStyle:'short'});
-          const tipo = b.es_automatico ? '🤖 Auto' : '👤 Manual';
+          const tipo = b.es_automatico ? '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="4" y="8" width="16" height="12"/><path d="M12 4v4"/><circle cx="9" cy="13" r="1.2"/><circle cx="15" cy="13" r="1.2"/><path d="M9.5 17h5"/></svg></span> Auto' : '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1.5A5.5 5.5 0 0 1 9.5 14h5a5.5 5.5 0 0 1 5.5 5.5V21"/></svg></span> Manual';
           const tamano = b.tamano_bytes ? `${(b.tamano_bytes/1024).toFixed(1)} KB` : '';
-          return `<div style="background:#161616;border:1px solid #2a2a2f;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          return `<div style="background:#131210;border:1px solid #2A2721;border-radius:2px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
             <div style="flex:1;min-width:0;">
-              <p style="margin:0;font-size:13px;color:#f4f4f5;font-weight:600;">${b.nombre || 'Backup sin nombre'}</p>
-              <p style="margin:2px 0 0;font-size:11px;color:#71717a;">${tipo} · ${fecha} · ${tamano}</p>
+              <p style="margin:0;font-size:13px;color:#F2EEE4;font-weight:600;">${b.nombre || 'Backup sin nombre'}</p>
+              <p style="margin:2px 0 0;font-size:11px;color:#847D70;">${tipo} · ${fecha} · ${tamano}</p>
             </div>
-            <button data-id="${b.id}" class="mp-bk-restaurar" style="background:#22c55e;color:#0a0a0b;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Restaurar</button>
-            <button data-id="${b.id}" class="mp-bk-del" style="background:transparent;border:1px solid #2a2a2f;color:#ef4444;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;">✕</button>
+            <button data-id="${b.id}" class="mp-bk-restaurar" style="background:#6FAE7E;color:#0B0B0A;border:none;padding:6px 12px;border-radius:2px;font-size:11px;font-weight:700;cursor:pointer;">Restaurar</button>
+            <button data-id="${b.id}" class="mp-bk-del" style="background:transparent;border:1px solid #2A2721;color:#DB7B68;padding:5px 10px;border-radius:2px;font-size:11px;cursor:pointer;">✕</button>
           </div>`;
         }).join('');
         cont.querySelectorAll('.mp-bk-restaurar').forEach(b => b.addEventListener('click', () => restaurar(b.dataset.id)));
         cont.querySelectorAll('.mp-bk-del').forEach(b => b.addEventListener('click', () => eliminar(b.dataset.id)));
       } catch (e) {
-        cont.innerHTML = `<p style="color:#ef4444;">Error: ${e.message}</p>`;
+        cont.innerHTML = `<p style="color:#DB7B68;">Error: ${e.message}</p>`;
       }
     }
 
@@ -641,7 +641,7 @@
         return;
       }
       localStorage.setItem('miPortafolio.pushActivo', '1');
-      window.toast && window.toast('✅ Notificaciones activadas. Te llegará una de prueba en 5 seg.', 'success', 5000);
+      window.toast && window.toast('Notificaciones activadas. Te llegará una de prueba en 5 seg.', 'success', 5000);
 
       // 5) Mandar push de prueba. Se verifica el resultado: antes era
       // fire-and-forget con `catch {}` después de haber prometido "te llegará
@@ -653,7 +653,7 @@
           const r = await fetch('/api/push/test', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({email, titulo: '🚀 Mi Portafolio', body: 'Push notifications funcionando correctamente.'}),
+            body: JSON.stringify({email, titulo: 'Mi Portafolio', body: 'Push notifications funcionando correctamente.'}),
           });
           const d = await r.json().catch(() => ({}));
           if (!r.ok || (d && d.ok === false)) throw new Error(d.error || ('HTTP ' + r.status));
@@ -697,25 +697,25 @@
       <div style="padding:24px;">
         <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:16px;">
           <div>
-            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;">Notificaciones</p>
-            <h2 style="margin:4px 0 0;font-size:22px;color:#f4f4f5;font-weight:700;">Push notifications</h2>
-            <p style="margin:6px 0 0;font-size:12px;color:#a1a1aa;">Recibe alertas instantáneas en tu teléfono/desktop (sin email) cuando se disparen tus reglas.</p>
+            <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#6FAE7E;">Notificaciones</p>
+            <h2 style="margin:4px 0 0;font-size:22px;color:#F2EEE4;font-weight:700;">Push notifications</h2>
+            <p style="margin:6px 0 0;font-size:12px;color:#9A9284;">Recibe alertas instantáneas en tu teléfono/desktop (sin email) cuando se disparen tus reglas.</p>
           </div>
-          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#71717a;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
+          <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:#847D70;font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
-        <div style="background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:16px;margin-bottom:14px;">
-          <p style="margin:0;font-size:13px;color:${activo ? '#22c55e' : '#a1a1aa'};font-weight:600;">${activo ? '✅ Notificaciones activas' : '⚪ Notificaciones desactivadas'}</p>
-          ${email ? `<p style="margin:6px 0 0;font-size:11px;color:#71717a;font-family:monospace;">Asociadas a: ${email}</p>` : ''}
+        <div style="background:#131210;border:1px solid #2A2721;border-radius:2px;padding:16px;margin-bottom:14px;">
+          <p style="margin:0;font-size:13px;color:${activo ? '#6FAE7E' : '#9A9284'};font-weight:600;">${activo ? '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 12.5 9.5 18 20 6.5"/></svg></span> Notificaciones activas' : '⚪ Notificaciones desactivadas'}</p>
+          ${email ? `<p style="margin:6px 0 0;font-size:11px;color:#847D70;font-family:monospace;">Asociadas a: ${email}</p>` : ''}
         </div>
-        <p style="margin:0 0 14px;font-size:12px;color:#a1a1aa;line-height:1.55;">
-          <strong style="color:#fff;">Requisitos:</strong><br>
+        <p style="margin:0 0 14px;font-size:12px;color:#9A9284;line-height:1.55;">
+          <strong style="color:#F2EEE4;">Requisitos:</strong><br>
           · iOS: Safari 16.4+ y la app instalada como PWA ("Agregar a pantalla de inicio")<br>
           · Android: Chrome o Firefox<br>
           · Desktop: cualquier navegador moderno
         </p>
         ${activo
-          ? `<button id="mp-push-toggle" style="display:block;width:100%;background:#ef4444;color:#fff;border:none;border-radius:8px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Desactivar notificaciones</button>`
-          : `<button id="mp-push-toggle" style="display:block;width:100%;background:#22c55e;color:#0a0a0b;border:none;border-radius:8px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Activar notificaciones →</button>`
+          ? `<button id="mp-push-toggle" style="display:block;width:100%;background:#DB7B68;color:#F2EEE4;border:none;border-radius:2px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Desactivar notificaciones</button>`
+          : `<button id="mp-push-toggle" style="display:block;width:100%;background:#6FAE7E;color:#0B0B0A;border:none;border-radius:2px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Activar notificaciones →</button>`
         }
       </div>`;
     _abrirModal(html);
@@ -741,18 +741,18 @@
     const ejecutar = async () => {
       const t = inp.value.trim().toUpperCase();
       if (!t) return;
-      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:24px;background:#161616;border:1px solid #2a2a2f;border-radius:12px;">Analizando ${t}… (15-30 seg)</p>`;
+      cont.innerHTML = `<p style="text-align:center;color:#847D70;font-size:13px;padding:24px;background:#131210;border:1px solid #2A2721;border-radius:2px;">Analizando ${t}… (15-30 seg)</p>`;
       try {
         const res = await fetch(`/api/deep-dive/${encodeURIComponent(t)}`);
         const d = await res.json();
         if (!d.ok) {
-          cont.innerHTML = `<p style="color:#ef4444;font-size:13px;padding:14px;">${d.error || 'Error'}</p>`;
+          cont.innerHTML = `<p style="color:#DB7B68;font-size:13px;padding:14px;">${d.error || 'Error'}</p>`;
           return;
         }
         // Usa la misma función _renderDeepDive del modal pero envuelta en card
-        cont.innerHTML = `<div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;padding:20px;">${_renderDeepDive(d)}</div>`;
+        cont.innerHTML = `<div style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:20px;">${_renderDeepDive(d)}</div>`;
       } catch (e) {
-        cont.innerHTML = `<p style="color:#ef4444;font-size:13px;padding:14px;">Error: ${e.message}</p>`;
+        cont.innerHTML = `<p style="color:#DB7B68;font-size:13px;padding:14px;">Error: ${e.message}</p>`;
       }
     };
     btn.addEventListener('click', ejecutar);
@@ -766,7 +766,7 @@
     if (!btn || !cont || btn.dataset.wired === '1') return;
     btn.dataset.wired = '1';
     btn.addEventListener('click', async () => {
-      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:20px;">Filtrando…</p>`;
+      cont.innerHTML = `<p style="text-align:center;color:#847D70;font-size:13px;padding:20px;">Filtrando…</p>`;
       const get = id => document.getElementById(id).value.trim();
       const num = id => { const v = parseFloat(get(id)); return isFinite(v) ? v : null; };
       const criterios = {
@@ -784,9 +784,9 @@
           body: JSON.stringify(criterios),
         });
         const d = await res.json();
-        if (!d.ok) { cont.innerHTML = `<p style="color:#ef4444;">${d.error || 'Error'}</p>`; return; }
+        if (!d.ok) { cont.innerHTML = `<p style="color:#DB7B68;">${d.error || 'Error'}</p>`; return; }
         cont.innerHTML = _renderScreener(d);
-      } catch (e) { cont.innerHTML = `<p style="color:#ef4444;">Error: ${e.message}</p>`; }
+      } catch (e) { cont.innerHTML = `<p style="color:#DB7B68;">Error: ${e.message}</p>`; }
     });
   };
 
@@ -797,11 +797,11 @@
     if (!btn || !cont || btn.dataset.wired === '1') return;
     btn.dataset.wired = '1';
     btn.addEventListener('click', async () => {
-      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:14px;">Calculando…</p>`;
+      cont.innerHTML = `<p style="text-align:center;color:#847D70;font-size:13px;padding:14px;">Calculando…</p>`;
       try {
         const txs = JSON.parse(localStorage.getItem('miPortafolio.transacciones.v1') || '[]');
         if (!txs.length) {
-          cont.innerHTML = `<p style="color:#fb923c;font-size:13px;padding:14px;background:rgba(251,146,60,0.08);border-radius:8px;">Primero registra tus transacciones arriba.</p>`;
+          cont.innerHTML = `<p style="color:#D79A3C;font-size:13px;padding:14px;background:rgba(215,154,60,0.08);border-radius:2px;">Primero registra tus transacciones arriba.</p>`;
           return;
         }
         const precios = {};
@@ -824,9 +824,9 @@
           body: JSON.stringify(body),
         });
         const d = await res.json();
-        if (!d.ok) { cont.innerHTML = `<p style="color:#ef4444;">${d.error}</p>`; return; }
+        if (!d.ok) { cont.innerHTML = `<p style="color:#DB7B68;">${d.error}</p>`; return; }
         cont.innerHTML = _renderOptimizador(d);
-      } catch (e) { cont.innerHTML = `<p style="color:#ef4444;">Error: ${e.message}</p>`; }
+      } catch (e) { cont.innerHTML = `<p style="color:#DB7B68;">Error: ${e.message}</p>`; }
     });
   };
 
@@ -980,19 +980,19 @@
     const ejecutar = async () => {
       const t = inp.value.trim().toUpperCase();
       if (!t) return;
-      cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:24px;background:#161616;border:1px solid #2a2a2f;border-radius:12px;">Calculando SML para ${t}… (15-30 seg)</p>`;
+      cont.innerHTML = `<p style="text-align:center;color:#847D70;font-size:13px;padding:24px;background:#131210;border:1px solid #2A2721;border-radius:2px;">Calculando SML para ${t}… (15-30 seg)</p>`;
       try {
         const res = await fetch(`/api/sml/${encodeURIComponent(t)}`);
         const d = await res.json();
         if (!d.ok) {
-          cont.innerHTML = `<div style="padding:16px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.25);border-radius:12px;">
-            <p style="margin:0;color:#ef4444;font-size:13px;">${d.error || 'Error'}</p>
+          cont.innerHTML = `<div style="padding:16px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.25);border-radius:2px;">
+            <p style="margin:0;color:#DB7B68;font-size:13px;">${d.error || 'Error'}</p>
           </div>`;
           return;
         }
         cont.innerHTML = _renderSml(d);
       } catch (e) {
-        cont.innerHTML = `<p style="color:#ef4444;font-size:13px;padding:14px;">Error: ${e.message}</p>`;
+        cont.innerHTML = `<p style="color:#DB7B68;font-size:13px;padding:14px;">Error: ${e.message}</p>`;
       }
     };
     btn.addEventListener('click', ejecutar);
@@ -1001,82 +1001,82 @@
 
   function _renderSml(d) {
     const colorMap = {
-      green: { bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.3)', text: '#22c55e' },
-      blue:  { bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.3)', text: '#3b82f6' },
-      red:   { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.3)', text: '#ef4444' },
+      green: { bg: 'rgba(215,154,60,0.08)', border: 'rgba(215,154,60,0.3)', text: '#6FAE7E' },
+      blue:  { bg: 'rgba(215,154,60,0.08)', border: 'rgba(215,154,60,0.3)', text: '#D79A3C' },
+      red:   { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.3)', text: '#DB7B68' },
     };
     const c = colorMap[d.veredicto_color] || colorMap.blue;
     const fmtPct = (v) => v == null ? '—' : (v * 100).toFixed(2) + '%';
     const fmtPctSigno = (v) => v == null ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
-    const alphaColor = d.alpha >= 0 ? '#22c55e' : '#ef4444';
+    const alphaColor = d.alpha >= 0 ? '#6FAE7E' : '#DB7B68';
 
     return `
       <!-- Veredicto principal -->
-      <div style="background:${c.bg};border:1px solid ${c.border};border-radius:16px;padding:24px;">
+      <div style="background:${c.bg};border:1px solid ${c.border};border-radius:2px;padding:24px;">
         <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:${c.text};">Veredicto</p>
-        <h3 style="margin:6px 0 0;font-size:32px;color:#f4f4f5;font-weight:800;letter-spacing:-0.02em;">${d.veredicto}</h3>
-        <p style="margin:10px 0 0;font-size:13px;color:#d4d4d8;line-height:1.6;">${d.interpretacion}</p>
+        <h3 style="margin:6px 0 0;font-size:32px;color:#F2EEE4;font-weight:800;letter-spacing:-0.02em;">${d.veredicto}</h3>
+        <p style="margin:10px 0 0;font-size:13px;color:#CFC8B8;line-height:1.6;">${d.interpretacion}</p>
       </div>
 
       <!-- KPIs principales -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
-        <div style="background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:14px;">
-          <p style="margin:0;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Beta (β)</p>
-          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:#f4f4f5;font-family:monospace;">${d.beta.toFixed(2)}</p>
-          <p style="margin:2px 0 0;font-size:10px;color:#a1a1aa;">${d.clase_beta}</p>
+        <div style="background:#131210;border:1px solid #2A2721;border-radius:2px;padding:14px;">
+          <p style="margin:0;font-size:10px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Beta (β)</p>
+          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:#F2EEE4;font-family:monospace;">${d.beta.toFixed(2)}</p>
+          <p style="margin:2px 0 0;font-size:10px;color:#9A9284;">${d.clase_beta}</p>
         </div>
-        <div style="background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:14px;">
-          <p style="margin:0;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Retorno real anual</p>
-          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:${d.retorno_real_anual >= 0 ? '#22c55e' : '#ef4444'};font-family:monospace;">${fmtPctSigno(d.retorno_real_anual)}</p>
-          <p style="margin:2px 0 0;font-size:10px;color:#a1a1aa;">últimos 5 años</p>
+        <div style="background:#131210;border:1px solid #2A2721;border-radius:2px;padding:14px;">
+          <p style="margin:0;font-size:10px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Retorno real anual</p>
+          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:${d.retorno_real_anual >= 0 ? '#6FAE7E' : '#DB7B68'};font-family:monospace;">${fmtPctSigno(d.retorno_real_anual)}</p>
+          <p style="margin:2px 0 0;font-size:10px;color:#9A9284;">últimos 5 años</p>
         </div>
-        <div style="background:#161616;border:1px solid #2a2a2f;border-radius:10px;padding:14px;">
-          <p style="margin:0;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Esperado por CAPM</p>
-          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:#f4f4f5;font-family:monospace;">${fmtPct(d.retorno_esperado_sml)}</p>
-          <p style="margin:2px 0 0;font-size:10px;color:#a1a1aa;">según su β</p>
+        <div style="background:#131210;border:1px solid #2A2721;border-radius:2px;padding:14px;">
+          <p style="margin:0;font-size:10px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Esperado por CAPM</p>
+          <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:#F2EEE4;font-family:monospace;">${fmtPct(d.retorno_esperado_sml)}</p>
+          <p style="margin:2px 0 0;font-size:10px;color:#9A9284;">según su β</p>
         </div>
-        <div style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:14px;">
+        <div style="background:${c.bg};border:1px solid ${c.border};border-radius:2px;padding:14px;">
           <p style="margin:0;font-size:10px;color:${c.text};text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Alpha (α)</p>
           <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:${alphaColor};font-family:monospace;">${fmtPctSigno(d.alpha)}</p>
-          <p style="margin:2px 0 0;font-size:10px;color:#a1a1aa;">real − esperado</p>
+          <p style="margin:2px 0 0;font-size:10px;color:#9A9284;">real − esperado</p>
         </div>
       </div>
 
       <!-- Detalles del cálculo -->
-      <div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:12px;padding:16px;">
-        <p style="margin:0 0 10px;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Detalles del cálculo</p>
+      <div style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:16px;">
+        <p style="margin:0 0 10px;font-size:10px;color:#847D70;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Detalles del cálculo</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:12px;">
-          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
-            <span style="color:#71717a;">Benchmark:</span>
-            <span style="color:#f4f4f5;font-family:monospace;float:right;">${d.benchmark}</span>
+          <div style="padding:6px 0;border-bottom:1px solid #131210;">
+            <span style="color:#847D70;">Benchmark:</span>
+            <span style="color:#F2EEE4;font-family:monospace;float:right;">${d.benchmark}</span>
           </div>
-          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
-            <span style="color:#71717a;">Moneda:</span>
-            <span style="color:#f4f4f5;font-family:monospace;float:right;">${d.moneda}</span>
+          <div style="padding:6px 0;border-bottom:1px solid #131210;">
+            <span style="color:#847D70;">Moneda:</span>
+            <span style="color:#F2EEE4;font-family:monospace;float:right;">${d.moneda}</span>
           </div>
-          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
-            <span style="color:#71717a;">Tasa libre de riesgo:</span>
-            <span style="color:#f4f4f5;font-family:monospace;float:right;">${fmtPct(d.tasa_libre_riesgo)}</span>
+          <div style="padding:6px 0;border-bottom:1px solid #131210;">
+            <span style="color:#847D70;">Tasa libre de riesgo:</span>
+            <span style="color:#F2EEE4;font-family:monospace;float:right;">${fmtPct(d.tasa_libre_riesgo)}</span>
           </div>
-          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
-            <span style="color:#71717a;">Premio del mercado:</span>
-            <span style="color:#f4f4f5;font-family:monospace;float:right;">${fmtPct(d.premio_mercado)}</span>
+          <div style="padding:6px 0;border-bottom:1px solid #131210;">
+            <span style="color:#847D70;">Premio del mercado:</span>
+            <span style="color:#F2EEE4;font-family:monospace;float:right;">${fmtPct(d.premio_mercado)}</span>
           </div>
-          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
-            <span style="color:#71717a;">Retorno mercado (real):</span>
-            <span style="color:#f4f4f5;font-family:monospace;float:right;">${fmtPctSigno(d.retorno_mercado_anual)}</span>
+          <div style="padding:6px 0;border-bottom:1px solid #131210;">
+            <span style="color:#847D70;">Retorno mercado (real):</span>
+            <span style="color:#F2EEE4;font-family:monospace;float:right;">${fmtPctSigno(d.retorno_mercado_anual)}</span>
           </div>
-          <div style="padding:6px 0;border-bottom:1px solid #1a1a1a;">
-            <span style="color:#71717a;">Periodo:</span>
-            <span style="color:#f4f4f5;font-family:monospace;float:right;">${d.periodo}</span>
+          <div style="padding:6px 0;border-bottom:1px solid #131210;">
+            <span style="color:#847D70;">Periodo:</span>
+            <span style="color:#F2EEE4;font-family:monospace;float:right;">${d.periodo}</span>
           </div>
         </div>
-        <div style="margin-top:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:6px;font-family:monospace;font-size:11px;color:#a1a1aa;">
-          E(R) = ${(d.tasa_libre_riesgo*100).toFixed(2)}% + ${d.beta.toFixed(2)} × ${(d.premio_mercado*100).toFixed(2)}% = <strong style="color:#f4f4f5;">${(d.retorno_esperado_sml*100).toFixed(2)}%</strong>
+        <div style="margin-top:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:2px;font-family:monospace;font-size:11px;color:#9A9284;">
+          E(R) = ${(d.tasa_libre_riesgo*100).toFixed(2)}% + ${d.beta.toFixed(2)} × ${(d.premio_mercado*100).toFixed(2)}% = <strong style="color:#F2EEE4;">${(d.retorno_esperado_sml*100).toFixed(2)}%</strong>
         </div>
       </div>
 
-      <p style="margin:0;font-size:10px;color:#71717a;text-align:center;font-style:italic;">${d.advertencia}</p>
+      <p style="margin:0;font-size:10px;color:#847D70;text-align:center;font-style:italic;">${d.advertencia}</p>
     `;
   }
 
@@ -1084,20 +1084,20 @@
   window.renderSmlEn = async function(ticker, contId) {
     const cont = document.getElementById(contId);
     if (!cont || !ticker) return;
-    cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:18px;">Calculando valoración SML…</p>`;
+    cont.innerHTML = `<p style="text-align:center;color:#847D70;font-size:13px;padding:18px;">Calculando valoración SML…</p>`;
     try {
       const res = await fetch(`/api/sml/${encodeURIComponent(ticker)}`);
       const d = await res.json();
       cont.innerHTML = d.ok ? _renderSml(d)
-        : `<p style="color:#71717a;font-size:12px;padding:10px;">Valoración SML no disponible: ${d.error || ''}</p>`;
+        : `<p style="color:#847D70;font-size:12px;padding:10px;">Valoración SML no disponible: ${d.error || ''}</p>`;
     } catch (e) {
-      cont.innerHTML = `<p style="color:#ef4444;font-size:12px;padding:10px;">Error SML: ${e.message}</p>`;
+      cont.innerHTML = `<p style="color:#DB7B68;font-size:12px;padding:10px;">Error SML: ${e.message}</p>`;
     }
   };
   window.renderDeepDiveEn = async function(ticker, contId) {
     const cont = document.getElementById(contId);
     if (!cont || !ticker) return;
-    cont.innerHTML = `<p style="text-align:center;color:#71717a;font-size:13px;padding:18px;">Analizando a fondo… (puede tardar unos segundos)</p>`;
+    cont.innerHTML = `<p style="text-align:center;color:#847D70;font-size:13px;padding:18px;">Analizando a fondo… (puede tardar unos segundos)</p>`;
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), 35000);
     try {
@@ -1105,14 +1105,14 @@
       clearTimeout(to);
       const d = await res.json();
       cont.innerHTML = d.ok
-        ? `<div style="background:#0a0a0b;border:1px solid #2a2a2f;border-radius:16px;padding:20px;">${_renderDeepDive(d)}</div>`
-        : `<p style="color:#71717a;font-size:12px;padding:10px;">Deep dive no disponible: ${d.error || ''}</p>`;
+        ? `<div style="background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:20px;">${_renderDeepDive(d)}</div>`
+        : `<p style="color:#847D70;font-size:12px;padding:10px;">Deep dive no disponible: ${d.error || ''}</p>`;
     } catch (e) {
       clearTimeout(to);
       const msg = e.name === 'AbortError'
         ? 'El deep dive tardó demasiado (Yahoo lento ahora mismo).'
         : 'Error: ' + e.message;
-      cont.innerHTML = `<p style="color:#71717a;font-size:12px;padding:10px;">${msg} <button onclick="window.renderDeepDiveEn('${ticker}','${contId}')" style="color:#3b82f6;text-decoration:underline;cursor:pointer;">Reintentar</button></p>`;
+      cont.innerHTML = `<p style="color:#847D70;font-size:12px;padding:10px;">${msg} <button onclick="window.renderDeepDiveEn('${ticker}','${contId}')" style="color:#D79A3C;text-decoration:underline;cursor:pointer;">Reintentar</button></p>`;
     }
   };
 

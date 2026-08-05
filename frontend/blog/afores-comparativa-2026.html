@@ -44,11 +44,36 @@
   </script>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/blog/_styles.css">
+  <script>
+    /* Mismo remapeo de tema que la app: tinta y papel sobre las utilidades
+       que ya reparte el markup, sin renombrar clases. */
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: {
+          serif: ['Source Serif 4', 'Georgia', 'serif'],
+          sans:  ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono:  ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          zinc:    { 50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
+                     500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' },
+          emerald: { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B', 600:'#C98A2B' },
+          green:   { 300:'#6FAE7E', 400:'#6FAE7E', 500:'#6FAE7E' },
+          red:     { 300:'#DB7B68', 400:'#DB7B68', 500:'#DB7B68' },
+          amber:   { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+          sky:     { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+        },
+        borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px', xl:'2px', '2xl':'2px', '3xl':'2px' },
+        boxShadow: { none:'none', sm:'none', DEFAULT:'none', md:'none', lg:'none', xl:'none', '2xl':'none' },
+      } }
+    };
+  </script>
+  <link rel="stylesheet" href="/static/css/mp-tokens.css">
+  <link rel="stylesheet" href="/static/css/mp-editorial.css">
+  <link rel="stylesheet" href="/static/blog/_styles.css">
 </head>
 <body class="min-h-screen">
-  <header class="border-b border-zinc-800 sticky top-0 bg-zinc-950/80 backdrop-blur z-10">
+  <header class="border-b border-zinc-800 sticky top-0 bg-surface z-10">
     <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
       <a href="/" class="flex items-center gap-2 text-sm font-semibold text-zinc-100 hover:text-emerald-400 transition">
         <img src="/static/logo.png" alt="Mi Portafolio" class="w-8 h-8 rounded-lg">Mi Portafolio
@@ -62,11 +87,11 @@
 
   <article class="max-w-3xl mx-auto px-6 py-12">
     <div class="mb-8">
-      <p class="text-xs uppercase tracking-wider text-purple-400 font-semibold">🏛 Retiro</p>
+      <p class="text-xs uppercase tracking-wider text-purple-400 font-semibold"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 8 12 3l9 5"/><path d="M5 8v10M9.5 8v10M14.5 8v10M19 8v10"/><path d="M2.5 21h19"/></svg></span> Retiro</p>
       <h1 class="display text-3xl sm:text-5xl font-bold text-zinc-100 mt-3 leading-tight">AFOREs comparativa 2026: ¿Cuál es la mejor?</h1>
       <p class="text-xl text-zinc-400 mt-4 leading-relaxed">Las 9 AFOREs ranqueadas por IRN real, comisiones, SIEFOREs, y cómo cambiarte si la tuya rinde mal.</p>
       <div class="flex items-center gap-3 mt-6 text-xs text-zinc-500 border-b border-zinc-800 pb-6">
-        <span>📅 Junio 2026</span><span>·</span><span>⏱ 11 min de lectura</span>
+        <span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/></svg></span> Junio 2026</span><span>·</span><span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2"/><path d="M9 2h6"/></svg></span> 11 min de lectura</span>
       </div>
     </div>
 
@@ -79,7 +104,7 @@
       <div class="calc-box">
         AFORE con IRN 8% anual: te retiras con ~$2.1M MXN<br>
         AFORE con IRN 6% anual: te retiras con ~$1.55M MXN<br>
-        <strong style="color: #f4f4f5;">Diferencia: $550,000 MXN — por NO cambiarte</strong>
+        <strong style="color: #F2EEE4;">Diferencia: $550,000 MXN — por NO cambiarte</strong>
       </div>
       <p>Y cambiarte es gratis. Es la decisión con mejor ROI de tu vida financiera.</p>
 
@@ -108,9 +133,9 @@
       <table>
         <thead><tr><th>Pos.</th><th>AFORE</th><th>IRN 3 años</th><th>Comisión</th><th>Veredicto</th></tr></thead>
         <tbody>
-          <tr><td>🥇</td><td>PensionISSSTE</td><td>~10.5%</td><td>0.53%</td><td>Mejor opción</td></tr>
-          <tr><td>🥈</td><td>Profuturo</td><td>~10.2%</td><td>0.53%</td><td>Top 2 consistente</td></tr>
-          <tr><td>🥉</td><td>SURA</td><td>~9.7%</td><td>0.55%</td><td>Sólida</td></tr>
+          <tr><td>1.º</td><td>PensionISSSTE</td><td>~10.5%</td><td>0.53%</td><td>Mejor opción</td></tr>
+          <tr><td>2.º</td><td>Profuturo</td><td>~10.2%</td><td>0.53%</td><td>Top 2 consistente</td></tr>
+          <tr><td>3.º</td><td>SURA</td><td>~9.7%</td><td>0.55%</td><td>Sólida</td></tr>
           <tr><td>4</td><td>XXI Banorte</td><td>~9.4%</td><td>0.57%</td><td>Aceptable</td></tr>
           <tr><td>5</td><td>Principal</td><td>~9.2%</td><td>0.58%</td><td>Aceptable</td></tr>
           <tr><td>6</td><td>Citibanamex</td><td>~8.9%</td><td>0.62%</td><td>Medio</td></tr>
@@ -185,7 +210,7 @@
       </div>
 
       <h2>Disclaimer</h2>
-      <p style="font-size: 14px; color: #71717a;">Datos referenciales basados en reportes públicos de CONSAR 2025-2026. Los IRN cambian — siempre verifica en <a href="https://www.consar.gob.mx" target="_blank">consar.gob.mx</a> antes de cambiarte. Esta guía es educativa, no asesoría financiera personalizada. Mi Portafolio NO recibe comisión por mencionar AFOREs.</p>
+      <p style="font-size: 14px; color: #847D70;">Datos referenciales basados en reportes públicos de CONSAR 2025-2026. Los IRN cambian — siempre verifica en <a href="https://www.consar.gob.mx" target="_blank">consar.gob.mx</a> antes de cambiarte. Esta guía es educativa, no asesoría financiera personalizada. Mi Portafolio NO recibe comisión por mencionar AFOREs.</p>
     </div>
 
     <div class="mt-12 pt-8 border-t border-zinc-800">

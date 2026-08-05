@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest" />
-  <meta name="theme-color" content="#0a0a0b" />
+  <meta name="theme-color" content="#0B0B0A" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -66,37 +66,80 @@
   <!-- Tailwind vía CDN (dev) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    /* ── TEMA EDITORIAL ────────────────────────────────────────────────────
+       El markup ya reparte utilidades de Tailwind por ~400 KB de HTML y JS.
+       En vez de renombrar clases (que rompería los hooks del JS), se remapea
+       el TEMA: las mismas utilidades pasan a pintar tinta y papel.
+       `zinc` se redefine porque concentra 1,606 usos — es el verdadero motor
+       cromático de la app. Los radios bajan a 0-2px y las sombras a none
+       desde el propio Tailwind, no a fuerza de !important.                */
+    const _tinta = {
+      base:  '#0B0B0A', panel: '#131210', alta: '#191713', honda: '#080807',
+      regla: '#2A2721', reglaSuave: '#1E1C18', reglaFuerte: '#4A443A',
+      papel: '#F2EEE4', papel2: '#CFC8B8', papel3: '#9A9284', papel4: '#847D70',
+      sello: '#D79A3C', selloVivo: '#EDB259', selloSolido: '#C98A2B',
+      alza:  '#6FAE7E', baja: '#DB7B68',
+    };
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+            serif: ['Source Serif 4', 'Georgia', 'Times New Roman', 'serif'],
+            sans: ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            mono: ['IBM Plex Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
           },
           colors: {
             surface: {
-              DEFAULT: '#0a0a0b',
-              card:    '#111114',
-              border:  '#1f1f24',
-              hover:   '#16161a',
+              DEFAULT: _tinta.base,
+              card:    _tinta.panel,
+              border:  _tinta.regla,
+              hover:   _tinta.alta,
             },
+            /* Escala de grises cálida: sustituye al zinc azulado de fábrica. */
+            zinc: {
+              50:  _tinta.papel,  100: _tinta.papel,  200: _tinta.papel2,
+              300: _tinta.papel2, 400: _tinta.papel3, 500: _tinta.papel3,
+              600: _tinta.papel4, 700: _tinta.reglaFuerte, 800: _tinta.regla,
+              900: _tinta.panel,  950: _tinta.base,
+            },
+            /* Un solo acento (ámbar de sello) + verde/rojo SOLO de mercado.
+               Los nombres se conservan para no tocar el markup: lo que
+               cambia es a qué tinta apuntan. */
             accent: {
-              green:  '#10b981',
-              red:    '#f43f5e',
-              blue:   '#38bdf8',
-              amber:  '#f59e0b',
-              purple: '#a78bfa',
-              teal:   '#2dd4bf',
-              indigo: '#818cf8',
-              rose:   '#fb7185',
-              orange: '#fb923c',
-            }
+              green:  _tinta.alza,   /* dirección de mercado */
+              red:    _tinta.baja,   /* dirección de mercado */
+              blue:   _tinta.sello,
+              amber:  _tinta.sello,
+              purple: _tinta.sello,
+              teal:   _tinta.sello,
+              indigo: _tinta.sello,
+              rose:   _tinta.sello,
+              orange: _tinta.sello,
+            },
+            /* Familias sueltas que aparecen crudas en el markup viejo. */
+            amber:   { 100: _tinta.papel, 200: _tinta.selloVivo, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.selloSolido, 600: _tinta.selloSolido },
+            yellow:  { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.selloSolido },
+            orange:  { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.selloSolido },
+            emerald: { 300: _tinta.alza, 400: _tinta.alza, 500: _tinta.alza, 600: _tinta.alza },
+            green:   { 300: _tinta.alza, 400: _tinta.alza, 500: _tinta.alza, 600: _tinta.alza },
+            teal:    { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            red:     { 300: _tinta.baja, 400: _tinta.baja, 500: _tinta.baja, 600: _tinta.baja },
+            sky:     { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            cyan:    { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            violet:  { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            pink:    { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
           },
+          /* Prensa: esquinas casi rectas en toda la escala. */
+          borderRadius: {
+            none: '0px', sm: '0px', DEFAULT: '2px', md: '2px',
+            lg: '2px', xl: '2px', '2xl': '2px', '3xl': '2px',
+          },
+          /* Cero sombras: la jerarquía la dan las reglas, no la profundidad. */
           boxShadow: {
-            'glow-green': '0 0 40px -10px rgba(16, 185, 129, 0.35)',
-            'glow-red':   '0 0 40px -10px rgba(244, 63, 94, 0.35)',
-            'glow-rose':  '0 0 40px -10px rgba(251, 113, 133, 0.35)',
-          }
+            none: 'none', sm: 'none', DEFAULT: 'none', md: 'none',
+            lg: 'none', xl: 'none', '2xl': 'none', inner: 'none',
+            'glow-green': 'none', 'glow-red': 'none', 'glow-rose': 'none',
+          },
         }
       }
     }
@@ -105,44 +148,34 @@
   <!-- Performance: preconnect + dns-prefetch a TODOS los CDNs externos.
        Hace el TCP+TLS handshake en paralelo durante el parse del HTML,
        ahorrando ~200-400ms en first paint. -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 
-  <!-- Fuentes Inter + JetBrains Mono (con font-display: swap implícito) -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- ── SISTEMA EDITORIAL ────────────────────────────────────────────────
+       Fuentes empaquetadas en /static/fonts (Source Serif 4 + IBM Plex
+       Sans/Mono, OFL 1.1). Sin Google Fonts ni CDN de tipografía: la app
+       nativa carga desde el bundle y tiene que verse igual sin red.
+       El preload va solo a los tres subsets latin que sí se usan en
+       español, para que el primer render ya salga con las fuentes buenas. -->
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="/static/fonts/source-serif-4-400-700-latin.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="/static/fonts/ibm-plex-sans-400-700-latin.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="/static/fonts/ibm-plex-mono-500-latin.woff2">
+  <link rel="stylesheet" href="/static/css/mp-tokens.css">
+  <link rel="stylesheet" href="/static/css/mp-editorial.css">
 
   <!-- Chart.js — defer para no bloquear el render inicial -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
   <!-- html2canvas (solo se usa al descargar wrapped) — defer también -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
-  <!-- Outfit font para el wrapped — display=swap evita FOIT -->
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-    html, body {
-      background: radial-gradient(ellipse 1400px 700px at 50% -200px, rgba(34,197,94,0.07), transparent 60%), #0a0a0b;
-      color: #e5e7eb;
-    }
-    body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-    .tabular { font-variant-numeric: tabular-nums; }
-
-    /* Gradiente sutil de fondo */
-    .bg-grid {
-      background-image:
-        radial-gradient(circle at 20% 0%, rgba(56, 189, 248, 0.06), transparent 40%),
-        radial-gradient(circle at 80% 0%, rgba(16, 185, 129, 0.05), transparent 40%);
-    }
-
-    /* Scrollbar más sutil en dark */
-    ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-track { background: #0a0a0b; }
-    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 999px; }
-    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+    /* El fondo, la tipografía, la scrollbar y `.tabular` viven ahora en
+       /static/css/mp-tokens.css + mp-editorial.css. Aquí solo quedan las
+       reglas propias de esta pantalla. */
 
     /* Animación de entrada — SOLO transform, nunca opacity.
        Motivo: un elemento creado dentro de un contenedor display:none (una vista
@@ -169,12 +202,12 @@
     .nav-tab.nav-secondary .nav-indicator { height: 1.5px !important; opacity: .85; }
     .nav-tab.nav-primary { letter-spacing: -0.005em; }
     .nav-tab.nav-secondary { text-transform: none; }
-    .nav-tab.nav-secondary:hover { background: rgba(255,255,255,0.025); border-radius: 6px; }
+    .nav-tab.nav-secondary:hover { background: rgba(242,238,228,0.04); border-radius: 2px; }
 
     /* Skeleton loading */
     @keyframes pulse-bg {
-      0%, 100% { background-color: #18181b; }
-      50%      { background-color: #27272a; }
+      0%, 100% { background-color: #131210; }
+      50%      { background-color: #2A2721; }
     }
     .skeleton { animation: pulse-bg 1.5s ease-in-out infinite; border-radius: 0.5rem; }
 
@@ -199,9 +232,9 @@
       position: absolute;
       left: 50%; top: 100%;
       transform: translateX(-50%) translateY(6px);
-      background: #18181b;
-      border: 1px solid #27272a;
-      color: #d4d4d8;
+      background: #131210;
+      border: 1px solid #2A2721;
+      color: #CFC8B8;
       font-size: 0.72rem;
       padding: 0.4rem 0.6rem;
       border-radius: 0.375rem;
@@ -244,8 +277,8 @@
        la navegación. Pegando el contenedor completo no hay offset que calcular
        ni z-index que competir, y la altura variable deja de importar. -->
   <div id="mp-topbar" class="sticky top-0 z-40">
-  <header class="border-b border-surface-border bg-surface/80 backdrop-blur">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
+  <header class="bg-surface">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-1 flex items-center justify-between gap-3">
       <!-- min-w-0: permite que este cluster se encoja (trunca el nombre del
            portafolio) en vez de desbordar bajo el botón Premium/racha.
            id="header-left": ancla ESTABLE para que ux_helpers.js inserte aquí el
@@ -260,19 +293,18 @@
            que el revisor de Apple debe encontrar), eso hace imposible el
            traslape en cualquier combinación de racha / franja de trial /
            avatar / sesión / premium. -->
-      <div id="header-left" class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+      <div id="header-left" class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
         <!-- Logo Mi Portafolio -->
-        <img src="/static/logo.png" alt="Mi Portafolio" class="w-10 h-10 rounded-xl shadow-glow-green object-cover" />
-        <!-- En teléfonos el logo identifica la app; el texto se oculta para
-             liberar espacio (botón Premium siempre visible a la derecha) -->
-        <div class="hidden min-[500px]:block">
-          <h1 class="text-[15px] font-semibold tracking-tight leading-none">Mi Portafolio</h1>
-          <p class="text-[11px] text-zinc-500 mt-0.5 leading-none">Análisis de inversión</p>
-        </div>
+        <img src="/static/logo.png" alt="Mi Portafolio" class="w-8 h-8 sm:w-9 sm:h-9 object-cover shrink-0" />
+        <!-- CABECERA DE DIARIO: el nombre en serif es el masthead y ahora se
+             queda visible SIEMPRE (también en iPhone), porque es la pieza que
+             da identidad. Lo que cede espacio en pantallas angostas es el
+             selector de portafolio, no la marca. -->
+        <h1 class="mp-masthead shrink-0">Mi Portafolio</h1>
         <!-- Multi-portafolio selector -->
-        <div class="ml-3 pl-3 border-l border-surface-border relative min-w-0">
+        <div class="ml-1 pl-2 sm:ml-3 sm:pl-3 border-l border-surface-border relative min-w-0 hidden min-[560px]:block">
           <button id="port-selector-btn" class="flex items-center gap-2 text-xs text-zinc-300 hover:text-zinc-100 transition px-2 py-1 rounded-md hover:bg-zinc-900 min-w-0 max-w-full">
-            <span id="port-active-avatar" class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-semibold text-white shrink-0" style="background: linear-gradient(135deg, #16a34a, #22c55e);">P</span>
+            <span id="port-active-avatar" class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-semibold text-white shrink-0" style="background: linear-gradient(135deg, #D79A3C, #D79A3C);">P</span>
             <!-- En pantallas angostas (iPhone) se oculta el nombre: los botones
                  "Suscribirse" y "Mi cuenta" tienen prioridad y así no queda
                  truncado a una letra. El avatar sigue identificando el portafolio. -->
@@ -287,7 +319,7 @@
                 + Crear nuevo portafolio
               </button>
               <button onclick="window.crearSandbox && window.crearSandbox()" class="w-full text-left text-xs text-amber-400 hover:bg-amber-500/10 rounded px-2 py-1.5 transition" title="Duplica el portafolio actual para experimentar sin afectarlo">
-                ⚗ Crear sandbox (qué pasaría si...)
+                <span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M9 3v6.5L4 19a1.5 1.5 0 0 0 1.3 2h13.4A1.5 1.5 0 0 0 20 19l-5-9.5V3"/><path d="M8 3h8"/><path d="M7.2 14h9.6"/></svg></span> Crear sandbox (qué pasaría si...)
               </button>
             </div>
           </div>
@@ -311,22 +343,42 @@
           <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <span>Mi cuenta</span>
         </button>
-        <div class="hidden lg:flex items-center gap-2" id="meta-periodo">
-          <span class="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse"></span>
+        <div class="hidden xl:flex items-center gap-2 tabular" id="meta-periodo">
+          <span class="mp-punto mp-vivo"></span>
           <span>Cargando…</span>
-        </div>
-        <div class="hidden md:block text-zinc-600">|</div>
-        <div class="hidden md:block text-zinc-500">
-          Datos: <span class="text-zinc-300">Yahoo Finance</span>
         </div>
       </div>
     </div>
+
+    <!-- ══ REGLA DOBLE + LÍNEA DE META ══════════════════════════════════════
+         La regla doble (2px + hairline) es la firma de una primera plana. La
+         línea de meta en monoespaciada fecha la edición como un diario. -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      <hr class="mp-regla-doble" />
+      <p class="mp-masthead-meta pt-[2px] pb-[3px] truncate">
+        <span class="hidden min-[420px]:inline">Análisis para el inversionista mexicano · </span>
+        <span>Edición del <span id="mp-edicion-fecha">—</span></span>
+      </p>
+    </div>
   </header>
+
+  <!-- ══ CINTILLA DE MERCADOS ═══════════════════════════════════════════════
+       Fija bajo el masthead, con datos reales de /api/periodico/mercados
+       (IPC vía NAFTRAC.MX, S&P 500, USD/MXN) y /api/renta-fija/mx (CETES 28d).
+       La llena renderCintillaMercados() en app.js. -->
+  <div class="mp-cintilla" id="mp-cintilla" aria-label="Cintilla de mercados">
+    <div class="mp-cintilla-pista" id="mp-cintilla-pista">
+      <div class="mp-cintilla-item"><span class="mp-cintilla-nom">IPC</span><span class="mp-cintilla-val">—</span></div>
+      <div class="mp-cintilla-item"><span class="mp-cintilla-nom">S&amp;P 500</span><span class="mp-cintilla-val">—</span></div>
+      <div class="mp-cintilla-item"><span class="mp-cintilla-nom">USD/MXN</span><span class="mp-cintilla-val">—</span></div>
+      <div class="mp-cintilla-item"><span class="mp-cintilla-nom">CETES 28d</span><span class="mp-cintilla-val">—</span></div>
+    </div>
+  </div>
 
   <!-- ============================================================ -->
   <!-- SUB-NAV — primarios prominentes + secundarios bajo "Más"      -->
   <!-- ============================================================ -->
-  <nav class="border-b border-surface-border bg-surface/60 backdrop-blur mp-nav-scroll">
+  <nav class="border-b border-surface-border bg-surface mp-nav-scroll">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-2 flex-nowrap sm:flex-wrap overflow-x-auto">
 
       <!-- ── PRIMARIOS (grandes, destacados) — Periódico es el default ── -->
@@ -386,7 +438,7 @@
         </div>
         <div class="grid sm:grid-cols-2 gap-4">
           <button id="chooser-auto" class="text-left bg-surface-card border border-surface-border hover:border-accent-amber/60 rounded-2xl p-6 transition group">
-            <div class="w-11 h-11 rounded-xl bg-accent-amber/10 border border-accent-amber/30 flex items-center justify-center mb-4 text-accent-amber text-xl">⚡</div>
+            <div class="w-11 h-11 rounded-xl bg-accent-amber/10 border border-accent-amber/30 flex items-center justify-center mb-4 text-accent-amber text-xl">✦</div>
             <h3 class="text-base font-semibold text-zinc-100">Automático</h3>
             <p class="text-[13px] text-zinc-400 mt-1.5 leading-snug">Eliges tu nivel de riesgo (volatilidad) y te armamos la mezcla óptima con Markowitz. Lo más rápido.</p>
             <span class="inline-block mt-4 text-[12px] font-semibold text-accent-amber group-hover:underline">Elegir por riesgo →</span>
@@ -404,11 +456,11 @@
       <div id="modo-manual" class="hidden">
       <div class="text-center mb-6 fade-up">
         <button class="onboarding-volver text-[11px] text-zinc-500 hover:text-zinc-200 mb-3">← Cambiar método</button>
-        <p class="text-xs font-medium text-accent-green uppercase tracking-wider">Paso 1 de 2</p>
+        <p class="mp-etq">Paso 1 de 2</p>
         <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mt-2">Elige tus acciones</h2>
         <p class="text-sm text-zinc-400 mt-3 max-w-2xl mx-auto leading-relaxed">
           Selecciona entre <span class="text-zinc-200">2 y 20 acciones</span>. Las
-          <span class="text-accent-amber">destacadas con ⭐</span> son las más populares del S&amp;P 500 y del IPC.
+          <span class="text-accent-amber">destacadas con ✦</span> son las más populares del S&amp;P 500 y del IPC.
           También puedes buscar cualquier empresa en Yahoo Finance.
         </p>
       </div>
@@ -430,7 +482,7 @@
           <!-- Resultados Yahoo (cuando el query > 1 char) -->
           <div id="pick-resultados-yahoo" class="hidden mb-4">
             <p class="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">
-              <span class="text-accent-blue">●</span> Yahoo Finance
+              Yahoo Finance
             </p>
             <div id="pick-yahoo-lista" class="space-y-1"></div>
           </div>
@@ -438,13 +490,13 @@
           <!-- Universo curado -->
           <div>
             <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
-              <p class="text-[10px] uppercase tracking-wider text-zinc-500">
-                <span class="text-accent-green">●</span> Universo disponible
+              <p class="mp-sec-etq">
+                Universo disponible
                 <span id="pick-curado-meta" class="text-zinc-600 normal-case tracking-normal">· cargando…</span>
               </p>
               <div class="flex items-center gap-1 text-[10px]">
                 <button data-filtro="todas" class="pick-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-300 bg-zinc-900">Todas</button>
-                <button data-filtro="recomendadas" class="pick-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">⭐ Top</button>
+                <button data-filtro="recomendadas" class="pick-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">✦ Top</button>
                 <button data-filtro="mx" class="pick-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">MX</button>
                 <button data-filtro="us" class="pick-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">US</button>
                 <button data-filtro="crypto" class="pick-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">₿ Cripto</button>
@@ -493,8 +545,8 @@
       <div class="fade-up">
         <div class="flex items-start justify-between mb-3 flex-wrap gap-2">
           <div>
-            <p class="text-[10px] uppercase tracking-wider text-zinc-500">
-              <span class="text-accent-amber">●</span> Portafolio óptimo
+            <p class="mp-etq">
+              Portafolio óptimo
             </p>
             <h3 class="text-sm font-semibold text-zinc-200 mt-0.5">Mezcla generada automáticamente</h3>
             <p class="text-[11px] text-zinc-600 mt-0.5 leading-snug max-w-lg">
@@ -532,7 +584,7 @@
           <!-- Composición -->
           <div class="mb-4">
             <div class="flex items-center justify-between mb-2">
-              <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Composición sugerida</p>
+              <p class="mp-sec-etq">Composición sugerida</p>
               <span id="po-n-acciones" class="text-[11px] text-zinc-600"></span>
             </div>
             <div id="po-composicion" class="space-y-1.5"></div>
@@ -576,7 +628,7 @@
     <section id="paso-pesos" class="max-w-4xl mx-auto px-6 pt-12 pb-6 hidden">
       <div class="mb-6 fade-up flex items-start justify-between flex-wrap gap-3">
         <div>
-          <p class="text-xs font-medium text-accent-blue uppercase tracking-wider">Paso 2 de 2</p>
+          <p class="mp-etq">Paso 2 de 2</p>
           <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mt-2">Ajusta tus pesos</h2>
           <p class="text-sm text-zinc-400 mt-3 max-w-2xl leading-relaxed">
             ¿Qué porcentaje de tu portafolio tienes en cada acción? El total debe sumar <span class="text-zinc-200">100%</span>.
@@ -653,11 +705,16 @@
   <!-- HERO - Portafolio resumen                                     -->
   <!-- ============================================================ -->
   <section class="bg-grid">
-    <div class="max-w-7xl mx-auto px-6 pt-10 pb-6">
-      <div class="flex items-start justify-between flex-wrap gap-4 mb-6 fade-up">
-        <div>
-          <div class="flex items-center gap-3">
-            <p class="text-xs font-medium text-zinc-500 uppercase tracking-wider">Tu portafolio</p>
+    <div class="max-w-7xl mx-auto px-6 pt-7 pb-6">
+      <!-- NOTA PRINCIPAL — el titular lo redacta redactarTitular() en app.js a
+           partir de las observaciones y del spread contra el benchmark que ya
+           calcula el backend. Voz de nota periodística, no de dashboard. -->
+      <div class="mb-6 fade-up">
+        <div class="mp-sec">
+          <!-- Etiqueta corta a propósito: con "Portada · Tu portafolio" completo
+               no cabe en una línea a 375–430px y la regla quedaba en un muñón. -->
+          <span class="mp-sec-etq"><span class="mp-sec-orden">Portada</span><span class="hidden min-[560px]:inline">· Tu portafolio</span></span>
+          <span class="mp-sec-fin flex items-center gap-2">
             <button id="btn-editar-portafolio" class="hidden text-[11px] text-zinc-400 hover:text-zinc-100 border border-surface-border hover:border-zinc-600 rounded-md px-2 py-0.5 transition">
               Editar
             </button>
@@ -667,16 +724,23 @@
               </svg>
               Reporte PDF
             </button>
-          </div>
-          <h2 class="text-2xl sm:text-3xl font-bold tracking-tight mt-1" id="hero-titulo">—</h2>
-          <p class="text-sm text-zinc-400 mt-1" id="hero-subtitulo">Cargando análisis…</p>
+          </span>
         </div>
-        <!-- ml-auto: al hacer wrap en pantallas angostas este bloque queda solo
-             en su línea; sin él, justify-between lo deja pegado a la izquierda -->
-        <div class="text-right ml-auto">
-          <p class="text-xs text-zinc-500 uppercase tracking-wider">Rendimiento último año</p>
-          <p class="text-4xl sm:text-5xl font-bold tabular mt-1" id="hero-retorno">—</p>
-          <p class="text-xs text-zinc-500 mt-1" id="hero-periodo">12 meses</p>
+
+        <div class="grid lg:grid-cols-12 gap-x-8 gap-y-4 items-start mt-3">
+          <div class="lg:col-span-8 min-w-0">
+            <h2 class="mp-titular mp-titular-xl" id="hero-titulo">—</h2>
+            <p class="mp-balazo mt-2.5" id="hero-balazo"></p>
+            <p class="mp-firma mt-3" id="hero-subtitulo">Cargando análisis…</p>
+          </div>
+
+          <!-- La cifra protagonista: serif grande, alineada al cuerpo de texto
+               por una regla, como el dato destacado de una nota. -->
+          <div class="lg:col-span-4 min-w-0 border-t border-surface-border pt-3 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+            <p class="mp-etq">Rendimiento último año</p>
+            <p class="text-[44px] sm:text-[56px] leading-none font-bold tabular mt-1.5" id="hero-retorno">—</p>
+            <p class="mp-firma mt-2" id="hero-periodo">12 meses</p>
+          </div>
         </div>
       </div>
 
@@ -722,12 +786,12 @@
           <div class="flex items-center gap-3">
             <span class="w-9 h-9 rounded-lg bg-accent-teal/20 border border-accent-teal/30 flex items-center justify-center text-accent-teal text-sm">₱</span>
             <div>
-              <p class="text-[10px] uppercase tracking-wider text-zinc-500">vs Tasa libre de riesgo</p>
+              <p class="mp-etq">vs Tasa libre de riesgo</p>
               <p class="text-sm font-medium text-zinc-100">CETES 28d hoy: <span id="cetes-tasa" class="text-accent-teal font-semibold tabular">—</span></p>
             </div>
           </div>
           <div class="text-right">
-            <p class="text-[10px] uppercase tracking-wider text-zinc-500">Tu portafolio vs CETES</p>
+            <p class="mp-etq">Tu portafolio vs CETES</p>
             <p id="cetes-spread" class="text-2xl font-bold tabular mt-0.5">—</p>
             <p id="cetes-veredicto" class="text-[11px] mt-0.5">—</p>
           </div>
@@ -737,11 +801,66 @@
   </section>
 
   <!-- ============================================================ -->
+  <!-- CUADERNILLO MÉXICO — la diferenciación, arriba y no escondida  -->
+  <!-- ============================================================ -->
+  <!-- Es lo que ninguna otra app de portafolios trae: ISR mexicano,
+       tax-loss harvesting, comparativa contra tu AFORE, CETES, brokers MX y
+       stress tests con eventos de México. Cada celda enruta a la herramienta
+       que YA existe (mismos data-vista, misma lógica): esto reordena la
+       jerarquía visual, no la navegación. Lo llena renderCuadernilloMexico(). -->
+  <section id="seccion-mexico" class="max-w-7xl mx-auto px-6 py-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="mp-sec-etq"><span class="mp-sec-orden">Sección A ·</span> Cuadernillo México</h3>
+      <span class="mp-firma mp-sec-fin hidden sm:inline">Análisis que solo aplica aquí</span>
+    </div>
+    <p class="text-xs text-zinc-500 mb-3 leading-relaxed max-w-3xl">
+      Tu portafolio leído con las reglas del mercado mexicano: el ISR del artículo 129 de la LISR,
+      la tasa de CETES como piso libre de riesgo, el rendimiento de tu SIEFORE y los shocks que
+      de verdad han movido a México.
+    </p>
+    <div id="mx-reticula" class="mp-reticula grid-cols-2 md:grid-cols-3 lg:grid-cols-6 fade-up fade-up-1">
+      <button data-vista="transacciones" class="nav-tab text-left" data-mx="isr">
+        <p class="mp-etq">ISR estimado <span class="text-zinc-600">· <span class="tabular" id="mx-isr-ano">—</span></span></p>
+        <p class="text-xl font-semibold tabular mt-1.5" id="mx-isr-valor">—</p>
+        <p class="mp-firma mt-1" id="mx-isr-nota">Art. 129 LISR · 10%</p>
+      </button>
+      <button data-vista="transacciones" class="nav-tab text-left" data-mx="tlh">
+        <p class="mp-etq">Tax-loss harvesting</p>
+        <p class="text-xl font-semibold tabular mt-1.5" id="mx-tlh-valor">—</p>
+        <p class="mp-firma mt-1" id="mx-tlh-nota">Pérdidas aprovechables</p>
+      </button>
+      <button data-vista="explorador" class="nav-tab text-left" data-mx="cetes">
+        <p class="mp-etq">CETES 28 días</p>
+        <p class="text-xl font-semibold tabular mt-1.5" id="mx-cetes-valor">—</p>
+        <p class="mp-firma mt-1" id="mx-cetes-nota">Piso libre de riesgo</p>
+      </button>
+      <button data-vista="metas" class="nav-tab text-left" data-mx="afore">
+        <p class="mp-etq">Tu cartera vs AFORE</p>
+        <p class="text-xl font-semibold tabular mt-1.5" id="mx-afore-valor">—</p>
+        <p class="mp-firma mt-1" id="mx-afore-nota">SIEFORE comparable</p>
+      </button>
+      <button data-vista="explorador" class="nav-tab text-left" data-mx="fibras">
+        <p class="mp-etq">FIBRAS · yield medio</p>
+        <p class="text-xl font-semibold tabular mt-1.5" id="mx-fibras-valor">—</p>
+        <p class="mp-firma mt-1" id="mx-fibras-nota">Renta inmobiliaria BMV</p>
+      </button>
+      <button data-vista="analizar" class="nav-tab text-left" data-mx="stress">
+        <p class="mp-etq">Stress test México</p>
+        <p class="text-xl font-semibold tabular mt-1.5" id="mx-stress-valor">5</p>
+        <p class="mp-firma mt-1">Peso, 2018, T-MEC, aranceles</p>
+      </button>
+    </div>
+    <p class="mp-firma mt-2.5">
+      Brokers mexicanos comparados por comisión en <button data-vista="rebalanceo" class="nav-tab underline cursor-pointer" style="color:var(--sello)">Rebalanceo</button>.
+    </p>
+  </section>
+
+  <!-- ============================================================ -->
   <!-- OBSERVACIONES (insights)                                      -->
   <!-- ============================================================ -->
   <section id="seccion-insights" class="max-w-7xl mx-auto px-6 py-6 hidden">
     <div class="flex items-center justify-between mb-2">
-      <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Observaciones</h3>
+      <h3 class="mp-sec-etq"><span class="mp-sec-orden">Sección B ·</span> La lectura del día</h3>
       <span class="text-xs text-zinc-500" id="insights-count">—</span>
     </div>
     <p class="text-xs text-zinc-500 mb-3 leading-relaxed max-w-3xl">
@@ -770,7 +889,7 @@
   <!-- ============================================================ -->
   <section class="max-w-7xl mx-auto px-6 py-6">
     <div class="flex items-center justify-between mb-2">
-      <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider">vs. Benchmark</h3>
+      <h3 class="mp-sec-etq"><span class="mp-sec-orden">Sección C ·</span> Desempeño vs. mercado</h3>
       <span class="text-xs text-zinc-500" id="benchmark-label">—</span>
     </div>
     <p class="text-xs text-zinc-500 mb-3 leading-relaxed max-w-3xl">
@@ -856,7 +975,7 @@
         <div>
           <div class="flex items-center gap-2 mb-1">
             <span class="text-[10px] uppercase tracking-wider font-semibold text-accent-blue bg-accent-blue/10 border border-accent-blue/20 rounded px-1.5 py-0.5">Sugerencia</span>
-            <h3 class="text-sm font-semibold text-zinc-200 uppercase tracking-wider">Portafolio óptimo</h3>
+            <h3 class="mp-sec-etq"><span class="mp-sec-orden">Sección D ·</span> Portafolio óptimo</h3>
           </div>
           <p class="text-xs text-zinc-500">Markowitz · los mismos activos, pesos que maximizan Sharpe</p>
           <p class="text-[11px] text-zinc-600 mt-2 leading-relaxed max-w-lg">
@@ -967,7 +1086,7 @@
   <!-- ============================================================ -->
   <section class="max-w-7xl mx-auto px-6 py-6">
     <div class="flex items-center justify-between mb-2">
-      <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Posiciones</h3>
+      <h3 class="mp-sec-etq"><span class="mp-sec-orden">Sección E ·</span> Posiciones</h3>
       <span class="text-xs text-zinc-500" id="activos-count">—</span>
     </div>
     <p class="text-xs text-zinc-500 mb-3 leading-relaxed max-w-3xl">
@@ -1063,7 +1182,7 @@
   <section class="max-w-7xl mx-auto px-6 py-6" id="seccion-fundamentals">
     <div class="flex items-center justify-between mb-2">
       <div>
-        <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Fundamentales</h3>
+        <h3 class="mp-sec-etq"><span class="mp-sec-orden">Sección F ·</span> Fundamentales</h3>
         <p class="text-xs text-zinc-500 mt-1 leading-relaxed max-w-3xl">
           Los números detrás de cada empresa: qué tan cara está, cuánto reparte en dividendos, qué tan grande es, y si la acción se mueve más o menos que el mercado. Son datos para entender, no señales de compra/venta.
         </p>
@@ -1074,35 +1193,35 @@
     <!-- Resumen agregado -->
     <div id="fund-resumen" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4 mb-4 hidden">
       <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuántas veces pagas las utilidades anuales del portafolio. Más bajo = más barato.">
-        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">P/E promedio</p>
+        <p class="mp-etq">P/E promedio</p>
         <p id="fund-resumen-pe" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
       <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuántas veces pagas el valor contable. &lt;1 puede ser oportunidad o problema; &gt;3 es típico de tech.">
-        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">P/B promedio</p>
+        <p class="mp-etq">P/B promedio</p>
         <p id="fund-resumen-pb" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
       <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="PEG = P/E / crecimiento esperado. PEG=1 es el balance ideal entre valuación y crecimiento.">
-        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">PEG promedio</p>
+        <p class="mp-etq">PEG promedio</p>
         <p id="fund-resumen-peg" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
       <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="% del precio que recibes en dividendos al año. 0% = reinvierten todo; 5%+ = reparten fuerte.">
-        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Dividend yield promedio</p>
+        <p class="mp-etq">Dividend yield promedio</p>
         <p id="fund-resumen-yield" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
       <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Volatilidad relativa al mercado. 1.0 = se mueve igual; 1.5 = 50% más volátil; 0.7 = más tranquilo.">
-        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Beta promedio</p>
+        <p class="mp-etq">Beta promedio</p>
         <p id="fund-resumen-beta" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
       <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Rentabilidad sobre capital propio. >15% sostenido indica calidad operativa.">
-        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">ROE promedio</p>
+        <p class="mp-etq">ROE promedio</p>
         <p id="fund-resumen-roe" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
       <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="% de las ventas que se queda como ganancia final. >15% es muy bueno.">
-        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Margen neto promedio</p>
+        <p class="mp-etq">Margen neto promedio</p>
         <p id="fund-resumen-margen" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
       <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuántas empresas tienen datos fundamentales disponibles.">
-        <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Empresas analizadas</p>
+        <p class="mp-etq">Empresas analizadas</p>
         <p id="fund-resumen-count" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
       </div>
     </div>
@@ -1110,7 +1229,7 @@
     <!-- Métricas de comportamiento (aplica a crypto, ETFs y stocks) -->
     <div class="mt-2 mb-4 hidden" id="fund-comportamiento-wrapper">
       <div class="flex items-center justify-between mb-2">
-        <h3 class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">📊 Comportamiento estadístico</h3>
+        <h3 class="mp-sec-etq"><span class="mp-sec-orden">Sección G ·</span> Comportamiento estadístico</h3>
         <span id="fund-composicion-badge" class="text-[10px] text-zinc-500"></span>
       </div>
       <p class="text-[11px] text-zinc-500 mb-3 leading-relaxed">
@@ -1118,35 +1237,35 @@
       </p>
       <div id="fund-comportamiento" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Std anualizada de los retornos diarios. <15% es baja; 15-30% normal; >30% volátil; >60% típico de crypto.">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Volatilidad anual</p>
+          <p class="mp-etq">Volatilidad anual</p>
           <p id="fund-resumen-vol" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
         </div>
         <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Retorno por unidad de riesgo. >1 bueno, >2 excelente, <0 perdedor vs tasa libre de riesgo.">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Sharpe ratio</p>
+          <p class="mp-etq">Sharpe ratio</p>
           <p id="fund-resumen-sharpe" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
         </div>
         <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Como Sharpe pero solo penaliza volatilidad NEGATIVA. Mejor métrica para activos con asimetría (crypto, opciones).">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Sortino ratio</p>
+          <p class="mp-etq">Sortino ratio</p>
           <p id="fund-resumen-sortino" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
         </div>
         <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="La peor caída desde un pico hasta un valle del último año. Mide dolor histórico máximo.">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Max drawdown 1Y</p>
+          <p class="mp-etq">Max drawdown 1Y</p>
           <p id="fund-resumen-dd" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
         </div>
         <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="0 = no se mueve con S&P 500 (diversificador); 1 = perfectamente correlacionado; -1 = inverso.">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Correlación S&amp;P 500</p>
+          <p class="mp-etq">Correlación S&amp;P 500</p>
           <p id="fund-resumen-corr" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
         </div>
         <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuánto cambió el portafolio promedio en el último mes.">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Retorno 1M</p>
+          <p class="mp-etq">Retorno 1M</p>
           <p id="fund-resumen-r1m" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
         </div>
         <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuánto cambió desde el 1 de enero del año actual.">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Retorno YTD</p>
+          <p class="mp-etq">Retorno YTD</p>
           <p id="fund-resumen-rytd" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
         </div>
         <div class="bg-surface-card border border-surface-border rounded-xl p-4" title="Cuánto cambió el portafolio promedio en el último año.">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Retorno 1Y</p>
+          <p class="mp-etq">Retorno 1Y</p>
           <p id="fund-resumen-r1y" class="text-xl font-bold tabular text-zinc-100 mt-2">—</p>
         </div>
       </div>
@@ -1197,7 +1316,7 @@
         <div><span class="text-zinc-200 font-semibold">EPS (Earnings per Share):</span> utilidad por acción. EPS creciente año tras año es señal sana.</div>
         <div><span class="text-zinc-200 font-semibold">Posición 52w:</span> dónde está el precio entre su mínimo y máximo del último año. Cerca del máximo = momentum; cerca del mínimo = posible oportunidad o problema.</div>
       </div>
-      <p class="text-[11px] font-semibold text-zinc-300 mt-4 mb-2 pt-3 border-t border-surface-border">📊 Métricas de comportamiento (para crypto, ETFs y stocks)</p>
+      <p class="text-[11px] font-semibold text-zinc-300 mt-4 mb-2 pt-3 border-t border-surface-border"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 19V11"/><path d="M10 19V6"/><path d="M16 19V14"/><path d="M22 19H2"/></svg></span> Métricas de comportamiento (para crypto, ETFs y stocks)</p>
       <div class="grid md:grid-cols-2 gap-3 text-[11px] text-zinc-400 leading-relaxed">
         <div><span class="text-zinc-200 font-semibold">Volatilidad anual:</span> qué tanto sube y baja el precio cada año. &lt;15% = baja (bonos, blue chips); 15-30% = normal (acciones grandes); &gt;30% = volátil; &gt;60% = típico de crypto.</div>
         <div><span class="text-zinc-200 font-semibold">Sharpe ratio:</span> cuánto retorno extra obtienes por cada unidad de riesgo que asumes. &gt;1 = bueno; &gt;2 = excelente; &lt;0 = peor que dejarlo en CETES/UST.</div>
@@ -1292,7 +1411,7 @@
       </button>
       <div id="st-resultado" class="hidden mt-4">
         <div class="text-center bg-accent-red/5 border border-accent-red/20 rounded-md p-3">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500">Impacto total estimado</p>
+          <p class="mp-etq">Impacto total estimado</p>
           <p id="st-impacto" class="text-3xl font-bold tabular text-accent-red mt-1">—</p>
           <p id="st-duracion" class="text-[10px] text-zinc-500 mt-1">—</p>
         </div>
@@ -1380,7 +1499,7 @@
       <!-- Suscripciones automáticas -->
       <div class="mt-6 pt-5 border-t border-surface-border">
         <p class="text-xs uppercase tracking-wider text-zinc-500 mb-1">
-          <span class="text-accent-green">●</span> Alertas automáticas (recurrentes)
+          Alertas automáticas (recurrentes)
         </p>
         <p class="text-[11px] text-zinc-500 mb-4">Tus datos se sincronizan al backend cada vez que guardas tu portafolio. Las alertas se mandan automáticamente al email de arriba.</p>
         <div class="grid sm:grid-cols-3 gap-3">
@@ -1412,7 +1531,7 @@
       <!-- Preview -->
       <div id="al-preview-wrap" class="hidden mt-5 border border-surface-border rounded-xl overflow-hidden">
         <div class="bg-zinc-900 px-4 py-2 flex items-center justify-between">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500">Preview · <span id="al-preview-subject" class="text-zinc-300 normal-case tracking-normal"></span></p>
+          <p class="mp-etq">Preview · <span id="al-preview-subject" class="text-zinc-300 normal-case tracking-normal"></span></p>
           <button id="al-preview-close" class="text-zinc-500 hover:text-zinc-200 text-xs">✕</button>
         </div>
         <iframe id="al-preview-iframe" class="w-full bg-white" style="height: 520px;"></iframe>
@@ -1542,7 +1661,7 @@
           <div>
             <div class="flex items-center gap-2 mb-1">
               <span class="text-[10px] uppercase tracking-wider font-semibold text-accent-blue bg-accent-blue/10 border border-accent-blue/20 rounded px-1.5 py-0.5">Resultado</span>
-              <h3 class="text-sm font-semibold text-zinc-200 uppercase tracking-wider">Mezcla óptima histórica</h3>
+              <h3 class="mp-sec-etq">Mezcla óptima histórica</h3>
             </div>
             <p class="text-xs text-zinc-500" id="exp-periodo">—</p>
             <p class="text-[11px] text-zinc-600 mt-2 leading-relaxed max-w-lg">
@@ -1608,7 +1727,7 @@
       <div class="mb-6 fade-up">
         <div class="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <p class="text-xs font-medium text-accent-teal uppercase tracking-wider">Renta Fija MX</p>
+            <p class="mp-etq">Renta Fija MX</p>
             <div class="flex items-center gap-3 mb-1 mt-2">
               <div class="w-10 h-10 rounded-xl bg-accent-teal/15 border border-accent-teal/30 flex items-center justify-center text-accent-teal text-lg">₱</div>
               <h2 class="text-2xl font-semibold text-zinc-100">FIBRAS y CETES</h2>
@@ -1627,14 +1746,14 @@
       <section class="mb-8 fade-up">
         <div class="flex items-end justify-between mb-3">
           <div>
-            <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider">CETES</h3>
+            <h3 class="mp-sec-etq"><span class="mp-sec-orden">Renta fija ·</span> CETES</h3>
             <p class="text-[11px] text-zinc-500 mt-0.5">Tasas anualizadas del gobierno federal. La "tasa libre de riesgo" en pesos.</p>
           </div>
           <p id="rf-cetes-fuente" class="text-[10px] text-zinc-600 tabular">—</p>
         </div>
         <div id="rf-cetes-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div class="bg-surface-card border border-surface-border rounded-xl p-5 text-center">
-            <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Cargando…</p>
+            <p class="mp-etq">Cargando…</p>
           </div>
         </div>
       </section>
@@ -1643,7 +1762,7 @@
       <section class="mb-8 fade-up">
         <div class="flex items-end justify-between mb-3">
           <div>
-            <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Curvas de rendimiento</h3>
+            <h3 class="mp-sec-etq"><span class="mp-sec-orden">Renta fija ·</span> Curvas de rendimiento</h3>
             <p class="text-[11px] text-zinc-500 mt-0.5">Tasa por plazo. La pendiente revela expectativas de tasas y riesgo de recesión.</p>
           </div>
           <p id="rf-curva-fuente" class="text-[10px] text-zinc-600 tabular text-right">—</p>
@@ -1660,7 +1779,7 @@
       <section class="mb-8 fade-up">
         <div class="flex items-end justify-between mb-3">
           <div>
-            <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider">FIBRAS</h3>
+            <h3 class="mp-sec-etq"><span class="mp-sec-orden">Renta fija ·</span> FIBRAS</h3>
             <p class="text-[11px] text-zinc-500 mt-0.5">10 FIBRAS principales de BMV. Yield ordenado de mayor a menor.</p>
           </div>
           <div class="text-right">
@@ -1779,7 +1898,7 @@
     <section id="sub-una-accion" class="max-w-5xl mx-auto px-6 pt-2 pb-8">
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-          <p class="text-xs font-medium text-accent-orange uppercase tracking-wider">Análisis individual</p>
+          <p class="mp-etq">Análisis individual</p>
           <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Explorar una acción</h2>
           <p class="text-sm text-zinc-400 mt-2 max-w-2xl">
             Escribe un ticker para recibir un análisis completo: comparación contra peers
@@ -1810,7 +1929,7 @@
       <div class="bg-surface border border-surface-border rounded-2xl p-5 mb-6">
         <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <p class="text-xs uppercase tracking-wider text-zinc-500">
-            <span class="text-accent-orange">●</span> O elige una de la lista
+            O elige una de la lista
             <span id="an-univ-meta" class="text-zinc-600 normal-case ml-2"></span>
           </p>
           <input id="an-univ-buscar" type="text" placeholder="Filtrar por nombre o ticker…"
@@ -1818,7 +1937,7 @@
         </div>
         <div class="flex flex-wrap gap-1.5 mb-3 text-[10px]">
           <button data-an-filtro="todas"        class="an-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-300 bg-zinc-900">Todas</button>
-          <button data-an-filtro="recomendadas" class="an-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">⭐ Top</button>
+          <button data-an-filtro="recomendadas" class="an-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">✦ Top</button>
           <button data-an-filtro="mx"           class="an-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">MX</button>
           <button data-an-filtro="us"           class="an-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">US</button>
           <button data-an-filtro="crypto"       class="an-filtro px-2 py-0.5 rounded border border-surface-border text-zinc-500 hover:text-zinc-200">₿ Cripto</button>
@@ -1849,7 +1968,7 @@
     <section id="sub-deep-dive" class="hidden max-w-5xl mx-auto px-6 py-8">
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-          <p class="text-xs font-medium text-accent-blue uppercase tracking-wider">Análisis profundo</p>
+          <p class="mp-etq">Análisis profundo</p>
           <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Deep Dive de empresa</h2>
           <p class="text-sm text-zinc-400 mt-2 max-w-2xl">
             Métricas detalladas + comparativa contra peers + narrativa automática. Útil para empresas BMV.
@@ -1874,7 +1993,7 @@
     <section id="sub-screener" class="hidden max-w-5xl mx-auto px-6 py-8">
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-          <p class="text-xs font-medium text-accent-amber uppercase tracking-wider">Screener</p>
+          <p class="mp-etq">Screener</p>
           <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Filtra el universo</h2>
           <p class="text-sm text-zinc-400 mt-2 max-w-2xl">
             Encuentra acciones por <span class="text-zinc-300">score</span>, beta, tipo, mercado y sector. El score (0-100) combina alpha CAPM, Sharpe, fundamentales, momentum y riesgo — sobre el universo extendido.
@@ -1926,7 +2045,7 @@
     <section id="sub-sml" class="hidden max-w-5xl mx-auto px-6 py-8">
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-          <p class="text-xs font-medium text-accent-teal uppercase tracking-wider">Modelo CAPM</p>
+          <p class="mp-etq">Modelo CAPM</p>
           <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Valoración por Security Market Line</h2>
           <p class="text-sm text-zinc-400 mt-2 max-w-2xl">
             Calcula el retorno que justificaría tu acción según su beta y el riesgo del mercado.
@@ -1985,7 +2104,7 @@
     <section class="max-w-7xl mx-auto px-6 pt-12 pb-6">
       <div class="flex items-end justify-between flex-wrap gap-4 fade-up">
         <div>
-          <p class="text-xs font-medium text-accent-purple uppercase tracking-wider">Periódico</p>
+          <p class="mp-etq">Periódico</p>
           <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mt-2">El mercado hoy</h2>
           <p class="text-sm text-zinc-400 mt-3 max-w-2xl leading-relaxed">
             Cierres diarios de los índices principales, noticias top del mercado y titulares
@@ -2022,8 +2141,8 @@
     <!-- ═══════════════════════════════════════════════════ -->
     <section class="max-w-7xl mx-auto px-6 pb-4">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-          <span class="text-accent-amber">●</span> Acción del día
+        <span class="mp-sec-etq">
+          Acción del día
         </span>
         <span class="text-[10px] text-zinc-600">Selección algorítmica · rota cada 24h</span>
       </div>
@@ -2036,8 +2155,8 @@
     <!-- TU LISTA DE SEGUIMIENTO (Watchlist) -->
     <section class="max-w-7xl mx-auto px-6 pb-4">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-          <span class="text-accent-green">●</span> Tu lista de seguimiento
+        <span class="mp-sec-etq">
+          Tu lista de seguimiento
         </span>
         <span class="text-[10px] text-zinc-600">marca acciones con ☆ en Analizar</span>
       </div>
@@ -2053,8 +2172,8 @@
     <!-- Índices USA -->
     <section class="max-w-7xl mx-auto px-6 py-4">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-          <span class="text-accent-green">●</span> Índices Estados Unidos
+        <span class="mp-sec-etq">
+          Índices Estados Unidos
         </span>
         <span class="text-[10px] text-zinc-600 hidden sm:inline">5 días</span>
       </div>
@@ -2067,8 +2186,8 @@
     <section class="max-w-7xl mx-auto px-6 py-4 grid md:grid-cols-2 gap-4">
       <div>
         <div class="flex items-center justify-between mb-2">
-          <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-            <span class="text-accent-purple">●</span> Índices mundiales
+          <span class="mp-sec-etq">
+            Índices mundiales
           </span>
         </div>
         <div id="periodico-mundo" class="grid grid-cols-2 gap-2">
@@ -2077,8 +2196,8 @@
       </div>
       <div>
         <div class="flex items-center justify-between mb-2">
-          <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-            <span class="text-accent-amber">●</span> Divisas
+          <span class="mp-sec-etq">
+            Divisas
           </span>
         </div>
         <div id="periodico-divisas" class="grid grid-cols-2 gap-2">
@@ -2091,8 +2210,8 @@
     <section class="max-w-7xl mx-auto px-6 py-4 grid md:grid-cols-2 gap-4">
       <div>
         <div class="flex items-center justify-between mb-2">
-          <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-            <span class="text-accent-orange">●</span> Commodities
+          <span class="mp-sec-etq">
+            Commodities
           </span>
         </div>
         <div id="periodico-commodities" class="grid grid-cols-2 gap-2">
@@ -2101,8 +2220,8 @@
       </div>
       <div>
         <div class="flex items-center justify-between mb-2">
-          <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-            <span class="text-accent-red">●</span> Tasas y volatilidad
+          <span class="mp-sec-etq">
+            Tasas y volatilidad
           </span>
         </div>
         <div id="periodico-tasas" class="grid grid-cols-3 gap-2">
@@ -2114,8 +2233,8 @@
     <!-- Crypto strip -->
     <section class="max-w-7xl mx-auto px-6 py-4">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-          <span class="text-accent-teal">●</span> Criptomonedas top
+        <span class="mp-sec-etq">
+          Criptomonedas top
         </span>
       </div>
       <div id="periodico-crypto" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
@@ -2126,8 +2245,8 @@
     <!-- Heatmap de sectores USA -->
     <section class="max-w-7xl mx-auto px-6 py-4">
       <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
-        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-          <span class="text-accent-indigo">●</span> Sectores USA · performance
+        <span class="mp-sec-etq">
+          Sectores USA · performance
         </span>
         <div class="inline-flex bg-surface-card border border-surface-border rounded-full p-1">
           <button data-sec-periodo="dia" class="sec-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-100 bg-accent-indigo/20 ring-1 ring-accent-indigo/30 font-medium">Día</button>
@@ -2145,8 +2264,8 @@
     <section class="max-w-7xl mx-auto px-6 py-4">
       <div class="flex items-center justify-between flex-wrap gap-3 mb-3">
         <div>
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500">
-            <span class="text-accent-amber">●</span> Top movers del mercado
+          <p class="mp-etq">
+            Top movers del mercado
           </p>
           <p class="text-[11px] text-zinc-600 mt-1 max-w-2xl leading-snug">
             Las acciones que más han subido, las que más han caído, y las más populares por capitalización. Datos del universo curado.
@@ -2196,8 +2315,8 @@
       <!-- Noticias top (col principal) -->
       <div class="lg:col-span-2">
         <div class="flex items-center justify-between mb-1">
-          <span class="text-[10px] uppercase tracking-wider text-zinc-500">
-            <span class="text-accent-blue">●</span> Noticias top del mercado
+          <span class="mp-sec-etq">
+            Noticias top del mercado
           </span>
           <span id="periodico-top-count" class="text-[10px] text-zinc-600"></span>
         </div>
@@ -2210,8 +2329,8 @@
       <!-- Noticias del portafolio (sidebar) -->
       <aside>
         <div class="flex items-center justify-between mb-1">
-          <span class="text-[10px] uppercase tracking-wider text-zinc-500">
-            <span class="text-accent-amber">●</span> De tus posiciones
+          <span class="mp-sec-etq">
+            De tus posiciones
           </span>
           <span id="periodico-mis-count" class="text-[10px] text-zinc-600"></span>
         </div>
@@ -2232,7 +2351,7 @@
     <!-- Header -->
     <section class="max-w-5xl mx-auto px-6 pt-12 pb-6">
       <div class="fade-up">
-        <p class="text-xs font-medium text-accent-amber uppercase tracking-wider">Rebalanceo</p>
+        <p class="mp-etq">Rebalanceo</p>
         <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mt-2">Mantén tus porcentajes</h2>
         <p class="text-sm text-zinc-400 mt-3 max-w-2xl leading-relaxed">
           Cuando una acción sube más que las demás, su peso en tu portafolio sube también. Rebalancear
@@ -2412,7 +2531,7 @@
     <!-- Header -->
     <section class="max-w-7xl mx-auto px-6 pt-12 pb-6">
       <div class="fade-up">
-        <p class="text-xs font-medium text-accent-teal uppercase tracking-wider">Transacciones</p>
+        <p class="mp-etq">Transacciones</p>
         <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mt-2">Tu portafolio real</h2>
         <p class="text-sm text-zinc-400 mt-3 max-w-2xl leading-relaxed">
           Captura cada compra o venta que has hecho. Calculamos tu costo promedio, ganancia real
@@ -2436,7 +2555,7 @@
         <div class="flex items-start justify-between flex-wrap gap-3 mb-3">
           <div>
             <h3 class="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-              <span class="w-6 h-6 rounded-md bg-accent-green/15 border border-accent-green/30 flex items-center justify-center text-accent-green">💳</span>
+              <span class="w-6 h-6 rounded-md bg-accent-green/15 border border-accent-green/30 flex items-center justify-center text-accent-green"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square"><rect x="2.5" y="5" width="19" height="14"/><path d="M2.5 9.5h19"/><path d="M6 15h4"/></svg></span></span>
               Comprar acciones
             </h3>
             <p class="text-[11px] text-zinc-500 mt-1 leading-relaxed max-w-2xl">
@@ -2459,7 +2578,7 @@
 
         <!-- Atajos: tickers actuales del portafolio -->
         <div id="comprar-shortcuts-wrap" class="hidden">
-          <p class="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">⚡ Comprar más de tus tickers actuales</p>
+          <p class="text-[10px] uppercase tracking-wider text-zinc-500 mb-2"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span> Comprar más de tus tickers actuales</p>
           <div id="comprar-shortcuts" class="flex flex-wrap gap-2"></div>
         </div>
       </div>
@@ -2646,7 +2765,7 @@
 
       <!-- HEADER -->
       <div class="mb-8 fade-up">
-        <p class="text-xs font-medium text-accent-indigo uppercase tracking-wider">Impuestos MX</p>
+        <p class="mp-etq">Impuestos MX</p>
         <div class="flex items-center gap-3 mb-2 mt-2">
           <h2 class="text-3xl font-bold tracking-tight">ISR y tax-loss harvesting</h2>
         </div>
@@ -2692,22 +2811,22 @@
 
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div class="bg-surface-card border border-surface-border rounded-xl p-5 fade-up fade-up-1">
-              <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Ganancia neta del año</p>
+              <p class="mp-etq">Ganancia neta del año</p>
               <p id="imp-kpi-ganancia" class="text-2xl font-bold mt-2 tabular">—</p>
               <p class="text-[10px] text-zinc-600 mt-2 leading-relaxed">Ventas realizadas menos costo. Si es negativa, este año <span class="text-zinc-400">no pagas ISR</span> y arrastras la pérdida.</p>
             </div>
             <div class="bg-surface-card border border-surface-border rounded-xl p-5 fade-up fade-up-2">
-              <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">ISR estimado (10%)</p>
+              <p class="mp-etq">ISR estimado (10%)</p>
               <p id="imp-kpi-isr" class="text-2xl font-bold mt-2 tabular text-accent-amber">—</p>
               <p class="text-[10px] text-zinc-600 mt-2 leading-relaxed">Lo que tendrías que pagar al SAT si cerraras el año hoy. 10% sobre la ganancia neta.</p>
             </div>
             <div class="bg-surface-card border border-surface-border rounded-xl p-5 fade-up fade-up-3">
-              <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Pérdidas compensables</p>
+              <p class="mp-etq">Pérdidas compensables</p>
               <p id="imp-kpi-perdidas" class="text-2xl font-bold mt-2 tabular text-accent-indigo">—</p>
               <p class="text-[10px] text-zinc-600 mt-2 leading-relaxed">Pérdidas de años anteriores que puedes usar para reducir el ISR de este año. <span class="text-zinc-400">Vigencia 10 años.</span></p>
             </div>
             <div class="bg-surface-card border border-surface-border rounded-xl p-5 fade-up fade-up-4">
-              <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Ahorro potencial por harvest</p>
+              <p class="mp-etq">Ahorro potencial por harvest</p>
               <p id="imp-kpi-ahorro" class="text-2xl font-bold mt-2 tabular text-accent-green">—</p>
               <p class="text-[10px] text-zinc-600 mt-2 leading-relaxed">ISR que podrías ahorrar aprovechando tus posiciones hoy en pérdida. Ver abajo.</p>
             </div>
@@ -2838,7 +2957,7 @@
         <div class="flex items-start justify-between mb-4 flex-wrap gap-2">
           <div>
             <h3 class="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-              <span class="w-7 h-7 rounded-md bg-accent-teal/15 border border-accent-teal/30 flex items-center justify-center text-accent-teal">🏦</span>
+              <span class="w-7 h-7 rounded-md bg-accent-teal/15 border border-accent-teal/30 flex items-center justify-center text-accent-teal"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square"><path d="M3 9.5 12 4l9 5.5"/><path d="M5 9.5V19"/><path d="M9.5 9.5V19"/><path d="M14.5 9.5V19"/><path d="M19 9.5V19"/><path d="M2.5 19h19"/></svg></span></span>
               Comparativa de brokers MX
             </h3>
             <p class="text-[11px] text-zinc-500 mt-1 max-w-2xl">
@@ -2852,7 +2971,7 @@
         <div id="brokers-tabla" class="hidden overflow-x-auto"></div>
         <div id="brokers-comparador" class="hidden mt-4 bg-zinc-900/30 border border-surface-border rounded-lg p-4">
           <div class="flex items-center gap-2 mb-3 flex-wrap">
-            <label class="text-[10px] uppercase tracking-wider text-zinc-500">Comparar para:</label>
+            <label class="mp-etq">Comparar para:</label>
             <input id="brokers-ticker" type="text" placeholder="AAPL" class="text-xs bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1 text-zinc-100 uppercase" />
             <input id="brokers-monto" type="number" placeholder="10000" class="text-xs bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1 text-zinc-100 tabular w-28" />
             <span class="text-[10px] text-zinc-500">MXN</span>
@@ -3018,7 +3137,7 @@
 
           <!-- Estado vacío -->
           <div id="met-vacio" class="bg-surface-card border border-surface-border rounded-xl p-12 text-center fade-up">
-            <div class="text-5xl mb-4">🎯</div>
+            <div class="mb-4 flex justify-center" style="color:var(--sello);font-size:34px"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/></svg></span></div>
             <h3 class="text-lg font-semibold text-zinc-200 mb-2">Ajusta los parámetros y simula</h3>
             <p class="text-sm text-zinc-500 max-w-md mx-auto leading-relaxed">
               En 1 segundo sabrás la probabilidad de alcanzar tu meta, tres escenarios de resultado y una gráfica
@@ -3038,7 +3157,7 @@
                   <p id="met-prob-mensaje" class="text-xs text-zinc-400 mt-2 leading-relaxed">—</p>
                 </div>
                 <div class="text-right">
-                  <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Años para llegar (mediana)</p>
+                  <p class="mp-etq">Años para llegar (mediana)</p>
                   <p id="met-anos-meta" class="text-3xl font-bold text-accent-rose tabular mt-1">—</p>
                 </div>
               </div>
@@ -3075,17 +3194,17 @@
             <!-- Resumen numérico -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div class="bg-surface-card border border-surface-border rounded-xl p-5">
-                <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Total aportado</p>
+                <p class="mp-etq">Total aportado</p>
                 <p id="met-tot-aportado" class="text-xl font-bold mt-2 tabular">—</p>
                 <p class="text-[10px] text-zinc-600 mt-2">Tu dinero, antes de rendimientos.</p>
               </div>
               <div class="bg-surface-card border border-surface-border rounded-xl p-5">
-                <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Crecimiento esperado</p>
+                <p class="mp-etq">Crecimiento esperado</p>
                 <p id="met-tot-crecimiento" class="text-xl font-bold mt-2 tabular text-accent-green">—</p>
                 <p class="text-[10px] text-zinc-600 mt-2">Lo que <span class="text-zinc-400">el mercado</span> le suma en la mediana.</p>
               </div>
               <div class="bg-surface-card border border-surface-border rounded-xl p-5">
-                <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Valor mediano real</p>
+                <p class="mp-etq">Valor mediano real</p>
                 <p id="met-tot-real" class="text-xl font-bold mt-2 tabular">—</p>
                 <p class="text-[10px] text-zinc-600 mt-2">Poder de compra en pesos de hoy (descontando inflación).</p>
               </div>
@@ -3117,11 +3236,11 @@
             <div id="met-div-progreso" class="hidden bg-surface-card border border-accent-rose/20 rounded-xl p-5">
               <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
                 <div>
-                  <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Tu meta de ingreso mensual</p>
+                  <p class="mp-etq">Tu meta de ingreso mensual</p>
                   <p class="text-lg font-bold text-zinc-100 tabular mt-0.5"><span id="met-div-meta-monto">—</span> al mes</p>
                 </div>
                 <div class="text-right">
-                  <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Ya cubres</p>
+                  <p class="mp-etq">Ya cubres</p>
                   <p id="met-div-cubierto-pct" class="text-2xl font-bold text-accent-rose tabular">—</p>
                 </div>
               </div>
@@ -3134,22 +3253,22 @@
             <!-- KPIs de dividendos -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div class="bg-surface-card border border-surface-border rounded-xl p-4">
-                <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Ingreso anual estimado</p>
+                <p class="mp-etq">Ingreso anual estimado</p>
                 <p id="met-div-anual" class="text-xl font-bold mt-2 tabular text-accent-green">—</p>
                 <p class="text-[10px] text-zinc-600 mt-2">Suma de todos los dividendos que esperas recibir en 12 meses.</p>
               </div>
               <div class="bg-surface-card border border-surface-border rounded-xl p-4">
-                <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Mensual promedio</p>
+                <p class="mp-etq">Mensual promedio</p>
                 <p id="met-div-mensual" class="text-xl font-bold mt-2 tabular">—</p>
                 <p class="text-[10px] text-zinc-600 mt-2">Si lo repartes parejo por 12 meses. Pagos reales pueden ser trimestrales.</p>
               </div>
               <div class="bg-surface-card border border-surface-border rounded-xl p-4">
-                <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Yield del portafolio</p>
+                <p class="mp-etq">Yield del portafolio</p>
                 <p id="met-div-yield" class="text-xl font-bold mt-2 tabular text-accent-blue">—</p>
                 <p class="text-[10px] text-zinc-600 mt-2">% anual de tu valor de mercado que regresa como dividendo.</p>
               </div>
               <div class="bg-surface-card border border-surface-border rounded-xl p-4">
-                <p class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Yield sobre costo</p>
+                <p class="mp-etq">Yield sobre costo</p>
                 <p id="met-div-yoc" class="text-xl font-bold mt-2 tabular text-accent-purple">—</p>
                 <p class="text-[10px] text-zinc-600 mt-2">% sobre lo que pagaste originalmente. Crece con el tiempo si suben los dividendos.</p>
               </div>
@@ -3287,7 +3406,7 @@
       <div id="cuenta-contenido">
         <!-- Fallback visible mientras account.js consulta el estado: esta
              pantalla nunca debe verse vacía. -->
-        <div style="background:#111114;border:1px solid #1f1f24;border-radius:16px;padding:18px;color:#a1a1aa;font-size:13px">
+        <div style="background:#131210;border:1px solid #2A2721;border-radius:16px;padding:18px;color:#9A9284;font-size:13px">
           Cargando tu cuenta…
         </div>
       </div>
@@ -3298,59 +3417,61 @@
   <!-- ============================================================ -->
   <!-- FOOTER                                                        -->
   <!-- ============================================================ -->
-  <footer class="border-t border-surface-border mt-10">
-    <!-- Trust badges row -->
-    <div class="border-b border-surface-border bg-zinc-950/40">
-      <div class="max-w-7xl mx-auto px-6 py-5 grid sm:grid-cols-3 gap-4">
-        <div class="flex items-start gap-2.5">
-          <span class="shrink-0 w-7 h-7 rounded-md bg-accent-green/10 border border-accent-green/30 flex items-center justify-center text-accent-green">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </span>
-          <div>
-            <p class="text-[11px] font-semibold text-zinc-200">Datos cifrados HTTPS</p>
-            <p class="text-[10px] text-zinc-500 leading-relaxed mt-0.5">Tu información viaja encriptada de extremo a extremo.</p>
-          </div>
+  <!-- ══ COLOFÓN ═══════════════════════════════════════════════════════════
+       Como el pie de imprenta de un diario: regla superior de 2px, fuentes
+       de datos declaradas y el aviso legal. Sin tarjetas ni insignias. -->
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="mp-colofon">
+      <div class="grid gap-6 sm:grid-cols-12">
+
+        <div class="sm:col-span-4">
+          <p class="mp-colofon-titulo">Mi Portafolio</p>
+          <p>Análisis de inversión para el mercado mexicano.<br>
+             Publicación educativa · edición diaria.</p>
         </div>
-        <div class="flex items-start gap-2.5">
-          <span class="shrink-0 w-7 h-7 rounded-md bg-accent-blue/10 border border-accent-blue/30 flex items-center justify-center text-accent-blue">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 7v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V7l-8-5z"/></svg>
-          </span>
-          <div>
-            <p class="text-[11px] font-semibold text-zinc-200">No guardamos credenciales bancarias</p>
-            <p class="text-[10px] text-zinc-500 leading-relaxed mt-0.5">Nunca te pedimos password de tu broker ni acceso bancario.</p>
-          </div>
+
+        <div class="sm:col-span-4">
+          <p class="mp-etq mb-1.5">Fuentes de datos</p>
+          <p>
+            <strong>Precios y fundamentales:</strong> Yahoo Finance.<br>
+            <strong>Tasas CETES y UDIS:</strong> Banxico SIE.<br>
+            <strong>Índice IPC y FIBRAS:</strong> BMV vía Yahoo Finance.<br>
+            <strong>Tarifas ISR:</strong> LISR vigente (SAT).<br>
+            <strong>Rendimientos de AFORE:</strong> IRN publicado por CONSAR.
+          </p>
         </div>
-        <div class="flex items-start gap-2.5">
-          <span class="shrink-0 w-7 h-7 rounded-md bg-accent-purple/10 border border-accent-purple/30 flex items-center justify-center text-accent-purple">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
-          </span>
-          <div>
-            <p class="text-[11px] font-semibold text-zinc-200">Datos en tu navegador</p>
-            <p class="text-[10px] text-zinc-500 leading-relaxed mt-0.5">Tu portafolio vive en tu dispositivo, no en bases de datos externas.</p>
-          </div>
+
+        <div class="sm:col-span-4">
+          <p class="mp-etq mb-1.5">Secciones</p>
+          <!-- Lista en línea con separadores, como el índice de un diario.
+               Se usa display:inline en cada enlace (y no flex) para que el
+               salto de línea sea natural y no deje huecos ni sangrías. -->
+          <p class="mp-colofon-indice">
+            <a href="/terminos">Términos</a>
+            <a href="/privacidad">Privacidad</a>
+            <button onclick="window.abrirFAQ && window.abrirFAQ()">FAQ</button>
+            <button onclick="window.abrirGlosario && window.abrirGlosario()">Glosario</button>
+            <button onclick="window.abrirCursosIndex && window.abrirCursosIndex()">Mini-cursos</button>
+            <a href="/blog">Blog</a>
+            <a href="mailto:soporte@miportafolio.app">Soporte</a>
+            <!-- Segundo acceso a la pantalla de cuenta. El widget que se pintaba aquí
+                 (con confirm()/prompt() y solo en DOMContentLoaded) se retiró: la
+                 vista "Mi cuenta" es ahora la única implementación. -->
+            <button data-vista="cuenta" class="nav-tab">Mi cuenta</button>
+          </p>
+          <p id="cuenta-footer-email" class="mt-1.5"></p>
         </div>
       </div>
-    </div>
-    <div class="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-zinc-500">
-      <div class="flex items-center gap-3 flex-wrap">
-        <span>Mi Portafolio · Análisis de inversión</span>
-        <span class="text-zinc-700">·</span>
-        <a href="/terminos" class="text-zinc-400 hover:text-zinc-200 transition">Términos</a>
-        <a href="/privacidad" class="text-zinc-400 hover:text-zinc-200 transition">Privacidad</a>
-        <button onclick="window.abrirFAQ && window.abrirFAQ()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">FAQ</button>
-        <button onclick="window.abrirGlosario && window.abrirGlosario()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Glosario</button>
-        <button onclick="window.abrirCursosIndex && window.abrirCursosIndex()" class="text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Mini-cursos</button>
-        <a href="/blog" class="text-zinc-400 hover:text-zinc-200 transition">Blog</a>
-        <a href="mailto:soporte@miportafolio.app" class="text-zinc-400 hover:text-zinc-200 transition">Soporte</a>
-        <!-- Segundo acceso a la pantalla de cuenta. El widget que se pintaba aquí
-             (con confirm()/prompt() y solo en DOMContentLoaded) se retiró: la
-             vista "Mi cuenta" es ahora la única implementación. -->
-        <button data-vista="cuenta" class="nav-tab text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Mi cuenta</button>
-        <span id="cuenta-footer-email" class="text-zinc-600"></span>
-      </div>
-      <div class="text-zinc-600 leading-relaxed max-w-md text-right">
-        NO somos asesor financiero registrado ante CNBV. Esta herramienta es educativa. Las decisiones de inversión son responsabilidad del usuario.
-      </div>
+
+      <hr class="mp-regla my-4" />
+
+      <p class="max-w-3xl">
+        <strong>Aviso.</strong> Mi Portafolio NO es asesor financiero registrado ante la CNBV.
+        Esta herramienta es educativa y no constituye una recomendación de inversión.
+        Las decisiones y sus resultados son responsabilidad del usuario. Los rendimientos
+        pasados no garantizan rendimientos futuros. La app nunca mueve dinero ni solicita
+        credenciales de tu banco o casa de bolsa; tu portafolio se guarda en tu dispositivo.
+      </p>
     </div>
   </footer>
 

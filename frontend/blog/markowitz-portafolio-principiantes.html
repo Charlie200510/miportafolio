@@ -37,11 +37,36 @@
   </script>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/blog/_styles.css">
+  <script>
+    /* Mismo remapeo de tema que la app: tinta y papel sobre las utilidades
+       que ya reparte el markup, sin renombrar clases. */
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: {
+          serif: ['Source Serif 4', 'Georgia', 'serif'],
+          sans:  ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono:  ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          zinc:    { 50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
+                     500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' },
+          emerald: { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B', 600:'#C98A2B' },
+          green:   { 300:'#6FAE7E', 400:'#6FAE7E', 500:'#6FAE7E' },
+          red:     { 300:'#DB7B68', 400:'#DB7B68', 500:'#DB7B68' },
+          amber:   { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+          sky:     { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+        },
+        borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px', xl:'2px', '2xl':'2px', '3xl':'2px' },
+        boxShadow: { none:'none', sm:'none', DEFAULT:'none', md:'none', lg:'none', xl:'none', '2xl':'none' },
+      } }
+    };
+  </script>
+  <link rel="stylesheet" href="/static/css/mp-tokens.css">
+  <link rel="stylesheet" href="/static/css/mp-editorial.css">
+  <link rel="stylesheet" href="/static/blog/_styles.css">
 </head>
 <body class="min-h-screen">
-  <header class="border-b border-zinc-800 sticky top-0 bg-zinc-950/80 backdrop-blur z-10">
+  <header class="border-b border-zinc-800 sticky top-0 bg-surface z-10">
     <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
       <a href="/" class="flex items-center gap-2 text-sm font-semibold text-zinc-100 hover:text-emerald-400 transition">
         <img src="/static/logo.png" alt="Mi Portafolio" class="w-8 h-8 rounded-lg">Mi Portafolio
@@ -55,11 +80,11 @@
 
   <article class="max-w-3xl mx-auto px-6 py-12">
     <div class="mb-8">
-      <p class="text-xs uppercase tracking-wider text-orange-400 font-semibold">📐 Teoría</p>
+      <p class="text-xs uppercase tracking-wider text-orange-400 font-semibold"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="2.5" y="8" width="19" height="8"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></svg></span> Teoría</p>
       <h1 class="display text-3xl sm:text-5xl font-bold text-zinc-100 mt-3 leading-tight">Qué es Markowitz y cómo aplicarlo a tu portafolio</h1>
       <p class="text-xl text-zinc-400 mt-4 leading-relaxed">La teoría que ganó el Nobel de Economía, explicada sin matemáticas. Aplícala en 10 minutos con un ejemplo real.</p>
       <div class="flex items-center gap-3 mt-6 text-xs text-zinc-500 border-b border-zinc-800 pb-6">
-        <span>📅 Junio 2026</span><span>·</span><span>⏱ 10 min de lectura</span>
+        <span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/></svg></span> Junio 2026</span><span>·</span><span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2"/><path d="M9 2h6"/></svg></span> 10 min de lectura</span>
       </div>
     </div>
 
@@ -115,7 +140,7 @@
         GLD: 15%<br><br>
         Retorno esperado: 7.5%<br>
         Volatilidad esperada: 9% (vs 17% del SPY solo)<br>
-        <strong style="color:#34d399;">Sharpe ratio: 0.62 (vs 0.39 del SPY solo)</strong>
+        <strong style="color:#D79A3C;">Sharpe ratio: 0.62 (vs 0.39 del SPY solo)</strong>
       </div>
       <p>El portafolio diversificado tiene <strong>menos volatilidad</strong> y <strong>mejor Sharpe</strong> que poner todo en SPY, sacrificando algo de retorno absoluto.</p>
 
@@ -164,7 +189,7 @@
       </div>
 
       <h2>Disclaimer</h2>
-      <p style="font-size: 14px; color: #71717a;">Esta guía es educativa, no asesoría financiera personalizada. Los modelos matemáticos tienen limitaciones — siempre combina con criterio cualitativo.</p>
+      <p style="font-size: 14px; color: #847D70;">Esta guía es educativa, no asesoría financiera personalizada. Los modelos matemáticos tienen limitaciones — siempre combina con criterio cualitativo.</p>
     </div>
 
     <div class="mt-12 pt-8 border-t border-zinc-800">

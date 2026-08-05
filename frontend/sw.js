@@ -6,7 +6,7 @@
 */
 // IMPORTANTE: Bumpear esta versión cada vez que cambies JS/CSS críticos
 // para forzar invalidación del cache en todos los usuarios.
-const VERSION = 'mp-v1.11.8';
+const VERSION = 'mp-v1.12.0';
 const SHELL_CACHE  = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const ASSETS_CACHE = `${VERSION}-assets`;
@@ -17,6 +17,16 @@ const PRECACHE_URLS = [
   '/signup',
   '/static/logo.png',
   '/static/manifest.webmanifest',
+  // Sistema editorial: hojas + los subsets latin de las tres familias.
+  // Se precachean para que el primer render offline ya salga con la
+  // tipografía correcta y no con el fallback del sistema.
+  '/static/css/mp-tokens.css',
+  '/static/css/mp-editorial.css',
+  '/static/fonts/source-serif-4-400-700-latin.woff2',
+  '/static/fonts/ibm-plex-sans-400-700-latin.woff2',
+  '/static/fonts/ibm-plex-mono-400-latin.woff2',
+  '/static/fonts/ibm-plex-mono-500-latin.woff2',
+  '/static/fonts/ibm-plex-mono-600-latin.woff2',
 ];
 
 self.addEventListener('install', (event) => {

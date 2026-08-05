@@ -8,21 +8,57 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png?v=2">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png?v=2">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    /* Mismo remapeo de tema que index.html: las utilidades ya repartidas por
+       el markup pasan a pintar tinta y papel sin renombrar una sola clase. */
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: {
+          serif: ['Source Serif 4', 'Georgia', 'serif'],
+          sans:  ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono:  ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        },
+        colors: { zinc: {
+          50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
+          500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' } },
+        borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px', xl:'2px', '2xl':'2px' },
+        boxShadow: { none:'none', sm:'none', DEFAULT:'none', md:'none', lg:'none', xl:'none' },
+      } }
+    };
+  </script>
+  <link rel="stylesheet" href="/static/css/mp-tokens.css">
+  <link rel="stylesheet" href="/static/css/mp-editorial.css">
   <style>
-    body { background: #0a0a0b; color: #e5e7eb; font-family: 'Inter', sans-serif; }
-    .legal h2 { font-size: 1.25rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; color: #f4f4f5; }
-    .legal h3 { font-size: 1.05rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; color: #d4d4d8; }
-    .legal p { margin: 0.6rem 0; line-height: 1.65; color: #a1a1aa; font-size: 0.93rem; }
-    .legal ul { margin: 0.6rem 0 0.6rem 1.25rem; list-style: disc; }
-    .legal li { margin: 0.35rem 0; line-height: 1.6; color: #a1a1aa; font-size: 0.93rem; }
-    .legal strong { color: #e5e7eb; }
+    /* Página legal: columna de lectura estrecha, jerarquía por tipografía. */
+    body { background: #0B0B0A; color: #CFC8B8; }
+    .legal h2 {
+      font-family: var(--ff-serif); font-size: 1.3rem; font-weight: 700;
+      margin-top: 2.2rem; margin-bottom: .7rem; color: var(--papel);
+      letter-spacing: -.015em; padding-bottom: .4rem;
+      border-bottom: 1px solid var(--regla);
+    }
+    .legal h3 {
+      font-family: var(--ff-serif); font-size: 1.05rem; font-weight: 600;
+      margin-top: 1.35rem; margin-bottom: .45rem; color: var(--papel);
+    }
+    .legal p  { margin: .65rem 0; line-height: 1.68; color: var(--papel-2); font-size: .94rem; }
+    .legal ul { margin: .65rem 0 .65rem 1.1rem; list-style: none; }
+    .legal li {
+      margin: .4rem 0; line-height: 1.62; color: var(--papel-2);
+      font-size: .94rem; position: relative; padding-left: .9rem;
+    }
+    /* Viñeta de cuadratín, no bolita. */
+    .legal li::before {
+      content: ''; position: absolute; left: 0; top: .62em;
+      width: 4px; height: 4px; background: var(--sello);
+    }
+    .legal strong { color: var(--papel); font-weight: 600; }
+    .legal a { color: var(--sello); }
   </style>
 </head>
 <body>
 
-  <header class="border-b border-zinc-800 sticky top-0 bg-zinc-950/80 backdrop-blur z-10">
+  <header class="border-b border-zinc-800 sticky top-0 bg-surface z-10">
     <div class="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
       <a href="/" class="flex items-center gap-2.5">
         <img src="/static/logo.png" alt="Mi Portafolio" class="w-8 h-8 rounded-md object-cover" />
@@ -111,7 +147,7 @@
     <p class="text-xs text-zinc-600 italic">Este documento es una plantilla. Debe ser revisado por un abogado mexicano con especialidad en derecho fintech, protección al consumidor y datos personales antes de su publicación oficial.</p>
 
     <div class="mt-12 flex gap-4 text-sm">
-      <a href="/" class="text-accent-green hover:underline" style="color:#22c55e;">← Volver a la app</a>
+      <a href="/" class="text-accent-green hover:underline" style="color:#D79A3C;">← Volver a la app</a>
       <a href="/privacidad" class="text-zinc-400 hover:text-zinc-200">Aviso de Privacidad</a>
     </div>
   </main>

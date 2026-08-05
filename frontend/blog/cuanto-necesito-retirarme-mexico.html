@@ -41,11 +41,36 @@
   </script>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/blog/_styles.css">
+  <script>
+    /* Mismo remapeo de tema que la app: tinta y papel sobre las utilidades
+       que ya reparte el markup, sin renombrar clases. */
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: {
+          serif: ['Source Serif 4', 'Georgia', 'serif'],
+          sans:  ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono:  ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          zinc:    { 50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
+                     500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' },
+          emerald: { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B', 600:'#C98A2B' },
+          green:   { 300:'#6FAE7E', 400:'#6FAE7E', 500:'#6FAE7E' },
+          red:     { 300:'#DB7B68', 400:'#DB7B68', 500:'#DB7B68' },
+          amber:   { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+          sky:     { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+        },
+        borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px', xl:'2px', '2xl':'2px', '3xl':'2px' },
+        boxShadow: { none:'none', sm:'none', DEFAULT:'none', md:'none', lg:'none', xl:'none', '2xl':'none' },
+      } }
+    };
+  </script>
+  <link rel="stylesheet" href="/static/css/mp-tokens.css">
+  <link rel="stylesheet" href="/static/css/mp-editorial.css">
+  <link rel="stylesheet" href="/static/blog/_styles.css">
 </head>
 <body class="min-h-screen">
-  <header class="border-b border-zinc-800 sticky top-0 bg-zinc-950/80 backdrop-blur z-10">
+  <header class="border-b border-zinc-800 sticky top-0 bg-surface z-10">
     <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
       <a href="/" class="flex items-center gap-2 text-sm font-semibold text-zinc-100 hover:text-emerald-400 transition">
         <img src="/static/logo.png" alt="Mi Portafolio" class="w-8 h-8 rounded-lg">Mi Portafolio
@@ -59,11 +84,11 @@
 
   <article class="max-w-3xl mx-auto px-6 py-12">
     <div class="mb-8">
-      <p class="text-xs uppercase tracking-wider text-emerald-400 font-semibold">🎯 Retiro</p>
+      <p class="text-xs uppercase tracking-wider text-emerald-400 font-semibold"><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/></svg></span> Retiro</p>
       <h1 class="display text-3xl sm:text-5xl font-bold text-zinc-100 mt-3 leading-tight">¿Cuánto necesito para retirarme en México?</h1>
       <p class="text-xl text-zinc-400 mt-4 leading-relaxed">La regla del 4% adaptada al mexicano. Ejemplos con $20k, $50k y $100k MXN mensuales. Cuánto necesitas ahorrar y a qué edad puedes lograrlo.</p>
       <div class="flex items-center gap-3 mt-6 text-xs text-zinc-500 border-b border-zinc-800 pb-6">
-        <span>📅 Junio 2026</span><span>·</span><span>⏱ 13 min de lectura</span>
+        <span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/></svg></span> Junio 2026</span><span>·</span><span><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2"/><path d="M9 2h6"/></svg></span> 13 min de lectura</span>
       </div>
     </div>
 
@@ -79,7 +104,7 @@
       </div>
       <p>Por ejemplo, si quieres gastar $40,000 MXN al mes en el retiro:</p>
       <div class="calc-box">
-        $40,000 × 300 = <strong style="color:#34d399;">$12,000,000 MXN</strong>
+        $40,000 × 300 = <strong style="color:#D79A3C;">$12,000,000 MXN</strong>
       </div>
       <p>Con $12M invertidos, puedes sacar $480,000/año ($40k/mes) <em>indefinidamente</em> sin que se acabe el capital. El truco es que el portafolio sigue creciendo en promedio más rápido de lo que retiras.</p>
 
@@ -129,7 +154,7 @@
         Aportación mensual: $10,000<br>
         Retorno real anual: 6%<br>
         Meta: $12,000,000<br>
-        <strong style="color:#34d399;">Tiempo para llegar: ~28 años</strong>
+        <strong style="color:#D79A3C;">Tiempo para llegar: ~28 años</strong>
       </div>
       <p>Es decir, si tienes 30 años hoy, te retiras a los 58 con $12M para vivir con $40k/mes el resto de tu vida.</p>
       <p>Si pudieras ahorrar $15,000/mes (37.5%), llegarías en <strong>22 años</strong>. Si ahorras $20,000 (50%), llegas en <strong>17 años</strong>. Cada peso extra ahorrado tiene efecto exponencial.</p>
@@ -171,7 +196,7 @@
       </div>
 
       <h2>Disclaimer</h2>
-      <p style="font-size: 14px; color: #71717a;">Esta guía es educativa, no asesoría financiera personalizada. Los retornos históricos no garantizan resultados futuros. Para casos complejos consulta a un asesor en inversiones registrado.</p>
+      <p style="font-size: 14px; color: #847D70;">Esta guía es educativa, no asesoría financiera personalizada. Los retornos históricos no garantizan resultados futuros. Para casos complejos consulta a un asesor en inversiones registrado.</p>
     </div>
 
     <div class="mt-12 pt-8 border-t border-zinc-800">

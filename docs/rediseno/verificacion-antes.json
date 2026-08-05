@@ -1,0 +1,92 @@
+[
+  {
+    "etiqueta": "iPhone SE / mini",
+    "w": 375,
+    "h": 667,
+    "orient": "vertical",
+    "overflow": 358,
+    "traslapes": "portafolio:6 transacciones:34",
+    "hits": "ok"
+  },
+  {
+    "etiqueta": "iPhone SE / mini",
+    "w": 667,
+    "h": 375,
+    "orient": "horizontal",
+    "overflow": 371,
+    "traslapes": "—",
+    "hits": "ok"
+  },
+  {
+    "etiqueta": "iPhone 14/15",
+    "w": 390,
+    "h": 844,
+    "orient": "vertical",
+    "overflow": 351,
+    "traslapes": "portafolio:6 transacciones:34",
+    "hits": "ok"
+  },
+  {
+    "etiqueta": "iPhone 14/15",
+    "w": 844,
+    "h": 390,
+    "orient": "horizontal",
+    "overflow": 0,
+    "traslapes": "—",
+    "hits": "ok"
+  },
+  {
+    "etiqueta": "iPhone Pro Max",
+    "w": 430,
+    "h": 932,
+    "orient": "vertical",
+    "overflow": 311,
+    "traslapes": "portafolio:6 transacciones:34",
+    "hits": "ok"
+  },
+  {
+    "etiqueta": "iPhone Pro Max",
+    "w": 932,
+    "h": 430,
+    "orient": "horizontal",
+    "overflow": 0,
+    "traslapes": "—",
+    "hits": "ok"
+  },
+  {
+    "etiqueta": "iPad mini/air",
+    "w": 820,
+    "h": 1180,
+    "orient": "vertical",
+    "overflow": 0,
+    "traslapes": "—",
+    "hits": "ok"
+  },
+  {
+    "etiqueta": "iPad mini/air",
+    "w": 1180,
+    "h": 820,
+    "orient": "horizontal",
+    "overflow": 0,
+    "traslapes": "—",
+    "hits": "ok"
+  },
+  {
+    "etiqueta": "iPad Pro 12.9",
+    "w": 1180,
+    "h": 1024,
+    "orient": "vertical",
+    "overflow": 0,
+    "traslapes": "—",
+    "hits": "ok"
+  },
+  {
+    "etiqueta": "iPad Pro 12.9",
+    "w": 1024,
+    "h": 1180,
+    "orient": "horizontal",
+    "overflow": 0,
+    "traslapes": "—",
+    "hits": "ok"
+  }
+]

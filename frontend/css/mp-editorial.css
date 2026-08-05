@@ -1,0 +1,646 @@
+/* ============================================================================
+   MI PORTAFOLIO · COMPONENTES EDITORIALES
+   Depende de mp-tokens.css. Aquí vive la retícula de prensa: masthead,
+   cintilla de mercados, encabezados de sección, celdas con hairline,
+   colofón, y el reskin de todo lo que el JS genera (modales, toasts,
+   tooltips, tablas, estados vacíos y de error).
+   ========================================================================== */
+
+/* ─────────────────────────── BASE TIPOGRÁFICA ───────────────────────────── */
+html, body {
+  background-color: var(--tinta) !important;
+  color: var(--papel-2) !important;
+  font-family: var(--ff-sans) !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Titulares y cifras protagonistas: serif editorial. */
+h1, h2, h3, .mp-titular, .mp-cifra {
+  font-family: var(--ff-serif) !important;
+  color: var(--papel);
+  letter-spacing: -0.012em;
+  font-feature-settings: 'ss01';
+}
+h1, h2 { line-height: 1.08; }
+h3     { line-height: 1.18; }
+
+/* h4/h5 quedan en sans: son rótulos de UI, no titulares. */
+h4, h5, h6 { font-family: var(--ff-sans) !important; color: var(--papel); }
+
+/* TODO número, ticker, porcentaje y etiqueta técnica: monoespaciada tabular.
+   `.tabular` ya estaba repartida por el markup en 313 sitios numéricos, así
+   que se convierte en el gancho del sistema en vez de inventar una clase
+   nueva y tener que reetiquetar todo. */
+.tabular, .mp-num, .mp-ticker, .mp-etq, code, kbd, samp {
+  font-family: var(--ff-mono) !important;
+  font-variant-numeric: tabular-nums lining-nums !important;
+  font-feature-settings: 'tnum' 1, 'lnum' 1, 'zero' 1;
+  letter-spacing: -0.01em;
+}
+
+/* Cualquier celda de tabla alinea cifras aunque no lleve .tabular:
+   así los números nunca "bailan" al refrescarse. */
+td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Etiqueta técnica: mono, versalita óptica, tracking abierto. */
+.mp-etq {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--papel-3);
+}
+
+/* ────────────────────────────── REGLAS ──────────────────────────────────── */
+/* Regla doble de cabecera: 2px + hairline, como una primera plana. */
+.mp-regla-doble {
+  border: 0;
+  border-top: 2px solid var(--papel);
+  position: relative;
+  margin: 0;
+  height: 4px;
+}
+.mp-regla-doble::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 3px;
+  border-top: 1px solid var(--regla-fuerte);
+}
+.mp-regla      { border: 0; border-top: 1px solid var(--regla); margin: 0; }
+.mp-regla-2px  { border: 0; border-top: 2px solid var(--papel); margin: 0; }
+
+/* ───────────────────────────── MASTHEAD ─────────────────────────────────── */
+.mp-masthead {
+  font-family: var(--ff-serif) !important;
+  font-weight: 700;
+  color: var(--papel);
+  letter-spacing: -0.028em;
+  line-height: .92;
+  /* El mínimo (17px) está medido: por debajo de eso el cluster
+     logo + marca + Suscribirse + Mi cuenta ya no cabe en 375px y alguno de
+     los dos botones que Apple debe encontrar quedaría fuera de pantalla. */
+  font-size: clamp(17px, 4.4vw, 30px);
+  white-space: nowrap;
+}
+.mp-masthead-meta {
+  font-family: var(--ff-mono) !important;
+  font-size: 9.5px;
+  letter-spacing: 0.055em;
+  color: var(--papel-3);
+  text-transform: uppercase;
+  line-height: 1.25;
+}
+
+/* ──────────────────── CINTILLA DE MERCADOS (bajo el masthead) ───────────── */
+.mp-cintilla {
+  font-family: var(--ff-mono) !important;
+  font-variant-numeric: tabular-nums lining-nums;
+  background: var(--tinta-honda);
+  border-top: 1px solid var(--regla);
+  border-bottom: 1px solid var(--regla);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.mp-cintilla::-webkit-scrollbar { display: none; }
+.mp-cintilla-pista {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-width: min-content;
+}
+.mp-cintilla-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 11px;
+  border-right: var(--hairline) solid var(--regla);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.mp-cintilla-item:last-child { border-right: 0; }
+.mp-cintilla-nom {
+  font-size: 9.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--papel-3);
+}
+.mp-cintilla-val { font-size: 11.5px; color: var(--papel); font-weight: 500; }
+.mp-cintilla-var { font-size: 11px; font-weight: 600; }
+
+/* Dirección de mercado — el ÚNICO uso legítimo de verde y rojo. */
+.mp-alza { color: var(--alza) !important; }
+.mp-baja { color: var(--baja) !important; }
+.mp-plano { color: var(--papel-3) !important; }
+
+/* Marca de dirección en línea (sustituye flechas emoji). */
+.mp-dir::before {
+  font-family: var(--ff-mono);
+  margin-right: 3px;
+  font-weight: 600;
+}
+.mp-dir.mp-alza::before { content: '▲'; font-size: .72em; }
+.mp-dir.mp-baja::before { content: '▼'; font-size: .72em; }
+
+/* ───────────────── ENCABEZADO DE SECCIÓN (etiqueta + regla) ─────────────── */
+/* "Sección A · desempeño ─────────────────────────────────────────────────" */
+.mp-sec {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+/* La etiqueta se lleva la regla consigo: es ella la que crece hasta el ancho
+   disponible y dibuja la línea en su ::after. Así funciona igual suelta que
+   dentro de un contenedor `flex justify-between` con una acción a la derecha,
+   sin tener que editar ni un solo elemento padre en 3,400 líneas de markup. */
+.mp-sec-etq {
+  font-family: var(--ff-mono) !important;
+  font-size: 10px !important;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--papel-3) !important;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.mp-sec-etq > * { flex: 0 0 auto; }
+.mp-sec-etq::after {
+  content: '';
+  flex: 1 1 auto;
+  border-top: 1px solid var(--regla);
+  min-width: 12px;
+}
+/* El orden de sección ("SECCIÓN A ·") va en tinta de sello. */
+.mp-sec-orden { color: var(--sello); white-space: nowrap; }
+
+/* .mp-sec NO dibuja regla propia: la etiqueta ya la trae en su ::after. Si el
+   contenedor también la pintara, quedaría un filete suelto DESPUÉS de la
+   acción de la derecha (se veía como un guion colgando tras "Reporte PDF"). */
+.mp-sec-fin { flex: 0 0 auto; }
+
+/* ────────────────────────── TITULARES DE NOTA ───────────────────────────── */
+.mp-titular {
+  font-family: var(--ff-serif) !important;
+  font-weight: 700;
+  color: var(--papel);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.mp-titular-xl { font-size: clamp(26px, 7.2vw, 42px); }
+.mp-titular-l  { font-size: clamp(21px, 5.4vw, 30px); }
+.mp-balazo {
+  font-family: var(--ff-serif) !important;
+  font-style: italic;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--papel-2);
+}
+.mp-firma {
+  font-family: var(--ff-mono) !important;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--papel-4);
+}
+
+/* ───────────────── RETÍCULA: celdas con hairline, no tarjetas ───────────── */
+/* Se reescriben las superficies que el markup ya pinta con utilidades. */
+.bg-surface-card,
+[class*="bg-surface-card"],
+.bg-zinc-900, .bg-zinc-900\/40, .bg-zinc-950, .bg-zinc-800\/70 {
+  background-color: var(--tinta-panel) !important;
+}
+[class*="border-surface-border"],
+.border-zinc-700, .border-zinc-800 {
+  border-color: var(--regla) !important;
+}
+
+/* Celda de datos: hairline en vez de caja redondeada con sombra. */
+.mp-celda {
+  background: var(--tinta-panel);
+  border: var(--hairline) solid var(--regla);
+  border-radius: var(--radio);
+  padding: 12px 14px;
+  min-width: 0;
+}
+.mp-celda-plana {
+  background: transparent;
+  border: 0;
+  border-bottom: var(--hairline) solid var(--regla);
+  padding: 10px 0;
+  min-width: 0;
+}
+/* Retícula de cifras: hairlines internas, sin cajas sueltas. */
+.mp-reticula {
+  display: grid;
+  gap: 0;
+  border: var(--hairline) solid var(--regla);
+  border-radius: var(--radio);
+  overflow: hidden;
+  background: var(--tinta-panel);
+}
+.mp-reticula > * {
+  padding: 11px 13px;
+  border-right: var(--hairline) solid var(--regla);
+  border-bottom: var(--hairline) solid var(--regla);
+  min-width: 0;
+}
+
+/* ────────────────────────────── COLOFÓN ─────────────────────────────────── */
+.mp-colofon {
+  border-top: 2px solid var(--papel);
+  margin-top: 40px;
+  padding: 18px 0 calc(28px + var(--sa-bottom));
+  font-family: var(--ff-mono) !important;
+  font-size: 10.5px;
+  line-height: 1.65;
+  color: var(--papel-3);
+}
+.mp-colofon strong { color: var(--papel-2); font-weight: 600; }
+.mp-colofon a { color: var(--sello); text-decoration: none; }
+.mp-colofon a:hover { text-decoration: underline; }
+/* Índice del colofón: enlaces en línea separados por un cuadratín. */
+.mp-colofon-indice > a,
+.mp-colofon-indice > button {
+  display: inline !important;
+  color: var(--sello);
+  background: none !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  font: inherit !important;
+  letter-spacing: inherit !important;
+  text-transform: none !important;
+  cursor: pointer;
+  text-align: left;
+}
+.mp-colofon-indice > *:not(:last-child)::after {
+  content: ' · ';
+  color: var(--papel-4);
+}
+.mp-colofon-titulo {
+  font-family: var(--ff-serif) !important;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--papel);
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+  text-transform: none;
+}
+
+/* ─────────────────────────── ACENTO Y BOTONES ───────────────────────────── */
+/* El acento ámbar cubre TODA la interacción. `accent-green` y `accent-red`
+   quedan FUERA de este barrido a propósito: el tema de Tailwind ya los apunta
+   al verde y rojo de mercado, y son los únicos dos colores que codifican un
+   dato (dirección). Pintarlos de ámbar aquí borraría esa información. */
+.text-accent-teal, .text-accent-blue, .text-accent-purple,
+.text-accent-indigo, .text-accent-amber, .text-accent-orange, .text-accent-rose,
+.text-amber-300, .text-amber-400, .text-amber-100, .text-sky-400, .text-cyan-400,
+.text-violet-400, .text-pink-400, .text-yellow-400 {
+  color: var(--sello) !important;
+}
+.mp-alza { color: var(--alza) !important; }
+.mp-baja { color: var(--baja) !important; }
+
+/* Sólo se re-tiñen las variantes CON modificador de opacidad (la barra de
+   `bg-amber-500/10`): ésas son los tintes decorativos. Las opacas —
+   `bg-emerald-500` a secas, que son botones sólidos— se dejan en paz, porque
+   el tema de Tailwind ya las apunta al sello y aplanarlas aquí las volvería
+   texto oscuro sobre fondo casi negro. */
+[class*="bg-accent-"][class*="/"]:not([class*="bg-accent-green"]):not([class*="bg-accent-red"]),
+[class*="bg-amber-"][class*="/"], [class*="bg-emerald-"][class*="/"],
+[class*="bg-sky-"][class*="/"], [class*="bg-violet-"][class*="/"], [class*="bg-teal-"][class*="/"] {
+  background-color: var(--sello-tenue) !important;
+}
+[class*="border-accent-"][class*="/"]:not([class*="border-accent-green"]):not([class*="border-accent-red"]),
+[class*="border-amber-"][class*="/"], [class*="border-emerald-"][class*="/"] {
+  border-color: rgba(215, 154, 60, .35) !important;
+}
+[class*="ring-accent-"]:not([class*="ring-accent-green"]):not([class*="ring-accent-red"]) {
+  --tw-ring-color: rgba(215, 154, 60, .35) !important;
+}
+
+/* Botón primario: sello sólido con tinta encima. */
+.mp-btn, .mp-btn-primario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: var(--ff-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  padding: 10px 16px;
+  min-height: 44px;
+  border-radius: var(--radio);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color var(--t-rapida) var(--easing),
+              border-color var(--t-rapida) var(--easing),
+              color var(--t-rapida) var(--easing);
+}
+.mp-btn-primario {
+  background: var(--sello-solido);
+  color: var(--tinta);
+  border-color: var(--sello-solido);
+}
+.mp-btn-primario:hover { background: var(--sello-vivo); border-color: var(--sello-vivo); }
+.mp-btn-secundario {
+  background: transparent;
+  color: var(--papel);
+  border-color: var(--regla-fuerte);
+}
+.mp-btn-secundario:hover { border-color: var(--papel-3); background: var(--tinta-alta); }
+.mp-btn-fantasma {
+  background: transparent;
+  color: var(--papel-3);
+  border-color: transparent;
+}
+.mp-btn-fantasma:hover { color: var(--papel); }
+
+/* Botones amarillos/verdes sueltos del markup viejo → sello sólido. */
+button.bg-accent-green, button.bg-accent-teal, button.bg-accent-amber,
+a.bg-accent-green, .bg-accent-green.text-zinc-950 {
+  background-color: var(--sello-solido) !important;
+  color: var(--tinta) !important;
+}
+
+/* ───────────────────────── FORMULARIOS E INPUTS ─────────────────────────── */
+input, select, textarea {
+  font-family: var(--ff-sans) !important;
+  background-color: var(--tinta-honda) !important;
+  border: 1px solid var(--regla) !important;
+  border-radius: var(--radio) !important;
+  color: var(--papel) !important;
+}
+input[type="number"], input[inputmode="decimal"], input[inputmode="numeric"] {
+  font-family: var(--ff-mono) !important;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+  border-color: var(--sello) !important;
+}
+input::placeholder, textarea::placeholder { color: var(--papel-4) !important; }
+
+/* ───────────────────────────── TABLAS ───────────────────────────────────── */
+table { border-collapse: collapse; width: 100%; }
+thead th {
+  font-family: var(--ff-mono) !important;
+  font-size: 9.5px !important;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--papel-3) !important;
+  border-bottom: 1px solid var(--regla-fuerte) !important;
+  background: transparent !important;
+  text-align: left;
+}
+tbody td {
+  border-bottom: var(--hairline) solid var(--regla) !important;
+  color: var(--papel-2);
+  font-size: 12.5px;
+}
+tbody tr:hover td { background: var(--tinta-alta); }
+tbody tr:last-child td { border-bottom: 0 !important; }
+[class*="divide-surface-border"] > * + *,
+[class*="divide-zinc"] > * + * { border-color: var(--regla) !important; }
+
+/* ──────────────── MODALES, TOASTS, TOOLTIPS, ESTADOS ────────────────────── */
+/* Overlays: papel de periódico sobre tinta, sin blur ni sombra. */
+.mp-overlay, [id*="overlay"], [class*="backdrop"] {
+  background-color: rgba(8, 8, 7, .88) !important;
+}
+.mp-hoja {
+  background: var(--tinta-panel);
+  border: 1px solid var(--regla-fuerte);
+  border-radius: var(--radio);
+}
+.mp-hoja-cabeza {
+  border-bottom: 2px solid var(--papel);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+
+/* Toast: barra de teletipo, no burbuja flotante. */
+.mp-toast, #mp-toast, [id^="toast"], .toast {
+  font-family: var(--ff-mono) !important;
+  font-size: 12px !important;
+  background: var(--tinta-panel) !important;
+  color: var(--papel) !important;
+  border: 1px solid var(--regla-fuerte) !important;
+  border-left: 2px solid var(--sello) !important;
+  border-radius: var(--radio) !important;
+  letter-spacing: -0.005em;
+}
+
+/* Tooltip del atributo data-tip (definido en index.html). */
+[data-tip]:hover::after,
+[data-tooltip]:hover::after {
+  font-family: var(--ff-mono) !important;
+  font-size: 10.5px !important;
+  background: var(--tinta-honda) !important;
+  border: 1px solid var(--regla-fuerte) !important;
+  border-radius: var(--radio) !important;
+  color: var(--papel-2) !important;
+  letter-spacing: 0.01em;
+}
+
+/* Estado vacío y de error: nota al pie, no tarjeta con ilustración. */
+.mp-vacio, .mp-error {
+  font-family: var(--ff-mono) !important;
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+  padding: 18px 14px;
+  border: var(--hairline) dashed var(--regla-fuerte);
+  border-radius: var(--radio);
+  color: var(--papel-3);
+  text-align: center;
+}
+.mp-error { border-style: solid; border-color: rgba(219,123,104,.45); color: var(--baja); }
+
+/* Skeleton: trama de papel, sin pulso de color frío. */
+.skeleton {
+  background-color: var(--tinta-alta) !important;
+  border-radius: var(--radio) !important;
+  animation: mp-latido 1.6s ease-in-out infinite !important;
+}
+@keyframes mp-latido {
+  0%, 100% { background-color: var(--tinta-alta); }
+  50%      { background-color: #221F1A; }
+}
+
+/* ─────────────────────── ICONOGRAFÍA DE LÍNEAS ─────────────────────────── */
+/* Marcas gráficas propias que sustituyen a los emoji del markup. */
+.mp-marca {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05em;
+  height: 1.05em;
+  flex: 0 0 auto;
+  vertical-align: -0.14em;
+  color: currentColor;
+}
+.mp-marca svg { width: 100%; height: 100%; stroke-width: 1.6; }
+
+/* Viñeta de lista: cuadratín tipográfico, no bolita de color. */
+.mp-vineta::before {
+  content: '';
+  display: inline-block;
+  width: 5px; height: 5px;
+  margin-right: 8px;
+  vertical-align: 0.12em;
+  background: var(--sello);
+}
+/* Punto de estado (el único círculo permitido). */
+.mp-punto {
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 999px;
+  background: var(--papel-3);
+  flex: 0 0 auto;
+}
+.mp-punto.mp-vivo { background: var(--sello); }
+
+/* Racha: sello numérico en mono, sin fuego. */
+.mp-racha {
+  font-family: var(--ff-mono) !important;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--sello);
+  border: 1px solid rgba(215,154,60,.4);
+  border-radius: var(--radio);
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
+/* ────────────────── NAV Y CABECERA (sin romper el sticky) ───────────────── */
+#mp-topbar { background: var(--tinta) !important; }
+#mp-topbar header { border-bottom: 0 !important; background: var(--tinta) !important; }
+#mp-topbar nav {
+  background: var(--tinta) !important;
+  border-bottom: 1px solid var(--regla) !important;
+}
+#mp-topbar .nav-tab {
+  font-family: var(--ff-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+#mp-topbar .nav-tab.nav-primary { font-weight: 600; }
+.nav-indicator {
+  border-radius: 0 !important;
+  background: var(--sello) !important;
+}
+#mp-topbar .nav-tab.nav-primary .nav-indicator { height: 2px !important; }
+#mp-topbar .nav-tab.nav-secondary .nav-indicator { height: 1px !important; }
+
+/* Botones permanentes del header (Apple 2.1(b) y 5.1.1(v)): siempre visibles,
+   siempre táctiles. El área mínima de 44px se garantiza aquí. */
+#btn-premium-header, #btn-cuenta-header {
+  min-height: 32px;
+  font-family: var(--ff-mono) !important;
+  font-size: 9.5px !important;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-radius: var(--radio) !important;
+  padding-left: 7px !important;
+  padding-right: 7px !important;
+  gap: 4px !important;
+}
+/* En iPhone vertical el ícono cede el espacio: lo que el revisor de Apple
+   tiene que poder leer y tocar es el TEXTO de ambos botones. */
+@media (max-width: 479px) {
+  #btn-premium-header svg, #btn-cuenta-header svg { display: none; }
+  #btn-premium-header, #btn-cuenta-header { font-size: 9px !important; }
+}
+@media (min-width: 640px) {
+  #btn-premium-header, #btn-cuenta-header {
+    font-size: 10.5px !important;
+    letter-spacing: 0.05em;
+    padding-left: 11px !important;
+    padding-right: 11px !important;
+  }
+}
+#btn-premium-header {
+  background: var(--sello-solido) !important;
+  color: var(--tinta) !important;
+  border: 1px solid var(--sello-solido) !important;
+}
+#btn-premium-header:hover { background: var(--sello-vivo) !important; }
+#btn-cuenta-header {
+  background: transparent !important;
+  color: var(--papel) !important;
+  border: 1px solid var(--regla-fuerte) !important;
+}
+#btn-cuenta-header:hover { border-color: var(--papel-3) !important; }
+
+/* ───────────────────── GUARDAS ESTRUCTURALES DE LAYOUT ──────────────────── */
+/* 1) `.nav-tab` es además el hook de ruteo de app.js, así que también lo
+      llevan tarjetas de contenido dentro de <main>. La regla móvil de
+      ux_helpers.js les aplicaba `white-space: nowrap`, y sus párrafos no
+      podían romper línea: hasta 371px de scroll horizontal en iPhone.
+      Aquí se devuelve el comportamiento normal a todo .nav-tab fuera de la
+      barra superior. */
+main .nav-tab,
+main .quick-link {
+  white-space: normal !important;
+  min-width: 0 !important;
+  font-size: inherit !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  padding: revert !important;
+}
+
+/* 2) Los hijos de grid heredan min-width:auto y su min-content empujaba la
+      retícula más allá del viewport (vista de transacciones). */
+main .grid > * { min-width: 0; }
+
+/* 3) Red de seguridad: la página nunca hace scroll horizontal, pase lo que
+      pase con lo que inyecte el JS. `clip` no crea contexto de scroll, así
+      que no rompe el `position: sticky` de #mp-topbar (que vive fuera de main). */
+main { overflow-x: clip; }
+
+/* Respeto de safe areas en horizontal (notch a los lados). */
+body {
+  padding-left: var(--sa-left);
+  padding-right: var(--sa-right);
+}
+
+/* ──────────────────── MICRO-INTERACCIONES SOBRIAS ───────────────────────── */
+/* Sin rebotes ni escalados llamativos: solo cambio de tinta. */
+button:active, a:active, [role="button"]:active, .nav-tab:active {
+  transform: none !important;
+  opacity: .78;
+  transition: opacity var(--t-rapida) var(--easing) !important;
+}
+.fade-up { animation-duration: var(--t-media) !important; }
+.corr-cell { transition: none !important; }
+.corr-cell:hover { transform: none !important; outline: 1px solid var(--papel); }
+[class*="animate-pulse"] { animation: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+/* ──────────────────────── BARRA DE DESPLAZAMIENTO ───────────────────────── */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: var(--tinta); }
+::-webkit-scrollbar-thumb { background: var(--regla); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--regla-fuerte); }
