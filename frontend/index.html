@@ -440,8 +440,8 @@
           <button id="chooser-auto" class="text-left bg-surface-card border border-surface-border hover:border-accent-amber/60 rounded-2xl p-6 transition group">
             <div class="w-11 h-11 rounded-xl bg-accent-amber/10 border border-accent-amber/30 flex items-center justify-center mb-4 text-accent-amber text-xl">✦</div>
             <h3 class="text-base font-semibold text-zinc-100">Automático</h3>
-            <p class="text-[13px] text-zinc-400 mt-1.5 leading-snug">Eliges tu nivel de riesgo (volatilidad) y te armamos la mezcla óptima con Markowitz. Lo más rápido.</p>
-            <span class="inline-block mt-4 text-[12px] font-semibold text-accent-amber group-hover:underline">Elegir por riesgo →</span>
+            <p class="text-[13px] text-zinc-400 mt-1.5 leading-snug">Eliges tu nivel de riesgo y te armamos la mezcla óptima con Markowitz — o tomas uno de los 10 perfiles ya hechos. Lo más rápido.</p>
+            <span class="inline-block mt-4 text-[12px] font-semibold text-accent-amber group-hover:underline">Por riesgo o por perfil →</span>
           </button>
           <button id="chooser-manual" class="text-left bg-surface-card border border-surface-border hover:border-accent-green/60 rounded-2xl p-6 transition group">
             <div class="w-11 h-11 rounded-xl bg-accent-green/10 border border-accent-green/30 flex items-center justify-center mb-4 text-accent-green text-xl">✓</div>
@@ -508,7 +508,7 @@
             </div>
             <p id="pick-precios-estado" class="text-[10px] text-zinc-600 mb-2 hidden"></p>
             <div id="pick-curado-lista" class="grid sm:grid-cols-2 gap-1.5 max-h-[30rem] overflow-y-auto pr-1">
-              <div class="col-span-2 text-xs text-zinc-500 py-6 text-center">Cargando universo…</div>
+              <div class="col-span-full text-xs text-zinc-500 py-6 text-center">Cargando universo…</div>
             </div>
           </div>
         </div>
@@ -734,6 +734,14 @@
           <span class="mp-sec-fin flex items-center gap-2">
             <button id="btn-editar-portafolio" class="hidden text-[11px] text-zinc-400 hover:text-zinc-100 border border-surface-border hover:border-zinc-600 rounded-md px-2 py-0.5 transition">
               Editar
+            </button>
+            <!-- Atajo de UN toque a los perfiles sugeridos. Antes, con un
+                 portafolio ya guardado, llegar a ellos exigía cuatro pasos:
+                 Editar → picker manual → "Cambiar método" → Automático → bajar
+                 más allá del optimizador. -->
+            <button id="btn-perfiles-portafolio" class="hidden text-[11px] border rounded-md px-2 py-0.5 transition"
+                    style="color:var(--sello);border-color:rgba(215,154,60,.4)">
+              Perfiles
             </button>
             <button id="btn-exportar-pdf" class="hidden text-[11px] text-accent-purple hover:text-accent-purple/80 border border-accent-purple/30 hover:border-accent-purple/60 rounded-md px-2 py-0.5 transition inline-flex items-center gap-1.5">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1645,7 +1653,7 @@
               class="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-accent-blue w-full sm:w-64" />
           </div>
           <div id="universo-lista" class="grid sm:grid-cols-2 gap-1.5 max-h-[28rem] overflow-y-auto pr-1">
-            <div class="col-span-2 text-xs text-zinc-500 py-8 text-center">Cargando universo…</div>
+            <div class="col-span-full text-xs text-zinc-500 py-8 text-center">Cargando universo…</div>
           </div>
         </div>
 

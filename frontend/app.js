@@ -509,6 +509,7 @@ function mostrarOnboarding() {
   $('portafolio-onboarding').classList.remove('hidden');
   $('portafolio-dashboard').classList.add('hidden');
   $('btn-editar-portafolio').classList.add('hidden');
+  $('btn-perfiles-portafolio')?.classList.add('hidden');
   $('btn-exportar-pdf')?.classList.add('hidden');
   _onbModo('chooser');
 }
@@ -517,6 +518,7 @@ function mostrarDashboard() {
   $('portafolio-onboarding').classList.add('hidden');
   $('portafolio-dashboard').classList.remove('hidden');
   $('btn-editar-portafolio').classList.remove('hidden');
+  $('btn-perfiles-portafolio')?.classList.remove('hidden');
   $('btn-exportar-pdf')?.classList.remove('hidden');
 }
 
@@ -1557,14 +1559,14 @@ const Explorador = (() => {
       // Reintentar hasta 2 veces (cold start de Render free tier puede tardar)
       if (intento < 2) {
         $('universo-lista').innerHTML = `
-          <div class="col-span-2 text-xs text-zinc-500 py-8 text-center">
+          <div class="col-span-full text-xs text-zinc-500 py-8 text-center">
             Cargando universo… ${intento + 1}/3
           </div>`;
         setTimeout(() => cargarUniverso(intento + 1), 4000);
         return;
       }
       $('universo-lista').innerHTML = `
-        <div class="col-span-2 text-xs text-accent-red py-8 text-center">
+        <div class="col-span-full text-xs text-accent-red py-8 text-center">
           No se pudo cargar el universo. Recarga la página.
           <button onclick="location.reload()" class="ml-2 px-2 py-1 bg-accent-red/20 rounded text-xs">↻ Recargar</button>
         </div>`;
@@ -1589,7 +1591,7 @@ const Explorador = (() => {
 
     if (!lista.length) {
       $('universo-lista').innerHTML = `
-        <div class="col-span-2 text-xs text-zinc-500 py-6 text-center">
+        <div class="col-span-full text-xs text-zinc-500 py-6 text-center">
           Sin resultados para "${filtro}"
         </div>`;
       return;
@@ -2207,14 +2209,14 @@ const Picker = (() => {
       // Reintentar hasta 2 veces (cold start de Render)
       if (intento < 2) {
         $('pick-curado-lista').innerHTML = `
-          <div class="col-span-2 py-8 text-center">
+          <div class="col-span-full py-8 text-center">
             <p class="text-xs text-zinc-500">Despertando servidor… ${intento + 1}/3</p>
           </div>`;
         setTimeout(() => cargar(intento + 1), 4000);
         return;
       }
       $('pick-curado-lista').innerHTML = `
-        <div class="col-span-2 py-8 text-center">
+        <div class="col-span-full py-8 text-center">
           <div class="w-12 h-12 rounded-xl bg-accent-amber/10 border border-accent-amber/30 flex items-center justify-center mx-auto mb-3">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-amber">
               <path d="M1 1l22 22M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2"/><polyline points="22 6 12 13"/>
@@ -2252,7 +2254,7 @@ const Picker = (() => {
     if (!state.universo.length) return;
     const lista = filtrarUniverso(filtro);
     if (!lista.length) {
-      cont.innerHTML = `<div class="col-span-2 text-xs text-zinc-500 py-4 text-center">
+      cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">
         Sin resultados para este filtro. Prueba buscar en Yahoo arriba.
       </div>`;
       return;
@@ -2261,7 +2263,7 @@ const Picker = (() => {
     const visible = lista.slice(0, TOPE_PICKER);
     const html = visible.map(t => itemHTML(t, 'curado')).join('');
     const hint = lista.length > TOPE_PICKER
-      ? `<div class="col-span-2 text-[10px] text-zinc-600 text-center py-2">Mostrando ${TOPE_PICKER} de ${lista.length} resultados — usa el buscador para acotar.</div>`
+      ? `<div class="col-span-full text-[10px] text-zinc-600 text-center py-2">Mostrando ${TOPE_PICKER} de ${lista.length} resultados — usa el buscador para acotar.</div>`
       : '';
     cont.innerHTML = html + hint;
   }
@@ -2556,6 +2558,9 @@ const Picker = (() => {
   async function cargarPerfiles(intento = 0) {
     const grid = $('perfiles-grid');
     if (!grid) return;
+    if (!grid.querySelector('.perfil-card')) {
+      grid.innerHTML = `<div class="col-span-full mp-vacio">Calculando perfiles…</div>`;
+    }
     try {
       const res = await fetch('/api/perfiles');
       let body = null;
@@ -9262,6 +9267,35 @@ function bindEditar() {
   });
 }
 
+// --- botón Perfiles (atajo directo a los perfiles sugeridos) ---------------
+function bindPerfiles() {
+  const btn = $('btn-perfiles-portafolio');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    mostrarOnboarding();
+    _onbModo('auto');
+    // Los perfiles viven al final del modo automático, debajo del optimizador:
+    // sin este scroll el usuario aterriza arriba y no los ve.
+    try { Picker.cargarPerfiles(); } catch (_) {}
+    // Se cargan por fetch, así que hay que esperar a que la retícula tenga
+    // tarjetas: con un solo requestAnimationFrame el grid mide 0 de alto y el
+    // scroll no va a ningún lado.
+    // Scroll INSTANTÁNEO, no 'smooth': la animación suave se cancelaba a media
+    // corrida porque la retícula crece cuando llegan las tarjetas y el
+    // documento cambia de alto. Se posiciona en cuanto la sección mide algo
+    // (aunque sea el aviso de carga) y se reafirma cuando ya hay tarjetas.
+    let intentos = 0, yaConTarjetas = false;
+    (function irAPerfiles() {
+      const grid = $('perfiles-grid');
+      if (grid && grid.offsetHeight > 0) {
+        grid.scrollIntoView({ block: 'start' });
+        if (grid.querySelector('.perfil-card')) yaConTarjetas = true;
+      }
+      if (!yaConTarjetas && ++intentos < 60) setTimeout(irAPerfiles, 150);  // hasta ~9s
+    })();
+  });
+}
+
 // --- botón Exportar reporte PDF -------------------------------------------
 function bindExportarPdf() {
   const btn = $('btn-exportar-pdf');
@@ -9438,6 +9472,7 @@ document.addEventListener('DOMContentLoaded', () => {
   CetesBench.bind();
   bindNav();
   bindEditar();
+  bindPerfiles();
   bindExportarPdf();
   Explorador.bind();
   Periodico.bind();
