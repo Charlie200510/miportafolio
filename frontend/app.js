@@ -3685,10 +3685,15 @@ const Periodico = (() => {
       if (!d) throw new Error('Respuesta vacía del servidor');
       if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
       if (!d.ok) throw new Error(d.error || 'Error en datos');
-      const render = (items, color, signo) => {
-        if (!items || !items.length) return '<div class="text-xs text-zinc-500 py-4 text-center">Sin datos</div>';
-        return items.map(t => {
-          const ret = t.retorno_pct;
+      const render = (items) => {
+        if (!items || !items.length) return '<div class="mp-vacio">Sin datos</div>';
+        // Un solo dato malo no debe tumbar el panel completo: se filtran los
+        // registros sin retorno usable en vez de dejar que `ret.toFixed()`
+        // lance y el catch borre las tres columnas.
+        const usables = items.filter(t => t && Number.isFinite(Number(t.retorno_pct)));
+        if (!usables.length) return '<div class="mp-vacio">Sin datos</div>';
+        return usables.map(t => {
+          const ret = Number(t.retorno_pct);
           const retColor = ret >= 0 ? 'text-accent-green' : 'text-accent-red';
           const retSigno = ret >= 0 ? '+' : '';
           const banderaCls = t.es_mx ? 'bg-accent-green/10 text-accent-green border-accent-green/20'
@@ -3699,13 +3704,13 @@ const Periodico = (() => {
             <div class="flex items-center gap-2 flex-1 min-w-0">
               <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${banderaCls} tabular shrink-0">${bandera}</span>
               <div class="flex-1 min-w-0">
-                <p class="text-[12px] font-semibold text-zinc-100 truncate tabular">${t.ticker}</p>
-                <p class="text-[10px] text-zinc-500 truncate">${(t.nombre || '').slice(0, 28)}</p>
+                <p class="text-[12px] font-semibold text-zinc-100 truncate tabular">${escapeHtml(t.ticker || '')}</p>
+                ${t.nombre ? `<p class="text-[10px] text-zinc-500 truncate">${escapeHtml(String(t.nombre).slice(0, 28))}</p>` : ''}
               </div>
             </div>
             <div class="text-right shrink-0">
               <p class="text-[12px] font-bold tabular ${retColor}">${retSigno}${ret.toFixed(2)}%</p>
-              ${t.precio ? `<p class="text-[9px] text-zinc-500 tabular">$${t.precio.toFixed(2)}</p>` : ''}
+              ${Number.isFinite(Number(t.precio)) ? `<p class="text-[9px] text-zinc-500 tabular">$${Number(t.precio).toFixed(2)}</p>` : ''}
             </div>
           </div>`;
         }).join('');

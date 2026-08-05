@@ -38,10 +38,12 @@ def _cargar_env():
 _cargar_env()
 
 from flask import Flask, Response, jsonify, send_from_directory, abort, request
+from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 import json
+import math
 import subprocess
 import sys
 from typing import Optional
@@ -235,6 +237,38 @@ app = Flask(
     static_folder=str(FRONTEND_DIR),
     static_url_path="/static",
 )
+
+
+# ── JSON SIEMPRE VÁLIDO ──────────────────────────────────────────────────────
+# El json de Python emite `Infinity`, `-Infinity` y `NaN` a pelo, y eso NO es
+# JSON válido: `JSON.parse` del navegador lanza y el fetch del frontend se queda
+# sin datos. Pasó de verdad en /api/periodico/top-movers, donde una división
+# entre un precio 0 producía Infinity y el panel entero mostraba "Respuesta
+# vacía del servidor" — con HTTP 200 y sin una sola línea en los logs, que es lo
+# que lo hacía difícil de ver.
+#
+# pandas y numpy generan no-finitos con muchísima facilidad, así que en vez de
+# ir tapando cada endpoint se sanea en la salida: cualquier float no finito
+# viaja como null y el cliente decide cómo pintarlo.
+class _ProveedorJSONSeguro(DefaultJSONProvider):
+    @staticmethod
+    def _sanear(o):
+        if isinstance(o, float):
+            return o if math.isfinite(o) else None
+        if isinstance(o, dict):
+            return {k: _ProveedorJSONSeguro._sanear(v) for k, v in o.items()}
+        if isinstance(o, (list, tuple)):
+            return [_ProveedorJSONSeguro._sanear(v) for v in o]
+        return o
+
+    def dumps(self, obj, **kwargs):
+        # allow_nan=False haría que un no-finito reventara con un 500; preferimos
+        # sanear y responder algo válido.
+        kwargs.setdefault("allow_nan", False)
+        return super().dumps(self._sanear(obj), **kwargs)
+
+
+app.json = _ProveedorJSONSeguro(app)
 
 # ── Compresión gzip/brotli automática (reduce JSON/HTML ~70-85%) ──
 try:
