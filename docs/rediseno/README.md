@@ -197,24 +197,31 @@ Abre `comparar.html` en el navegador para verlas lado a lado.
 
 ## 7. Cómo revertir
 
-Todo vive en la rama. Para volver al estado anterior:
+Todo está **commiteado en la rama** `rediseno-editorial` (commit `ad7e681`), y
+`main` quedó intacto. Un solo comando devuelve el estado anterior:
 
 ```bash
 cd ~/Desktop/portafolio-app && git checkout main
 ```
 
-Eso deja `frontend/` como estaba. Los archivos **nuevos** (no versionados) no
-estorban, pero si los quieres fuera:
+`frontend/css/`, `frontend/fonts/` y `docs/rediseno/` están versionados en la
+rama, así que ese checkout los quita solo — no hay que borrar nada a mano.
 
-```bash
-rm -rf frontend/css frontend/fonts docs/rediseno
-```
-
-Y para que el proyecto de iOS vuelva al bundle viejo, resincroniza estando en
-`main`:
+**El bundle de iOS es la única pieza que no viaja con git** (`ios-app/www/` y
+`ios-app/ios/App/App/public/` no están rastreados, son artefactos de build).
+Cambiar de rama no los toca, así que hay que resincronizar estando en `main`:
 
 ```bash
 cd ~/Desktop/portafolio-app/ios-app && LANG=en_US.UTF-8 npm run cap:sync:ios
 ```
 
-Para volver al rediseño: `git checkout rediseno-editorial` y resincronizar.
+Para volver al rediseño, lo mismo al revés:
+
+```bash
+cd ~/Desktop/portafolio-app && git checkout rediseno-editorial
+cd ios-app && LANG=en_US.UTF-8 npm run cap:sync:ios
+```
+
+Si además quieres que los navegadores que ya cargaron la versión nueva vuelvan
+a la vieja, hay que bajar `VERSION` en `frontend/sw.js` (de `mp-v1.12.0` a
+`mp-v1.11.8`) — el checkout de `main` ya lo hace.
