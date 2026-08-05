@@ -195,10 +195,15 @@ done
 # timer. actualizar_lite_diario.py es seguro por diseño: si la descarga falla o
 # viene vacía, NO sobrescribe, así que en el peor caso nos quedamos como
 # estábamos. El servicio hace su propio restart de gunicorn al terminar.
-if [[ "$datos_revertidos" == "1" ]]; then
-  paso "Rehidratando el universo (el checkout lo dejó en la versión del repo)"
-  fecha_antes="$(_fecha_universo)"
-  echo "  fecha en el CSV commiteado: ${fecha_antes:-desconocida}"
+# La condición es la FRESCURA del dato, no si descartamos algo: si un deploy
+# anterior ya lo revirtió, en la corrida siguiente no hay modificación local que
+# descartar y aun así el CSV sigue viejo. Así también se cura un clon nuevo.
+fecha_antes="$(_fecha_universo)"
+hoy="$(date +%F)"
+if [[ -n "$fecha_antes" && "$fecha_antes" == "$hoy" ]]; then
+  echo "  universo ya al día ($fecha_antes) — nada que rehidratar"
+elif [[ "$datos_revertidos" == "1" || -n "$fecha_antes" ]]; then
+  paso "Rehidratando el universo (el CSV está en ${fecha_antes:-fecha desconocida}, hoy es $hoy)"
   if sudo systemctl start miportafolio-universo.service; then
     for i in $(seq 1 90); do
       sleep 2
