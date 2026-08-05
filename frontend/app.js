@@ -2592,14 +2592,9 @@ const Picker = (() => {
         </div>`;
       return;
     }
-    const riesgoCls = {
-      'bajo':        'text-accent-green',
-      'bajo-medio':  'text-accent-green',
-      'medio':       'text-accent-amber',
-      'medio-alto':  'text-accent-amber',
-      'alto':        'text-accent-red',
-      'muy alto':    'text-accent-rose',
-    };
+    // El nivel de riesgo ya NO se colorea: verde y rojo quedan reservados para
+    // dirección de mercado, y aquí el dato lo dice la palabra ("bajo", "muy
+    // alto") junto a la volatilidad, que está a la vista en la misma tarjeta.
     const objetivoLabel = {
       'min_vol':     'Mín. varianza',
       'max_sharpe':  'Máx. Sharpe',
@@ -2607,60 +2602,56 @@ const Picker = (() => {
       'risk_parity': 'Risk parity',
     };
     grid.innerHTML = perfilesCache.map(p => {
-      const cls = riesgoCls[p.nivel_riesgo] || 'text-zinc-400';
       const tickersPreview = (p.tickers || []).slice(0, 4).join(' · ');
       const extras = (p.tickers || []).length > 4 ? ` +${p.tickers.length - 4}` : '';
       const obj = objetivoLabel[p.objetivo] || '';
       const m = p.metricas;
       const sc = p.score_promedio;
       const div = m && m.diversificacion != null ? m.diversificacion : null;
+      const nf = (x, d = 1) => Number.isFinite(Number(x)) ? Number(x).toFixed(d) : '—';
       const metricasHTML = m ? `
-        <div class="grid grid-cols-3 gap-1 text-center pt-1.5 border-t border-surface-border/40">
+        <div class="grid grid-cols-3 gap-1 pt-2 border-t border-surface-border">
           <div>
-            <p class="text-[8px] uppercase tracking-wider text-zinc-500">Ret</p>
-            <p class="text-[10px] font-semibold text-accent-green">${m.retorno_anual_pct.toFixed(1)}%</p>
+            <p class="mp-etq">Ret. anual</p>
+            <p class="text-[12px] font-semibold tabular ${Number(m.retorno_anual_pct) >= 0 ? 'mp-alza' : 'mp-baja'}">${nf(m.retorno_anual_pct)}%</p>
           </div>
           <div>
-            <p class="text-[8px] uppercase tracking-wider text-zinc-500">Vol</p>
-            <p class="text-[10px] font-semibold text-accent-amber">${m.volatilidad_anual_pct.toFixed(1)}%</p>
+            <p class="mp-etq">Volatilidad</p>
+            <p class="text-[12px] font-semibold tabular text-zinc-100">${nf(m.volatilidad_anual_pct)}%</p>
           </div>
           <div>
-            <p class="text-[8px] uppercase tracking-wider text-zinc-500">Sharpe</p>
-            <p class="text-[10px] font-semibold text-accent-purple">${m.sharpe_ratio.toFixed(2)}</p>
+            <p class="mp-etq">Sharpe</p>
+            <p class="text-[12px] font-semibold tabular text-zinc-100">${nf(m.sharpe_ratio, 2)}</p>
           </div>
         </div>
         ${(sc != null || div != null) ? `
-        <div class="grid grid-cols-2 gap-1 text-center pt-1">
+        <div class="grid grid-cols-2 gap-1 pt-1.5">
           ${sc != null ? `
-          <div class="bg-zinc-900/40 rounded px-1 py-0.5">
-            <p class="text-[8px] uppercase tracking-wider text-zinc-500">Calidad</p>
-            <p class="text-[10px] font-semibold text-accent-orange">${Math.round(sc)}/100</p>
+          <div>
+            <p class="mp-etq">Calidad</p>
+            <p class="text-[11px] font-semibold tabular text-zinc-100">${Math.round(sc)}<span class="text-zinc-600">/100</span></p>
           </div>` : ''}
           ${div != null ? `
-          <div class="bg-zinc-900/40 rounded px-1 py-0.5">
-            <p class="text-[8px] uppercase tracking-wider text-zinc-500">Diversif.</p>
-            <p class="text-[10px] font-semibold text-accent-blue">${(div * 100).toFixed(0)}%</p>
+          <div>
+            <p class="mp-etq">Diversif.</p>
+            <p class="text-[11px] font-semibold tabular text-zinc-100">${(div * 100).toFixed(0)}%</p>
           </div>` : ''}
         </div>` : ''}` : '';
+      const nActivos = p.num_activos || (p.tickers || []).length;
       return `
         <button data-perfil="${p.id}"
-          class="perfil-card text-left p-4 rounded-xl border border-surface-border
-                 bg-gradient-to-br from-zinc-900/60 to-zinc-900/20
-                 hover:border-accent-purple/60 hover:bg-accent-purple/5
-                 transition flex flex-col gap-2 min-h-[230px]">
-          <div class="flex items-start justify-between">
-            <span class="text-xl">${p.emoji || '•'}</span>
-            <div class="flex flex-col items-end gap-0.5">
-              <span class="text-[9px] uppercase tracking-wider ${cls}">${escapeHtml(p.nivel_riesgo)}</span>
-              ${obj ? `<span class="text-[8px] text-zinc-500">${escapeHtml(obj)}</span>` : ''}
-            </div>
+          class="perfil-card mp-celda text-left transition flex flex-col gap-2 min-h-[220px]">
+          <div class="mp-sec">
+            <span class="mp-sec-etq">${escapeHtml(p.nivel_riesgo)}</span>
+            ${obj ? `<span class="mp-sec-fin mp-firma">${escapeHtml(obj)}</span>` : ''}
           </div>
-          <h4 class="text-sm font-semibold text-zinc-100 leading-tight">${escapeHtml(p.nombre)}</h4>
-          <p class="text-[11px] text-zinc-400 leading-snug line-clamp-2">${escapeHtml(p.thesis)}</p>
+          <h4 class="font-serif text-[17px] font-semibold text-zinc-100 leading-tight"
+              style="font-family:var(--ff-serif);letter-spacing:-.015em">${escapeHtml(p.nombre)}</h4>
+          <p class="text-[11.5px] text-zinc-400 leading-snug line-clamp-3">${escapeHtml(p.thesis)}</p>
           ${metricasHTML}
-          <div class="mt-auto pt-2 border-t border-surface-border/60">
-            <p class="text-[10px] text-zinc-500 truncate">${p.num_activos || (p.tickers || []).length} activos · ${escapeHtml(tickersPreview)}${extras}</p>
-            <p class="text-[10px] text-accent-purple mt-0.5">Usar esta mezcla →</p>
+          <div class="mt-auto pt-2 border-t border-surface-border">
+            <p class="mp-firma truncate"><span class="tabular">${nActivos}</span> activos · ${escapeHtml(tickersPreview)}${extras}</p>
+            <p class="text-[11px] mt-1" style="color:var(--sello)">Usar esta mezcla &rarr;</p>
           </div>
         </button>
       `;
