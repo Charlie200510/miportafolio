@@ -10,6 +10,38 @@
 > stress tests con eventos de México. Ese es el argumento de que la app no
 > duplica a ninguna otra: nadie más hace estos cálculos con reglas mexicanas.
 
+## Posicionamiento: dos canales, un solo producto
+
+La ficha de App Store y el sitio web **no dicen lo mismo primero**, y es a
+propósito. No hay contradicción: ambos describen funciones que la app tiene de
+verdad; lo que cambia es qué se pone al frente en cada canal.
+
+| Canal | Encabeza con | Por qué |
+|---|---|---|
+| **App Store** | ISR y reglas mexicanas | Es lo que separa la app de la categoría saturada ante el revisor, y "ISR acciones" / "declaración SAT inversiones" son búsquedas de alta intención con poca competencia. Peleando por "app de inversiones" compites contra GBM, Nu y Bitso. |
+| **Landing web y experiencia in-app** | Análisis de portafolio | Es el pitch amplio, el que da mercado suficiente para vender. |
+
+**Requisito para que esto funcione:** la metadata debe corresponder con lo que
+el revisor ve al abrir (Guideline 2.3.1). Se cumple porque el ISR es visible de
+inmediato: pestaña propia **ISR** en la barra nativa y **Sección A · Cuadernillo
+México** arriba de todo en la pantalla principal. Si alguna vez se degrada esa
+prominencia, hay que bajar el énfasis fiscal de la ficha en el mismo movimiento.
+
+---
+
+## ⚠️ ANTES DE ENVIAR — cuenta de demostración obligatoria
+
+La app **exige registro** para usarse (decisión de producto: no hay modo libre).
+Con eso, **App Review rechaza de inmediato si no puede entrar**. En
+*App Review Information* hay que llenar, sin excepción:
+
+- **Sign-in required:** ✅ marcado
+- **Usuario y contraseña** de una cuenta real, ya con **acceso premium activo**
+  (el backend tiene `acceso_permanente` por cuenta justo para esto) y con
+  **transacciones cargadas** — si la cuenta va vacía, el ISR y el tax-loss
+  salen en cero y la pantalla que sostiene todo el argumento se ve hueca.
+- Verificar que la cuenta funciona **el mismo día del envío**.
+
 ---
 
 ## Nombre de la app  (máx. 30 caracteres)
@@ -126,21 +158,68 @@ Tamaños obligatorios: **6.7"** (1290×2796, iPhone 15/16 Pro Max) y **6.5"**
 | 9 | **Optimizador Markowitz** | *Analizar* → Optimizador | **“Frontera eficiente y máximo Sharpe”** | El rigor técnico, ya como respaldo. |
 | 10 | **Mi cuenta** | Botón *Mi cuenta* del header | **“Tu cuenta, tu plan, y borrarla en dos toques”** | Refuerza 5.1.1(v) ante el revisor. |
 
-**Antes de capturar:**
-1. Arranca con un portafolio de ejemplo con **transacciones reales cargadas**
-   (compras y ventas), o el ISR y el tax-loss saldrán en cero y la captura #1
-   pierde toda la fuerza.
-2. Usa un iPhone 16 Pro Max (o el simulador correspondiente) para el 6.7".
-3. Modo oscuro es el único modo de la app: no hay que configurar nada.
-4. Espera a que la cintilla de mercados cargue (IPC, S&P, USD/MXN, CETES) antes
+**Captura EXTRA, y de las más importantes:**
+
+| # | Pantalla | Cómo llegar | Caption sugerido | Por qué va aquí |
+|---|----------|-------------|------------------|-----------------|
+| 0 | **Widget en la pantalla de inicio** | Mantén pulsada la pantalla de inicio → **+** → busca "Mi Portafolio" → añade "Mercados MX" (tamaño mediano) | **“El peso y CETES sin abrir la app”** | Un widget es imposible en un envoltorio de sitio web. Es la prueba visual de que hay app nativa, que es justo lo que el 4.3(a) pone en duda. Ponla entre las tres primeras. |
+
+**Antes de capturar — LEE ESTO:**
+1. **Captura de la app NATIVA, no del sitio web.** Las capturas tienen que
+   mostrar la **barra de pestañas nativa abajo** (Periódico · Portafolio ·
+   Analizar · ISR · Cuenta). Si mandas capturas sin ella, el revisor ve
+   exactamente la app que ya rechazó. Es el error más fácil de cometer aquí.
+2. Entra con una cuenta que tenga **premium activo y transacciones cargadas**,
+   o el ISR y el tax-loss salen en cero y la captura #1 pierde toda la fuerza.
+3. Usa un iPhone 16/17 Pro Max (o su simulador) para el 6.7"/6.9".
+4. Modo oscuro es el único modo de la app: no hay que configurar nada.
+5. Espera a que la cintilla de mercados cargue (IPC, S&P, USD/MXN, CETES) antes
    de disparar; con guiones se ve rota.
 
-**Notas para App Review (campo *Notes*):**
-> La app es una herramienta educativa y de análisis para el mercado mexicano.
-> Calcula ISR (art. 129 LISR), compara contra AFOREs/SIEFOREs, CETES y brokers
-> nacionales. No ejecuta operaciones, no mueve dinero y no pide credenciales
-> bancarias. El botón "Suscribirse" está en el header en todas las pestañas y
-> "Mi cuenta" permite eliminar la cuenta en dos toques.
+**Notas para App Review (campo *Notes*) — cópialas tal cual:**
+
+Este campo es donde se responde al 4.3(a). El revisor no conoce la estructura
+del mercado mexicano y no va a deducirla: hay que decírsela.
+
+```
+Esta app fue rechazada antes bajo 4.3(a). A continuación, en qué se diferencia
+de otras apps de la categoría.
+
+FUNCIONES QUE NO EXISTEN EN NINGUNA APP COMPARABLE
+· ISR mexicano: cálculo del impuesto sobre enajenación de acciones en bolsa
+  según el art. 129 de la LISR, con costo promedio por emisora, ganancia
+  realizada del ejercicio y pérdidas arrastrables a 10 años.
+· Tax-loss harvesting con reglas mexicanas (compensación dentro del mismo
+  ejercicio fiscal).
+· Comparativa contra las SIEFOREs del sistema de AFOREs, con los rendimientos
+  que publica la CONSAR. Es un sistema de pensiones obligatorio exclusivo de
+  México.
+· CETES de Banxico como tasa libre de riesgo en el cálculo de Sharpe, en lugar
+  de los Treasuries de EE. UU.
+· FIBRAS de la Bolsa Mexicana de Valores.
+· Comparativa de comisiones entre casas de bolsa mexicanas (GBM, Kuspit,
+  Actinver y otras).
+· Stress tests con eventos de México: crisis del peso, elección de 2018 y
+  cancelación del NAIM, aranceles a México.
+
+CAPA NATIVA (no es un envoltorio de sitio web)
+· Widget de WidgetKit en la pantalla de inicio con IPC, USD/MXN y CETES 28 días.
+· Barra de pestañas nativa de UIKit; la navegación no recarga páginas.
+· Bloqueo con Face ID / Touch ID mediante LocalAuthentication, opcional.
+· Notificaciones push, haptics y hoja de compartir del sistema.
+
+ACCESO
+La app requiere cuenta y suscripción. Las credenciales de prueba están en este
+mismo formulario y ya tienen acceso completo y transacciones cargadas para que
+las pantallas de ISR muestren datos reales.
+
+OTROS
+No ejecuta operaciones ni mueve dinero, y nunca solicita credenciales bancarias
+ni de casa de bolsa. Es una herramienta educativa y de análisis; no es asesoría
+de inversión y así se declara dentro de la app. "Suscribirse" está en el
+encabezado de todas las pestañas y "Mi cuenta" permite eliminar la cuenta en
+dos toques.
+```
 
 ---
 
