@@ -3038,7 +3038,11 @@ def api_payments_suscribir():
         return jsonify({"error": "pagos no disponibles"}), 500
     ses = _sesion_actual()
     body = request.get_json(silent=True) or {}
-    email = (body.get("email") or (ses or {}).get("email") or "").strip().lower()
+    # Con sesión, manda la sesión. El correo del cuerpo solo se usa cuando no
+    # hay ninguna. Antes el cuerpo tenía prioridad: un correo mal escrito por el
+    # cliente cobraba de verdad y acreditaba el premium a otra cuenta, porque el
+    # webhook aplica el plan sobre el payer_email con el que se creó el cobro.
+    email = ((ses or {}).get("email") or body.get("email") or "").strip().lower()
     if not email:
         return jsonify({"error": "email requerido (o inicia sesion antes)"}), 400
     try:
