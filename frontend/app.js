@@ -502,8 +502,21 @@ function _onbModo(m) {
 document.addEventListener('click', (e) => {
   if (e.target.closest('#chooser-auto')) _onbModo('auto');
   else if (e.target.closest('#chooser-manual')) _onbModo('manual');
+  else if (e.target.closest('#chooser-ejemplo')) _verEjemplo();
   else if (e.target.closest('.onboarding-volver')) _onbModo('chooser');
 });
+
+// Carga el portafolio de muestra y entra directo al análisis. Existía solo tras
+// ?demo=1, que en la app nativa es inalcanzable porque no hay barra de
+// direcciones: sin esto, quien abre la app por primera vez —incluido el
+// revisor de App Store— ve todas las pantallas en cero.
+async function _verEjemplo() {
+  _cargarPortafolioDemo();
+  const tickers = leerPortafolioGuardado();
+  const pesos = leerPesosGuardados();
+  mostrarDashboard();
+  await analizarYRender(tickers, pesos);
+}
 
 function mostrarOnboarding() {
   $('portafolio-onboarding').classList.remove('hidden');
@@ -535,22 +548,59 @@ function _modoDemo() {
 }
 
 function _cargarPortafolioDemo() {
-  // Portafolio de muestra: diversificado MX/US/cripto para mostrar todas las features
-  const tickersSample = ['AAPL', 'MSFT', 'NVDA', 'WALMEX.MX', 'GFNORTEO.MX', 'VOO', 'BTC-USD'];
+  // Portafolio de muestra, TODO en pesos y todo en la BMV.
+  //
+  // Antes mezclaba tickers de EE.UU., de México y cripto. Se cambió porque el
+  // cálculo de transacciones suma los importes sin convertir divisa (guarda el
+  // campo `moneda` pero no lo aplica), así que una cartera mixta produce un
+  // "invertido" que suma pesos con dólares y sale mal. Con todo en MXN las
+  // cifras cuadran, y de paso el ejemplo cae justo en el terreno que distingue
+  // a la app: banca, telecom, consumo y una FIBRA de la Bolsa Mexicana, que es
+  // sobre lo que aplica el ISR del art. 129 LISR.
+  const tickersSample = ['AMXB.MX', 'GFNORTEO.MX', 'FUNO11.MX', 'FEMSAUBD.MX', 'WALMEX.MX', 'CEMEXCPO.MX', 'BIMBOA.MX', 'ORBIA.MX'];
   const pesosFracSample = {
-    'AAPL':       0.20,
-    'MSFT':       0.18,
-    'NVDA':       0.15,
-    'WALMEX.MX':  0.12,
-    'GFNORTEO.MX':0.10,
-    'VOO':        0.15,
-    'BTC-USD':    0.10,
+    'AMXB.MX':     0.142,
+    'GFNORTEO.MX': 0.168,
+    'FUNO11.MX':   0.175,
+    'FEMSAUBD.MX': 0.133,
+    'WALMEX.MX':   0.124,
+    'CEMEXCPO.MX': 0.113,
+    'BIMBOA.MX':   0.087,
+    'ORBIA.MX':    0.058,
   };
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(tickersSample));
     localStorage.setItem(LS_KEY_PESOS, JSON.stringify(pesosFracSample));
+    // Tickers y pesos solos dejan vacías las pantallas que dependen del
+    // historial de operaciones: ISR, tax-loss harvesting y P&L realizado.
+    // Son justo las que distinguen a la app, así que el ejemplo tiene que
+    // traerlas pobladas o no enseña nada.
+    if (!localStorage.getItem(LS_KEY_TX)) {
+      localStorage.setItem(LS_KEY_TX, JSON.stringify(_TRANSACCIONES_DEMO));
+    }
   } catch {}
 }
+
+// Operaciones de muestra. Los precios son cierres reales de la BMV en cada
+// fecha, así que el P&L cuadra contra el mercado en vez de ser inventado.
+// La composición es deliberada:
+//   · ganancias (AMXB, CEMEX, GFNORTE, FUNO) → rendimiento y P&L no realizado
+//   · tres posiciones en pérdida (WALMEX, BIMBO, ORBIA) → el tax-loss harvesting
+//     tiene material que proponer, que es media pantalla de ISR
+//   · dos ventas cerradas → hay utilidad realizada y por tanto ISR que estimar
+const _TRANSACCIONES_DEMO = [
+  { id: 'demo-01', ticker: 'AMXB.MX',     tipo: 'compra', fecha: '2024-03-28', shares: 3000, precio_unitario: 14.72,  moneda: 'MXN', comisiones: 0, notas: 'Ejemplo' },
+  { id: 'demo-02', ticker: 'CEMEXCPO.MX', tipo: 'compra', fecha: '2024-03-28', shares: 2500, precio_unitario: 14.49,  moneda: 'MXN', comisiones: 0, notas: 'Ejemplo' },
+  { id: 'demo-03', ticker: 'FEMSAUBD.MX', tipo: 'compra', fecha: '2024-03-28', shares: 200,  precio_unitario: 185.06, moneda: 'MXN', comisiones: 0, notas: 'Ejemplo' },
+  { id: 'demo-04', ticker: 'WALMEX.MX',   tipo: 'compra', fecha: '2024-03-28', shares: 800,  precio_unitario: 62.80,  moneda: 'MXN', comisiones: 0, notas: 'Ejemplo' },
+  { id: 'demo-05', ticker: 'BIMBOA.MX',   tipo: 'compra', fecha: '2024-03-28', shares: 500,  precio_unitario: 74.96,  moneda: 'MXN', comisiones: 0, notas: 'Ejemplo' },
+  { id: 'demo-06', ticker: 'ORBIA.MX',    tipo: 'compra', fecha: '2024-03-28', shares: 900,  precio_unitario: 34.60,  moneda: 'MXN', comisiones: 0, notas: 'Ejemplo' },
+  { id: 'demo-07', ticker: 'GFNORTEO.MX', tipo: 'compra', fecha: '2024-09-30', shares: 300,  precio_unitario: 116.90, moneda: 'MXN', comisiones: 0, notas: 'Ejemplo' },
+  { id: 'demo-08', ticker: 'FUNO11.MX',   tipo: 'compra', fecha: '2024-09-30', shares: 2000, precio_unitario: 19.60,  moneda: 'MXN', comisiones: 0, notas: 'Ejemplo · FIBRA' },
+  // Ventas parciales: dejan utilidad realizada, que es lo que grava el ISR.
+  { id: 'demo-09', ticker: 'AMXB.MX',     tipo: 'venta',  fecha: '2026-02-27', shares: 1000, precio_unitario: 22.45,  moneda: 'MXN', comisiones: 0, notas: 'Ejemplo · toma de utilidad' },
+  { id: 'demo-10', ticker: 'CEMEXCPO.MX', tipo: 'venta',  fecha: '2026-02-27', shares: 800,  precio_unitario: 21.57,  moneda: 'MXN', comisiones: 0, notas: 'Ejemplo · toma de utilidad' },
+];
 
 function _activarBannerDemo() {
   const banner = $('demo-banner');
@@ -4606,9 +4656,17 @@ const Impuestos = (() => {
     const isr       = totales.isr_estimado_ano_actual || 0;
     const perdidas  = data.perdidas_arrastrables || 0;
 
-    const ahorroTotal = (harvest.oportunidades || []).reduce(
+    // El backend valora cada oportunidad contra la ganancia COMPLETA del año,
+    // sin descontarla conforme avanza: cada cifra responde "si vendes solo
+    // esta". Sumarlas cuenta la misma ganancia varias veces y anuncia un
+    // ahorro mayor al ISR que se debe, que es imposible. El techo es el propio
+    // ISR: no puedes bajar el impuesto por debajo de cero. El excedente de
+    // pérdida no se pierde —se arrastra 10 años— pero ese es un beneficio de
+    // ejercicios futuros, no del que este KPI reporta.
+    const ahorroBruto = (harvest.oportunidades || []).reduce(
       (s, o) => s + (o.ahorro_isr || 0), 0
     );
+    const ahorroTotal = Math.min(ahorroBruto, isr);
 
     const elAno = $('imp-ano-actual');
     if (elAno) elAno.textContent = String(anoActual);

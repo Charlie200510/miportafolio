@@ -72,9 +72,22 @@
       "Import CSV de brokers (GBM, Kuspit, Bursanet)"
     ],
     "creator": {
+      "@type": "Person",
+      "name": "Carlos Barreda Serrano",
+      "url": "https://miportafolio.uk/#autor"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Carlos Barreda Serrano"
+    },
+    "publisher": {
       "@type": "Organization",
       "name": "Mi Portafolio",
-      "url": "https://miportafolio.uk"
+      "url": "https://miportafolio.uk",
+      "founder": {
+        "@type": "Person",
+        "name": "Carlos Barreda Serrano"
+      }
     },
     "screenshot": "https://miportafolio.uk/static/logo.png",
     "aggregateRating": {
@@ -153,6 +166,10 @@
     "name": "Mi Portafolio",
     "url": "https://miportafolio.uk",
     "logo": "https://miportafolio.uk/static/logo.png",
+    "founder": {
+      "@type": "Person",
+      "name": "Carlos Barreda Serrano"
+    },
     "sameAs": [],
     "contactPoint": {
       "@type": "ContactPoint",
@@ -784,6 +801,12 @@
       <div class="flex items-center gap-2.5">
         <img src="/static/logo.png" alt="Mi Portafolio" class="w-6 h-6 object-cover" />
         <span>Mi Portafolio · 2026 · Hecho en México</span>
+      </div>
+      <!-- Crédito de autoría. El itemprop/itemscope acompaña al JSON-LD de
+           arriba: los buscadores necesitan la atribución también en el texto
+           visible para asociar el nombre con el sitio. -->
+      <div id="autor" itemscope itemtype="https://schema.org/Person" class="order-last sm:order-none">
+        <span class="text-zinc-600">Creada por </span><span itemprop="name" class="text-zinc-400">Carlos Barreda Serrano</span>
       </div>
       <div class="flex items-center gap-5 flex-wrap">
         <a href="/blog" class="hover:text-brand-400 transition font-medium">Blog</a>
