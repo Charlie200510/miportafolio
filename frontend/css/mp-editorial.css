@@ -314,23 +314,23 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 .mp-alza { color: var(--alza) !important; }
 .mp-baja { color: var(--baja) !important; }
 
-/* Sólo se re-tiñen las variantes CON modificador de opacidad (la barra de
-   `bg-amber-500/10`): ésas son los tintes decorativos. Las opacas —
-   `bg-emerald-500` a secas, que son botones sólidos— se dejan en paz, porque
-   el tema de Tailwind ya las apunta al sello y aplanarlas aquí las volvería
-   texto oscuro sobre fondo casi negro. */
-[class*="bg-accent-"][class*="/"]:not([class*="bg-accent-green"]):not([class*="bg-accent-red"]),
-[class*="bg-amber-"][class*="/"], [class*="bg-emerald-"][class*="/"],
-[class*="bg-sky-"][class*="/"], [class*="bg-violet-"][class*="/"], [class*="bg-teal-"][class*="/"] {
-  background-color: var(--sello-tenue) !important;
-}
-[class*="border-accent-"][class*="/"]:not([class*="border-accent-green"]):not([class*="border-accent-red"]),
-[class*="border-amber-"][class*="/"], [class*="border-emerald-"][class*="/"] {
-  border-color: rgba(215, 154, 60, .35) !important;
-}
-[class*="ring-accent-"]:not([class*="ring-accent-green"]):not([class*="ring-accent-red"]) {
-  --tw-ring-color: rgba(215, 154, 60, .35) !important;
-}
+/* NO se sobreescriben aquí los fondos ni los bordes de color.
+   Se intentó y salió mal dos veces:
+
+   1) Un barrido a `[class*="bg-accent-"]` aplanaba TODO —incluidos los botones
+      sólidos— a un tinte translúcido.
+   2) Acotarlo con `[class*="/"]` para pillar solo las variantes con opacidad
+      tampoco sirve: los selectores de atributo miran la cadena de clases
+      COMPLETA, así que un botón sólido con `hover:bg-accent-amber/90` también
+      contiene una barra y caía en la regla. Eso dejaba "Usar este portafolio"
+      con fondo rgba(215,154,60,.12) y texto casi negro encima: se veía
+      deshabilitado aunque funcionara. Además esa regla ganaba por
+      especificidad (0,4,0) a la excepción `button.bg-accent-amber` (0,1,1).
+
+   No hace falta nada de esto: el remapeo de `theme.extend.colors` ya apunta
+   accent/amber/emerald/teal/sky/cyan/violet/pink al sello, y Tailwind genera
+   por sí solo tanto la versión sólida como la translúcida con la opacidad
+   correcta. Que el tema haga el trabajo evita la guerra de especificidad. */
 
 /* Botón primario: sello sólido con tinta encima. */
 .mp-btn, .mp-btn-primario {
