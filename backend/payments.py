@@ -210,8 +210,29 @@ def simular_aprobacion(preapproval_id: str) -> dict[str, Any]:
     return {"ok": True, "status": "authorized", "email": sus["email"]}
 
 
-def _verificar_firma(headers: dict[str, str], raw_body: bytes) -> bool:
-    """Valida el header x-signature de MercadoPago (formato ts=,v1=)."""
+def _verificar_firma(headers: dict[str, str], raw_body: bytes, data_id: str = "") -> bool:
+    """Valida el header x-signature de MercadoPago (formato ts=,v1=).
+
+    La plantilla que MercadoPago firma es EXACTAMENTE:
+
+        id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+
+    HMAC-SHA256 en hexadecimal, con el secreto del panel como llave y esa
+    cadena como mensaje. El cuerpo de la petición NO entra en el HMAC, y los
+    campos que no vengan en la notificación se omiten junto con su etiqueta.
+
+    La versión anterior armaba `id:<x-request-id>;ts:<ts>;` + cuerpo: metía el
+    request-id en el hueco del id, se saltaba el segmento request-id y
+    concatenaba el cuerpo. Con eso la firma no podía coincidir jamás, así que
+    con STRICT_WEBHOOKS=1 se rechazaban TODAS las notificaciones: el cobro se
+    hacía en MercadoPago y el plan del usuario nunca se activaba.
+
+    `data.id` se toma del query string (?data.id=…), que es lo que MercadoPago
+    firma; el del cuerpo sirve de respaldo. Se prueban la forma tal cual y la
+    minúscula porque la documentación pide minúsculas cuando el id es
+    alfanumérico y no siempre llega así. Ambas variantes exigen el mismo
+    secreto, así que probar las dos no debilita la verificación.
+    """
     if not _WEBHOOK_SECRET:
         # Sin secreto: en modo estricto (prod) rechazamos; si no, aceptamos (dev).
         return not STRICT_WEBHOOKS
@@ -227,21 +248,44 @@ def _verificar_firma(headers: dict[str, str], raw_body: bytes) -> bool:
     v1 = parts.get("v1")
     if not (ts and v1):
         return False
-    manifest = f"id:{headers.get('x-request-id','')};ts:{ts};".encode() + raw_body
-    mac = hmac.new(_WEBHOOK_SECRET.encode(), manifest, sha256).hexdigest()
-    return hmac.compare_digest(mac, v1)
+
+    req_id = headers.get("x-request-id") or headers.get("X-Request-Id") or ""
+
+    def _mac(did: str) -> str:
+        trozos = []
+        if did:
+            trozos.append(f"id:{did};")
+        if req_id:
+            trozos.append(f"request-id:{req_id};")
+        trozos.append(f"ts:{ts};")
+        manifest = "".join(trozos).encode()
+        return hmac.new(_WEBHOOK_SECRET.encode(), manifest, sha256).hexdigest()
+
+    did = str(data_id or "")
+    for candidato in {did, did.lower()}:
+        if hmac.compare_digest(_mac(candidato), v1):
+            return True
+    return False
 
 
-def procesar_webhook(headers: dict[str, str], raw_body: bytes, payload: dict[str, Any]) -> dict[str, Any]:
+def procesar_webhook(
+    headers: dict[str, str],
+    raw_body: bytes,
+    payload: dict[str, Any],
+    data_id_query: str = "",
+) -> dict[str, Any]:
     """
     Procesa una notificacion. Acepta los eventos 'preapproval' y actualiza el
     estado del plan del usuario. Guarda una bitacora ligera.
-    """
-    if not _verificar_firma(headers, raw_body):
-        return {"ok": False, "error": "firma_invalida"}
 
+    `data_id_query` es el ?data.id= del query string, que es el valor que
+    MercadoPago incluye en la firma. Si no viene, se cae al del cuerpo.
+    """
     tipo = payload.get("type") or payload.get("topic") or ""
-    data_id = (payload.get("data") or {}).get("id") or payload.get("id")
+    data_id = data_id_query or (payload.get("data") or {}).get("id") or payload.get("id")
+
+    if not _verificar_firma(headers, raw_body, str(data_id or "")):
+        return {"ok": False, "error": "firma_invalida"}
     evento = {
         "ts": time.time(),
         "tipo": tipo,

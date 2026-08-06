@@ -370,7 +370,11 @@ def _rate_limit(reglas):
 def _es_cliente_nativo() -> bool:
     """True si la request viene de la app nativa (Capacitor). Señal: el Origin
     que el WKWebView envía en toda llamada al API (cross-origin a miportafolio.uk).
-    Ya está en la allowlist CORS, así que no requiere header extra ni preflight."""
+    Ya está en la allowlist CORS, así que no requiere header extra ni preflight.
+
+    SIN USO HOY: requiere_acceso distinguía web de nativo para dejar pasar al web
+    anónimo; ahora las dos plataformas exigen cuenta y la distinción sobra. Se
+    conserva porque los Origin exactos son el dato caro de esta función."""
     origin = (request.headers.get("Origin") or "").strip().lower()
     return origin in ("capacitor://localhost", "https://localhost", "ionic://localhost")
 
@@ -379,10 +383,20 @@ def requiere_acceso(fn):
     """Enforcement SERVER-SIDE del acceso a funciones premium.
       - Autenticado con trial vigente (día 1-14) o suscripción activa → PASA.
       - Autenticado con prueba vencida y sin suscripción → 402.
-      - App NATIVA sin sesión → 401: la app siempre opera con cuenta (login
-        obligatorio), así que sin sesión = token ausente/borrado. Cierra el hueco
-        de evadir el trial vencido borrando el JWT.
-      - Web/PWA anónimo (demo) → PASA (no rompe el flujo web anónimo).
+      - SIN sesión (web o nativo) → 401: la app exige cuenta en las dos
+        plataformas. Cierra el hueco de evadir el trial vencido borrando el JWT
+        o las cookies.
+
+    Antes el web anónimo pasaba, para no romper el modo demo abierto. Ese modo
+    se retiró: ahora hay que registrarse también en la web, y dejar el hueco
+    abierto convertía el candado de la interfaz en decoración, porque bastaba
+    con llamar al endpoint a mano.
+
+    OJO: esto NO cierra la app entera, solo los endpoints que lleven este
+    decorador. Los que alimentan el widget de iOS (/api/periodico/mercados y
+    /api/renta-fija/mx) tienen que seguir SIN él: el widget corre en un proceso
+    aparte, sin sesión, y se quedaría en "Sin conexión".
+
     El acceso se deriva del store server-side (_estado_plan sobre creado_en+plan),
     NUNCA del cliente. FAIL-CLOSED: si la verificación lanza, NO se regala acceso
     (503). Aplicar DESPUÉS de @_rate_limit y SOLO a endpoints premium."""
@@ -406,12 +420,10 @@ def requiere_acceso(fn):
                     "plan": gate.get("plan"),
                 }), 402
             return fn(*args, **kwargs)          # trial vigente o suscriptor
-        if _es_cliente_nativo():
-            return jsonify({
-                "error": "cuenta_requerida",
-                "detalle": "Inicia sesión o crea tu cuenta para continuar.",
-            }), 401
-        return fn(*args, **kwargs)              # web/PWA anónimo: demo abierto
+        return jsonify({                         # sin sesión, venga de donde venga
+            "error": "cuenta_requerida",
+            "detalle": "Inicia sesión o crea tu cuenta para continuar.",
+        }), 401
     return wrapper
 
 # 3) Security headers en TODAS las respuestas.
@@ -3067,8 +3079,11 @@ def api_payments_webhook():
     except Exception:
         payload = {}
     headers = {k: v for k, v in request.headers.items()}
+    # MercadoPago firma el ?data.id= del query string, no el del cuerpo.
+    # También manda ?id= en algunos tipos de notificación.
+    data_id_query = request.args.get("data.id") or request.args.get("id") or ""
     try:
-        res = _payments.procesar_webhook(headers, raw, payload)
+        res = _payments.procesar_webhook(headers, raw, payload, data_id_query)
         return jsonify(res)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -72,11 +72,17 @@
   // -------------------------------------------------- estado del usuario
   async function estadoUsuario() {
     // no-store + timestamp: el WKWebView puede cachear el GET y dejar el
-    // estado premium desactualizado justo después de una compra
+    // estado premium desactualizado justo después de una compra.
+    //
+    // El fallback lleva _sinRespuesta para poder distinguir "no hay sesión" de
+    // "no contestó el servidor". Son lo mismo en este objeto y desde que el
+    // gate aplica también en web, confundirlos significa enseñar la pantalla de
+    // acceso a alguien que sí tiene sesión solo porque su red tardó 6 segundos.
+    // Mismo criterio que account.js.
     return conTimeout((async () => {
       const r = await fetch('/api/auth/estado?t=' + Date.now(), { cache: 'no-store' });
-      return (await r.json()) || { autenticado: false };
-    })(), TIMEOUT_RED_MS, { autenticado: false });
+      return (await r.json()) || { autenticado: false, _sinRespuesta: true };
+    })(), TIMEOUT_RED_MS, { autenticado: false, _sinRespuesta: true });
   }
   async function emailActual() {
     const e = await estadoUsuario();
@@ -1026,7 +1032,18 @@
     //
     // Ahora el gate siempre vuelve. La compra NO se pierde: al iniciar sesión o
     // crear cuenta, _revincularCompra() la restaura y la liga a la cuenta nueva.
-    if (esNativo() && !authed) {
+    // El gate aplica en las DOS plataformas. Antes la web se usaba entera sin
+    // cuenta; ahora también exige registro, así que sin sesión se muestra la
+    // pantalla de acceso en vez de la app.
+    //
+    // Solo se monta donde vive la app (index.html carga este script; landing,
+    // signup, legales y blog no), así que las páginas públicas no se tocan.
+    // Si el servidor no contestó no sabemos nada: dejar la pantalla como está y
+    // reintentar en el próximo ciclo (visibilitychange). Cerrar el candado aquí
+    // expulsaría a quien sí tiene sesión por una red lenta.
+    if (!e || e._sinRespuesta) return;
+
+    if (!authed) {
       // Sin sesión no se afirma premium, y se olvida lo que el SDK dijo de la
       // cuenta anterior (si no, quedaba en memoria durante toda la sesión).
       _sdkPremium = false;
@@ -1037,10 +1054,9 @@
       return;
     }
 
-    cerrarAuth();                                        // autenticado (o web): fuera pantalla de auth
+    cerrarAuth();                                        // autenticado: fuera pantalla de acceso
     _renderTrialStrip(e);
     _refrescarBotonHeader(e);
-    if (!authed) return;                                 // WEB anónimo: sin candado (flujo intacto)
     if (_premiumEfectivo(e) || e.plan !== 'expirado') {
       if (_bloqueante) cerrar(true);                     // trial vigente / suscrito: liberar candado
       return;

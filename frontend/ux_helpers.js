@@ -1025,10 +1025,19 @@
     _mostrarPaso(0);
   }
 
-  // Auto-trigger: si es modo demo O primer visita SIN portafolio guardado
+  // Auto-trigger: si es modo demo O primer visita SIN portafolio guardado.
+  //
+  // Solo con sesión iniciada. El tour se monta con z-index 999999 y la pantalla
+  // de acceso con 99998, así que en una visita anónima el tour tapaba el
+  // formulario: cuatro pasos explicando funciones que todavía no se pueden
+  // tocar, y detrás, escondido, el único control que servía para algo.
   window.addEventListener('load', () => {
-    setTimeout(() => {
+    setTimeout(async () => {
       if (_yaCompletado()) return;
+      try {
+        const e = await window.__mpSesionLista;
+        if (!e || !e.autenticado) return;
+      } catch (_) { return; }
       if (_esDemoMode() || !_tienePortafolio()) {
         _iniciarTour();
       }
