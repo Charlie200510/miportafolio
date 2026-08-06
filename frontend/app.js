@@ -500,7 +500,11 @@ function _onbModo(m) {
   aut.classList.toggle('hidden', m !== 'auto');
 }
 document.addEventListener('click', (e) => {
-  if (e.target.closest('#chooser-auto')) _onbModo('auto');
+  if (e.target.closest('#chooser-auto')) {
+    _onbModo('auto');
+    // Se pide aquí, al abrir la vista, no en el arranque de la app.
+    if (typeof PortafolioOptimo !== 'undefined') PortafolioOptimo.asegurarCargado();
+  }
   else if (e.target.closest('#chooser-manual')) _onbModo('manual');
   else if (e.target.closest('#chooser-ejemplo')) _verEjemplo();
   else if (e.target.closest('.onboarding-volver')) _onbModo('chooser');
@@ -1965,6 +1969,8 @@ const PortafolioOptimo = (() => {
     data:  null,
     reqSeq: 0,         // id de petición: solo se renderiza la MÁS reciente
     debounceTimer: null,
+    cargado: false,    // ya se pintó con datos buenos al menos una vez
+    enVuelo: false,    // hay una petición en curso (evita duplicar al reabrir)
   };
   // Etiqueta según σ (debe coincidir con el backend portafolio_optimo.py)
   function _etiquetaVol(v) {
@@ -2131,14 +2137,23 @@ const PortafolioOptimo = (() => {
 
   async function cargar(vol) {
     const myReq = ++state.reqSeq;   // marca esta petición como la más reciente
+    state.enVuelo = true;
     pintarSkeletons();
     try {
-      const r = await fetch(`/api/portafolio-optimo?vol=${vol}`);
-      let d = null;
-      try { d = await r.json(); } catch { d = null; }
+      // Esperar a que la sesión esté resuelta ANTES de pedir. Este endpoint
+      // pasa por @requiere_acceso, que en la app nativa responde 401
+      // "cuenta_requerida" cuando la petición sale sin Authorization; en web
+      // anónimo devuelve 200, por eso el fallo solo se veía en el teléfono.
+      await window.__mpSesionLista;
+      if (myReq !== state.reqSeq) return;
+
+      // Reintentos para el arranque en frío del backend: sin esto, un 5xx
+      // pasajero dejaba la tarjeta con un error permanente.
+      const d = await fetchJsonRetry(`/api/portafolio-optimo?vol=${vol}`, undefined, { intentos: 2, delay: 2500 });
       if (myReq !== state.reqSeq) return;   // ya llegó una más nueva → descartar ésta
       if (!d) throw new Error('Respuesta vacía');
       if (!d.ok) throw new Error(d.error || 'error');
+      state.cargado = true;
       state.data = d;
       pintarLabels(d.vol_objetivo, d.etiqueta, d.descripcion, d.metodologia);
       pintarMetricas(d);
@@ -2146,8 +2161,32 @@ const PortafolioOptimo = (() => {
       pintarBarra(d);
       pintarFrontera(d);
     } catch (e) {
-      if (myReq === state.reqSeq) pintarError(`No pude generar el portafolio: ${e.message}`);
+      if (myReq !== state.reqSeq) return;
+      // 401 no es un fallo del optimizador: es que no hay sesión. Decirlo tal
+      // cual, en vez de "no pude generar el portafolio", que manda a buscar el
+      // problema donde no está.
+      const sinCuenta = e && (e.status === 401 || e.body?.error === 'cuenta_requerida');
+      const vencido   = e && (e.status === 402 || e.body?.error === 'acceso_requerido');
+      pintarError(
+        sinCuenta ? 'Inicia sesión para generar tu portafolio óptimo.'
+        : vencido ? 'Tu prueba terminó. Suscríbete para volver a generarlo.'
+        : `No pude generar el portafolio: ${e.message}`
+      );
+    } finally {
+      if (myReq === state.reqSeq) state.enVuelo = false;
     }
+  }
+
+  // Carga perezosa: solo cuando se abre la vista automática. Antes se pedía en
+  // el arranque, así que el error de una petición que el usuario nunca hizo
+  // quedaba pintado esperándolo al entrar, y solo se limpiaba al mover el
+  // slider. De paso, quien nunca abre esta pantalla ya no paga la petición.
+  //
+  // Si el intento anterior falló, reintenta al reabrir: se comprueba `cargado`
+  // (hubo éxito), no `reqSeq` (hubo intento).
+  function asegurarCargado() {
+    if (state.cargado || state.enVuelo) return;
+    cargar(state.vol);
   }
 
   function debounceCargar(vol) {
@@ -2169,7 +2208,10 @@ const PortafolioOptimo = (() => {
     }
     const regen = document.getElementById('po-regenerar');
     if (regen) regen.addEventListener('click', () => {
-      fetch(`/api/portafolio-optimo?nivel=${state.nivel}&forzar=1`).then(() => cargar(state.nivel));
+      // Usa state.vol, no state.nivel: `nivel` nunca existió en el estado, así
+      // que salía "nivel=undefined" y el backend respondía 500 al hacer
+      // int('undefined'). La recarga posterior heredaba el mismo undefined.
+      fetch(`/api/portafolio-optimo?vol=${state.vol}&forzar=1`).then(() => cargar(state.vol));
     });
     const usar = document.getElementById('po-usar');
     if (usar) usar.addEventListener('click', () => {
@@ -2195,11 +2237,11 @@ const PortafolioOptimo = (() => {
         if (window.toast) window.toast('No pude cargar el portafolio', 'error');
       }
     });
-    // Carga inicial a σ 14% (≈ mercado)
-    cargar(14);
+    // Sin carga inicial aquí a propósito: la dispara asegurarCargado() cuando
+    // se abre la vista automática.
   }
 
-  return { bind, cargar };
+  return { bind, cargar, asegurarCargado };
 })();
 
 // ============================================================

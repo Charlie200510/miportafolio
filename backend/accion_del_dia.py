@@ -43,6 +43,63 @@ _CACHE_TTL = 24 * 60 * 60   # 24 horas
 _CACHE_DIR = _BACKEND_DIR / "_cache_accion_dia"
 _CACHE_DIR.mkdir(exist_ok=True)
 
+# Historial de elecciones recientes, para que la sección rote.
+#
+# POR QUÉ NO VIVE EN _cache_accion_dia
+# ------------------------------------
+# `deploy/pull.sh` purga `backend/_cache_*` en cada despliegue. El historial
+# vivía ahí dentro (dentro de hoy.json), así que cada deploy borraba la memoria
+# y la regla anti-repetición volvía a arrancar en blanco: elegía otra vez al
+# primero del ranking. `backend/_datos/` es el único directorio persistente que
+# el deploy nunca toca.
+#
+# POR QUÉ NO BASTABA CON MIRAR AYER
+# ---------------------------------
+# La comparación era contra UN solo día. Los scores se calculan sobre ventanas
+# de 6-12 meses, así que la cima del ranking casi no se mueve de un día a otro:
+# con memoria de un día lo mejor que podía pasar era alternar entre las dos
+# mismas emisoras, que desde fuera se ve igual de estancado.
+_HIST_PATH = _BACKEND_DIR / "_datos" / "accion_del_dia_historial.json"
+_HIST_DIAS = 7      # ventana de enfriamiento
+_HIST_MAX  = 30     # entradas guardadas
+
+
+def _leer_historial() -> List[Dict[str, str]]:
+    """[{fecha, ticker}] de más reciente a más antiguo. Nunca lanza."""
+    try:
+        with open(_HIST_PATH, encoding="utf-8") as f:
+            d = json.load(f)
+        picks = d.get("picks") or []
+        return [p for p in picks if isinstance(p, dict) and p.get("ticker")]
+    except Exception:
+        return []
+
+
+def _guardar_historial(fecha: str, ticker: str) -> None:
+    """Antepone la elección de hoy, sustituyendo la entrada del mismo día."""
+    try:
+        picks = [p for p in _leer_historial() if p.get("fecha") != fecha]
+        picks.insert(0, {"fecha": fecha, "ticker": ticker})
+        _HIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(_HIST_PATH, "w", encoding="utf-8") as f:
+            json.dump({"picks": picks[:_HIST_MAX]}, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def _penalizacion_repeticion(ticker: str, recientes: Dict[str, int]) -> float:
+    """Castigo decreciente por haber salido hace poco.
+
+    Ayer pesa 18 puntos y se va desvaneciendo hasta 0 al séptimo día. Es un
+    castigo y no una exclusión a propósito: una emisora que de verdad domine
+    puede repetir pasados unos días, y si el universo se queda sin candidatos
+    la sección sigue teniendo algo que mostrar.
+    """
+    dias = recientes.get(ticker)
+    if dias is None or dias > _HIST_DIAS:
+        return 0.0
+    return -18.0 * (1.0 - (dias - 1) / float(_HIST_DIAS))
+
 
 # ─────────────────────────────────────────────────────────
 # Helpers
@@ -330,9 +387,9 @@ def _fecha_cdmx() -> str:
 def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
     """Selecciona la acción del día. Cambia a la medianoche de CDMX.
 
-    Para que varíe día a día y no repita el mismo ticker dos días seguidos
-    (salvo que domine claramente), el ranking combina el score canónico con un
-    pequeño ajuste por desempeño reciente (últimos 5 días hábiles).
+    El ranking combina el score canónico con un ajuste por desempeño reciente
+    (últimos 5 días hábiles) y un castigo por haber salido en los últimos
+    `_HIST_DIAS` días, que es lo que hace rotar la sección.
     """
     hoy = _fecha_cdmx()
 
@@ -342,18 +399,34 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
         return cached["data"]
 
     disk_path = _CACHE_DIR / "hoy.json"
-    previo_ticker = None
     if disk_path.exists():
         try:
             with open(disk_path, encoding="utf-8") as f:
                 d = json.load(f)
             prev_data = d.get("data", {})
-            previo_ticker = (prev_data.get("accion") or {}).get("ticker")
             if not forzar and prev_data.get("fecha") == hoy:
                 _CACHE["hoy"] = {"ts": d.get("_ts", 0), "data": prev_data}
                 return prev_data
         except Exception:
             pass
+
+    # Cuántos días hace que salió cada emisora. Sale del historial persistente,
+    # no del caché del día, que el deploy borra.
+    recientes: Dict[str, int] = {}
+    try:
+        hoy_dt = datetime.strptime(hoy, "%Y-%m-%d")
+        for p in _leer_historial():
+            tk = str(p.get("ticker") or "")
+            if not tk or tk in recientes:
+                continue        # ya está la aparición más reciente
+            try:
+                dias = (hoy_dt - datetime.strptime(str(p.get("fecha")), "%Y-%m-%d")).days
+            except Exception:
+                continue
+            if dias >= 1:
+                recientes[tk] = dias
+    except Exception:
+        recientes = {}
 
     df_precios = _cargar_precios()
     if df_precios is None or df_precios.empty:
@@ -407,7 +480,9 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
         det["retorno_5d_pct"] = round(rec5 * 100, 2)
         rank = (score_t
                 + max(-5.0, min(5.0, rec5 * 100 * 0.5))           # desempeño reciente
-                + _ajuste_descubrimiento(det, info_all.get(ticker, {})))  # sesgo emergentes
+                + _ajuste_descubrimiento(det, info_all.get(ticker, {}))   # sesgo emergentes
+                + _penalizacion_repeticion(ticker, recientes))     # enfriamiento
+        det["dias_desde_ultima_aparicion"] = recientes.get(ticker)
         puntuados.append((rank, score_t, det))
 
     if not puntuados:
@@ -415,12 +490,10 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
 
     puntuados.sort(key=lambda x: x[0], reverse=True)
 
-    # Anti-repetición: no repetir el ticker de ayer salvo que domine (margen ≥ 6).
-    rank0, score, mejor = puntuados[0]
-    if previo_ticker and mejor.get("ticker") == previo_ticker and len(puntuados) > 1:
-        rank1, score1, segundo = puntuados[1]
-        if (rank0 - rank1) < 6.0:
-            score, mejor = score1, segundo
+    # El enfriamiento ya está dentro del rank, así que el primero es el bueno.
+    # La regla anterior —"si repites a ayer y ganas por menos de 6, toma el
+    # segundo"— se retiró: solo miraba un día y no sobrevivía a los deploys.
+    _rank0, score, mejor = puntuados[0]
 
     nivel, nivel_color = MC.nivel_para_score(score)
 
@@ -466,6 +539,7 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
             json.dump({"_ts": ts, "data": data}, f, ensure_ascii=False, default=str)
     except Exception:
         pass
+    _guardar_historial(hoy, str(mejor.get("ticker") or ""))
 
     return data
 

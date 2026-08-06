@@ -187,6 +187,12 @@ verde "HEAD = origin/$RAMA = $(git rev-parse --short HEAD)"
 # arreglo. Cualquier caché nuevo queda cubierto sin tocar este script.
 # OJO: el patrón es backend/_cache_* a propósito; backend/_datos/ (cuentas,
 # trials, tombstones) NO coincide y jamás debe tocarse.
+#
+# Ahí vive también accion_del_dia_historial.json, que NO es un caché: es la
+# memoria de qué emisoras ya salieron, y es lo que hace rotar la Acción del Día.
+# Vivía dentro de _cache_accion_dia y este purgado la borraba en cada deploy,
+# así que la sección se quedaba clavada en la misma acción. No la muevas de
+# _datos/ ni la incluyas en el patrón de purga.
 paso "Purgando cachés derivados"
 shopt -s nullglob
 for d in backend/_cache_*; do
