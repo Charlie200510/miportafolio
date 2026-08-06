@@ -36,10 +36,16 @@ Con eso, **App Review rechaza de inmediato si no puede entrar**. En
 *App Review Information* hay que llenar, sin excepción:
 
 - **Sign-in required:** ✅ marcado
-- **Usuario y contraseña** de una cuenta real, ya con **acceso premium activo**
-  (el backend tiene `acceso_permanente` por cuenta justo para esto) y con
-  **transacciones cargadas** — si la cuenta va vacía, el ISR y el tax-loss
-  salen en cero y la pantalla que sostiene todo el argumento se ve hueca.
+- **Usuario y contraseña** de la cuenta demo (`carbarser05@gmail.com`). Va en
+  **periodo de prueba**, no en premium, a propósito: así el revisor también
+  alcanza el paywall y puede evaluar el flujo de suscripción.
+- **Ojo con el reloj del trial:** caduca a los 14 días. Si expira a media
+  revisión, el revisor queda fuera y eso es un rechazo por 2.1. Cómo
+  reiniciarlo: `docs/rediseno/ENVIO-BUILD-8.md`.
+- **Decirle cómo llegar a los datos.** Las carteras viven en el dispositivo, no
+  en la cuenta, así que entrar no trae datos: la app arranca vacía y el ISR sale
+  en cero. En las notas hay que mandarlo a *Portafolio → "Ver un portafolio de
+  ejemplo"*, que carga diez operaciones reales de la BMV.
 - Verificar que la cuenta funciona **el mismo día del envío**.
 
 ---
@@ -169,8 +175,9 @@ Tamaños obligatorios: **6.7"** (1290×2796, iPhone 15/16 Pro Max) y **6.5"**
    mostrar la **barra de pestañas nativa abajo** (Periódico · Portafolio ·
    Analizar · ISR · Cuenta). Si mandas capturas sin ella, el revisor ve
    exactamente la app que ya rechazó. Es el error más fácil de cometer aquí.
-2. Entra con una cuenta que tenga **premium activo y transacciones cargadas**,
-   o el ISR y el tax-loss salen en cero y la captura #1 pierde toda la fuerza.
+2. Entra y carga los datos con *Portafolio → "Ver un portafolio de ejemplo"*
+   antes de disparar. Sin eso el ISR y el tax-loss salen en cero y la captura
+   de la pantalla fiscal pierde toda la fuerza.
 3. Usa un iPhone 16/17 Pro Max (o su simulador) para el 6.7"/6.9".
 4. Modo oscuro es el único modo de la app: no hay que configurar nada.
 5. Espera a que la cintilla de mercados cargue (IPC, S&P, USD/MXN, CETES) antes
@@ -208,10 +215,17 @@ CAPA NATIVA (no es un envoltorio de sitio web)
 · Bloqueo con Face ID / Touch ID mediante LocalAuthentication, opcional.
 · Notificaciones push, haptics y hoja de compartir del sistema.
 
-ACCESO
-La app requiere cuenta y suscripción. Las credenciales de prueba están en este
-mismo formulario y ya tienen acceso completo y transacciones cargadas para que
-las pantallas de ISR muestren datos reales.
+ACCESO Y CÓMO VER LAS PANTALLAS DE ISR
+La app requiere cuenta. Las credenciales de prueba están en este mismo
+formulario; la cuenta está en periodo de prueba, con acceso a todo, para que
+también se pueda revisar el paywall y el flujo de suscripción.
+
+Las carteras se guardan en el dispositivo, no en la cuenta, así que al iniciar
+sesión en un equipo nuevo la app arranca vacía. Para ver las funciones fiscales
+con datos, en la pestaña "Portafolio" toque "Ver un portafolio de ejemplo": carga
+una cartera de la Bolsa Mexicana con diez operaciones reales. Después, la
+pestaña "ISR" muestra el impuesto estimado del ejercicio y las oportunidades de
+tax-loss harvesting ya calculadas.
 
 OTROS
 No ejecuta operaciones ni mueve dinero, y nunca solicita credenciales bancarias

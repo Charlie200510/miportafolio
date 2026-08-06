@@ -36,14 +36,49 @@ así que si algo truena será de firma, no de código.
 La app exige registro. Sin credenciales que funcionen, App Review rechaza sin
 llegar a evaluar nada.
 
+La cuenta es `carbarser05@gmail.com`. La contraseña **no se escribe aquí**: este
+archivo está en git y se sube a GitHub. Cópiala directo al formulario.
+
 En *App Review Information*:
 
 - [ ] **Sign-in required** marcado
-- [ ] Usuario y contraseña de una cuenta con **acceso premium activo**
-- [ ] Esa cuenta con **transacciones cargadas** (compras y ventas). Si va vacía,
-      el ISR y el tax-loss salen en cero y la pantalla que sostiene todo el
-      argumento contra el 4.3(a) se ve hueca.
+- [ ] Correo y contraseña de la cuenta demo
 - [ ] Probar la cuenta **el mismo día del envío**
+
+### El trial y su reloj
+
+La cuenta va en **trial**, no en premium: así el revisor ve el estado de prueba
+y puede llegar al paywall, que es lo que necesita evaluar para el 3.1.2.
+
+El riesgo de eso es que el trial **caduca a los 14 días**. Si expira a media
+revisión, el revisor queda fuera con un paywall bloqueante y eso es un rechazo
+por 2.1. Se reinició el reloj el 2026-08-06, así que corre hasta el
+**2026-08-20**.
+
+Si el envío se retrasa, o si hay rechazo y reenvío, **reinícialo otra vez**:
+
+```bash
+ssh -i ~/Downloads/oci-portafolio-2026.key ubuntu@140.84.165.219 'cd ~/portafolio-app/backend/_datos && cp sesiones.json sesiones.json.bak.$(date +%Y%m%d-%H%M%S) && python3 -c "import json,time; p=\"sesiones.json\"; d=json.load(open(p)); d[\"usuarios\"][\"carbarser05@gmail.com\"][\"creado_en\"]=time.time(); json.dump(d,open(p,\"w\"),ensure_ascii=False,indent=2); print(\"trial reiniciado: 14 dias\")"'
+```
+
+Para comprobar cuántos días quedan:
+
+```bash
+curl -s -X POST https://miportafolio.uk/api/auth/ingresar -H 'Content-Type: application/json' -d '{"email":"carbarser05@gmail.com","password":"LA_CONTRASENA"}' | python3 -m json.tool | grep dias_restantes
+```
+
+### Los datos que verá el revisor
+
+Las transacciones **no viven en la cuenta**, viven en el `localStorage` del
+dispositivo. Darle credenciales al revisor no le da datos: al instalar de cero
+la app le sale vacía y el ISR, el tax-loss y el P&L salen en cero — justo las
+pantallas que sostienen el argumento contra el 4.3(a).
+
+Por eso el onboarding ahora ofrece **"Ver un portafolio de ejemplo"**, que carga
+una cartera de la BMV con diez operaciones reales. Con eso el revisor llega a
+cifras pobladas en dos toques y sin capturar nada.
+
+Dilo explícitamente en las notas de revisión, o puede no encontrarlo.
 
 ---
 
