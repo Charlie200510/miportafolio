@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1A60E22766DE54D112844FF4 /* MPBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72421CA4217802F7D8C33D69 /* MPBridgeViewController.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -15,10 +16,39 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50AABB01C0DE000000000002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 50AABB01C0DE000000000001 /* PrivacyInfo.xcprivacy */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		928647628BFBC0B28A07CE17 /* MercadosWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B805F6D138A6CD6221DA6862 /* MercadosWidget.swift */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
+		CCF36BC5A971B2E5713EB887 /* WidgetMercados.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1280199EED1DC221A61EB7EC /* WidgetMercados.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D819A4C842CC08273A1A6CA3 /* MPBloqueoBiometrico.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCAB3377415EBC64E07CAED7 /* MPBloqueoBiometrico.swift */; };
+		EC13E0D07B1B6EAE028ACF00 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8CAB4272E4811B6B3B4A7FD9 /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		4A3851D0E5149825D4CCBA57 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4424D79ED7DE58C574EFB868;
+			remoteInfo = WidgetMercados;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		05E52B12E8449A34849B00A2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CCF36BC5A971B2E5713EB887 /* WidgetMercados.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		1280199EED1DC221A61EB7EC /* WidgetMercados.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WidgetMercados.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -30,8 +60,13 @@
 		50AABB01C0DE000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		50AABB01C0DE000000000003 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		72421CA4217802F7D8C33D69 /* MPBridgeViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MPBridgeViewController.swift; sourceTree = "<group>"; };
+		8CAB4272E4811B6B3B4A7FD9 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
+		B805F6D138A6CD6221DA6862 /* MercadosWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MercadosWidget.swift; sourceTree = "<group>"; };
+		BA13DB30A68F1E11DA7427CC /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BCAB3377415EBC64E07CAED7 /* MPBloqueoBiometrico.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MPBloqueoBiometrico.swift; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -44,6 +79,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB4BC36E629D4A6BC40F0835 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EC13E0D07B1B6EAE028ACF00 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -51,6 +94,7 @@
 			isa = PBXGroup;
 			children = (
 				AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */,
+				9C36C28CD0229EFAC163E366 /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -62,6 +106,7 @@
 				504EC3051FED79650016851F /* Products */,
 				7F8756D8B27F46E3366F6CEA /* Pods */,
 				27E2DDA53C4D2A4D1A88CE4A /* Frameworks */,
+				A546869BC1A76146C02A3674 /* WidgetMercados */,
 			);
 			sourceTree = "<group>";
 		};
@@ -69,6 +114,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				1280199EED1DC221A61EB7EC /* WidgetMercados.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -86,6 +132,8 @@
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
+				72421CA4217802F7D8C33D69 /* MPBridgeViewController.swift */,
+				BCAB3377415EBC64E07CAED7 /* MPBloqueoBiometrico.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -99,9 +147,44 @@
 			name = Pods;
 			sourceTree = "<group>";
 		};
+		9C36C28CD0229EFAC163E366 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				8CAB4272E4811B6B3B4A7FD9 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		A546869BC1A76146C02A3674 /* WidgetMercados */ = {
+			isa = PBXGroup;
+			children = (
+				B805F6D138A6CD6221DA6862 /* MercadosWidget.swift */,
+				BA13DB30A68F1E11DA7427CC /* Info.plist */,
+			);
+			name = WidgetMercados;
+			path = WidgetMercados;
+			sourceTree = SOURCE_ROOT;
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		4424D79ED7DE58C574EFB868 /* WidgetMercados */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BCC3E292511C88CCEEB6DBEA /* Build configuration list for PBXNativeTarget "WidgetMercados" */;
+			buildPhases = (
+				62B35EC03B73C6EA97402B87 /* Sources */,
+				BB4BC36E629D4A6BC40F0835 /* Frameworks */,
+				B15FD49EB061C314BE41EAE4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WidgetMercados;
+			productName = WidgetMercados;
+			productReference = 1280199EED1DC221A61EB7EC /* WidgetMercados.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		504EC3031FED79650016851F /* App */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
@@ -111,10 +194,12 @@
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
 				9592DBEFFC6D2A0C8D5DEB22 /* [CP] Embed Pods Frameworks */,
+				05E52B12E8449A34849B00A2 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B37740225D7843C9DE77A4A2 /* PBXTargetDependency */,
 			);
 			name = App;
 			productName = App;
@@ -146,13 +231,12 @@
 				Base,
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
-			packageReferences = (
-			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				4424D79ED7DE58C574EFB868 /* WidgetMercados */,
 			);
 		};
 /* End PBXProject section */
@@ -169,6 +253,13 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B15FD49EB061C314BE41EAE4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -216,10 +307,29 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				1A60E22766DE54D112844FF4 /* MPBridgeViewController.swift in Sources */,
+				D819A4C842CC08273A1A6CA3 /* MPBloqueoBiometrico.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		62B35EC03B73C6EA97402B87 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				928647628BFBC0B28A07CE17 /* MercadosWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B37740225D7843C9DE77A4A2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = WidgetMercados;
+			target = 4424D79ED7DE58C574EFB868 /* WidgetMercados */;
+			targetProxy = 4A3851D0E5149825D4CCBA57 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -393,6 +503,51 @@
 			};
 			name = Release;
 		};
+		8049B6F379F5612492A38089 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 7;
+				DEVELOPMENT_TEAM = B3C6794B74;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WidgetMercados/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.miportafolio.WidgetMercados;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8557933786402F3366723B22 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 7;
+				DEVELOPMENT_TEAM = B3C6794B74;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WidgetMercados/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.miportafolio.WidgetMercados;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -410,6 +565,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BCC3E292511C88CCEEB6DBEA /* Build configuration list for PBXNativeTarget "WidgetMercados" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8557933786402F3366723B22 /* Release */,
+				8049B6F379F5612492A38089 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

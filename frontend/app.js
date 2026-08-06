@@ -9518,6 +9518,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // ============================================================================
+//  PUENTE CON LA CAPA NATIVA (iOS)
+// ============================================================================
+// La barra de pestañas nativa llama aquí en vez de recargar la página, así que
+// la navegación nativa y la web comparten un solo estado. Se expone en window
+// porque quien la invoca es Swift, vía evaluateJavaScript.
+// Avisa a Swift cuando hay una capa a pantalla completa abierta (tour, paywall,
+// gate de cuenta) para que esconda la barra de pestañas nativa. Sin esto la
+// barra flota ENCIMA del modal y tapa sus botones.
+//
+// Se detecta de forma genérica en vez de instrumentar cada overlay uno por uno:
+// así los modales que se añadan después quedan cubiertos sin tocar nada.
+(function vigilarCapas() {
+  const puente = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mpUI;
+  if (!puente) return;   // solo existe dentro de la app nativa
+
+  let ultimoEstado = null;
+  const hayCapaCompleta = () => {
+    const alto = window.innerHeight || 0;
+    for (const e of document.querySelectorAll('body > div, body > section')) {
+      const cs = getComputedStyle(e);
+      if (cs.position !== 'fixed') continue;
+      if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+      if ((+cs.zIndex || 0) < 9000) continue;
+      // Una capa que cubre más de la mitad de la pantalla es un modal, no un
+      // toast ni una barra pegada.
+      if (e.getBoundingClientRect().height > alto * 0.5) return true;
+    }
+    return false;
+  };
+
+  const revisar = () => {
+    const tapado = hayCapaCompleta();
+    if (tapado === ultimoEstado) return;
+    ultimoEstado = tapado;
+    try { puente.postMessage({ accion: 'tabbar', visible: !tapado }); } catch (_) {}
+  };
+
+  new MutationObserver(revisar).observe(document.body, {
+    childList: true, subtree: true, attributes: true,
+    attributeFilter: ['class', 'style', 'hidden'],
+  });
+  window.addEventListener('resize', revisar);
+  revisar();
+})();
+
+window.mpIrA = function (vista) {
+  try {
+    const b = document.querySelector(`.nav-tab[data-vista="${vista}"]`)
+           || document.querySelector(`[data-vista="${vista}"]`);
+    if (b) { b.click(); window.scrollTo({ top: 0 }); return true; }
+  } catch (_) {}
+  return false;
+};
+
+// ============================================================================
 //  CUADERNILLO MÉXICO — la retícula de diferenciación de la pantalla principal
 // ============================================================================
 // Rellena #mx-reticula con datos reales de los endpoints que ya existen. Cada

@@ -620,6 +620,20 @@ body {
   padding-right: var(--sa-right);
 }
 
+/* ───────────────── MODO NATIVO (la clase la pone Swift) ─────────────────── */
+/* MPBridgeViewController añade .mp-nativo al <html> al arrancar. Cuando hay
+   barra de pestañas nativa abajo, la sub-nav web de arriba sobra: tener las dos
+   deja la misma navegación duplicada y es justo lo que hace que una app se
+   sienta "un sitio web dentro de una caja". El masthead se queda —es la
+   identidad— pero la navegación baja al pulgar. */
+html.mp-nativo #mp-topbar nav { display: none; }
+
+/* Hueco al pie para que la barra nativa no tape el final del contenido.
+   El WebView además recibe contentInset desde Swift; esto cubre los elementos
+   fijos que no participan del scroll. */
+html.mp-nativo body { padding-bottom: 0; }
+html.mp-nativo .mp-colofon { padding-bottom: calc(96px + var(--sa-bottom)); }
+
 /* ──────────────────── MICRO-INTERACCIONES SOBRIAS ───────────────────────── */
 /* Sin rebotes ni escalados llamativos: solo cambio de tinta. */
 button:active, a:active, [role="button"]:active, .nav-tab:active {

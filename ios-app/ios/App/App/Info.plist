@@ -47,5 +47,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Para desbloquear tu portafolio con Face ID y que nadie más pueda verlo si tomas prestado el teléfono.</string>
 </dict>
 </plist>
