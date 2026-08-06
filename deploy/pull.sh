@@ -181,13 +181,21 @@ verde "HEAD = origin/$RAMA = $(git rev-parse --short HEAD)"
 # deploy seguía sirviendo payloads calculados por el código ANTERIOR: el arreglo
 # de top-movers parecía no haber subido porque la respuesta cacheada aún traía
 # el ranking viejo. Son datos derivados y se regeneran en la primera petición.
+# Se purga por GLOB, no por lista: enumerarlos a mano ya falló una vez —
+# _cache_portafolio_optimo no estaba en la lista y siguió sirviendo la
+# diversificación calculada con la fórmula vieja después de desplegar el
+# arreglo. Cualquier caché nuevo queda cubierto sin tocar este script.
+# OJO: el patrón es backend/_cache_* a propósito; backend/_datos/ (cuentas,
+# trials, tombstones) NO coincide y jamás debe tocarse.
 paso "Purgando cachés derivados"
-for d in backend/_cache_topmovers backend/_cache_periodico backend/_cache_accion_dia; do
+shopt -s nullglob
+for d in backend/_cache_*; do
   [[ -d "$d" ]] || continue
-  n="$(find "$d" -name '*.json' -type f | wc -l | tr -d ' ')"
-  find "$d" -name '*.json' -type f -delete 2>/dev/null || true
+  n="$(find "$d" -type f | wc -l | tr -d ' ')"
+  find "$d" -type f -delete 2>/dev/null || true
   echo "  $d -> $n archivo(s) borrados"
 done
+shopt -u nullglob
 
 # --- 5b. Rehidratar el universo si el checkout lo dejó viejo ----------------
 # El paso 2 devolvió los DATA_FILES a la versión commiteada. Si eso los hizo
