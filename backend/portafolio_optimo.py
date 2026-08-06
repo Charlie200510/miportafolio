@@ -260,11 +260,31 @@ def _optimizar_markowitz(
     # Pesos como dict, filtrar los <0.5% para limpiar
     pesos = {t: round(float(w), 4) for t, w in zip(df_rets.columns, w_final) if w > 0.005}
 
-    # Diversificación: medir cuánto del riesgo viene de la covarianza vs idiosincrático
-    # Riesgo idiosincrático = sum(w_i^2 * var_i) — si los pesos están bien diversificados, esto es bajo
-    var_idiosin = float(np.sum(w_final**2 * np.diag(cov.values)))
-    var_total = float(w_final @ cov.values @ w_final)
-    pct_diversificable_eliminado = (1 - var_total / var_idiosin) if var_idiosin > 0 else 0
+    # Diversificación: qué fracción del riesgo se eliminó al combinar los activos.
+    #
+    # La versión anterior comparaba la varianza total contra la suma de las
+    # varianzas ponderadas (solo la diagonal de la covarianza):
+    #     1 - (w' Σ w) / Σ wi² σi²
+    # Eso es estructuralmente NEGATIVO en cualquier cartera normal: con
+    # correlaciones positivas —lo típico entre acciones— la varianza del
+    # portafolio SUPERA a la suma de la diagonal, así que el cociente pasa de 1
+    # y la resta sale en rojo. En pantalla se veía "DIVERSIFICACIÓN -62%", que
+    # no significa nada.
+    #
+    # Se usa el diversification ratio, que es la medida estándar: se compara la
+    # volatilidad real contra la que tendría la MISMA cartera si todo estuviera
+    # perfectamente correlacionado (Σ wi σi, el peor caso sin diversificar).
+    # Queda acotado en [0, 1): 0% = no ganaste nada juntando estos activos,
+    # 60% = eliminaste el 60% del riesgo que tendrías sin diversificar.
+    vol_individuales = np.sqrt(np.clip(np.diag(cov.values), 0, None))
+    vol_sin_diversificar = float(np.sum(w_final * vol_individuales))
+    if vol_sin_diversificar > 0:
+        pct_diversificable_eliminado = 1 - (vol_final / vol_sin_diversificar)
+    else:
+        pct_diversificable_eliminado = 0.0
+    # Blindaje numérico: con pesos largos el ratio no puede salir de [0,1), pero
+    # un redondeo raro no debe volver a poner un porcentaje absurdo en pantalla.
+    pct_diversificable_eliminado = max(0.0, min(1.0, pct_diversificable_eliminado))
 
     return {
         "pesos":                 pesos,
