@@ -49,6 +49,15 @@
     { tipo: 'LIFETIME', nombre: 'Ilimitado', precio: '$6,500 MXN', sufijo: ' · pago único' },
   ];
 
+  // Planes de WEB (MercadoPago). "Ilimitado" NO existe aquí: es pago único de
+  // la tienda y sólo se ofrece en iOS. Igual que arriba, son de REFERENCIA:
+  // /api/payments/estado manda los reales y los sustituye, de modo que el
+  // precio del paywall y el del checkout no puedan desincronizarse.
+  const PLANES_WEB_REF = [
+    { ciclo: 'mensual', nombre: 'Mensual', precio: '$65 MXN',  sufijo: '/mes' },
+    { ciclo: 'anual',   nombre: 'Anual',   precio: '$650 MXN', sufijo: '/año', badge: '2 meses gratis vs mensual' },
+  ];
+
   // Resuelve con `fallback` si la promesa tarda más de ms (nunca rechaza).
   function conTimeout(promesa, ms, fallback) {
     return Promise.race([
@@ -274,10 +283,10 @@
   }
 
   // -------------------------------------------------- MercadoPago (web)
-  async function comprarWeb(email) {
+  async function comprarWeb(email, ciclo) {
     const r = await fetch('/api/payments/suscribir', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ email, ciclo: ciclo || 'mensual' })
     });
     const j = await r.json();
     if (j && j.checkout_url) { window.location.href = j.checkout_url; return; }
@@ -338,7 +347,9 @@
            El plan Ilimitado es un pago único, sin renovación.</p>`
       : `<div style="font-size:28px;font-weight:800;margin:2px 0">14 días gratis</div>
          <p style="color:#9A9284;font-size:13px;margin:6px 0 0">
-           Luego ${PRECIO_TXT}. Cancela en un click, sin permanencia. Pago seguro con MercadoPago.</p>`;
+           Luego elige tu plan. Las suscripciones se renuevan automáticamente
+           (cada mes o cada año, según el plan) hasta que canceles. Cancela en un
+           click, sin permanencia. Pago seguro con MercadoPago.</p>`;
 
     // Captura de correo — SOLO en web (MercadoPago necesita el correo del pagador).
     const captura = `
@@ -369,7 +380,12 @@
          <button data-x="restore" style="${BTN_SEC}">Restaurar compra</button>
          ${loginOpcional}`
       : email
-      ? `<button data-x="buy" style="${BTN_PRI}">Empezar prueba gratis</button>`
+      ? `<div data-x="planes-web" style="display:flex;flex-direction:column;gap:8px">${
+             // Sembrado con los precios de referencia (no con "Cargando…") por
+             // si _cargarPlanesWeb no llega a correr: la pantalla de compra
+             // nunca debe quedar vacía.
+             PLANES_WEB_REF.map(_botonPlan).join('')
+           }</div>`
       : captura;
 
     const legal = _legalHTML();
@@ -446,7 +462,7 @@
   // Un botón de plan. `o.idx` presente = paquete real de RevenueCat; ausente =
   // precio de referencia (el handler de compra resuelve el paquete al tocarlo).
   function _botonPlan(o) {
-    const destacado = o.tipo === 'ANNUAL';
+    const destacado = o.tipo === 'ANNUAL' || o.ciclo === 'anual';
     // Badge de ahorro: $650/año vs $65×12 = 2 meses gratis (LANZAMIENTO §1.2)
     const izquierda = o.badge
       ? `<span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
@@ -455,7 +471,10 @@
          </span>`
       : `<span>${o.nombre}</span>`;
     const pkgAttr = (o.idx == null) ? '' : ` data-pkg="${o.idx}"`;
-    return `<button data-x="buy" data-plan="${o.tipo}"${pkgAttr}
+    // data-ciclo sólo lo llevan los planes de web: es lo que se manda a
+    // /api/payments/suscribir para elegir mensual o anual.
+    const cicloAttr = o.ciclo ? ` data-ciclo="${o.ciclo}"` : '';
+    return `<button data-x="buy" data-plan="${o.tipo || ''}"${pkgAttr}${cicloAttr}
       style="${destacado ? BTN_PRI : BTN_SEC};display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left">
       ${izquierda}<span style="font-weight:800;white-space:nowrap">${o.precio}${o.sufijo}</span>
     </button>`;
@@ -540,6 +559,37 @@
            al comprar verás el precio exacto de tu región.</p>
          <button data-x="reintentar-planes" style="${BTN_SEC};margin-top:8px">Reintentar</button>`);
     });
+  }
+
+  // Planes de WEB desde el backend (/api/payments/estado). El backend es la
+  // única fuente de precio: si alguien cambia MERCADOPAGO_PRECIO_ANUAL_MXN, el
+  // paywall lo refleja sin tocar este archivo, y nunca puede anunciar un precio
+  // distinto al que se cobra en el checkout. Si falla, se quedan los de
+  // referencia ya pintados (no se vacía ni se bloquea la compra).
+  function _cargarPlanesWeb() {
+    if (!_overlay || esNativo()) return;
+    conTimeout((async () => {
+      const r = await fetch('/api/payments/estado', { cache: 'no-store' });
+      return await r.json();
+    })(), TIMEOUT_RED_MS, null).then((cfg) => {
+      const planes = cfg && Array.isArray(cfg.planes) ? cfg.planes : null;
+      if (!planes || !planes.length) return;
+      const c = _overlay && _overlay.querySelector('[data-x="planes-web"]');
+      if (!c) return;
+      c.innerHTML = planes.map(p => _botonPlan({
+        ciclo: p.ciclo,
+        nombre: p.nombre,
+        precio: '$' + Number(p.precio_mxn).toLocaleString('es-MX') + ' MXN',
+        sufijo: p.sufijo,
+        badge: p.badge,
+      })).join('');
+    }).catch(() => { /* se quedan los de referencia */ });
+  }
+
+  // Cada plataforma confirma sus precios con su propia fuente: la tienda vía
+  // RevenueCat en nativo, el backend en web.
+  function _cargarPlanes() {
+    if (esNativo()) _cargarPlanesEnOverlay(); else _cargarPlanesWeb();
   }
 
   // ---------------------------------------------- OTP (login nativo — LANZAMIENTO §8)
@@ -637,7 +687,7 @@
     document.body.appendChild(_overlay);
     const _propio = _overlay;                 // para no re-pintar un overlay ya cerrado
 
-    if (esNativo() && !premium) _cargarPlanesEnOverlay();   // planes aunque NO haya correo (anónimo)
+    if (!premium) _cargarPlanes();   // nativo: planes aunque NO haya correo (anónimo)
 
     // Sesión y entitlement EN SEGUNDO PLANO: si cambian algo, se re-pinta.
     (async () => {
@@ -652,7 +702,7 @@
       const body = _propio.querySelector('[data-x="body"]');
       if (!body) return;
       body.innerHTML = vista(_email, esPrem, _bloqueante);
-      if (esNativo() && !esPrem) _cargarPlanesEnOverlay();
+      if (!esPrem) _cargarPlanes();
     })();
 
     // Enter en el campo de correo = Continuar; en el de código = Verificar
@@ -724,7 +774,7 @@
           // DOMContentLoaded, así que tras el login por OTP no aparecía.
           notificarSesion();
           toast('Sesión iniciada como ' + _email + '.', 'success');
-          if (body) { body.innerHTML = vista(_email, false, _bloqueante); if (esNativo()) _cargarPlanesEnOverlay(); }
+          if (body) { body.innerHTML = vista(_email, false, _bloqueante); _cargarPlanes(); }
           try { verificarAcceso(); } catch (_) {}
         } catch (_) {
           if (body) body.innerHTML = _otpCuerpo(_email, 'Sin conexión. Intenta de nuevo.');
@@ -768,7 +818,7 @@
       }
       if (act === 'volver') {
         const body = _overlay.querySelector('[data-x="body"]');
-        if (body) { body.innerHTML = vista(_email, false, _bloqueante); if (esNativo()) _cargarPlanesEnOverlay(); }
+        if (body) { body.innerHTML = vista(_email, false, _bloqueante); _cargarPlanes(); }
         return;
       }
       if (act === 'email-continuar') {
@@ -802,7 +852,7 @@
         // MercadoPago no depende de abrir el correo, así que no bloqueamos el
         // flujo — pero tampoco afirmamos que se envió sin saberlo: antes era
         // fire-and-forget con un toast de éxito incondicional.
-        if (body) body.innerHTML = vista(_email, false, _bloqueante);
+        if (body) { body.innerHTML = vista(_email, false, _bloqueante); _cargarPlanes(); }
         (async () => {
           try {
             const r = await fetch('/api/auth/login', {
@@ -852,8 +902,11 @@
             toast('¡Listo! Tu suscripción está activa.');
             try { window.dispatchEvent(new Event('mp:premium-actualizado')); } catch (_) {}
           } else {
-            if (!_email) { toast('Escribe tu correo para continuar.'); el.disabled = false; el.textContent = prev; return; }
-            await comprarWeb(_email);    // redirige al checkout de MercadoPago
+            if (!_email) { toast('Escribe tu correo para continuar.'); el.disabled = false; el.innerHTML = prev; return; }
+            // Sin data-ciclo (paywall viejo cacheado) se cae al mensual, que es
+            // el comportamiento previo.
+            const ciclo = el.getAttribute('data-ciclo') || 'mensual';
+            await comprarWeb(_email, ciclo);   // redirige al checkout de MercadoPago
           }
         } catch (e) {
           el.disabled = false; el.innerHTML = prev;

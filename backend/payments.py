@@ -20,12 +20,25 @@ from __future__ import annotations
 
 import hmac
 import json
+import logging
 import os
 import secrets
 import time
 from hashlib import sha256
 from pathlib import Path
 from typing import Any, Optional
+
+# Bitacora operativa. Va a stdout, que gunicorn manda a journalctl
+# (`sudo journalctl -u miportafolio`). Sin esto, un webhook rechazado no dejaba
+# NINGUN rastro: el cobro ocurria en MercadoPago, el plan no se activaba y el
+# unico indicio era un 200 de 38 bytes en el log de accesos.
+log = logging.getLogger("pagos")
+if not log.handlers:
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("[pagos] %(levelname)s %(message)s"))
+    log.addHandler(_h)
+    log.propagate = False
+log.setLevel(logging.INFO)
 
 try:
     import requests  # type: ignore
@@ -45,7 +58,42 @@ _STORE_PATH = _DATA_DIR / "pagos.json"
 
 _MP_API = "https://api.mercadopago.com"
 _PRECIO = float(os.environ.get("MERCADOPAGO_PRECIO_MXN", "65.00"))
+_PRECIO_ANUAL = float(os.environ.get("MERCADOPAGO_PRECIO_ANUAL_MXN", "650.00"))
 _PLAN_NOMBRE = os.environ.get("MERCADOPAGO_PLAN_NOMBRE", "Mi Portafolio Premium")
+
+# Ciclos de cobro ofrecidos en WEB. El plan "Ilimitado" (pago unico) existe solo
+# en iOS via RevenueCat y NO se ofrece aqui.
+# OJO: MercadoPago solo acepta frequency_type "days" o "months" en
+# auto_recurring. El anual es 12 meses, no frequency_type "years".
+_CICLOS: dict[str, dict[str, Any]] = {
+    "mensual": {
+        "frequency": 1,
+        "frequency_type": "months",
+        "precio": _PRECIO,
+        "etiqueta": "mensual",
+        "sufijo": "/mes",
+        "nombre": "Mensual",
+        "reason": _PLAN_NOMBRE,
+    },
+    "anual": {
+        "frequency": 12,
+        "frequency_type": "months",
+        "precio": _PRECIO_ANUAL,
+        "etiqueta": "anual",
+        "sufijo": "/año",
+        "nombre": "Anual",
+        "reason": f"{_PLAN_NOMBRE} (anual)",
+        "badge": "2 meses gratis vs mensual",
+    },
+}
+_CICLO_DEFAULT = "mensual"
+
+
+def _ciclo(nombre: str | None) -> dict[str, Any]:
+    c = (nombre or _CICLO_DEFAULT).strip().lower()
+    if c not in _CICLOS:
+        raise ValueError(f"ciclo invalido: {nombre!r} (usa 'mensual' o 'anual')")
+    return _CICLOS[c]
 _BACK_URL = os.environ.get("MERCADOPAGO_BACK_URL", "http://localhost:5001/static/index.html?paid=1")
 _WEBHOOK_SECRET = os.environ.get("MERCADOPAGO_WEBHOOK_SECRET")
 
@@ -83,9 +131,31 @@ def estado_configuracion() -> dict[str, Any]:
         "moneda": "MXN",
         "frecuencia": "mensual",
         "trial_dias": 14,
+        # Planes ofrecidos en WEB. El frontend los pinta desde aqui para que el
+        # precio del paywall y el del checkout no puedan desincronizarse.
+        "planes": [
+            {
+                "ciclo": c,
+                "nombre": v["nombre"],
+                "precio_mxn": v["precio"],
+                "sufijo": v["sufijo"],
+                "badge": v.get("badge"),
+            }
+            for c, v in _CICLOS.items()
+        ],
         "revenuecat_disponible": bool(_RC_SECRET) and requests is not None,
         "entitlement": _RC_ENTITLEMENT,
     }
+
+
+def _ofuscar(email: str | None) -> str:
+    """Correo parcialmente oculto para la bitacora (no volcamos PII completa)."""
+    e = (email or "").strip()
+    if "@" not in e:
+        return "(sin correo)"
+    usuario, dominio = e.split("@", 1)
+    visible = usuario[:2] if len(usuario) > 2 else usuario[:1]
+    return f"{visible}***@{dominio}"
 
 
 def _cargar_store() -> dict[str, Any]:
@@ -103,15 +173,47 @@ def _guardar_store(data: dict[str, Any]) -> None:
     tmp.replace(_STORE_PATH)
 
 
-def crear_preapproval(email: str) -> dict[str, Any]:
+def _cancelar_en_mp(pre_id: str) -> bool:
+    """Cancela una suscripcion en MercadoPago. True si quedo cancelada."""
+    tok = _token()
+    if not tok or requests is None or not pre_id:
+        return False
+    try:
+        r = requests.put(
+            f"{_MP_API}/preapproval/{pre_id}",
+            headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"},
+            json={"status": "cancelled"},
+            timeout=15,
+        )
+        ok = r.status_code < 400
+        log.info("cancelar_mp id=%s http=%s ok=%s", pre_id, r.status_code, ok)
+        return ok
+    except Exception as e:
+        log.warning("cancelar_mp id=%s fallo: %s", pre_id, e)
+        return False
+
+
+def _otras_suscripciones(data: dict[str, Any], email: str, excepto: str,
+                         estados: tuple[str, ...]) -> list[str]:
+    """IDs de otras suscripciones del mismo correo en alguno de esos estados."""
+    return [
+        pid for pid, s in (data.get("suscripciones") or {}).items()
+        if pid != excepto
+        and (s or {}).get("email") == email
+        and str((s or {}).get("status") or "").lower() in estados
+    ]
+
+
+def crear_preapproval(email: str, ciclo: str | None = None) -> dict[str, Any]:
     """
-    Crea una suscripcion recurrente. Devuelve:
-      {ok, checkout_url, preapproval_id, mock_mode}
+    Crea una suscripcion recurrente (mensual o anual). Devuelve:
+      {ok, checkout_url, preapproval_id, mock_mode, ciclo, precio_mxn}
     """
     if not email or "@" not in email:
         raise ValueError("Email invalido")
 
     email = email.strip().lower()
+    cfg = _ciclo(ciclo)
     tok = _token()
 
     if not tok or requests is None:
@@ -121,6 +223,8 @@ def crear_preapproval(email: str) -> dict[str, Any]:
         data.setdefault("suscripciones", {})[pre_id] = {
             "email": email,
             "status": "pending",
+            "ciclo": cfg["etiqueta"],
+            "precio_mxn": cfg["precio"],
             "mock": True,
             "creado_en": time.time(),
         }
@@ -130,17 +234,18 @@ def crear_preapproval(email: str) -> dict[str, Any]:
             "mock_mode": True,
             "preapproval_id": pre_id,
             "checkout_url": f"{_BACK_URL}&mock_preapproval={pre_id}",
-            "plan": _PLAN_NOMBRE,
-            "precio_mxn": _PRECIO,
+            "plan": cfg["reason"],
+            "ciclo": cfg["etiqueta"],
+            "precio_mxn": cfg["precio"],
         }
 
     # Llamada real a MercadoPago.
     body = {
-        "reason": _PLAN_NOMBRE,
+        "reason": cfg["reason"],
         "auto_recurring": {
-            "frequency": 1,
-            "frequency_type": "months",
-            "transaction_amount": _PRECIO,
+            "frequency": cfg["frequency"],
+            "frequency_type": cfg["frequency_type"],
+            "transaction_amount": cfg["precio"],
             "currency_id": "MXN",
         },
         "back_url": _BACK_URL,
@@ -157,28 +262,45 @@ def crear_preapproval(email: str) -> dict[str, Any]:
         timeout=20,
     )
     if resp.status_code >= 400:
+        log.error("crear_preapproval ciclo=%s http=%s cuerpo=%s",
+                  cfg["etiqueta"], resp.status_code, resp.text[:300])
         raise RuntimeError(f"MercadoPago respondio {resp.status_code}: {resp.text[:400]}")
     payload = resp.json()
     pre_id = str(payload.get("id"))
     checkout = payload.get("init_point") or payload.get("sandbox_init_point")
 
     data = _cargar_store()
+    # Checkouts ABANDONADOS del mismo correo: si el usuario pidió el mensual,
+    # se arrepintió y volvió por el anual, la primera suscripción se queda
+    # "pending" y su link sigue siendo pagable. Si pagara las dos quedaría con
+    # dos cobros recurrentes vivos. Cancelamos las pendientes anteriores; las
+    # ya AUTORIZADAS no se tocan aquí (eso lo resuelve el webhook al activar).
+    for viejo in _otras_suscripciones(data, email, pre_id, ("pending",)):
+        if _cancelar_en_mp(viejo):
+            data["suscripciones"][viejo]["status"] = "cancelled"
+            data["suscripciones"][viejo]["cancelada_por"] = pre_id
+
     data.setdefault("suscripciones", {})[pre_id] = {
         "email": email,
         "status": payload.get("status", "pending"),
+        "ciclo": cfg["etiqueta"],
+        "precio_mxn": cfg["precio"],
         "mock": False,
         "creado_en": time.time(),
         "raw": {k: payload.get(k) for k in ("id", "status", "init_point", "date_created")},
     }
     _guardar_store(data)
+    log.info("preapproval creado id=%s ciclo=%s monto=%s email=%s",
+             pre_id, cfg["etiqueta"], cfg["precio"], _ofuscar(email))
 
     return {
         "ok": True,
         "mock_mode": False,
         "preapproval_id": pre_id,
         "checkout_url": checkout,
-        "plan": _PLAN_NOMBRE,
-        "precio_mxn": _PRECIO,
+        "plan": cfg["reason"],
+        "ciclo": cfg["etiqueta"],
+        "precio_mxn": cfg["precio"],
     }
 
 
@@ -235,9 +357,15 @@ def _verificar_firma(headers: dict[str, str], raw_body: bytes, data_id: str = ""
     """
     if not _WEBHOOK_SECRET:
         # Sin secreto: en modo estricto (prod) rechazamos; si no, aceptamos (dev).
-        return not STRICT_WEBHOOKS
+        if STRICT_WEBHOOKS:
+            log.error("webhook RECHAZADO: STRICT_WEBHOOKS=1 y no hay MERCADOPAGO_WEBHOOK_SECRET")
+            return False
+        log.warning("webhook ACEPTADO SIN FIRMA: no hay secreto y STRICT_WEBHOOKS esta apagado")
+        return True
+
     sig = headers.get("x-signature") or headers.get("X-Signature")
     if not sig:
+        log.warning("webhook RECHAZADO: sin header x-signature (data.id=%s)", data_id)
         return False
     parts = {}
     for p in sig.split(","):
@@ -247,25 +375,47 @@ def _verificar_firma(headers: dict[str, str], raw_body: bytes, data_id: str = ""
     ts = parts.get("ts")
     v1 = parts.get("v1")
     if not (ts and v1):
+        log.warning("webhook RECHAZADO: x-signature sin ts o v1 (data.id=%s)", data_id)
         return False
 
     req_id = headers.get("x-request-id") or headers.get("X-Request-Id") or ""
 
-    def _mac(did: str) -> str:
+    def _mac(did: str, con_req: bool) -> str:
         trozos = []
         if did:
             trozos.append(f"id:{did};")
-        if req_id:
+        if con_req and req_id:
             trozos.append(f"request-id:{req_id};")
         trozos.append(f"ts:{ts};")
-        manifest = "".join(trozos).encode()
-        return hmac.new(_WEBHOOK_SECRET.encode(), manifest, sha256).hexdigest()
+        return hmac.new(_WEBHOOK_SECRET.encode(), "".join(trozos).encode(), sha256).hexdigest()
 
     did = str(data_id or "")
+    # Variantes toleradas: id tal cual / en minuscula, y con o sin el segmento
+    # request-id (MercadoPago lo omite en algunas notificaciones aunque mande el
+    # header). Todas exigen el MISMO secreto, asi que probarlas no debilita nada.
     for candidato in {did, did.lower()}:
-        if hmac.compare_digest(_mac(candidato), v1):
-            return True
+        for con_req in (True, False):
+            if hmac.compare_digest(_mac(candidato, con_req), v1):
+                return True
+
+    # Diagnostico: sin esto, un secreto equivocado es indistinguible de un
+    # atacante y no hay forma de depurarlo en produccion.
+    #
+    # Se registran los datos que manda MercadoPago (data.id, request-id, ts y la
+    # firma v1 completa). Nada de eso es secreto: v1 es el HMAC que llega en la
+    # peticion, y con el se puede recomputar el manifiesto correcto desde la VM
+    # para saber si el secreto configurado es el equivocado. El SECRETO y el
+    # v1 ESPERADO no se registran (solo la longitud del secreto).
+    log.warning(
+        "webhook RECHAZADO firma_invalida data.id=%s request-id=%s ts=%s "
+        "v1_recibido=%s v1_esperado=%s… (secreto len=%d)",
+        data_id, req_id or "(ausente)", ts, v1,
+        _mac(did, True)[:8], len(_WEBHOOK_SECRET),
+    )
     return False
+
+
+_MAX_EVENTOS = 500
 
 
 def procesar_webhook(
@@ -280,12 +430,30 @@ def procesar_webhook(
 
     `data_id_query` es el ?data.id= del query string, que es el valor que
     MercadoPago incluye en la firma. Si no viene, se cae al del cuerpo.
+
+    A QUIEN se le acredita el premium
+    ---------------------------------
+    Al correo de la CUENTA que inicio el cobro (el que guardamos en el store al
+    crear el preapproval), NO al `payer_email` que devuelve MercadoPago.
+
+    Son cosas distintas: `payer_email` es el correo de la cuenta de MercadoPago
+    con la que se pago. Quien se registro como `ana@itam.mx` y paga con su
+    MercadoPago personal `ana.lopez@gmail.com` recibia el premium en una cuenta
+    fantasma `ana.lopez@gmail.com` (creada ahi mismo por actualizar_plan) y se
+    quedaba sin acceso en la suya, habiendo pagado. `payer_email` solo se usa
+    como respaldo cuando el preapproval no esta en nuestro store.
     """
     tipo = payload.get("type") or payload.get("topic") or ""
-    data_id = data_id_query or (payload.get("data") or {}).get("id") or payload.get("id")
+    data_id = str(data_id_query or (payload.get("data") or {}).get("id") or payload.get("id") or "")
 
-    if not _verificar_firma(headers, raw_body, str(data_id or "")):
+    if not _verificar_firma(headers, raw_body, data_id):
+        # El error viaja al route, que responde 401. Un 200 aqui le dice a
+        # MercadoPago "entregado" y no reintenta: el cobro quedaria hecho y el
+        # plan sin activar, en silencio.
         return {"ok": False, "error": "firma_invalida"}
+
+    log.info("webhook RECIBIDO tipo=%s data.id=%s firma=ok", tipo, data_id)
+
     evento = {
         "ts": time.time(),
         "tipo": tipo,
@@ -295,6 +463,8 @@ def procesar_webhook(
 
     estado_final = None
     email_final = None
+    estado_mp = None
+    email_mp = None
 
     if tipo in ("preapproval", "subscription_preapproval") and data_id and requests is not None and _token():
         resp = requests.get(
@@ -302,23 +472,77 @@ def procesar_webhook(
             headers={"Authorization": f"Bearer {_token()}"},
             timeout=15,
         )
-        if resp.status_code < 400:
-            info = resp.json()
-            email_final = info.get("payer_email")
-            estado = (info.get("status") or "").lower()
-            if estado in ("authorized",):
-                estado_final = "activo"
-            elif estado in ("cancelled", "paused", "finished"):
-                estado_final = "inactivo"
-            evento["status_mp"] = estado
+        if resp.status_code >= 400:
+            # No lo damos por procesado: devolvemos error para responder 5xx y
+            # que MercadoPago reintente. Antes se caia en silencio a estado
+            # None y el evento se perdia para siempre.
+            log.error("webhook consulta a MP FALLO id=%s http=%s cuerpo=%s",
+                      data_id, resp.status_code, resp.text[:200])
+            return {"ok": False, "error": "consulta_mp_fallida", "tipo": tipo}
+        info = resp.json()
+        estado_mp = (info.get("status") or "").lower()
+        email_mp = (info.get("payer_email") or "").strip().lower() or None
+        if estado_mp == "authorized":
+            estado_final = "activo"
+        elif estado_mp in ("cancelled", "paused", "finished"):
+            estado_final = "inactivo"
+        evento["status_mp"] = estado_mp
 
     data = _cargar_store()
-    data.setdefault("eventos", []).append(evento)
-    if email_final and estado_final:
-        _auth.actualizar_plan(email_final, plan="premium" if estado_final == "activo" else "trial", estado_pago=estado_final)
+    sus = (data.get("suscripciones") or {}).get(data_id) or {}
+    email_store = (sus.get("email") or "").strip().lower() or None
+    email_final = email_store or email_mp
+    origen = "store" if email_store else "payer_email(respaldo)"
+    if not email_store and email_mp:
+        log.warning("webhook id=%s sin registro local; se usa payer_email de MP", data_id)
+
+    # Idempotencia: MercadoPago reintenta y manda el mismo evento varias veces.
+    # Si ya aplicamos ESTE estado a ESTE correo, no se vuelve a aplicar ni se
+    # duplica la entrada en la bitacora.
+    clave = f"{estado_mp}:{email_final}"
+    duplicado = bool(sus) and sus.get("ultimo_aplicado") == clave
+    evento["duplicado"] = duplicado
+
+    if duplicado:
+        log.info("webhook IDEMPOTENTE id=%s estado=%s email=%s (ya aplicado, se ignora)",
+                 data_id, estado_mp, _ofuscar(email_final))
+    elif email_final and estado_final:
+        _auth.actualizar_plan(
+            email_final,
+            plan="premium" if estado_final == "activo" else "trial",
+            estado_pago=estado_final,
+        )
+        log.info("webhook APLICADO id=%s status_mp=%s -> plan=%s email=%s (origen=%s)",
+                 data_id, estado_mp, estado_final, _ofuscar(email_final), origen)
+        if data_id in (data.get("suscripciones") or {}):
+            data["suscripciones"][data_id]["status"] = estado_mp
+            data["suscripciones"][data_id]["ultimo_aplicado"] = clave
+        # Un solo cobro recurrente vivo por correo: al activar una suscripcion,
+        # se cancelan en MercadoPago las OTRAS del mismo correo que sigan
+        # pendientes o autorizadas (p.ej. pago el mensual y luego el anual).
+        if estado_final == "activo":
+            for otro in _otras_suscripciones(data, email_final, data_id, ("pending", "authorized")):
+                if _cancelar_en_mp(otro):
+                    data["suscripciones"][otro]["status"] = "cancelled"
+                    data["suscripciones"][otro]["cancelada_por"] = data_id
+                    log.info("webhook cancela suscripcion duplicada id=%s (gana %s) email=%s",
+                             otro, data_id, _ofuscar(email_final))
+    else:
+        log.info("webhook SIN EFECTO id=%s tipo=%s status_mp=%s email=%s "
+                 "(estado no accionable o sin correo)",
+                 data_id, tipo, estado_mp, _ofuscar(email_final))
+
+    if not duplicado:
+        eventos = data.setdefault("eventos", [])
+        eventos.append(evento)
+        # Bitacora acotada: sin esto pagos.json crece sin limite y cada webhook
+        # lo reescribe entero.
+        if len(eventos) > _MAX_EVENTOS:
+            del eventos[:-_MAX_EVENTOS]
     _guardar_store(data)
 
-    return {"ok": True, "estado": estado_final, "email": email_final, "tipo": tipo}
+    return {"ok": True, "estado": estado_final, "email": email_final,
+            "tipo": tipo, "duplicado": duplicado}
 
 
 # ============================================================================

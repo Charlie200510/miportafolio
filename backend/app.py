@@ -3045,8 +3045,13 @@ def api_payments_suscribir():
     email = ((ses or {}).get("email") or body.get("email") or "").strip().lower()
     if not email:
         return jsonify({"error": "email requerido (o inicia sesion antes)"}), 400
+    # 'mensual' (default) o 'anual'. Un valor desconocido es error del cliente
+    # (400), no del servidor: crear_preapproval lanza ValueError.
+    ciclo = (body.get("ciclo") or "").strip().lower() or None
     try:
-        return jsonify(_payments.crear_preapproval(email))
+        return jsonify(_payments.crear_preapproval(email, ciclo))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -3088,8 +3093,16 @@ def api_payments_webhook():
     data_id_query = request.args.get("data.id") or request.args.get("id") or ""
     try:
         res = _payments.procesar_webhook(headers, raw, payload, data_id_query)
+        # El código HTTP importa: MercadoPago sólo reintenta si NO recibe 2xx.
+        # Devolver 200 a un webhook rechazado lo da por entregado, y un cobro
+        # real se quedaba sin activar el plan, en silencio y sin reintento.
+        if res.get("error") == "firma_invalida":
+            return jsonify(res), 401
+        if res.get("error"):
+            return jsonify(res), 502      # fallo temporal nuestro: que reintente
         return jsonify(res)
     except Exception as e:
+        app.logger.exception("webhook de MercadoPago reventó")
         return jsonify({"error": str(e)}), 500
 
 
