@@ -18,10 +18,10 @@
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest" />
-  <meta name="theme-color" content="#0B0B0A" />
+  <meta name="theme-color" content="#EFEFEC" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Mi Portafolio" />
   <meta name="format-detection" content="telephone=no" />
 
@@ -73,12 +73,18 @@
        `zinc` se redefine porque concentra 1,606 usos — es el verdadero motor
        cromático de la app. Los radios bajan a 0-2px y las sombras a none
        desde el propio Tailwind, no a fuerza de !important.                */
+    /* Espejo EXACTO de :root en mp-tokens.css. Tailwind se configura desde JS
+       antes de que exista el CSSOM, así que no puede leer las variables; este
+       objeto es la única duplicación del sistema y por eso lleva los mismos
+       nombres que los tokens (`sup*` superficies, `tinta*` texto). Si tocas
+       mp-tokens.css, toca aquí. */
     const _tinta = {
-      base:  '#0B0B0A', panel: '#131210', alta: '#191713', honda: '#080807',
-      regla: '#2A2721', reglaSuave: '#1E1C18', reglaFuerte: '#4A443A',
-      papel: '#F2EEE4', papel2: '#CFC8B8', papel3: '#9A9284', papel4: '#847D70',
-      sello: '#D79A3C', selloVivo: '#EDB259', selloSolido: '#C98A2B',
-      alza:  '#6FAE7E', baja: '#DB7B68',
+      base:  '#F4F2ED', panel: '#FDFCF8', alta: '#FFFDF8', honda: '#EFEDE6',
+      regla: '#DFDBD0', reglaSuave: '#EAE7DE', reglaFuerte: '#B9B2A2',
+      tinta1: '#1A1A18', tinta2: '#46443E', tinta3: '#5E5A51', tinta4: '#6F6A5C',
+      sello: '#9C5D12', selloVivo: '#7E4A0C', selloSolido: '#9C5D12',
+      sobreSello: '#FFFDF8',
+      alza:  '#1F7A4C', baja: '#AE3223',
     };
     tailwind.config = {
       theme: {
@@ -95,11 +101,19 @@
               border:  _tinta.regla,
               hover:   _tinta.alta,
             },
-            /* Escala de grises cálida: sustituye al zinc azulado de fábrica. */
+            /* Escala de grises cálida: sustituye al zinc azulado de fábrica.
+               OJO CON LA DIRECCIÓN: el markup usa `text-zinc-100` para el texto
+               protagonista y `bg-zinc-900` para los paneles. Sobre papel eso se
+               INVIERTE respecto a la escala de Tailwind: los índices bajos
+               (texto) pasan a ser tinta oscura y los altos (superficies) pasan a
+               ser papel claro. Por eso 50→#1A1A18 y 950→#F4F2ED, que leído en
+               frío parece un error y no lo es.
+               950 además es el color del texto sobre botones sólidos
+               (`bg-accent-* text-zinc-950`), así que tiene que ser casi blanco. */
             zinc: {
-              50:  _tinta.papel,  100: _tinta.papel,  200: _tinta.papel2,
-              300: _tinta.papel2, 400: _tinta.papel3, 500: _tinta.papel3,
-              600: _tinta.papel4, 700: _tinta.reglaFuerte, 800: _tinta.regla,
+              50:  _tinta.tinta1, 100: _tinta.tinta1, 200: _tinta.tinta2,
+              300: _tinta.tinta2, 400: _tinta.tinta3, 500: _tinta.tinta3,
+              600: _tinta.tinta4, 700: _tinta.reglaFuerte, 800: _tinta.regla,
               900: _tinta.panel,  950: _tinta.base,
             },
             /* Un solo acento (ámbar de sello) + verde/rojo SOLO de mercado.
@@ -116,18 +130,24 @@
               rose:   _tinta.sello,
               orange: _tinta.sello,
             },
-            /* Familias sueltas que aparecen crudas en el markup viejo. */
-            amber:   { 100: _tinta.papel, 200: _tinta.selloVivo, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.selloSolido, 600: _tinta.selloSolido },
-            yellow:  { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.selloSolido },
-            orange:  { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.selloSolido },
-            emerald: { 300: _tinta.alza, 400: _tinta.alza, 500: _tinta.alza, 600: _tinta.alza },
-            green:   { 300: _tinta.alza, 400: _tinta.alza, 500: _tinta.alza, 600: _tinta.alza },
-            teal:    { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
-            red:     { 300: _tinta.baja, 400: _tinta.baja, 500: _tinta.baja, 600: _tinta.baja },
-            sky:     { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
-            cyan:    { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
-            violet:  { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
-            pink:    { 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            /* Familias sueltas que aparecen crudas en el markup viejo.
+               Los tonos 50/100/200 se remapean SIEMPRE: son pasteles pensados
+               para leerse sobre fondo oscuro y sobre papel desaparecen. Van a
+               tinta (no a color) porque donde se usan —rótulos y balazos del
+               "Tu mes"— lo que importa es que se lean. */
+            amber:   { 50: _tinta.tinta3, 100: _tinta.tinta1, 200: _tinta.tinta2, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.selloSolido, 600: _tinta.selloSolido },
+            yellow:  { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.selloSolido },
+            orange:  { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.selloSolido },
+            emerald: { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.alza, 400: _tinta.alza, 500: _tinta.alza, 600: _tinta.alza },
+            green:   { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.alza, 400: _tinta.alza, 500: _tinta.alza, 600: _tinta.alza },
+            teal:    { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            red:     { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.baja, 400: _tinta.baja, 500: _tinta.baja, 600: _tinta.baja },
+            sky:     { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            cyan:    { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            violet:  { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            pink:    { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            indigo:  { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.sello, 400: _tinta.sello, 500: _tinta.sello },
+            rose:    { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.baja, 400: _tinta.baja, 500: _tinta.baja },
           },
           /* Prensa: esquinas casi rectas en toda la escala. */
           borderRadius: {
@@ -202,12 +222,12 @@
     .nav-tab.nav-secondary .nav-indicator { height: 1.5px !important; opacity: .85; }
     .nav-tab.nav-primary { letter-spacing: -0.005em; }
     .nav-tab.nav-secondary { text-transform: none; }
-    .nav-tab.nav-secondary:hover { background: rgba(242,238,228,0.04); border-radius: 2px; }
+    .nav-tab.nav-secondary:hover { background: rgba(26,26,24,0.04); border-radius: 2px; }
 
     /* Skeleton loading */
     @keyframes pulse-bg {
-      0%, 100% { background-color: #131210; }
-      50%      { background-color: #2A2721; }
+      0%, 100% { background-color: var(--sup-panel); }
+      50%      { background-color: var(--regla); }
     }
     .skeleton { animation: pulse-bg 1.5s ease-in-out infinite; border-radius: 0.5rem; }
 
@@ -232,9 +252,9 @@
       position: absolute;
       left: 50%; top: 100%;
       transform: translateX(-50%) translateY(6px);
-      background: #131210;
-      border: 1px solid #2A2721;
-      color: #CFC8B8;
+      background: var(--sup-panel);
+      border: 1px solid var(--regla);
+      color: var(--tinta-2);
       font-size: 0.72rem;
       padding: 0.4rem 0.6rem;
       border-radius: 0.375rem;
@@ -304,7 +324,7 @@
         <!-- Multi-portafolio selector -->
         <div class="ml-1 pl-2 sm:ml-3 sm:pl-3 border-l border-surface-border relative min-w-0 hidden min-[560px]:block">
           <button id="port-selector-btn" class="flex items-center gap-2 text-xs text-zinc-300 hover:text-zinc-100 transition px-2 py-1 rounded-md hover:bg-zinc-900 min-w-0 max-w-full">
-            <span id="port-active-avatar" class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-semibold text-white shrink-0" style="background: linear-gradient(135deg, #D79A3C, #D79A3C);">P</span>
+            <span id="port-active-avatar" class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-semibold text-white shrink-0" style="background: linear-gradient(135deg, var(--sello), var(--sello));">P</span>
             <!-- En pantallas angostas (iPhone) se oculta el nombre: los botones
                  "Suscribirse" y "Mi cuenta" tienen prioridad y así no queda
                  truncado a una letra. El avatar sigue identificando el portafolio. -->
@@ -538,7 +558,7 @@
               <span class="text-xs text-zinc-600">Selecciona al menos 2 acciones</span>
             </div>
             <button id="pick-siguiente" disabled
-              class="w-full bg-accent-green text-black font-semibold text-sm py-2.5 rounded-lg
+              class="w-full bg-accent-green text-zinc-950 font-semibold text-sm py-2.5 rounded-lg
                      disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed
                      hover:brightness-110 transition">
               Siguiente: ajustar pesos →
@@ -694,7 +714,7 @@
         <!-- CTA final -->
         <div class="mt-5 pt-4 border-t border-surface-border">
           <button id="pesos-analizar" disabled
-            class="w-full bg-accent-green text-black font-semibold text-sm py-2.5 rounded-lg
+            class="w-full bg-accent-green text-zinc-950 font-semibold text-sm py-2.5 rounded-lg
                    disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed
                    hover:brightness-110 transition">
             Analizar mi portafolio
@@ -754,7 +774,7 @@
                  Editar → picker manual → "Cambiar método" → Automático → bajar
                  más allá del optimizador. -->
             <button id="btn-perfiles-portafolio" class="hidden text-[11px] border rounded-md px-2 py-0.5 transition"
-                    style="color:var(--sello);border-color:rgba(215,154,60,.4)">
+                    style="color:var(--sello);border-color:rgba(156,93,18,.4)">
               Perfiles
             </button>
             <button id="btn-exportar-pdf" class="hidden text-[11px] text-accent-purple hover:text-accent-purple/80 border border-accent-purple/30 hover:border-accent-purple/60 rounded-md px-2 py-0.5 transition inline-flex items-center gap-1.5">
@@ -1682,7 +1702,7 @@
               <span class="text-xs text-zinc-600">Selecciona al menos 2 acciones</span>
             </div>
             <button id="btn-analizar" disabled
-              class="w-full bg-accent-blue text-black font-semibold text-sm py-2.5 rounded-lg
+              class="w-full bg-accent-blue text-zinc-950 font-semibold text-sm py-2.5 rounded-lg
                      disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed
                      hover:brightness-110 transition">
               Analizar mezcla
@@ -1938,11 +1958,13 @@
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
           <p class="mp-etq">Análisis individual</p>
-          <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Explorar una acción</h2>
+          <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Explorar un activo</h2>
           <p class="text-sm text-zinc-400 mt-2 max-w-2xl">
-            Escribe un ticker para recibir un análisis completo: comparación contra peers
-            (P/S, EV/EBITDA, márgenes), deep dive cualitativo y un score
-            <span class="text-accent-orange font-semibold">1–100</span> de qué tan recomendable es.
+            Escribe un ticker y el análisis se adapta a lo que es: en una <b>acción</b>,
+            comparación contra sus pares y fundamentales; en un <b>ETF</b>, qué índice
+            replica, cuánto cobra y qué trae dentro; en una <b>criptomoneda</b>, suministro,
+            volatilidad y si de verdad diversifica. Siempre con un score
+            <span class="text-accent-orange font-semibold">1–100</span>.
           </p>
         </div>
         <div class="w-10 h-10 rounded-xl bg-accent-orange/15 border border-accent-orange/30 flex items-center justify-center text-accent-orange shrink-0">
@@ -1957,7 +1979,7 @@
           <input id="an-input" type="text" placeholder="AAPL · NVDA · WALMEX.MX · BTC-USD"
             class="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 uppercase placeholder:text-zinc-600 placeholder:normal-case focus:outline-none focus:border-accent-orange tabular" />
           <button id="an-btn-analizar"
-            class="bg-accent-orange text-black font-semibold text-sm py-2 px-6 rounded-md hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            class="bg-accent-orange text-zinc-950 font-semibold text-sm py-2 px-6 rounded-md hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed">
             Analizar
           </button>
         </div>
@@ -2139,247 +2161,43 @@
   <!-- VISTA: PERIÓDICO                                              -->
   <!-- ============================================================ -->
   <main id="vista-periodico">
-    <!-- Header -->
-    <section class="max-w-7xl mx-auto px-6 pt-12 pb-6">
+    <!-- Cabecera -->
+    <section class="max-w-7xl mx-auto px-6 pt-10 pb-4">
       <div class="flex items-end justify-between flex-wrap gap-4 fade-up">
-        <div>
+        <div class="min-w-0">
           <p class="mp-etq">Periódico</p>
-          <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mt-2">El mercado hoy</h2>
+          <h2 class="mp-titular mp-titular-l mt-2">El mercado hoy</h2>
           <p class="text-sm text-zinc-400 mt-3 max-w-2xl leading-relaxed">
-            Cierres diarios de los índices principales, noticias top del mercado y titulares
-            relevantes para las acciones que tienes en tu portafolio.
+            Cinco mazos de tarjetas: noticias del día, tu lista de seguimiento, la acción
+            y el sector que más se movieron, e índices y divisas. Desliza de lado para
+            cambiar de mazo y toca una tarjeta para abrirla.
           </p>
         </div>
         <button id="periodico-refrescar"
-          class="text-[11px] text-zinc-400 hover:text-zinc-100 border border-surface-border rounded-lg px-3 py-1.5 transition">
-          ↻ Actualizar
+          class="mp-btn mp-btn-secundario text-[12px]">
+          &#8635; Actualizar
         </button>
       </div>
-      <p id="periodico-hora" class="text-[10px] text-zinc-600 mt-2">—</p>
-    </section>
-
-    <!-- Resumen ejecutivo del día -->
-    <section class="max-w-7xl mx-auto px-6 pt-2 pb-4">
-      <div id="periodico-resumen"
-           class="rounded-2xl border border-surface-border bg-gradient-to-br from-accent-purple/[0.08] via-surface-card to-surface-card p-5 sm:p-6">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="w-1.5 h-1.5 rounded-full bg-accent-purple animate-pulse"></span>
-          <span class="text-[10px] uppercase tracking-wider text-accent-purple font-semibold">Brief del día</span>
-          <span id="periodico-resumen-badge" class="text-[10px] px-2 py-0.5 rounded-full border hidden"></span>
-        </div>
-        <p id="periodico-resumen-texto" class="text-sm sm:text-base text-zinc-100 leading-relaxed">
-          Cargando resumen…
-        </p>
-        <div id="periodico-resumen-titulares" class="mt-4 space-y-1.5"></div>
-        <p id="periodico-resumen-aviso" class="text-[10px] text-zinc-600 mt-4"></p>
-      </div>
+      <p id="periodico-hora" class="mp-firma mt-3">&#8212;</p>
     </section>
 
     <!-- ═══════════════════════════════════════════════════ -->
-    <!-- ACCIÓN DEL DÍA — pick algorítmico del día            -->
+    <!-- MAZOS DE TARJETAS                                    -->
     <!-- ═══════════════════════════════════════════════════ -->
-    <section class="max-w-7xl mx-auto px-6 pb-4">
-      <div class="flex items-center justify-between mb-2">
-        <span class="mp-sec-etq">
-          Acción del día
-        </span>
-        <span class="text-[10px] text-zinc-600">Selección algorítmica · rota cada 24h</span>
-      </div>
-      <div id="periodico-accion-dia"
-           class="rounded-2xl border border-surface-border bg-gradient-to-br from-accent-amber/[0.08] via-surface-card to-surface-card p-5 sm:p-6 min-h-[140px]">
-        <p class="text-xs text-zinc-500">Cargando acción del día…</p>
-      </div>
-    </section>
+    <section class="mp-mazos max-w-7xl mx-auto px-6 pb-10">
+      <!-- Indicador de posición: además de decir en qué mazo estás, cada
+           segmento es un botón que salta a ese mazo (Apple pide hit-testing
+           real, no solo un puntito decorativo). -->
+      <nav id="mazos-ind" class="mp-mazos-ind" role="tablist"
+           aria-label="Mazos del periódico"></nav>
 
-    <!-- TU LISTA DE SEGUIMIENTO (Watchlist) -->
-    <section class="max-w-7xl mx-auto px-6 pb-4">
-      <div class="flex items-center justify-between mb-2">
-        <span class="mp-sec-etq">
-          Tu lista de seguimiento
-        </span>
-        <span class="text-[10px] text-zinc-600">marca acciones con ☆ en Analizar</span>
-      </div>
-      <div id="periodico-watchlist" class="rounded-2xl border border-surface-border bg-surface-card p-2 sm:p-3 min-h-[60px]">
-        <p class="text-xs text-zinc-500 p-2">Cargando…</p>
-      </div>
-    </section>
+      <!-- Leyenda del código de color por categoría -->
+      <div id="mazos-leyenda" class="mp-leyenda" aria-label="Qué significa cada color"></div>
 
-    <!-- ═══════════════════════════════════════════════════ -->
-    <!-- DASHBOARD DE MERCADOS — estilo Yahoo Finance         -->
-    <!-- ═══════════════════════════════════════════════════ -->
+      <div id="mazos-pista" class="mp-mazos-pista"></div>
 
-    <!-- Índices USA -->
-    <section class="max-w-7xl mx-auto px-6 py-4">
-      <div class="flex items-center justify-between mb-2">
-        <span class="mp-sec-etq">
-          Índices Estados Unidos
-        </span>
-        <span class="text-[10px] text-zinc-600 hidden sm:inline">5 días</span>
-      </div>
-      <div id="periodico-indices" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        <div class="col-span-full text-xs text-zinc-500 py-6 text-center">Cargando cierres…</div>
-      </div>
-    </section>
-
-    <!-- Índices mundiales + Divisas (2 columnas en desktop) -->
-    <section class="max-w-7xl mx-auto px-6 py-4 grid md:grid-cols-2 gap-4">
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <span class="mp-sec-etq">
-            Índices mundiales
-          </span>
-        </div>
-        <div id="periodico-mundo" class="grid grid-cols-2 gap-2">
-          <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando…</div>
-        </div>
-      </div>
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <span class="mp-sec-etq">
-            Divisas
-          </span>
-        </div>
-        <div id="periodico-divisas" class="grid grid-cols-2 gap-2">
-          <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando…</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Commodities + Tasas/VIX -->
-    <section class="max-w-7xl mx-auto px-6 py-4 grid md:grid-cols-2 gap-4">
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <span class="mp-sec-etq">
-            Commodities
-          </span>
-        </div>
-        <div id="periodico-commodities" class="grid grid-cols-2 gap-2">
-          <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando…</div>
-        </div>
-      </div>
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <span class="mp-sec-etq">
-            Tasas y volatilidad
-          </span>
-        </div>
-        <div id="periodico-tasas" class="grid grid-cols-3 gap-2">
-          <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando…</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Crypto strip -->
-    <section class="max-w-7xl mx-auto px-6 py-4">
-      <div class="flex items-center justify-between mb-2">
-        <span class="mp-sec-etq">
-          Criptomonedas top
-        </span>
-      </div>
-      <div id="periodico-crypto" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando…</div>
-      </div>
-    </section>
-
-    <!-- Heatmap de sectores USA -->
-    <section class="max-w-7xl mx-auto px-6 py-4">
-      <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
-        <span class="mp-sec-etq">
-          Sectores USA · performance
-        </span>
-        <div class="inline-flex bg-surface-card border border-surface-border rounded-full p-1">
-          <button data-sec-periodo="dia" class="sec-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-100 bg-accent-indigo/20 ring-1 ring-accent-indigo/30 font-medium">Día</button>
-          <button data-sec-periodo="semana" class="sec-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-500 hover:text-zinc-200 font-medium">Semana</button>
-          <button data-sec-periodo="mes" class="sec-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-500 hover:text-zinc-200 font-medium">Mes</button>
-          <button data-sec-periodo="anio" class="sec-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-500 hover:text-zinc-200 font-medium">Año</button>
-        </div>
-      </div>
-      <div id="periodico-sectores" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
-        <div class="col-span-full text-xs text-zinc-500 py-4 text-center">Cargando heatmap…</div>
-      </div>
-    </section>
-
-    <!-- Top Movers — Ganadores / Perdedores / Populares -->
-    <section class="max-w-7xl mx-auto px-6 py-4">
-      <div class="flex items-center justify-between flex-wrap gap-3 mb-3">
-        <div>
-          <p class="mp-etq">
-            Top movers del mercado
-          </p>
-          <p class="text-[11px] text-zinc-600 mt-1 max-w-2xl leading-snug">
-            Las que más subieron, las que más cayeron y las de mayor movimiento entre los nombres grandes. Sobre el universo curado, con precios de cierre sin ajustar: se excluyen cotizaciones bajo $1 y saltos de sesión propios de splits.
-          </p>
-        </div>
-        <div class="inline-flex bg-surface-card border border-surface-border rounded-full p-1">
-          <button data-mov-periodo="dia" class="mov-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-100 bg-accent-amber/20 ring-1 ring-accent-amber/30 font-medium">Día</button>
-          <button data-mov-periodo="semana" class="mov-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-500 hover:text-zinc-200 font-medium">Semana</button>
-          <button data-mov-periodo="mes" class="mov-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-500 hover:text-zinc-200 font-medium">Mes</button>
-          <button data-mov-periodo="anio" class="mov-periodo-btn text-[11px] px-3 py-1.5 rounded-full text-zinc-500 hover:text-zinc-200 font-medium">Año</button>
-        </div>
-      </div>
-
-      <div class="grid md:grid-cols-3 gap-4" id="periodico-movers">
-        <!-- Ganadores -->
-        <div class="bg-surface-card border border-accent-green/20 rounded-xl p-4">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="text-[10px] uppercase tracking-wider text-accent-green font-bold">Más subieron</span>
-          </div>
-          <div id="mov-ganadores" class="space-y-2">
-            <div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>
-          </div>
-        </div>
-        <!-- Perdedores -->
-        <div class="bg-surface-card border border-accent-red/20 rounded-xl p-4">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="text-[10px] uppercase tracking-wider text-accent-red font-bold">Más cayeron</span>
-          </div>
-          <div id="mov-perdedores" class="space-y-2">
-            <div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>
-          </div>
-        </div>
-        <!-- Más activos (mayor volumen × precio) -->
-        <div class="bg-surface-card border border-accent-blue/20 rounded-xl p-4">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="text-[10px] uppercase tracking-wider text-accent-blue font-bold">Mayor movimiento</span>
-          </div>
-          <div id="mov-populares" class="space-y-2">
-            <div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Contenido de noticias: 2 columnas en desktop -->
-    <section class="max-w-7xl mx-auto px-6 py-6 grid lg:grid-cols-3 gap-6">
-      <!-- Noticias top (col principal) -->
-      <div class="lg:col-span-2">
-        <div class="flex items-center justify-between mb-1">
-          <span class="mp-sec-etq">
-            Noticias top del mercado
-          </span>
-          <span id="periodico-top-count" class="text-[10px] text-zinc-600"></span>
-        </div>
-        <p class="text-[11px] text-zinc-600 mb-3 leading-snug">Los titulares más relevantes de las últimas horas. Haz clic para leer la nota completa en la fuente original.</p>
-        <div id="periodico-top-lista" class="space-y-2">
-          <div class="text-xs text-zinc-500 py-6 text-center">Cargando noticias…</div>
-        </div>
-      </div>
-
-      <!-- Noticias del portafolio (sidebar) -->
-      <aside>
-        <div class="flex items-center justify-between mb-1">
-          <span class="mp-sec-etq">
-            De tus posiciones
-          </span>
-          <span id="periodico-mis-count" class="text-[10px] text-zinc-600"></span>
-        </div>
-        <p class="text-[11px] text-zinc-600 mb-3 leading-snug">Noticias específicas de las acciones que tienes. Útil para saber por qué alguna subió o bajó hoy.</p>
-        <div id="periodico-mis-lista" class="space-y-2">
-          <div class="text-xs text-zinc-500 py-6 text-center bg-surface-card border border-surface-border rounded-lg px-3">
-            Define tu portafolio en la pestaña <span class="text-zinc-300">Mi portafolio</span> para ver noticias específicas.
-          </div>
-        </div>
-      </aside>
+      <!-- Estado degradado / vacío: NUNCA se queda en "Cargando…" -->
+      <div id="mazos-aviso" class="mp-vacio hidden mt-4"></div>
     </section>
   </main><!-- /vista-periodico -->
 
@@ -2406,7 +2224,7 @@
         <p class="text-sm text-zinc-300 mb-2">Primero necesitas definir tu portafolio objetivo</p>
         <p class="text-xs text-zinc-500 mb-4">Ve a <span class="text-zinc-300">Mi portafolio</span>, elige tus acciones y ajusta los pesos. Luego regresa aquí.</p>
         <button id="reb-ir-portafolio"
-          class="text-xs bg-accent-green text-black font-semibold px-4 py-2 rounded-lg hover:brightness-110 transition">
+          class="text-xs bg-accent-green text-zinc-950 font-semibold px-4 py-2 rounded-lg hover:brightness-110 transition">
           Ir a Mi portafolio
         </button>
       </div>
@@ -2503,7 +2321,7 @@
           </div>
 
           <button id="reb-calcular"
-            class="w-full mt-5 bg-accent-amber text-black font-semibold text-sm py-2.5 rounded-lg hover:brightness-110 transition disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed">
+            class="w-full mt-5 bg-accent-amber text-zinc-950 font-semibold text-sm py-2.5 rounded-lg hover:brightness-110 transition disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed">
             Calcular rebalanceo
           </button>
           <p id="reb-error" class="text-[11px] text-accent-red mt-2 hidden"></p>
@@ -2722,7 +2540,7 @@
               <input id="tx-form-notas" type="text" placeholder="Ej. broker, razón" class="w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-accent-teal" />
             </div>
             <div class="col-span-1 sm:col-span-1 flex items-end">
-              <button id="tx-form-agregar" class="w-full bg-accent-teal text-black font-semibold text-xs py-1.5 rounded-md hover:brightness-110 transition">
+              <button id="tx-form-agregar" class="w-full bg-accent-teal text-zinc-950 font-semibold text-xs py-1.5 rounded-md hover:brightness-110 transition">
                 + Agregar
               </button>
             </div>
@@ -3445,7 +3263,7 @@
       <div id="cuenta-contenido">
         <!-- Fallback visible mientras account.js consulta el estado: esta
              pantalla nunca debe verse vacía. -->
-        <div style="background:#131210;border:1px solid #2A2721;border-radius:16px;padding:18px;color:#9A9284;font-size:13px">
+        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:16px;padding:18px;color:var(--tinta-3);font-size:13px">
           Cargando tu cuenta…
         </div>
       </div>

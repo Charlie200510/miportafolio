@@ -322,18 +322,70 @@ def _normalizar_noticia(n: dict) -> dict | None:
 # Noticias top del día
 # ------------------------------------------------------------
 # Tickers semilla — pedimos news de índices/ETFs grandes porque
-# yfinance asocia ahí las noticias "macro" del mercado.
-TICKERS_NOTICIAS_TOP = ["SPY", "QQQ", "AAPL", "NVDA", "MSFT", "NAFTRAC.MX"]
+# yfinance asocia ahí las noticias "macro" del mercado. Se amplió con
+# semillas de cripto, tasas y BMV para que las cinco categorías del mazo de
+# Periódico tengan de dónde llenarse (antes todo caía en "global").
+TICKERS_NOTICIAS_TOP = [
+    "SPY", "QQQ", "AAPL", "NVDA", "MSFT",          # global / EEUU
+    "NAFTRAC.MX", "WALMEX.MX", "GFNORTEO.MX",      # México
+    "BTC-USD", "ETH-USD",                          # cripto
+    "^TNX", "TLT",                                 # macro y tasas
+]
+
+# ── Categorías de las tarjetas del Periódico ────────────────────────────────
+# El color de cada tarjeta CODIFICA la categoría (ver MP_CATEGORIAS en app.js;
+# las claves de aquí y las de allá tienen que coincidir exactamente).
+#   mx        · mercado mexicano (BMV / IPC)
+#   global    · mercados globales
+#   cripto    · criptomonedas
+#   posicion  · noticias de tus posiciones  (se asigna en el cliente/portafolio)
+#   macro     · macro y tasas
+CAT_MX, CAT_GLOBAL, CAT_CRIPTO, CAT_POSICION, CAT_MACRO = (
+    "mx", "global", "cripto", "posicion", "macro")
+
+_SEMILLA_CATEGORIA = {
+    "SPY": CAT_GLOBAL, "QQQ": CAT_GLOBAL, "AAPL": CAT_GLOBAL,
+    "NVDA": CAT_GLOBAL, "MSFT": CAT_GLOBAL,
+    "NAFTRAC.MX": CAT_MX, "WALMEX.MX": CAT_MX, "GFNORTEO.MX": CAT_MX,
+    "BTC-USD": CAT_CRIPTO, "ETH-USD": CAT_CRIPTO,
+    "^TNX": CAT_MACRO, "TLT": CAT_MACRO,
+}
+
+# Palabras del titular que MANDAN sobre el ticker semilla: una nota sobre la
+# Fed que llegó colgada de SPY es macro, no "mercados globales".
+_PALABRAS_CATEGORIA = [
+    (CAT_CRIPTO, ("bitcoin", "ethereum", "crypto", "cripto", "solana", "xrp",
+                  "stablecoin", "blockchain", "altcoin", "token")),
+    (CAT_MACRO,  ("fed", "federal reserve", "inflation", "inflación", "cpi",
+                  "treasury", "yield", "rate cut", "rate hike", "banxico",
+                  "tasa de interés", "jobs report", "payrolls", "gdp", "pib",
+                  "recession", "recesión", "tariff", "arancel")),
+    (CAT_MX,     ("mexico", "méxico", "mexican", "bmv", "ipc", "peso mexicano",
+                  "banxico", "cetes")),
+]
 
 
-def noticias_top(limite: int = 10) -> list[dict]:
-    """Agrega noticias de los tickers semilla y deduplica por URL."""
-    cached = _cache_get("noticias_top", TTL_NOTICIAS)
-    if cached:
-        return cached[:limite]
+def _categoria_de(noticia: dict, semilla: str) -> str:
+    """Categoría de una noticia: primero el titular, luego el ticker semilla."""
+    texto = f"{noticia.get('titulo', '')} {noticia.get('resumen', '')}".lower()
+    for cat, palabras in _PALABRAS_CATEGORIA:
+        if any(p in texto for p in palabras):
+            return cat
+    return _SEMILLA_CATEGORIA.get(semilla, CAT_GLOBAL)
 
-    vistas = set()
-    out = []
+
+def _fecha_key(n):
+    """Orden por fecha de publicación, descendente. Las no parseables al final."""
+    try:
+        return pd.Timestamp(n.get("fecha") or "")
+    except Exception:
+        return pd.Timestamp("1970-01-01")
+
+
+def _descargar_noticias_top() -> list[dict]:
+    """Baja y normaliza las noticias de todas las semillas (sin tocar caché)."""
+    vistas: dict[str, dict] = {}
+    out: list[dict] = []
     for t in TICKERS_NOTICIAS_TOP:
         try:
             lista = yf.Ticker(t).news or []
@@ -343,21 +395,147 @@ def noticias_top(limite: int = 10) -> list[dict]:
             norm = _normalizar_noticia(n)
             if not norm:
                 continue
-            if norm["url"] in vistas:
+            ya = vistas.get(norm["url"])
+            if ya is not None:
+                # La misma nota colgada de dos semillas: no se duplica, se le
+                # suma el ticker. Así el chip de "tickers relacionados" de la
+                # tarjeta sale completo en vez de con uno solo.
+                if t not in ya["tickers"]:
+                    ya["tickers"].append(t)
                 continue
-            vistas.add(norm["url"])
+            norm["tickers"] = [t]
+            norm["categoria"] = _categoria_de(norm, t)
+            vistas[norm["url"]] = norm
             out.append(norm)
 
-    # Ordenar por fecha desc si tenemos fechas parseables
-    def _fecha_key(n):
-        try:
-            return pd.Timestamp(n.get("fecha") or "")
-        except Exception:
-            return pd.Timestamp("1970-01-01")
-
     out.sort(key=_fecha_key, reverse=True)
+    return out
+
+
+def noticias_top(limite: int = 10) -> list[dict]:
+    """Noticias top del día. Caché corto (TTL_NOTICIAS) sobre el diario."""
+    cached = _cache_get("noticias_top", TTL_NOTICIAS)
+    if cached:
+        return cached[:limite]
+    out = _descargar_noticias_top()
     _cache_set("noticias_top", out)
     return out[:limite]
+
+
+# ------------------------------------------------------------
+# Caché DIARIO de noticias (una corrida por la mañana, hora CDMX)
+# ------------------------------------------------------------
+#  El mazo de noticias del Periódico no necesita refrescarse cada 30 min: es una
+#  edición del día, como un periódico de verdad. Se arma una vez por la mañana
+#  y se sirve igual toda la jornada, con refresco manual desde la UI.
+#
+#  Por qué disco y no solo memoria: gunicorn corre varios workers y se reinicia
+#  en cada deploy; el archivo es lo único que comparten y que sobrevive. El
+#  purgado de cachés de deploy/pull.sh (backend/_cache_*) lo borra, y eso está
+#  bien: la primera petición del día siguiente lo reconstruye.
+HORA_EDICION_CDMX = 7          # a partir de las 7:00 CDMX ya hay edición nueva
+_ARCHIVO_DIARIO = _CACHE_DIR / "noticias_diarias.json"
+_lock_diario = threading.Lock()
+
+
+def _ahora_cdmx():
+    """Hora de Ciudad de México. El servidor corre en UTC, así que la fecha de
+    la edición NO puede salir de date.today(): a las 20:00 CDMX ya es el día
+    siguiente en UTC y la edición se habría 'renovado' a media tarde."""
+    from datetime import datetime, timezone, timedelta
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("America/Mexico_City"))
+    except Exception:
+        # Sin tzdata (imagen mínima): CDMX es UTC-6 todo el año desde 2022,
+        # cuando México eliminó el horario de verano.
+        return datetime.now(timezone.utc) - timedelta(hours=6)
+
+
+def _edicion_vigente() -> str:
+    """Etiqueta de la edición que toca ahora mismo, formato YYYY-MM-DD.
+
+    Antes de HORA_EDICION_CDMX sigue vigente la edición de AYER: si a las 6 am
+    se marcara ya la de hoy, el caché se invalidaría y el primer usuario del día
+    se comería la descarga completa (~20 s) en vez de leer la edición previa."""
+    ahora = _ahora_cdmx()
+    if ahora.hour < HORA_EDICION_CDMX:
+        return (ahora.date() - timedelta(days=1)).isoformat()
+    return ahora.date().isoformat()
+
+
+def _leer_diario() -> dict | None:
+    try:
+        if not _ARCHIVO_DIARIO.exists():
+            return None
+        with open(_ARCHIVO_DIARIO, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) and d.get("noticias") else None
+    except Exception:
+        return None
+
+
+def _escribir_diario(d: dict) -> None:
+    try:
+        tmp = _ARCHIVO_DIARIO.with_suffix(".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f, ensure_ascii=False)
+        tmp.replace(_ARCHIVO_DIARIO)     # atómico: nadie lee un archivo a medias
+    except Exception:
+        pass
+
+
+def noticias_diarias(limite: int = 24, forzar: bool = False) -> dict:
+    """Edición del día del mazo de noticias.
+
+    Devuelve SIEMPRE un dict con la misma forma, para que el cliente nunca se
+    quede en "Cargando…":
+      {ok, noticias[], edicion, generado_en, degradado, error?}
+
+    `degradado=True` significa que la descarga falló y se está sirviendo la
+    edición anterior; el cliente lo dice explícitamente en vez de fingir que el
+    dato es de hoy.
+    """
+    edicion = _edicion_vigente()
+    previo = _leer_diario()
+
+    if not forzar and previo and previo.get("edicion") == edicion:
+        return {**previo, "noticias": previo["noticias"][:limite], "degradado": False}
+
+    with _lock_diario:
+        # Otro worker pudo generarla mientras esperábamos el lock.
+        previo = _leer_diario()
+        if not forzar and previo and previo.get("edicion") == edicion:
+            return {**previo, "noticias": previo["noticias"][:limite], "degradado": False}
+
+        try:
+            noticias = _descargar_noticias_top()
+        except Exception as e:
+            noticias, err = [], str(e)
+        else:
+            err = None
+
+        if not noticias:
+            if previo and previo.get("noticias"):
+                # Se sirve la edición vieja marcada como tal: mucho mejor que
+                # una sección en blanco.
+                return {**previo, "noticias": previo["noticias"][:limite],
+                        "degradado": True,
+                        "error": err or "La fuente de noticias no respondió."}
+            return {"ok": False, "noticias": [], "edicion": edicion,
+                    "generado_en": None, "degradado": True,
+                    "error": err or "La fuente de noticias no respondió."}
+
+        d = {
+            "ok": True,
+            "noticias": noticias,
+            "edicion": edicion,
+            "generado_en": _ahora_cdmx().isoformat(timespec="seconds"),
+        }
+        _escribir_diario(d)
+        # El caché corto comparte los datos: una sola descarga sirve a los dos.
+        _cache_set("noticias_top", noticias)
+        return {**d, "noticias": noticias[:limite], "degradado": False}
 
 
 # ------------------------------------------------------------
@@ -390,14 +568,12 @@ def noticias_portafolio(tickers: list[str], limite: int = 12) -> list[dict]:
                 continue
             vistas.add(norm["url"])
             norm["ticker_relacionado"] = t
+            norm["tickers"] = [t]
+            # Todo lo que sale del portafolio del usuario va a la categoría
+            # "tus posiciones", sin importar de qué hable: el color de la
+            # tarjeta responde a POR QUÉ le importa a este usuario.
+            norm["categoria"] = CAT_POSICION
             out.append(norm)
-
-    # Ordenar por fecha desc
-    def _fecha_key(n):
-        try:
-            return pd.Timestamp(n.get("fecha") or "")
-        except Exception:
-            return pd.Timestamp("1970-01-01")
 
     out.sort(key=_fecha_key, reverse=True)
 

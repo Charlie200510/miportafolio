@@ -661,11 +661,16 @@ def _ejecutar_warmup_blocking():
         return {"ok": bool(d), "size": len(str(d or ""))}
     _paso("mercados", _r2)
 
-    # 3) Noticias top
+    # 3) Edición del día del Periódico. Se llama a noticias_diarias (no a
+    #    noticias_top) para que sea el SERVIDOR quien pague la descarga en el
+    #    arranque y en la corrida matutina del timer; así el primer usuario del
+    #    día encuentra el mazo ya armado. Es idempotente: si la edición de hoy
+    #    ya existe, sale al instante sin tocar la red.
     def _r3():
         import periodico as _p
-        d = _p.noticias_top(12)
-        return {"ok": bool(d), "n": len(d) if d else 0}
+        d = _p.noticias_diarias(limite=24)
+        return {"ok": bool(d.get("ok")), "n": len(d.get("noticias") or []),
+                "edicion": d.get("edicion"), "degradado": d.get("degradado")}
     _paso("noticias", _r3)
 
     # 4) Top movers — 3 períodos
@@ -1295,6 +1300,54 @@ def api_periodico_noticias():
         return jsonify(_periodico.noticias_top(limite=limite))
     except Exception as e:
         return jsonify({"error": f"fallo noticias: {e}"}), 500
+
+
+@app.route("/api/periodico/edicion")
+def api_periodico_edicion():
+    """Edición del día del mazo de noticias (una corrida por la mañana, CDMX).
+
+    Devuelve siempre la misma forma —{ok, noticias, edicion, degradado, error}—
+    para que la UI pueda degradar con un mensaje claro en vez de quedarse
+    colgada en "Cargando…".
+    """
+    if _periodico is None:
+        return jsonify({"ok": False, "noticias": [], "degradado": True,
+                        "error": "El servicio de noticias no está disponible.",
+                        "detalle": _periodico_error}), 200
+    try:
+        limite = max(1, min(int(request.args.get("limite", 24)), 40))
+    except (TypeError, ValueError):
+        limite = 24
+    try:
+        return jsonify(_periodico.noticias_diarias(limite=limite))
+    except Exception as e:
+        return jsonify({"ok": False, "noticias": [], "degradado": True,
+                        "error": f"No se pudo armar la edición de hoy: {e}"}), 200
+
+
+# Refresco manual desde la UI. NO lleva CRON_SECRET a propósito: es una acción
+# del usuario, no una tarea programada. El candado es de ritmo (un refresco por
+# minuto para toda la instancia), suficiente para que nadie pueda usarlo para
+# martillar a Yahoo desde el botón.
+_ULTIMO_REFRESCO_NOTICIAS = {"ts": 0.0}
+
+
+@app.route("/api/periodico/refrescar", methods=["POST"])
+def api_periodico_refrescar():
+    if _periodico is None:
+        return jsonify({"ok": False, "error": "El servicio de noticias no está disponible."}), 200
+    import time as _t
+    ahora = _t.time()
+    espera = 60 - (ahora - _ULTIMO_REFRESCO_NOTICIAS["ts"])
+    if espera > 0:
+        return jsonify({"ok": False, "throttled": True,
+                        "segundos": int(espera) + 1,
+                        "error": f"Acabas de actualizar. Intenta de nuevo en {int(espera) + 1} s."}), 200
+    _ULTIMO_REFRESCO_NOTICIAS["ts"] = ahora
+    try:
+        return jsonify(_periodico.noticias_diarias(limite=24, forzar=True))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"No se pudo actualizar: {e}"}), 200
 
 
 @app.route("/api/periodico/noticias-portafolio", methods=["POST"])

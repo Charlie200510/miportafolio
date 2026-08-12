@@ -422,11 +422,29 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
 
     parcial = (not fund.get("ok")) or bool(fund.get("datos_parciales"))
 
-    # 2. Peer comparison
+    # 1b. TIPO DE ACTIVO — decide qué análisis tiene sentido enseñar.
+    #     Se reusa la misma detección del scoring (metricas_canonicas.tipo_activo)
+    #     para que el tipo sea el mismo en el score, en el texto y en la pantalla.
     try:
-        peer = _peer_comparison(ticker, fund)
-    except Exception as e:
-        peer = {"ticker_objetivo": ticker, "peers": [], "filas": [], "error": str(e)}
+        from metricas_canonicas import tipo_activo as _tipo_activo
+        tipo = _tipo_activo(ticker, {
+            "sector":    fund.get("sector"),
+            "industria": fund.get("industria"),
+            "nombre":    fund.get("nombre"),
+            "quoteType": fund.get("quote_type"),
+        })
+    except Exception:
+        tipo = "accion"
+
+    # 2. Peer comparison — SOLO para acciones. P/S, EV/EBITDA y crecimiento de
+    #    ingresos no existen para un ETF ni para una cripto, y pedirlos dejaba
+    #    una tabla entera de guiones (justo lo que hacía ver la app incompleta).
+    peer = {"ticker_objetivo": ticker, "peers": [], "filas": []}
+    if tipo == "accion":
+        try:
+            peer = _peer_comparison(ticker, fund)
+        except Exception as e:
+            peer = {"ticker_objetivo": ticker, "peers": [], "filas": [], "error": str(e)}
 
     # 3. Score CANÓNICO — el MISMO que usan Acción del Día, ranking y screener,
     #    para que un ticker dé el mismo número en todas las vistas (homogéneo).
@@ -437,6 +455,16 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
         if det is not None and det.get("score") is not None:
             from metricas_canonicas import nivel_para_score as _niv
             etq, col = _niv(int(det["score"]))
+            # Para ETF y cripto la etiqueta se vuelve DESCRIPTIVA. "Recomendación
+            # sólida" sobre una criptomoneda suena a consejo de compra, y la app
+            # no es asesor registrado ante la CNBV: describe desempeño, no
+            # recomienda. El número no cambia, solo cómo se nombra.
+            if tipo in ("etf", "crypto", "generico"):
+                etq = {"Recomendación fuerte": "Desempeño destacado",
+                       "Recomendación sólida": "Desempeño sólido",
+                       "Interesante":          "Desempeño medio",
+                       "Mención":              "Desempeño flojo",
+                       "Sin ventaja clara":    "Sin ventaja clara"}.get(etq, etq)
             sc = {
                 "score":       int(det["score"]),
                 "veredicto":   {"nivel": etq, "etiqueta": etq, "color": col},
@@ -454,11 +482,43 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
         except Exception:
             sc = {"score": None, "veredicto": {}, "componentes": {}, "pesos": {}, "razones": []}
 
-    # 4. Narrativas (Claude o fallback)
-    try:
-        narrativas = _claude_narrativas(ticker, fund)
-    except Exception:
-        narrativas = {"deep_dive": {}, "short_report": {}, "fuente": "no_disponible"}
+    # 3b. Perfil específico del tipo de activo (ETF / cripto).
+    perfil = None
+    if tipo in ("etf", "crypto"):
+        try:
+            import analisis_activos as _aa
+            info_yf = fund.get("info_raw") or {}
+            if not info_yf:
+                try:
+                    info_yf = yf.Ticker(ticker).info or {}
+                except Exception:
+                    info_yf = {}
+            perfil = (_aa.analisis_etf(ticker, info_yf, fund.get("moneda") or "USD")
+                      if tipo == "etf" else _aa.analisis_cripto(ticker, info_yf))
+        except Exception as e:
+            perfil = {"tipo": tipo, "ticker": ticker, "error": str(e)}
+
+    # 4. Narrativas. Para ETF y cripto NO se usa el deep dive de empresa (modelo
+    #    de negocio, foso, márgenes): no aplica y sonaba absurdo. Se arma con los
+    #    ejes propios del tipo — réplica/costo/diversificación, o
+    #    suministro/volatilidad/correlación.
+    if tipo in ("etf", "crypto") and perfil and not perfil.get("error"):
+        try:
+            import analisis_activos as _aa2
+            narrativas = {
+                "fuente": "datos",
+                "deep_dive": {},
+                "short_report": {},
+                "narrativa_tipo": _aa2.narrativa_por_tipo(
+                    tipo, ticker, fund.get("nombre") or ticker, perfil),
+            }
+        except Exception:
+            narrativas = {"deep_dive": {}, "short_report": {}, "fuente": "no_disponible"}
+    else:
+        try:
+            narrativas = _claude_narrativas(ticker, fund)
+        except Exception:
+            narrativas = {"deep_dive": {}, "short_report": {}, "fuente": "no_disponible"}
 
     avisos: List[str] = []
     if parcial:
@@ -471,6 +531,9 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
     return {
         "ticker":           ticker,
         "ok":               True,
+        "tipo_activo":      tipo,
+        "perfil":           perfil,
+        "narrativa_tipo":   narrativas.get("narrativa_tipo"),
         "datos_parciales":  parcial,
         "avisos":           avisos,
         "nombre":           fund.get("nombre") or ticker,

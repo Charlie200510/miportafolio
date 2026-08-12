@@ -1,0 +1,13 @@
+[Unit]
+Description=Timer: edición matutina del Periódico
+
+[Timer]
+# 13:05 UTC = 07:05 en Ciudad de México. México no cambia de horario desde
+# 2022, así que UTC-6 es fijo todo el año y no hace falta OnCalendar por zona.
+# Va cinco minutos DESPUÉS de la hora de corte (HORA_EDICION_CDMX = 7) para que
+# _edicion_vigente() ya haya pasado a la fecha de hoy cuando corra.
+OnCalendar=*-*-* 13:05:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

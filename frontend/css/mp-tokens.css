@@ -116,52 +116,88 @@
 }
 
 /* ─────────────────────────────── TOKENS ───────────────────────────────── */
+/* TEMA ÚNICO: papel claro. No hay modo oscuro, no hay conmutador, no hay
+   `prefers-color-scheme`. La identidad editorial no cambia —serif en los
+   titulares, mono tabular en las cifras, reglas de sección, cintilla— solo
+   se imprime sobre papel en vez de sobre tinta.
+
+   NOMBRES: los tokens viejos (`--tinta` como fondo, `--papel` como texto)
+   desaparecieron a propósito en vez de reciclarse con el significado
+   invertido. Si quedara una referencia sin migrar, `var(--papel)` ahora es
+   una variable INEXISTENTE y la declaración se invalida (se ve roto al
+   instante). Reciclando el nombre, en cambio, habría pintado texto blanco
+   sobre papel blanco y habría pasado desapercibido. Vocabulario nuevo:
+     --sup-*    superficies (el papel)
+     --tinta-N  texto (la tinta), 1 = más oscuro
+   ========================================================================= */
 :root {
   /* Tipografía — tres roles, sin excepción */
   --ff-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
   --ff-sans:  'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --ff-mono:  'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Tinta y papel. Base cálida (sesgo amarillo), no el negro azulado genérico. */
-  --tinta:        #0B0B0A;  /* fondo de página */
-  --tinta-panel:  #131210;  /* celda / panel */
-  --tinta-alta:   #191713;  /* panel elevado, hover */
-  --tinta-honda:  #080807;  /* pozos, inputs */
+  /* ── SUPERFICIES ────────────────────────────────────────────────────────
+     Papel cálido (sesgo amarillo), nunca el blanco azulado de pantalla.
+     El fondo es un degradado casi imperceptible de gris claro a blanco hueso;
+     los paneles van un punto MÁS claros que el fondo, así la jerarquía la da
+     la luz y no una sombra.                                               */
+  --sup-grad-a:  #EFEFEC;  /* arriba del degradado de página */
+  --sup-grad-b:  #FAF8F3;  /* abajo del degradado de página */
+  --sup:         #F4F2ED;  /* equivalente plano del degradado */
+  --sup-panel:   #FDFCF8;  /* celda / panel */
+  --sup-alto:    #FFFDF8;  /* panel elevado, hover */
+  --sup-hondo:   #EFEDE6;  /* pozos, inputs (recesivo, no elevado) */
 
-  /* Reglas: hairlines cálidas, nunca azules */
-  --regla:        #2A2721;  /* hairline estándar */
-  --regla-suave:  #1E1C18;  /* separador interno */
-  --regla-fuerte: #4A443A;  /* regla de sección / doble */
+  /* ── REGLAS ─────────────────────────────────────────────────────────────
+     Hairlines en gris cálido. Nunca azules, nunca sombras.               */
+  --regla:        #DFDBD0;  /* hairline estándar */
+  --regla-suave:  #EAE7DE;  /* separador interno */
+  --regla-fuerte: #B9B2A2;  /* regla de sección / doble */
 
-  /* Texto marfil */
-  --papel:    #F2EEE4;  /* 17.0:1  — titulares, cifras protagonistas */
-  --papel-2:  #CFC8B8;  /* 11.8:1  — texto corrido */
-  --papel-3:  #9A9284;  /*  6.4:1  — meta, etiquetas */
-  --papel-4:  #847D70;  /*  4.8:1  — mínimo AA para texto tenue */
+  /* ── TINTA (texto) ──────────────────────────────────────────────────────
+     Contraste medido contra --sup-panel (#FDFCF8), que es la superficie MÁS
+     clara y por tanto el peor caso. Los cuatro pasan AA.                  */
+  --tinta-1:  #1A1A18;  /* 17.0:1 — titulares, cifras protagonistas */
+  --tinta-2:  #46443E;  /*  9.5:1 — texto corrido */
+  --tinta-3:  #5E5A51;  /*  5.9:1 — meta, etiquetas */
+  --tinta-4:  #6F6A5C;  /*  4.7:1 — mínimo AA para texto tenue */
 
-  /* Acento único: ámbar de tinta de sello. Solo acciones e interacción.
-     Se eligió ámbar y NO verde precisamente para que el verde quede
-     reservado a la dirección de mercado y no compitan semánticamente. */
-  --sello:        #D79A3C;  /* 8.0:1 — texto/borde de acento */
-  --sello-vivo:   #EDB259;  /* hover */
-  --sello-solido: #C98A2B;  /* fondo de botón; encima va --tinta */
-  --sello-tenue:  rgba(215,154,60,.12);
+  /* ── ACENTO ─────────────────────────────────────────────────────────────
+     Un solo acento para TODA la interacción: ámbar de tinta de sello,
+     bajado a ocre para que pase AA sobre papel (el #D79A3C del tema oscuro
+     daba 2.2:1 aquí y era ilegible). Sigue sin ser verde a propósito: el
+     verde queda reservado a la dirección de mercado.                      */
+  --sello:        #9C5D12;  /* 5.1:1 — texto/borde de acento */
+  --sello-vivo:   #7E4A0C;  /* hover: se oscurece, no se aclara */
+  --sello-solido: #9C5D12;  /* fondo de botón; encima va --sobre-sello */
+  --sello-tenue:  rgba(156,93,18,.10);
+  --sobre-sello:  #FFFDF8;  /* 5.2:1 sobre --sello-solido */
 
-  /* Dirección de mercado. NUNCA decorativos. */
-  --alza:       #6FAE7E;  /* 7.5:1 */
-  --baja:       #DB7B68;  /* 6.6:1 */
-  --alza-tenue: rgba(111,174,126,.12);
-  --baja-tenue: rgba(219,123,104,.12);
+  /* ── DIRECCIÓN DE MERCADO ───────────────────────────────────────────────
+     NUNCA decorativos. Reajustados para papel: el verde menta y el salmón
+     del tema oscuro quedaban chillones y sin contraste sobre blanco.     */
+  --alza:       #1F7A4C;  /* 5.2:1 */
+  --baja:       #AE3223;  /* 6.2:1 */
+  --alza-tenue: rgba(31,122,76,.10);
+  --baja-tenue: rgba(174,50,35,.10);
 
-  /* Geometría de prensa: esquinas casi rectas, cero sombra. */
+  /* Geometría de prensa: esquinas casi rectas, cero sombra dura. */
   --radio:      2px;
   --radio-nulo: 0px;
   --hairline:   0.5px;
+
+  /* Elevación: mínima y suave. Se usa SOLO en lo que de verdad flota sobre
+     la página (tarjetas del Periódico, modales), nunca en celdas de datos. */
+  --elev-1: 0 1px 2px rgba(26,26,24,.05);
+  --elev-2: 0 6px 18px rgba(26,26,24,.09);
 
   /* Micro-interacciones sobrias */
   --t-rapida: 120ms;
   --t-media:  160ms;
   --easing:   cubic-bezier(.2, 0, .2, 1);
+  /* Resorte suave para la expansión de tarjetas (Parte 2). Sin rebote
+     exagerado: sobrepasa ~4% y asienta. */
+  --resorte:  cubic-bezier(.22, 1.0, .32, 1.0);
 
   /* Safe areas (se leen desde el harness de verificación) */
   --sa-top:    env(safe-area-inset-top, 0px);
@@ -180,21 +216,26 @@
    falta !important: es la única forma de ganarle a las utilidades ya
    repartidas por 400 KB de markup sin renombrar una sola clase.            */
 
-/* Cero sombras, cero glow. */
-*, *::before, *::after {
+/* Cero sombras duras, cero glow. La elevación permitida (--elev-1/2) se
+   aplica por clase propia `.mp-elev`, que sí se respeta. */
+*:not(.mp-elev):not(.mp-elev-2):not(.mp-hoja):not(.mp-tarjeta), *::before, *::after {
   box-shadow: none !important;
   text-shadow: none !important;
 }
+.mp-elev   { box-shadow: var(--elev-1) !important; }
+.mp-elev-2 { box-shadow: var(--elev-2) !important; }
 
 /* Radios: 0–2px. Los circulares (avatares, puntos, pills de estado) se
    respetan aparte más abajo. */
 [class*="rounded"] { border-radius: var(--radio) !important; }
 .rounded-none      { border-radius: 0 !important; }
 
-/* Cero gradientes: se aplanan al color de panel. */
+/* Cero gradientes de utilidad: se aplanan al color de panel. (El degradado
+   de página lo pinta mp-editorial.css sobre `html`, que no lleva estas
+   clases, así que no lo alcanza esta regla.) */
 [class*="bg-gradient-"] {
   background-image: none !important;
-  background-color: var(--tinta-panel) !important;
+  background-color: var(--sup-panel) !important;
 }
 
 /* Cero glassmorphism. */
@@ -203,9 +244,16 @@
   backdrop-filter: none !important;
 }
 
-/* El fondo radial del shell y el "bg-grid" desaparecen: papel plano. */
-html, body { background-image: none !important; }
-.bg-grid   { background-image: none !important; }
+/* El fondo radial del shell y el "bg-grid" desaparecen. El degradado de
+   página se pinta en mp-editorial.css; aquí solo se limpia `body` para que
+   no tape el de `html`. */
+body     { background-image: none !important; }
+.bg-grid { background-image: none !important; }
+
+/* Un solo tema: se declara `light` para que los controles nativos (scrollbars,
+   date pickers, autofill de Safari) también salgan claros y no en su variante
+   oscura heredada del sistema. */
+:root { color-scheme: light; }
 
 /* Transiciones sobrias: nada por encima de 160ms, sin rebotes. */
 .transition, [class*="transition-"] {
