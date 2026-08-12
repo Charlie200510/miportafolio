@@ -3842,6 +3842,14 @@ const Periodico = (() => {
       if (y0 == null || !card) return;
       const dy = (ev.clientY || 0) - y0;
       card.classList.remove('arrastrando');
+      // La marca `arrastre` existe para que el `click` que el navegador dispara
+      // DESPUÉS de un arrastre no se tome como un toque. Pero si tras el
+      // arrastre no llega ningún click (arrastre cancelado, gesto que se fue a
+      // scroll), la marca se quedaba pegada y se comía el SIGUIENTE toque de
+      // verdad: había que tocar dos veces para reabrir la tarjeta. Se limpia
+      // por tiempo, pasada la ventana en la que podría llegar ese click.
+      const cara = card.querySelector('.mp-tarjeta-cara');
+      if (cara) setTimeout(() => { delete cara.dataset.arrastre; }, 350);
       if (dy > 60) _cerrarTodas(mazo); else _posicionar(mazo, true);
       y0 = null; card = null;
     };
