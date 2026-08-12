@@ -559,7 +559,11 @@ tbody tr:last-child td { border-bottom: 0 !important; }
 /* Botones permanentes del header (Apple 2.1(b) y 5.1.1(v)): siempre visibles,
    siempre táctiles. El área mínima de 44px se garantiza aquí. */
 #btn-premium-header, #btn-cuenta-header {
-  min-height: 32px;
+  /* 44px SIEMPRE, no 32. En vertical la regla móvil de ux_helpers.js ya los
+     subía a 44, pero en horizontal (932x430) esa hoja no aplica y quedaban en
+     32px: por debajo del mínimo táctil que pide Apple justo en los dos botones
+     que el revisor tiene que poder tocar. */
+  min-height: 44px;
   font-family: var(--ff-mono) !important;
   font-size: 9.5px !important;
   letter-spacing: 0.02em;
@@ -785,6 +789,11 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
 }
 /* Mientras se arrastra hacia abajo para cerrar, manda el dedo: sin transición. */
 .mp-tarjeta.arrastrando { transition: none !important; }
+/* Colocación inicial (y recolocación por resize/rotación): posición aplicada de
+   golpe. Va como clase en el ancestro —especificidad (0,2,0)— porque un
+   `style.transition = 'none'` en línea NO le gana a las reglas !important que
+   inyecta ux_helpers.js en móvil. */
+.mp-mazo.sin-animacion .mp-tarjeta { transition: none !important; }
 
 /* Cara: lo único que se ve cuando está apilada. */
 .mp-tarjeta-cara {
@@ -802,7 +811,12 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
   cursor: pointer;
   color: inherit;
   font: inherit;
-  min-height: var(--tj-cara);
+  /* Alto FIJO, no min-height: la regla móvil de ux_helpers.js pone
+     `min-height: 44px !important` a todos los botones y ganaba, dejando la cara
+     en ~105 px. Con el alto fijo el `margin-top:auto` de la meta la manda
+     siempre al fondo de la cara, es decir por debajo de la franja visible. */
+  height: var(--tj-cara) !important;
+  box-sizing: border-box;
 }
 .mp-tarjeta-cara:focus-visible {
   outline: 2px solid var(--cat-tinta, var(--tinta-1));
@@ -1004,11 +1018,21 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
 .mp-tarjeta.abierta .mp-tarjeta-asa { display: block; }
 
 /* ── Indicador de mazos (tocable) ──────────────────────────────────────── */
+/* Se queda pegado JUSTO debajo de #mp-topbar mientras se recorre la pila: así
+   siempre se sabe en qué mazo estás y se puede saltar a otro sin volver arriba.
+   Sin esto, el indicador se metía bajo la barra fija y su mitad superior dejaba
+   de recibir toques. El desplazamiento lo publica app.js en --mp-topbar-h,
+   porque el alto de la barra cambia (banner de demo, modo nativo sin sub-nav). */
 .mp-mazos-ind {
+  position: sticky;
+  top: var(--mp-topbar-h, 0px);
+  z-index: 20;
+  background: var(--sup-grad-b);
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 0 0 14px;
+  padding-bottom: 2px;
   flex-wrap: wrap;
 }
 .mp-mazos-ind button {

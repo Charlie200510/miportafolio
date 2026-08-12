@@ -176,9 +176,9 @@
   /* ── DIRECCIÓN DE MERCADO ───────────────────────────────────────────────
      NUNCA decorativos. Reajustados para papel: el verde menta y el salmón
      del tema oscuro quedaban chillones y sin contraste sobre blanco.     */
-  --alza:       #1F7A4C;  /* 5.2:1 */
-  --baja:       #AE3223;  /* 6.2:1 */
-  --alza-tenue: rgba(31,122,76,.10);
+  --alza:       #1B6B42;  /* 5.6:1 en página, 5.1:1 sobre el fondo de tarjeta más claro */
+  --baja:       #AE3223;  /* 6.2:1 en página, 4.9:1 sobre el fondo de tarjeta más claro */
+  --alza-tenue: rgba(27,107,66,.10);
   --baja-tenue: rgba(174,50,35,.10);
 
   /* Geometría de prensa: esquinas casi rectas, cero sombra dura. */

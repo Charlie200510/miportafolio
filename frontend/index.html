@@ -84,7 +84,7 @@
       tinta1: '#1A1A18', tinta2: '#46443E', tinta3: '#5E5A51', tinta4: '#6F6A5C',
       sello: '#9C5D12', selloVivo: '#7E4A0C', selloSolido: '#9C5D12',
       sobreSello: '#FFFDF8',
-      alza:  '#1F7A4C', baja: '#AE3223',
+      alza:  '#1B6B42', baja: '#AE3223',
     };
     tailwind.config = {
       theme: {
@@ -275,7 +275,11 @@
   <!-- ============================================================ -->
   <!-- BANNER DEMO MODE (visible solo si ?demo=1)                    -->
   <!-- ============================================================ -->
-  <div id="demo-banner" class="hidden bg-gradient-to-r from-accent-orange/15 via-accent-amber/15 to-accent-orange/15 border-b border-accent-orange/30 sticky top-0 z-50">
+  <!-- El banner de demo NO es sticky: siendo sticky top-0 con z-50 se quedaba
+       pegado ENCIMA de #mp-topbar (z-40) al hacer scroll y tapaba "Suscribirse"
+       y "Mi cuenta", que Apple exige siempre visibles y tocables. Es un aviso
+       informativo: se lee una vez al entrar y no necesita perseguir al usuario. -->
+  <div id="demo-banner" class="hidden bg-gradient-to-r from-accent-orange/15 via-accent-amber/15 to-accent-orange/15 border-b border-accent-orange/30 relative z-30">
     <div class="max-w-7xl mx-auto px-6 py-2.5 flex items-center justify-between gap-3 flex-wrap">
       <div class="flex items-center gap-2 text-[12px] text-amber-100">
         <span class="w-1.5 h-1.5 rounded-full bg-accent-orange animate-pulse"></span>

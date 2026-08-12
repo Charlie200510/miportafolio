@@ -362,7 +362,7 @@
          pista se medía a sí misma en pleno vuelo). Ahora solo se acortan las
          animaciones de lo que YA declaraba transición. */
       [class*="transition"], [class*="animate"], .fade-up,
-      button, a, [role="button"], .nav-tab, .mp-tarjeta {
+      button, a, [role="button"], .nav-tab {
         animation-duration: 0.25s !important;
         transition-duration: 0.18s !important;
       }

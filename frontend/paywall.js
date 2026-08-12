@@ -678,7 +678,7 @@
       `<button data-x="close" aria-label="Cerrar" style="position:absolute;top:14px;right:14px;background:transparent;border:0;color:var(--tinta-4);font-size:22px;cursor:pointer;line-height:1">×</button>`;
     _overlay = document.createElement('div');
     _overlay.setAttribute('role', 'dialog');
-    _overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(26,26,24,.9);display:flex;align-items:center;justify-content:center;padding:16px';
+    _overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(26,26,24,.55);display:flex;align-items:center;justify-content:center;padding:16px';
     _overlay.innerHTML = `
       <div style="position:relative;max-width:420px;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:24px;color:var(--tinta-1);font-family:system-ui,-apple-system,sans-serif;max-height:90vh;overflow:auto">
         ${btnCerrar}

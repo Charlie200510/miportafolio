@@ -33,7 +33,7 @@ const MP_COLOR = (() => {
     regla: '#DFDBD0', reglaSuave: '#EAE7DE', reglaFuerte: '#B9B2A2',
     tinta1: '#1A1A18', tinta2: '#46443E', tinta3: '#5E5A51', tinta4: '#6F6A5C',
     sello: '#9C5D12', selloVivo: '#7E4A0C', selloSolido: '#9C5D12', sobreSello: '#FFFDF8',
-    alza: '#1F7A4C', baja: '#AE3223',
+    alza: '#1B6B42', baja: '#AE3223',
   };
   const tokens = {
     sup: '--sup', supPanel: '--sup-panel', supAlto: '--sup-alto', supHondo: '--sup-hondo',
@@ -3637,9 +3637,9 @@ const Periodico = (() => {
     const { paso, cara, mini } = _medidas(mazo);
     const k = state.abierta[mazo.dataset.mazo];
     let y = 0, alto = 0;
+    if (!animar) mazo.classList.add('sin-animacion');
 
     tarjetas.forEach((el, i) => {
-      if (!animar) el.style.transition = 'none';
       el.style.transform = `translateY(${y}px)`;
       // z creciente: cada tarjeta tapa a la anterior. De eso depende que el
       // crecimiento de la que se abre quede oculto tras la de abajo.
@@ -3658,9 +3658,11 @@ const Periodico = (() => {
     // es la única que se ve entera: con eso la pila nunca corta contenido.
     mazo.style.height = Math.ceil(alto) + 'px';
     if (!animar) {
-      // Forzar reflow para que la próxima transición sí anime.
+      // Reflow forzado ANTES de devolver la transición: si se quitara la clase
+      // en el mismo frame, el navegador vería un solo cambio de estilo y
+      // animaría igual desde la posición vieja.
       void mazo.offsetHeight;
-      tarjetas.forEach(el => { el.style.transition = ''; });
+      mazo.classList.remove('sin-animacion');
     }
     return alto;
   }
@@ -3994,9 +3996,26 @@ const Periodico = (() => {
     iniciarPollingLive();
   }
 
+  /* Publica el alto real de la barra superior para que el indicador de mazos
+     pueda quedarse pegado justo debajo. Se recalcula ante cualquier cosa que
+     cambie ese alto: rotación, banner de demo, o el modo nativo que esconde la
+     sub-nav. */
+  function _medirTopbar() {
+    const tb = $('mp-topbar');
+    if (!tb) return;
+    const h = Math.round(tb.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--mp-topbar-h', h + 'px');
+  }
+
   function bind() {
     const btn = $('periodico-refrescar');
     if (btn) btn.addEventListener('click', () => cargar(true));
+    _medirTopbar();
+    window.addEventListener('resize', _medirTopbar);
+    window.addEventListener('orientationchange', () => setTimeout(_medirTopbar, 260));
+    // La barra nativa esconde la sub-nav después de arrancar: hay que remedir.
+    setTimeout(_medirTopbar, 600);
+    setTimeout(_medirTopbar, 2000);
     window.addEventListener('resize', () => {
       document.querySelectorAll('.mp-mazo').forEach(m => _posicionar(m, false));
       _reajustarPista();

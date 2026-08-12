@@ -123,13 +123,15 @@
           mono:  ['IBM Plex Mono', 'ui-monospace', 'monospace'],
         },
         colors: {
-          zinc:    { 50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
-                     500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' },
-          emerald: { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B', 600:'#C98A2B' },
-          green:   { 300:'#6FAE7E', 400:'#6FAE7E', 500:'#6FAE7E' },
-          red:     { 300:'#DB7B68', 400:'#DB7B68', 500:'#DB7B68' },
-          amber:   { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
-          sky:     { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+          /* Espejo de mp-tokens.css. Escala INVERTIDA respecto a Tailwind:
+             índices bajos = tinta (texto), altos = papel (superficies). */
+          zinc:    { 50:'#1A1A18', 100:'#1A1A18', 200:'#46443E', 300:'#46443E', 400:'#5E5A51',
+                     500:'#5E5A51', 600:'#6F6A5C', 700:'#B9B2A2', 800:'#DFDBD0', 900:'#FDFCF8', 950:'#F4F2ED' },
+          emerald: { 300:'#9C5D12', 400:'#9C5D12', 500:'#9C5D12', 600:'#9C5D12' },
+          green:   { 300:'#1B6B42', 400:'#1B6B42', 500:'#1B6B42' },
+          red:     { 300:'#AE3223', 400:'#AE3223', 500:'#AE3223' },
+          amber:   { 300:'#9C5D12', 400:'#9C5D12', 500:'#9C5D12' },
+          sky:     { 300:'#9C5D12', 400:'#9C5D12', 500:'#9C5D12' },
         },
         borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px', xl:'2px', '2xl':'2px', '3xl':'2px' },
         boxShadow: { none:'none', sm:'none', DEFAULT:'none', md:'none', lg:'none', xl:'none', '2xl':'none' },
@@ -140,7 +142,7 @@
   <link rel="stylesheet" href="/static/css/mp-editorial.css">
   <link rel="stylesheet" href="/static/blog/_styles.css">
   <style>
-    body { background: #0B0B0A; color: #CFC8B8; }
+    body { background: transparent; color: var(--tinta-2); }
     .display { font-family: var(--ff-serif); letter-spacing: -0.02em; }
   </style>
 </head>
@@ -232,13 +234,13 @@
             <td>WALMEX.MX</td>
             <td>$60,000</td>
             <td>$78,000</td>
-            <td style="color: #D79A3C;">+$18,000 ganancia</td>
+            <td style="color: #9C5D12;">+$18,000 ganancia</td>
           </tr>
           <tr>
             <td>AAPL</td>
             <td>$45,000</td>
             <td>$62,000</td>
-            <td style="color: #D79A3C;">+$17,000 ganancia</td>
+            <td style="color: #9C5D12;">+$17,000 ganancia</td>
           </tr>
           <tr>
             <td>GFNORTEO.MX</td>
@@ -263,7 +265,7 @@
         Utilidad neta: $35,000 − $5,000 = $30,000<br>
         Comisiones brokers (aprox.): −$500<br>
         Base gravable: $29,500<br>
-        <strong style="color: #F2EEE4;">ISR a pagar: $29,500 × 10% = $2,950 MXN</strong>
+        <strong style="color: #1A1A18;">ISR a pagar: $29,500 × 10% = $2,950 MXN</strong>
       </div>
 
       <h2>4. ¿Cuándo se causa y cuándo se paga?</h2>
@@ -288,7 +290,7 @@
       <div class="calc-box">
         Sin tax-loss harvesting: ISR = $30,000 × 10% = $3,000<br>
         Con tax-loss harvesting:  ISR = ($30,000 − $10,000) × 10% = $2,000<br>
-        <strong style="color: #D79A3C;">Ahorro real: $1,000 MXN</strong>
+        <strong style="color: #9C5D12;">Ahorro real: $1,000 MXN</strong>
       </div>
       <p>
         <strong>Importante:</strong> a diferencia de Estados Unidos, México NO tiene "wash sale rule" estricta. Puedes recomprar la misma acción el día siguiente sin perder el beneficio fiscal.
@@ -366,13 +368,13 @@
       </ul>
 
       <div style="margin: 40px 0; padding: 28px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(52,211,153,0.02)); border: 1px solid rgba(52,211,153,0.3); border-radius: 16px; text-align: center;">
-        <h3 style="font-family: 'Outfit', sans-serif; color: #F2EEE4; margin: 0 0 8px;">Calcula tu ISR sin Excel</h3>
-        <p style="color: #9A9284; margin: 0 0 16px; font-size: 14px;">Sube tus transacciones, te calculamos el ISR exacto y te decimos cuánto ahorras con tax-loss harvesting.</p>
-        <a href="/" style="display: inline-block; padding: 12px 24px; background: #D79A3C; color: #0B0B0A; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">Abrir Mi Portafolio →</a>
+        <h3 style="font-family: 'Outfit', sans-serif; color: #1A1A18; margin: 0 0 8px;">Calcula tu ISR sin Excel</h3>
+        <p style="color: #5E5A51; margin: 0 0 16px; font-size: 14px;">Sube tus transacciones, te calculamos el ISR exacto y te decimos cuánto ahorras con tax-loss harvesting.</p>
+        <a href="/" style="display: inline-block; padding: 12px 24px; background: #9C5D12; color: #F4F2ED; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">Abrir Mi Portafolio →</a>
       </div>
 
       <h2>Disclaimer importante</h2>
-      <p style="font-size: 14px; color: #847D70;">
+      <p style="font-size: 14px; color: #6F6A5C;">
         Esta guía es <strong>educativa</strong>, no asesoría fiscal personalizada. La interpretación de la Ley del ISR puede variar según tu situación (residencia, ingresos totales, tipo de instrumento). Para casos complejos consulta a un <strong>contador público certificado</strong> o asesor fiscal autorizado. Mi Portafolio NO es asesor fiscal ni asesor de inversiones registrado ante CNBV.
       </p>
 

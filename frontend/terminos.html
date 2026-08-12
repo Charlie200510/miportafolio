@@ -18,9 +18,11 @@
           sans:  ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
           mono:  ['IBM Plex Mono', 'ui-monospace', 'monospace'],
         },
+        /* Espejo de mp-tokens.css. Escala INVERTIDA respecto a Tailwind: los
+           índices bajos son texto (tinta) y los altos, superficies (papel). */
         colors: { zinc: {
-          50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
-          500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' } },
+          50:'#1A1A18', 100:'#1A1A18', 200:'#46443E', 300:'#46443E', 400:'#5E5A51',
+          500:'#5E5A51', 600:'#6F6A5C', 700:'#B9B2A2', 800:'#DFDBD0', 900:'#FDFCF8', 950:'#F4F2ED' } },
         borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px', xl:'2px', '2xl':'2px' },
         boxShadow: { none:'none', sm:'none', DEFAULT:'none', md:'none', lg:'none', xl:'none' },
       } }
@@ -30,7 +32,7 @@
   <link rel="stylesheet" href="/static/css/mp-editorial.css">
   <style>
     /* Página legal: columna de lectura estrecha, jerarquía por tipografía. */
-    body { background: #0B0B0A; color: #CFC8B8; }
+    body { background: transparent; color: var(--tinta-2); }  /* el degradado va en `html` */
     .legal h2 {
       font-family: var(--ff-serif); font-size: 1.3rem; font-weight: 700;
       margin-top: 2.2rem; margin-bottom: .7rem; color: var(--tinta-1);
@@ -147,7 +149,7 @@
     <p class="text-xs text-zinc-600 italic">Este documento es una plantilla. Debe ser revisado por un abogado mexicano con especialidad en derecho fintech, protección al consumidor y datos personales antes de su publicación oficial.</p>
 
     <div class="mt-12 flex gap-4 text-sm">
-      <a href="/" class="text-accent-green hover:underline" style="color:#D79A3C;">← Volver a la app</a>
+      <a href="/" class="text-accent-green hover:underline" style="color:var(--sello);">← Volver a la app</a>
       <a href="/privacidad" class="text-zinc-400 hover:text-zinc-200">Aviso de Privacidad</a>
     </div>
   </main>

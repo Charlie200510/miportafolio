@@ -5,8 +5,8 @@
 
 body {
   font-family: var(--ff-sans);
-  background: var(--tinta);
-  color: var(--papel-2);
+  background: transparent;   /* el degradado de página lo pinta mp-editorial en `html` */
+  color: var(--tinta-2);
 }
 
 .display { font-family: var(--ff-serif); letter-spacing: -0.02em; }
@@ -14,7 +14,7 @@ body {
 /* ── Cuerpo del artículo ─────────────────────────────────────────────────── */
 .prose h2 {
   font-family: var(--ff-serif);
-  color: var(--papel);
+  color: var(--tinta-1);
   font-size: 27px;
   font-weight: 700;
   margin-top: 46px;
@@ -26,7 +26,7 @@ body {
 }
 .prose h3 {
   font-family: var(--ff-serif);
-  color: var(--papel);
+  color: var(--tinta-1);
   font-size: 20px;
   font-weight: 600;
   margin-top: 30px;
@@ -36,7 +36,7 @@ body {
 /* Texto corrido en serif, con medida de lectura de prensa. */
 .prose p {
   font-family: var(--ff-serif);
-  color: var(--papel-2);
+  color: var(--tinta-2);
   font-size: 17.5px;
   line-height: 1.62;
   margin-bottom: 16px;
@@ -44,7 +44,7 @@ body {
 .prose ul, .prose ol { margin-bottom: 16px; padding-left: 20px; }
 .prose ul li, .prose ol li {
   font-family: var(--ff-serif);
-  color: var(--papel-2);
+  color: var(--tinta-2);
   font-size: 17px;
   line-height: 1.6;
   margin-bottom: 7px;
@@ -61,10 +61,10 @@ body {
 .prose ol li::marker {
   font-family: var(--ff-mono);
   font-size: .82em;
-  color: var(--papel-3);
+  color: var(--tinta-3);
 }
-.prose strong { color: var(--papel); font-weight: 600; }
-.prose em { color: var(--papel-2); font-style: italic; }
+.prose strong { color: var(--tinta-1); font-weight: 600; }
+.prose em { color: var(--tinta-2); font-style: italic; }
 
 .prose a {
   color: var(--sello);
@@ -76,7 +76,7 @@ body {
 
 /* ── Cifras y código: monoespaciada tabular ──────────────────────────────── */
 .prose code {
-  background: var(--tinta-panel);
+  background: var(--sup-panel);
   padding: 2px 6px;
   border-radius: var(--radio);
   font-size: 14px;
@@ -95,7 +95,7 @@ body {
   font-style: italic;
   font-size: 18px;
   line-height: 1.55;
-  color: var(--papel);
+  color: var(--tinta-1);
   border-radius: 0;
 }
 
@@ -111,7 +111,7 @@ body {
   background: transparent;
   padding: 8px 10px;
   text-align: left;
-  color: var(--papel-3);
+  color: var(--tinta-3);
   font-family: var(--ff-mono);
   font-size: 9.5px;
   font-weight: 600;
@@ -122,14 +122,14 @@ body {
 .prose td {
   padding: 9px 10px;
   border-bottom: var(--hairline) solid var(--regla);
-  color: var(--papel-2);
+  color: var(--tinta-2);
   vertical-align: top;
 }
-.prose tr:hover td { background: var(--tinta-alta); }
+.prose tr:hover td { background: var(--sup-alto); }
 
 /* Caja de cálculo: hoja de terminal. */
 .prose .calc-box {
-  background: var(--tinta-honda);
+  background: var(--sup-hondo);
   border: var(--hairline) solid var(--regla);
   border-left: 2px solid var(--sello);
   border-radius: var(--radio);
@@ -138,7 +138,7 @@ body {
   font-family: var(--ff-mono);
   font-variant-numeric: tabular-nums lining-nums;
   font-size: 13px;
-  color: var(--papel-2);
+  color: var(--tinta-2);
   line-height: 1.7;
 }
 
@@ -148,21 +148,21 @@ body {
   padding: 24px 0;
   background: transparent;
   border: 0;
-  border-top: 2px solid var(--papel);
+  border-top: 2px solid var(--tinta-1);
   border-bottom: 1px solid var(--regla-fuerte);
   border-radius: 0;
   text-align: left;
 }
 .cta-box h3 {
   font-family: var(--ff-serif);
-  color: var(--papel);
+  color: var(--tinta-1);
   margin: 0 0 6px;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -.015em;
 }
 .cta-box p {
-  color: var(--papel-3);
+  color: var(--tinta-3);
   margin: 0 0 14px;
   font-size: 14px;
   font-family: var(--ff-sans);
@@ -171,7 +171,7 @@ body {
   display: inline-block;
   padding: 11px 18px;
   background: var(--sello-solido);
-  color: var(--tinta);
+  color: var(--sup);
   text-decoration: none;
   border: 1px solid var(--sello-solido);
   border-radius: var(--radio);

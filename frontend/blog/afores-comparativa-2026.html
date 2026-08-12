@@ -55,13 +55,15 @@
           mono:  ['IBM Plex Mono', 'ui-monospace', 'monospace'],
         },
         colors: {
-          zinc:    { 50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
-                     500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' },
-          emerald: { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B', 600:'#C98A2B' },
-          green:   { 300:'#6FAE7E', 400:'#6FAE7E', 500:'#6FAE7E' },
-          red:     { 300:'#DB7B68', 400:'#DB7B68', 500:'#DB7B68' },
-          amber:   { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
-          sky:     { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B' },
+          /* Espejo de mp-tokens.css. Escala INVERTIDA respecto a Tailwind:
+             índices bajos = tinta (texto), altos = papel (superficies). */
+          zinc:    { 50:'#1A1A18', 100:'#1A1A18', 200:'#46443E', 300:'#46443E', 400:'#5E5A51',
+                     500:'#5E5A51', 600:'#6F6A5C', 700:'#B9B2A2', 800:'#DFDBD0', 900:'#FDFCF8', 950:'#F4F2ED' },
+          emerald: { 300:'#9C5D12', 400:'#9C5D12', 500:'#9C5D12', 600:'#9C5D12' },
+          green:   { 300:'#1B6B42', 400:'#1B6B42', 500:'#1B6B42' },
+          red:     { 300:'#AE3223', 400:'#AE3223', 500:'#AE3223' },
+          amber:   { 300:'#9C5D12', 400:'#9C5D12', 500:'#9C5D12' },
+          sky:     { 300:'#9C5D12', 400:'#9C5D12', 500:'#9C5D12' },
         },
         borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px', xl:'2px', '2xl':'2px', '3xl':'2px' },
         boxShadow: { none:'none', sm:'none', DEFAULT:'none', md:'none', lg:'none', xl:'none', '2xl':'none' },
@@ -104,7 +106,7 @@
       <div class="calc-box">
         AFORE con IRN 8% anual: te retiras con ~$2.1M MXN<br>
         AFORE con IRN 6% anual: te retiras con ~$1.55M MXN<br>
-        <strong style="color: #F2EEE4;">Diferencia: $550,000 MXN — por NO cambiarte</strong>
+        <strong style="color: #1A1A18;">Diferencia: $550,000 MXN — por NO cambiarte</strong>
       </div>
       <p>Y cambiarte es gratis. Es la decisión con mejor ROI de tu vida financiera.</p>
 
@@ -210,7 +212,7 @@
       </div>
 
       <h2>Disclaimer</h2>
-      <p style="font-size: 14px; color: #847D70;">Datos referenciales basados en reportes públicos de CONSAR 2025-2026. Los IRN cambian — siempre verifica en <a href="https://www.consar.gob.mx" target="_blank">consar.gob.mx</a> antes de cambiarte. Esta guía es educativa, no asesoría financiera personalizada. Mi Portafolio NO recibe comisión por mencionar AFOREs.</p>
+      <p style="font-size: 14px; color: #6F6A5C;">Datos referenciales basados en reportes públicos de CONSAR 2025-2026. Los IRN cambian — siempre verifica en <a href="https://www.consar.gob.mx" target="_blank">consar.gob.mx</a> antes de cambiarte. Esta guía es educativa, no asesoría financiera personalizada. Mi Portafolio NO recibe comisión por mencionar AFOREs.</p>
     </div>
 
     <div class="mt-12 pt-8 border-t border-zinc-800">
