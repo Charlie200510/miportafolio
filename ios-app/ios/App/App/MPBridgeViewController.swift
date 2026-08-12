@@ -56,10 +56,10 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
 
         // Tinta y papel: los mismos tokens que mp-tokens.css, para que la barra
         // nativa no se sienta pegada encima de otra app.
-        let fondo   = UIColor(red: 0.043, green: 0.043, blue: 0.039, alpha: 1)  // #0B0B0A
-        let sello   = UIColor(red: 0.843, green: 0.604, blue: 0.235, alpha: 1)  // #D79A3C
-        let papel3  = UIColor(red: 0.604, green: 0.573, blue: 0.518, alpha: 1)  // #9A9284
-        let regla   = UIColor(red: 0.165, green: 0.153, blue: 0.129, alpha: 1)  // #2A2721
+        let fondo   = UIColor(red: 0.980, green: 0.973, blue: 0.953, alpha: 1)  // #FAF8F3
+        let sello   = UIColor(red: 0.612, green: 0.365, blue: 0.071, alpha: 1)  // #9C5D12
+        let tinta3  = UIColor(red: 0.369, green: 0.353, blue: 0.318, alpha: 1)  // #5E5A51
+        let regla   = UIColor(red: 0.875, green: 0.859, blue: 0.816, alpha: 1)  // #DFDBD0
 
         let apar = UITabBarAppearance()
         apar.configureWithOpaqueBackground()
@@ -68,9 +68,9 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
         for layout in [apar.stackedLayoutAppearance,
                        apar.inlineLayoutAppearance,
                        apar.compactInlineLayoutAppearance] {
-            layout.normal.iconColor = papel3
+            layout.normal.iconColor = tinta3
             layout.normal.titleTextAttributes = [
-                .foregroundColor: papel3,
+                .foregroundColor: tinta3,
                 .font: UIFont.monospacedSystemFont(ofSize: 10, weight: .medium),
             ]
             layout.selected.iconColor = sello

@@ -9,13 +9,13 @@ const config: CapacitorConfig = {
   bundledWebRuntime: false,
   ios: {
     contentInset: 'always',          // respeta safe areas (notch, home indicator)
-    backgroundColor: '#0a0a0b',
+    backgroundColor: '#FAF8F3',
     overrideUserAgent: 'MiPortafolio-iOS',
     scheme: 'MiPortafolio',
     limitsNavigationsToAppBoundDomains: false,
   },
   android: {
-    backgroundColor: '#0a0a0b',
+    backgroundColor: '#FAF8F3',
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,  // poner true solo para depurar en dev
@@ -32,17 +32,17 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchAutoHide: true,
       launchShowDuration: 1500,
-      backgroundColor: '#0a0a0b',
+      backgroundColor: '#FAF8F3',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
       iosSpinnerStyle: 'small',
-      spinnerColor: '#22c55e',
+      spinnerColor: '#9C5D12',
       splashFullScreen: true,
       splashImmersive: true,
     },
     StatusBar: {
-      style: 'DARK',
-      backgroundColor: '#0a0a0b',
+      style: 'LIGHT',
+      backgroundColor: '#FAF8F3',
       overlaysWebView: false,
     },
     PushNotifications: {

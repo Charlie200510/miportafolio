@@ -1,0 +1,20 @@
+[Unit]
+Description=Edición matutina del Periódico (Mi Portafolio)
+After=network-online.target miportafolio.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+# Pega al propio servicio en localhost en vez de correr un script aparte: así
+# la edición queda escrita por el MISMO proceso que la sirve (mismo caché en
+# memoria, mismo directorio _cache_periodico) y no hace falta reiniciar nada.
+#
+# _warmup es fire-and-forget y responde en <100 ms; el trabajo real ocurre en
+# el hilo de fondo. Por eso la unidad no espera resultado: si la descarga falla,
+# noticias_diarias() sirve la edición anterior marcada como degradada y esta
+# misma unidad reintenta al día siguiente.
+ExecStart=/usr/bin/curl -fsS -m 30 -X POST \
+    -H "Authorization: Bearer ${CRON_SECRET}" \
+    http://127.0.0.1:8000/api/_warmup
+EnvironmentFile=/home/ubuntu/portafolio-app/deploy/.env

@@ -9,9 +9,9 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png?v=2">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
   <link rel="manifest" href="/static/manifest.webmanifest" />
-  <meta name="theme-color" content="#0B0B0A" />
+  <meta name="theme-color" content="#EFEFEC" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Mi Portafolio" />
 
   <link rel="preload" as="font" type="font/woff2" crossorigin
@@ -33,13 +33,15 @@
             mono:    ['IBM Plex Mono', 'ui-monospace', 'monospace'],
           },
           colors: {
-            ink: { 900: '#0B0B0A', 800: '#131210', 700: '#191713', 600: '#2A2721' },
+            /* Espejo de mp-tokens.css. Escala invertida respecto a Tailwind:
+               índices bajos = tinta (texto), altos = papel (superficies). */
+            ink: { 900: '#F4F2ED', 800: '#FDFCF8', 700: '#FFFDF8', 600: '#DFDBD0' },
             brand: {
-              300: '#D79A3C', 400: '#D79A3C', 500: '#D79A3C',
-              600: '#C98A2B', 700: '#C98A2B',
+              300: '#9C5D12', 400: '#9C5D12', 500: '#9C5D12',
+              600: '#7E4A0C', 700: '#7E4A0C',
             },
-            zinc: { 50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
-                    500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' },
+            zinc: { 50:'#1A1A18', 100:'#1A1A18', 200:'#46443E', 300:'#46443E', 400:'#5E5A51',
+                    500:'#5E5A51', 600:'#6F6A5C', 700:'#B9B2A2', 800:'#DFDBD0', 900:'#FDFCF8', 950:'#F4F2ED' },
           },
           borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px',
                           xl:'2px', '2xl':'2px', '3xl':'2px' },
@@ -51,8 +53,8 @@
   </script>
   <style>
     body {
-      background: #0B0B0A;
-      color: #CFC8B8;
+      background: transparent;   /* el degradado de página va en `html` */
+      color: var(--tinta-2);
       min-height: 100vh;
     }
     .display { font-family: var(--ff-serif); }
@@ -61,14 +63,14 @@
 
     .btn-primary {
       background: var(--sello-solido);
-      color: var(--tinta);
+      color: var(--sobre-sello);
       border: 1px solid var(--sello-solido);
       transition: background-color var(--t-rapida) var(--easing);
     }
     .btn-primary:hover { background: var(--sello-vivo); border-color: var(--sello-vivo); }
 
     .card {
-      background: var(--tinta-panel);
+      background: var(--sup-panel);
       border: 1px solid var(--regla);
       border-radius: var(--radio);
     }
@@ -77,7 +79,7 @@
     @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
     .input-line {
-      background: var(--tinta-honda);
+      background: var(--sup-hondo);
       border: 1px solid var(--regla);
       border-radius: var(--radio);
       transition: border-color var(--t-rapida) var(--easing);

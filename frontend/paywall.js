@@ -329,24 +329,24 @@
     const nativo = esNativo();
     const benef = BENEFICIOS.map(b =>
       `<li style="display:flex;gap:8px;align-items:flex-start;margin:6px 0">
-         <span style="color:#D79A3C;flex:0 0 auto">✓</span><span>${b}</span></li>`).join('');
+         <span style="color:var(--sello);flex:0 0 auto">✓</span><span>${b}</span></li>`).join('');
 
     if (premium) {
       const gestion = nativo
         ? `<button data-x="manage" style="${BTN_SEC};margin-bottom:8px">Gestionar suscripción</button>` : '';
       return `<h2 style="margin:0 0 8px;font-size:20px;font-weight:700">Tu suscripción está activa ✓</h2>
-        <p style="color:#9A9284;margin:0 0 18px">Tienes acceso a todas las funciones. ¡Gracias por tu apoyo!</p>
+        <p style="color:var(--tinta-3);margin:0 0 18px">Tienes acceso a todas las funciones. ¡Gracias por tu apoyo!</p>
         ${gestion}<button data-x="close" style="${BTN_SEC}">Cerrar</button>`;
     }
 
     // Bloque legal/precio según plataforma
     const bloquePrecio = nativo
-      ? `<p style="color:#9A9284;font-size:13px;margin:6px 0 0">
+      ? `<p style="color:var(--tinta-3);font-size:13px;margin:6px 0 0">
            Elige tu plan. Las suscripciones se renuevan automáticamente y puedes cancelarlas
            cuando quieras desde los Ajustes de tu cuenta de ${plataforma() === 'ios' ? 'App Store' : 'Google Play'}.
            El plan Ilimitado es un pago único, sin renovación.</p>`
       : `<div style="font-size:28px;font-weight:800;margin:2px 0">14 días gratis</div>
-         <p style="color:#9A9284;font-size:13px;margin:6px 0 0">
+         <p style="color:var(--tinta-3);font-size:13px;margin:6px 0 0">
            Luego elige tu plan. Las suscripciones se renuevan automáticamente
            (cada mes o cada año, según el plan) hasta que canceles. Cancela en un
            click, sin permanencia. Pago seguro con MercadoPago.</p>`;
@@ -356,16 +356,16 @@
       <div style="display:flex;flex-direction:column;gap:8px">
         <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
           placeholder="tu@correo.com"
-          style="width:100%;background:#131210;border:1px solid #4A443A;border-radius:2px;padding:13px 14px;font-size:15px;color:#F2EEE4;outline:none;box-sizing:border-box">
+          style="width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:2px;padding:13px 14px;font-size:15px;color:var(--tinta-1);outline:none;box-sizing:border-box">
         <button data-x="email-continuar" style="${BTN_PRI}">Continuar</button>
-        <p style="color:#847D70;font-size:11px;margin:2px 0 0;text-align:center">
+        <p style="color:var(--tinta-4);font-size:11px;margin:2px 0 0;text-align:center">
           Te enviamos un enlace de acceso a este correo.</p>
       </div>`;
 
     // Link de login OPCIONAL en nativo: sincroniza Premium entre dispositivos.
     // NO es requisito para comprar (se puede pagar con el usuario anónimo).
     const loginOpcional = `<button data-x="login-opcional"
-        style="background:none;border:0;color:#847D70;font-size:12px;text-decoration:underline;cursor:pointer;padding:8px 0 0;width:100%">
+        style="background:none;border:0;color:var(--tinta-4);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px 0 0;width:100%">
         ${email ? 'Sesión iniciada: ' + email : '¿Ya tienes cuenta? Inicia sesión para sincronizar'}</button>`;
 
     // NATIVO: planes directos (compra sin cuenta) + restaurar + login opcional.
@@ -396,18 +396,18 @@
       : 'Desbloquea todo el análisis profesional.';
     return `
       <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">${titulo}</h2>
-      <p style="color:#9A9284;margin:0 0 14px;font-size:14px">${subtitulo}</p>
+      <p style="color:var(--tinta-3);margin:0 0 14px;font-size:14px">${subtitulo}</p>
       ${bloquePrecio}
-      <ul style="list-style:none;padding:0;margin:16px 0;font-size:14px;color:#CFC8B8">${benef}</ul>
+      <ul style="list-style:none;padding:0;margin:16px 0;font-size:14px;color:var(--tinta-2)">${benef}</ul>
       <div style="display:flex;flex-direction:column;gap:8px">${cta}</div>
       ${legal}`;
   }
 
-  const BTN_PRI = 'width:100%;background:#C98A2B;color:#0B0B0A;font-weight:600;border:1px solid #C98A2B;border-radius:2px;padding:14px;font-size:15px;cursor:pointer;font-family:inherit;letter-spacing:-.005em';
-  const BTN_SEC = 'width:100%;background:transparent;color:#F2EEE4;font-weight:600;border:1px solid #4A443A;border-radius:2px;padding:12px;font-size:14px;cursor:pointer;font-family:inherit';
+  const BTN_PRI = 'width:100%;background:var(--sello-solido);color:var(--sup);font-weight:600;border:1px solid var(--sello-solido);border-radius:2px;padding:14px;font-size:15px;cursor:pointer;font-family:inherit;letter-spacing:-.005em';
+  const BTN_SEC = 'width:100%;background:transparent;color:var(--tinta-1);font-weight:600;border:1px solid var(--regla-fuerte);border-radius:2px;padding:12px;font-size:14px;cursor:pointer;font-family:inherit';
   // font-size:16px en inputs evita el auto-zoom de iOS al enfocar.
-  const INP = 'width:100%;background:#131210;border:1px solid #4A443A;border-radius:2px;padding:13px 14px;font-size:16px;color:#F2EEE4;outline:none;box-sizing:border-box';
-  const BTN_LINK = 'background:none;border:0;color:#847D70;font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 0;width:100%';
+  const INP = 'width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:2px;padding:13px 14px;font-size:16px;color:var(--tinta-1);outline:none;box-sizing:border-box';
+  const BTN_LINK = 'background:none;border:0;color:var(--tinta-4);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 0;width:100%';
 
   // El correo se interpola en varias plantillas de este archivo; lo escapamos
   // para no romper el HTML con un valor raro tecleado en el input.
@@ -421,7 +421,7 @@
   function _legalHTML(prefijo) {
     const base = esNativo() ? (window.MP_API_BASE || 'https://miportafolio.uk').replace(/\/$/, '') : '';
     const intro = prefijo || 'Al continuar aceptas los';
-    return `<p style="color:#847D70;font-size:11px;margin:14px 0 0;text-align:center">${intro} <a href="${base}/terminos" data-x="legal" style="color:#847D70">Términos</a> y la <a href="${base}/privacidad" data-x="legal" style="color:#847D70">Privacidad</a>.</p>`;
+    return `<p style="color:var(--tinta-4);font-size:11px;margin:14px 0 0;text-align:center">${intro} <a href="${base}/terminos" data-x="legal" style="color:var(--tinta-4)">Términos</a> y la <a href="${base}/privacidad" data-x="legal" style="color:var(--tinta-4)">Privacidad</a>.</p>`;
   }
   async function _abrirLegal(ev, el) {
     if (!esNativo()) return;                    // web: navegación normal del <a>
@@ -467,7 +467,7 @@
     const izquierda = o.badge
       ? `<span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
            <span>${o.nombre}</span>
-           <span style="background:rgba(11,11,10,.14);color:${destacado ? '#0B0B0A' : '#D79A3C'};border:1px solid ${destacado ? 'rgba(11,11,10,.35)' : 'rgba(215,154,60,.4)'};font-family:IBM Plex Mono,ui-monospace,monospace;font-size:9px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:2px;white-space:nowrap">${o.badge}</span>
+           <span style="background:rgba(26,26,24,.14);color:${destacado ? MP_COLOR.sup : MP_COLOR.sello};border:1px solid ${destacado ? 'rgba(26,26,24,.35)' : 'rgba(156,93,18,.4)'};font-family:IBM Plex Mono,ui-monospace,monospace;font-size:9px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:2px;white-space:nowrap">${o.badge}</span>
          </span>`
       : `<span>${o.nombre}</span>`;
     const pkgAttr = (o.idx == null) ? '' : ` data-pkg="${o.idx}"`;
@@ -480,7 +480,7 @@
     </button>`;
   }
 
-  const NOTA = 'color:#847D70;font-size:11px;text-align:center;margin:6px 0 0;line-height:1.5';
+  const NOTA = 'color:var(--tinta-4);font-size:11px;text-align:center;margin:6px 0 0;line-height:1.5';
 
   // Error inline dentro del bloque de planes (msg vacío = lo limpia).
   // Devuelve false si no hay dónde pintarlo (p.ej. paywall web).
@@ -492,7 +492,7 @@
     if (!p) {
       p = document.createElement('p');
       p.setAttribute('data-x', 'err-compra');
-      p.style.cssText = 'color:#DB7B68;font-size:12px;text-align:center;margin:8px 0 0;line-height:1.5';
+      p.style.cssText = 'color:var(--baja);font-size:12px;text-align:center;margin:8px 0 0;line-height:1.5';
       c.appendChild(p);
     }
     p.textContent = msg;
@@ -554,7 +554,7 @@
       const c = _overlay && _overlay.querySelector('[data-x="planes"]');
       if (!c) return;
       c.innerHTML = _htmlPlanesRef(
-        `<p style="color:#D79A3C;font-size:12px;text-align:center;margin:8px 0 0;line-height:1.5">
+        `<p style="color:var(--sello);font-size:12px;text-align:center;margin:8px 0 0;line-height:1.5">
            No pudimos confirmar los precios con la App Store. Los de arriba son de referencia;
            al comprar verás el precio exacto de tu región.</p>
          <button data-x="reintentar-planes" style="${BTN_SEC};margin-top:8px">Reintentar</button>`);
@@ -630,12 +630,12 @@
   function _otpFalloCuerpo(correo) {
     return `
       <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">No pudimos enviarte el código</h2>
-      <p style="color:#9A9284;margin:0 0 12px;font-size:14px;line-height:1.55">
+      <p style="color:var(--tinta-3);margin:0 0 12px;font-size:14px;line-height:1.55">
         Generamos tu código, pero el correo a
-        <span style="color:#CFC8B8">${_esc(correo)}</span> no salió: el servicio de
+        <span style="color:var(--tinta-2)">${_esc(correo)}</span> no salió: el servicio de
         envíos no está respondiendo. No es tu culpa y no tiene que ver con tu cuenta.</p>
-      <p style="color:#9A9284;margin:0 0 14px;font-size:14px;line-height:1.55">
-        Puedes entrar ahora mismo con tu <strong style="color:#CFC8B8">contraseña</strong>,
+      <p style="color:var(--tinta-3);margin:0 0 14px;font-size:14px;line-height:1.55">
+        Puedes entrar ahora mismo con tu <strong style="color:var(--tinta-2)">contraseña</strong>,
         que no depende del correo. Si aún no tienes una, puedes crear tu cuenta ahí mismo.</p>
       <div style="display:flex;flex-direction:column;gap:8px">
         <button data-x="otp-usar-password" style="${BTN_PRI}">Entrar con contraseña</button>
@@ -645,11 +645,11 @@
   }
 
   function _otpCuerpo(correo, err) {
-    const errHTML = err ? `<p style="color:#DB7B68;font-size:13px;margin:0 0 10px">${err}</p>` : '';
+    const errHTML = err ? `<p style="color:var(--baja);font-size:13px;margin:0 0 10px">${err}</p>` : '';
     return `
       <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Revisa tu correo</h2>
-      <p style="color:#9A9284;margin:0 0 14px;font-size:14px">Enviamos un código de 6 dígitos a
-        <span style="color:#CFC8B8">${_esc(correo)}</span>. Expira en 10 minutos.</p>
+      <p style="color:var(--tinta-3);margin:0 0 14px;font-size:14px">Enviamos un código de 6 dígitos a
+        <span style="color:var(--tinta-2)">${_esc(correo)}</span>. Expira en 10 minutos.</p>
       ${errHTML}
       <div style="display:flex;flex-direction:column;gap:8px">
         <input data-x="otp-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6"
@@ -675,12 +675,12 @@
     const premium = false;                    // optimista: se corrige al resolver
 
     const btnCerrar = bloqueante ? '' :
-      `<button data-x="close" aria-label="Cerrar" style="position:absolute;top:14px;right:14px;background:transparent;border:0;color:#847D70;font-size:22px;cursor:pointer;line-height:1">×</button>`;
+      `<button data-x="close" aria-label="Cerrar" style="position:absolute;top:14px;right:14px;background:transparent;border:0;color:var(--tinta-4);font-size:22px;cursor:pointer;line-height:1">×</button>`;
     _overlay = document.createElement('div');
     _overlay.setAttribute('role', 'dialog');
-    _overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(8,8,7,.9);display:flex;align-items:center;justify-content:center;padding:16px';
+    _overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(26,26,24,.55);display:flex;align-items:center;justify-content:center;padding:16px';
     _overlay.innerHTML = `
-      <div style="position:relative;max-width:420px;width:100%;background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:24px;color:#F2EEE4;font-family:system-ui,-apple-system,sans-serif;max-height:90vh;overflow:auto">
+      <div style="position:relative;max-width:420px;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:24px;color:var(--tinta-1);font-family:system-ui,-apple-system,sans-serif;max-height:90vh;overflow:auto">
         ${btnCerrar}
         <div data-x="body">${vista(_email, premium, bloqueante)}</div>
       </div>`;
@@ -736,11 +736,11 @@
         const body = _overlay.querySelector('[data-x="body"]');
         if (body) body.innerHTML = `
           <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Inicia sesión</h2>
-          <p style="color:#9A9284;margin:0 0 14px;font-size:14px">Opcional. Sincroniza tu suscripción entre tus dispositivos. No es necesario para comprar ni para usar la prueba.</p>
+          <p style="color:var(--tinta-3);margin:0 0 14px;font-size:14px">Opcional. Sincroniza tu suscripción entre tus dispositivos. No es necesario para comprar ni para usar la prueba.</p>
           <div style="display:flex;flex-direction:column;gap:8px">
             <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
               placeholder="tu@correo.com"
-              style="width:100%;background:#131210;border:1px solid #4A443A;border-radius:2px;padding:13px 14px;font-size:15px;color:#F2EEE4;outline:none;box-sizing:border-box">
+              style="width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:2px;padding:13px 14px;font-size:15px;color:var(--tinta-1);outline:none;box-sizing:border-box">
             <button data-x="email-continuar" style="${BTN_PRI}">${esNativo() ? 'Enviarme un código' : 'Enviarme el enlace'}</button>
             <button data-x="volver" style="${BTN_SEC}">Volver a los planes</button>
           </div>`;
@@ -944,10 +944,10 @@
 
   function _authCuerpo(err) {
     const reg = _authModo === 'registro';
-    const errHTML = err ? `<p style="color:#DB7B68;font-size:13px;margin:0 0 10px">${err}</p>` : '';
+    const errHTML = err ? `<p style="color:var(--baja);font-size:13px;margin:0 0 10px">${err}</p>` : '';
     return `
       <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">${reg ? 'Crea tu cuenta' : 'Inicia sesión'}</h2>
-      <p style="color:#9A9284;margin:0 0 14px;font-size:14px">${reg ? '14 días gratis. Sin tarjeta.' : 'Bienvenido de vuelta.'}</p>
+      <p style="color:var(--tinta-3);margin:0 0 14px;font-size:14px">${reg ? '14 días gratis. Sin tarjeta.' : 'Bienvenido de vuelta.'}</p>
       ${errHTML}
       <div style="display:flex;flex-direction:column;gap:8px">
         <input data-x="auth-email" type="email" inputmode="email" autocapitalize="none" autocorrect="off" autocomplete="username"
@@ -964,7 +964,7 @@
       <!-- Quien ya compró y llega aquí sin cuenta (p.ej. eliminó la anterior)
            necesita saber que su compra no se perdió: al entrar se re-vincula
            sola con _revincularCompra(). -->
-      <p style="color:#847D70;font-size:11px;margin:12px 0 0;text-align:center;line-height:1.5">
+      <p style="color:var(--tinta-4);font-size:11px;margin:12px 0 0;text-align:center;line-height:1.5">
         ¿Ya compraste una suscripción? Entra o crea tu cuenta y la recuperamos
         automáticamente.</p>
       ${_legalHTML()}`;
@@ -975,8 +975,8 @@
     cerrar(true);                     // no dejar el paywall abierto detrás
     _authOverlay = document.createElement('div');
     _authOverlay.setAttribute('role', 'dialog');
-    _authOverlay.style.cssText = 'position:fixed;inset:0;z-index:99998;background:#0B0B0A;display:flex;align-items:center;justify-content:center;padding:16px';
-    _authOverlay.innerHTML = `<div style="max-width:420px;width:100%;background:#0B0B0A;border:1px solid #2A2721;border-radius:2px;padding:24px;color:#F2EEE4;font-family:system-ui,-apple-system,sans-serif;max-height:92vh;overflow:auto"><div data-x="auth-body">${_authCuerpo('')}</div></div>`;
+    _authOverlay.style.cssText = 'position:fixed;inset:0;z-index:99998;background:var(--sup);display:flex;align-items:center;justify-content:center;padding:16px';
+    _authOverlay.innerHTML = `<div style="max-width:420px;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:24px;color:var(--tinta-1);font-family:system-ui,-apple-system,sans-serif;max-height:92vh;overflow:auto"><div data-x="auth-body">${_authCuerpo('')}</div></div>`;
     document.body.appendChild(_authOverlay);
 
     _authOverlay.addEventListener('keydown', (ev) => {
@@ -1056,7 +1056,7 @@
     if (!strip) {
       strip = document.createElement('button');
       strip.id = 'mp-trial-strip';
-      strip.style.cssText = 'display:block;width:100%;background:rgba(215,154,60,.10);border:0;border-bottom:1px solid rgba(215,154,60,.25);color:#D79A3C;font-size:10.5px;font-weight:500;padding:5px 12px;text-align:center;cursor:pointer;font-family:IBM Plex Mono,ui-monospace,monospace;letter-spacing:.04em';
+      strip.style.cssText = 'display:block;width:100%;background:rgba(156,93,18,.10);border:0;border-bottom:1px solid rgba(156,93,18,.25);color:var(--sello);font-size:10.5px;font-weight:500;padding:5px 12px;text-align:center;cursor:pointer;font-family:IBM Plex Mono,ui-monospace,monospace;letter-spacing:.04em';
       const hdr = document.querySelector('header');
       if (hdr) hdr.appendChild(strip); else document.body.prepend(strip);
       strip.addEventListener('click', () => abrir());

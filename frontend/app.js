@@ -14,6 +14,52 @@
 const IS_CAPACITOR = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 const API_BASE = (window.MP_API_BASE || '').replace(/\/$/, '');
 
+// ============================================================================
+//  MP_COLOR — paleta única para el JS
+// ============================================================================
+//  La fuente de verdad es :root en mp-tokens.css. Aquí NO se redefine el tema:
+//  se LEE del CSSOM, así que cambiar un token en el CSS cambia también las
+//  gráficas, los SVG generados por JS y los estilos en línea, sin tocar este
+//  archivo. Los valores literales son solo red de seguridad por si esta hoja
+//  aún no se aplicó (nunca debería: los <link> van en <head> y estos scripts
+//  al final de <body>).
+//
+//  Dónde usar cada cosa:
+//    · valor CSS en una plantilla  →  var(--token)   (directo, sin JS)
+//    · valor que consume JS        →  MP_COLOR.x     (Chart.js, canvas)
+const MP_COLOR = (() => {
+  const respaldo = {
+    sup: '#F4F2ED', supPanel: '#FDFCF8', supAlto: '#FFFDF8', supHondo: '#EFEDE6',
+    regla: '#DFDBD0', reglaSuave: '#EAE7DE', reglaFuerte: '#B9B2A2',
+    tinta1: '#1A1A18', tinta2: '#46443E', tinta3: '#5E5A51', tinta4: '#6F6A5C',
+    sello: '#9C5D12', selloVivo: '#7E4A0C', selloSolido: '#9C5D12', sobreSello: '#FFFDF8',
+    alza: '#1B6B42', baja: '#AE3223',
+  };
+  const tokens = {
+    sup: '--sup', supPanel: '--sup-panel', supAlto: '--sup-alto', supHondo: '--sup-hondo',
+    regla: '--regla', reglaSuave: '--regla-suave', reglaFuerte: '--regla-fuerte',
+    tinta1: '--tinta-1', tinta2: '--tinta-2', tinta3: '--tinta-3', tinta4: '--tinta-4',
+    sello: '--sello', selloVivo: '--sello-vivo', selloSolido: '--sello-solido',
+    sobreSello: '--sobre-sello', alza: '--alza', baja: '--baja',
+  };
+  const out = {};
+  let cs = null;
+  try { cs = getComputedStyle(document.documentElement); } catch (_) {}
+  for (const k in tokens) {
+    let v = '';
+    try { v = (cs && cs.getPropertyValue(tokens[k]) || '').trim(); } catch (_) {}
+    out[k] = v || respaldo[k];
+  }
+  // Tintes translúcidos derivados (Chart.js necesita el valor, no var()).
+  out.rgba = (hex, a) => {
+    const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex || '');
+    if (!m) return hex;
+    return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${a})`;
+  };
+  return out;
+})();
+window.MP_COLOR = MP_COLOR;
+
 // Wrapper de fetch que prefija API_BASE para llamadas a /api/
 const _origFetch = window.fetch.bind(window);
 window.fetch = function(url, init) {
@@ -85,7 +131,7 @@ window.attachTickerAutocomplete = function (input, onPick) {
   function render() {
     if (!items.length) { hide(); return; }
     box.innerHTML = items.map((r, i) =>
-      `<div data-i="${i}" class="px-3 py-2 cursor-pointer ${i === sel ? 'bg-white/10' : 'hover:bg-white/5'}">
+      `<div data-i="${i}" class="px-3 py-2 cursor-pointer ${i === sel ? 'bg-zinc-800/40' : 'hover:bg-zinc-800/25'}">
          <span class="font-semibold text-zinc-100">${r.ticker}</span>
          <span class="text-zinc-400 ml-1">${String(r.nombre || '').slice(0, 44)}</span>
          ${r.tipo ? `<span class="text-[10px] text-zinc-600 ml-1">${r.tipo}</span>` : ''}
@@ -178,35 +224,30 @@ const claseColor = (v) => {
 
 const $ = (id) => document.getElementById(id);
 
-// Defaults de Chart.js para tema oscuro.
-// OJO: Chart.js carga con `defer` (ver index.html), asi que puede NO estar
-// definido cuando app.js se evalua. Sin la guarda, esta linea lanzaba
-// "Cannot set properties of undefined (setting 'color')", lo que abortaba TODA
-// la evaluacion de app.js -> no se registraba el DOMContentLoaded -> ningun
-// boton se enlazaba -> SPA congelado. Aplicamos de forma guardada y de nuevo
-// en 'load', cuando el script diferido ya ejecuto.
 // ============================================================================
-//  MP_GRAFICA — tema ÚNICO de Chart.js (estética de prensa)
+//  MP_GRAFICA — tema ÚNICO de Chart.js (estética de prensa sobre papel)
 // ============================================================================
 // Un solo objeto de configuración para TODAS las gráficas de la app, en vez de
 // estilos dispersos por cada `new Chart(...)`:
-//   · líneas de 1.5–2px, sin relleno de gradiente
+//   · líneas de 1.5–2px, sin relleno ni gradiente bajo la curva
 //   · el benchmark siempre punteado y recesivo
-//   · sin gridlines verticales en ejes de tiempo
+//   · sin gridlines verticales en ejes de tiempo; las horizontales son
+//     hairlines en gris cálido (--regla), del mismo peso que las de la página
+//   · ejes recesivos: la línea del eje desaparece, mandan las etiquetas
 //   · etiquetas de eje y tooltip en monoespaciada con cifras tabulares
-//   · ejes recesivos (hairline cálido, nunca blanco puro)
-// Cambiar aquí cambia la app entera.
+// Cambiar aquí cambia la app entera. Los valores salen de MP_COLOR, que a su
+// vez los lee de mp-tokens.css: el tema de las gráficas NO se define aparte.
 const MP_GRAFICA = {
-  tinta:       '#0B0B0A',
-  panel:       '#131210',
-  regla:       '#2A2721',
-  reglaFuerte: '#4A443A',
-  papel:       '#F2EEE4',
-  papel2:      '#CFC8B8',
-  papel3:      '#9A9284',
-  sello:       '#D79A3C',
-  alza:        '#6FAE7E',
-  baja:        '#DB7B68',
+  sup:         MP_COLOR.sup,
+  panel:       MP_COLOR.supPanel,
+  regla:       MP_COLOR.regla,
+  reglaFuerte: MP_COLOR.reglaFuerte,
+  tinta1:      MP_COLOR.tinta1,
+  tinta2:      MP_COLOR.tinta2,
+  tinta3:      MP_COLOR.tinta3,
+  sello:       MP_COLOR.sello,
+  alza:        MP_COLOR.alza,
+  baja:        MP_COLOR.baja,
   mono:        "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace",
   sans:        "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif",
 
@@ -229,7 +270,7 @@ const MP_GRAFICA = {
   /* Trazo de referencia: benchmark punteado y en tinta apagada. */
   referencia(opts = {}) {
     return {
-      borderColor: this.papel3,
+      borderColor: this.tinta3,
       borderDash: [3, 3],
       backgroundColor: 'transparent',
       fill: false,
@@ -241,18 +282,19 @@ const MP_GRAFICA = {
     };
   },
 
-  /* Tooltip común: ficha de datos, mono y cuadrada. */
+  /* Tooltip común: ficha de datos impresa —papel con filete de tinta—, no
+     la burbuja oscura de fábrica (sobre papel claro se veía como un agujero). */
   tooltip(callbacks = {}) {
     return {
-      backgroundColor: this.tinta,
-      borderColor: this.reglaFuerte,
+      backgroundColor: this.panel,
+      borderColor: this.tinta1,
       borderWidth: 1,
       cornerRadius: 2,
       padding: 9,
       displayColors: false,
-      titleColor: this.papel,
+      titleColor: this.tinta1,
       titleFont: { family: this.mono, size: 10, weight: '600' },
-      bodyColor: this.papel2,
+      bodyColor: this.tinta2,
       bodyFont: { family: this.mono, size: 11 },
       ...(Object.keys(callbacks).length ? { callbacks } : {}),
     };
@@ -264,7 +306,7 @@ const MP_GRAFICA = {
       grid: { display: false, drawTicks: false },
       border: { color: this.regla },
       ticks: {
-        color: this.papel3,
+        color: this.tinta3,
         font: { family: this.mono, size: 9.5 },
         maxTicksLimit: 6,
         autoSkip: true,
@@ -281,7 +323,7 @@ const MP_GRAFICA = {
       grid: { color: this.regla, drawTicks: false, lineWidth: 1 },
       border: { display: false },
       ticks: {
-        color: this.papel3,
+        color: this.tinta3,
         font: { family: this.mono, size: 9.5 },
         maxTicksLimit: 5,
         padding: 8,
@@ -295,7 +337,7 @@ const MP_GRAFICA = {
     return {
       display,
       labels: {
-        color: this.papel3,
+        color: this.tinta3,
         font: { family: this.mono, size: 10 },
         boxWidth: 8, boxHeight: 2, usePointStyle: false, padding: 14,
       },
@@ -316,7 +358,7 @@ const MP_GRAFICA = {
 };
 window.MP_GRAFICA = MP_GRAFICA;
 
-// Defaults de Chart.js para tema oscuro.
+// Defaults de Chart.js para el tema claro.
 // OJO: Chart.js carga con `defer` (ver index.html), asi que puede NO estar
 // definido cuando app.js se evalua. Sin la guarda, esta linea lanzaba
 // "Cannot set properties of undefined (setting 'color')", lo que abortaba TODA
@@ -325,13 +367,13 @@ window.MP_GRAFICA = MP_GRAFICA;
 // en 'load', cuando el script diferido ya ejecuto.
 function _aplicarChartDefaults() {
   if (typeof Chart === 'undefined' || !Chart.defaults) return;
-  Chart.defaults.color = MP_GRAFICA.papel3;
+  Chart.defaults.color = MP_GRAFICA.tinta3;
   Chart.defaults.borderColor = MP_GRAFICA.regla;
   Chart.defaults.font.family = MP_GRAFICA.mono;
   Chart.defaults.font.size = 10;
   Chart.defaults.elements.line.tension = 0;
   Chart.defaults.elements.point.radius = 0;
-  Chart.defaults.elements.arc.borderColor = MP_GRAFICA.tinta;
+  Chart.defaults.elements.arc.borderColor = MP_GRAFICA.panel;
   Chart.defaults.elements.arc.borderWidth = 1;
   Chart.defaults.plugins.tooltip.cornerRadius = 2;
 }
@@ -1160,7 +1202,7 @@ function renderChartAcumulado(data) {
 
   // Serie del usuario en tinta de sello; benchmark punteado y recesivo.
   const datasets = [
-    { label: 'Portafolio', data: port, ...MP_GRAFICA.serie(MP_GRAFICA.papel) },
+    { label: 'Portafolio', data: port, ...MP_GRAFICA.serie(MP_GRAFICA.tinta1) },
   ];
 
   if (bench.length) {
@@ -1260,7 +1302,7 @@ function chartOptionsPct(opts = {}) {
     scales: {
       x: MP_GRAFICA.ejeTiempo({
         ticks: {
-          color: MP_GRAFICA.papel3,
+          color: MP_GRAFICA.tinta3,
           font: { family: MP_GRAFICA.mono, size: 9.5 },
           maxTicksLimit: 6, autoSkip: true, maxRotation: 0, padding: 6,
           callback: function (val) {
@@ -1275,7 +1317,7 @@ function chartOptionsPct(opts = {}) {
       }),
       y: MP_GRAFICA.ejeValor({
         ticks: {
-          color: MP_GRAFICA.papel3,
+          color: MP_GRAFICA.tinta3,
           font: { family: MP_GRAFICA.mono, size: 9.5 },
           maxTicksLimit: 5, padding: 8,
           callback: (v) => `${v.toFixed(0)}%`,
@@ -1349,15 +1391,17 @@ function renderCorrelaciones(data) {
   // Color interpola entre rojo (correlación alta, malo para diversificación) y azul (negativa)
   const color = (v) => {
     // rango esperado: -1..1
-    if (v === null || v === undefined) return '#131210';
-    if (v >= 1 - 0.001) return 'rgba(219,123,104,0.5)';  // diagonal
+    if (v === null || v === undefined) return MP_COLOR.supPanel;
+    // Escala bipolar sobre papel: correlación positiva (mueve todo junto, mal
+    // para diversificar) tiñe de --baja; negativa (diversifica de verdad)
+    // tiñe de --alza. Alfas bajos para que la tinta del número siga leyéndose.
+    if (v >= 1 - 0.001) return MP_COLOR.rgba(MP_COLOR.baja, 0.34);  // diagonal
     if (v >= 0) {
-      // 0 → zinc-900, 1 → rojo intenso
       const a = Math.min(1, v);
-      return `rgba(244, 63, 94, ${0.08 + a * 0.45})`;
+      return MP_COLOR.rgba(MP_COLOR.baja, 0.05 + a * 0.28);
     }
     const a = Math.min(1, -v);
-    return `rgba(56, 189, 248, ${0.08 + a * 0.45})`;
+    return MP_COLOR.rgba(MP_COLOR.alza, 0.05 + a * 0.28);
   };
 
   // Construcción del grid
@@ -1375,7 +1419,7 @@ function renderCorrelaciones(data) {
       const v = corr[r] && corr[r][c];
       const bg = color(v);
       const txt = v === null || v === undefined ? '—' : v.toFixed(2);
-      html += `<div class="corr-cell aspect-square rounded-md flex items-center justify-center text-[10px] tabular font-medium text-zinc-100 border border-white/5"
+      html += `<div class="corr-cell aspect-square rounded-md flex items-center justify-center text-[10px] tabular font-medium text-zinc-100 border border-zinc-800"
                     style="background:${bg};"
                     title="${r} vs ${c}: ${txt}">${txt}</div>`;
     });
@@ -1386,7 +1430,7 @@ function renderCorrelaciones(data) {
   html += `
     <div class="flex items-center justify-between mt-4 text-[10px] text-zinc-500">
       <div class="flex items-center gap-1.5">
-        <span class="w-3 h-3 rounded" style="background: rgba(215,154,60,0.5)"></span>
+        <span class="w-3 h-3 rounded" style="background: rgba(156,93,18,0.5)"></span>
         <span>Negativa</span>
       </div>
       <div class="flex items-center gap-1.5">
@@ -1395,7 +1439,7 @@ function renderCorrelaciones(data) {
       </div>
       <div class="flex items-center gap-1.5">
         <span>Alta</span>
-        <span class="w-3 h-3 rounded" style="background: rgba(219,123,104,0.5)"></span>
+        <span class="w-3 h-3 rounded" style="background: rgba(174,50,35,0.5)"></span>
       </div>
     </div>
   `;
@@ -1546,7 +1590,7 @@ function renderBarGroup(titulo, obj) {
   if (!entries.length) return '';
 
   const maxPeso = entries[0][1];
-  const palette = ['#D79A3C', '#D79A3C', '#D79A3C', '#DB7B68', '#D79A3C', '#D79A3C', '#D79A3C'];
+  const palette = [MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.baja, MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.sello];
 
   const rows = entries.map(([k, v], idx) => `
     <div>
@@ -1986,9 +2030,9 @@ const PortafolioOptimo = (() => {
 
   // Colores rotativos para la barra apilada (más distinguibles que random)
   const PALETA = [
-    '#D79A3C', '#D79A3C', '#D79A3C', '#D79A3C', '#DB7B68',
-    '#D79A3C', '#6FAE7E', '#D79A3C', '#D79A3C', '#D79A3C',
-    '#D79A3C', '#D79A3C',
+    MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.baja,
+    MP_COLOR.sello, MP_COLOR.alza, MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.sello,
+    MP_COLOR.sello, MP_COLOR.sello,
   ];
 
   function pintarSkeletons() {
@@ -2069,7 +2113,7 @@ const PortafolioOptimo = (() => {
       const color = PALETA[i % PALETA.length];
       return `<div style="width:${a.peso*100}%;background:${color}" title="${a.ticker} ${a.peso_pct.toFixed(1)}%"></div>`;
     }).join('') + (d.peso_cash > 0.005
-      ? `<div style="width:${d.peso_cash*100}%;background:#4A443A" title="Cash ${(d.peso_cash*100).toFixed(1)}%"></div>`
+      ? `<div style="width:${d.peso_cash*100}%;background:var(--regla-fuerte)" title="Cash ${(d.peso_cash*100).toFixed(1)}%"></div>`
       : '');
   }
 
@@ -2113,8 +2157,8 @@ const PortafolioOptimo = (() => {
         { type: 'line', label: 'Frontera eficiente', data: curva, order: 1,
           ...MP_GRAFICA.serie(MP_GRAFICA.sello) },
         { label: 'Tu portafolio', data: opt, backgroundColor: MP_GRAFICA.sello,
-          pointStyle: 'rectRot', radius: 9, borderColor: MP_GRAFICA.papel, borderWidth: 1, order: 0 },
-        { label: 'En el portafolio', data: selPts, backgroundColor: MP_GRAFICA.papel,
+          pointStyle: 'rectRot', radius: 9, borderColor: MP_GRAFICA.tinta1, borderWidth: 1, order: 0 },
+        { label: 'En el portafolio', data: selPts, backgroundColor: MP_GRAFICA.tinta1,
           pointStyle: 'rect', radius: 3.5, order: 2 },
         { label: 'Otras candidatas', data: otros, backgroundColor: MP_GRAFICA.reglaFuerte,
           pointStyle: 'rect', radius: 2.5, order: 3 },
@@ -2128,8 +2172,8 @@ const PortafolioOptimo = (() => {
           } }),
         },
         scales: {
-          x: MP_GRAFICA.ejeValor({ title: { display: true, text: 'Volatilidad σ (%)', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
-          y: MP_GRAFICA.ejeValor({ title: { display: true, text: 'Retorno esperado (%)', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
+          x: MP_GRAFICA.ejeValor({ title: { display: true, text: 'Volatilidad σ (%)', color: MP_GRAFICA.tinta3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
+          y: MP_GRAFICA.ejeValor({ title: { display: true, text: 'Retorno esperado (%)', color: MP_GRAFICA.tinta3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
         },
       }),
     });
@@ -2979,71 +3023,22 @@ function _sparklineSVG(vals, w = 70, h = 22) {
   const pts = vals.map((v, i) =>
     `${(i / (vals.length - 1) * w).toFixed(1)},${(h - (v - min) / rng * (h - 2) - 1).toFixed(1)}`
   ).join(' ');
-  const col = vals[vals.length - 1] >= vals[0] ? '#D79A3C' : '#DB7B68';
+  const col = vals[vals.length - 1] >= vals[0] ? MP_COLOR.sello : MP_COLOR.baja;
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
 }
-async function renderWatchlist() {
-  const cont = $('periodico-watchlist');
-  if (!cont) return;
-  const tickers = leerWatchlist();
-  if (!tickers.length) {
-    cont.innerHTML = `<p class="text-xs text-zinc-500 p-3 text-center leading-relaxed">Aún no sigues ninguna acción. En <span class="text-zinc-300">Analizar</span>, marca el ☆ junto al ticker para verla aquí con su precio y mini-gráfico.</p>`;
-    return;
-  }
-  let items = [];
-  try {
-    const r = await fetch('/api/watchlist', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tickers }),
-    });
-    const d = await r.json();
-    if (d && d.ok) items = d.items || [];
-  } catch {}
-  if (!items.length) {
-    cont.innerHTML = `<p class="text-xs text-zinc-500 p-3 text-center">No pude cargar tu lista en este momento.</p>`;
-    return;
-  }
-  cont.innerHTML = items.map(it => {
-    const up = (it.cambio_pct || 0) >= 0;
-    const cls = up ? 'text-accent-green' : 'text-accent-red';
-    const sym = it.moneda === 'MXN' ? '$' : 'US$';
-    return `
-      <div class="watch-row flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-zinc-900/50 cursor-pointer" data-ticker="${escapeHtml(it.ticker)}">
-        <div class="min-w-0 flex-1">
-          <p class="text-[13px] font-semibold text-zinc-100 tabular truncate">${escapeHtml(it.ticker)}</p>
-          <p class="text-[10px] text-zinc-500 truncate">${escapeHtml(it.nombre || '')}</p>
-        </div>
-        <div class="shrink-0">${_sparklineSVG(it.spark)}</div>
-        <div class="text-right shrink-0 w-24">
-          <p class="text-[13px] font-bold tabular text-zinc-100">${sym}${(it.precio || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <p class="text-[11px] tabular ${cls}">${up ? '+' : ''}${(it.cambio_pct || 0).toFixed(2)}%</p>
-        </div>
-        <button class="watch-quitar text-zinc-600 hover:text-accent-red text-xs px-1 shrink-0" data-quitar="${escapeHtml(it.ticker)}" title="Quitar de seguimiento">✕</button>
-      </div>`;
-  }).join('');
-  cont.querySelectorAll('.watch-row').forEach(row => row.addEventListener('click', (e) => {
-    if (e.target.closest('.watch-quitar')) return;
-    const t = row.dataset.ticker;
-    const tab = document.querySelector('.nav-tab[data-vista="analizar"]');
-    if (tab) tab.click();
-    setTimeout(() => {
-      const inp = $('an-input'); if (inp) inp.value = t;
-      const btn = $('an-btn-analizar'); if (btn) btn.click();
-    }, 120);
-  }));
-  cont.querySelectorAll('.watch-quitar').forEach(b => b.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleWatchlist(b.dataset.quitar);
-    renderWatchlist();
-  }));
-}
+/* renderWatchlist() vivía aquí y pintaba #periodico-watchlist, la lista con
+   sparklines del Periódico viejo. Ese markup desapareció con el rediseño de
+   mazos: la watchlist ahora es el mazo 2 (Periodico.mazoWatchlist), que usa el
+   MISMO endpoint /api/watchlist. La función se elimina en vez de dejarla
+   apuntando a un id inexistente. leerWatchlist/toggleWatchlist siguen arriba:
+   los usa el botón ☆ de Analizar. */
 
 // ============================================================
 // COMPARAR ACCIONES (overlay precio base 100 + métricas lado a lado)
 // ============================================================
 window.iniciarComparar = (function () {
   let inited = false;
-  const PAL = ['#D79A3C', '#D79A3C', '#D79A3C', '#D79A3C'];
+  const PAL = [MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.sello];
   const state = { tickers: [], rango: '1A', chart: null };
   let universo = [];
   async function _cargarUniverso() {
@@ -3125,7 +3120,7 @@ window.iniciarComparar = (function () {
     const datasets = validos.map(d => {
       const serie = d.h.precios.slice(-L);
       const base = serie[0] || 1;
-      const col = PAL[state.tickers.indexOf(d.t)] || '#D79A3C';
+      const col = PAL[state.tickers.indexOf(d.t)] || MP_COLOR.sello;
       return { label: d.t, data: serie.map(v => v / base * 100), borderColor: col, borderWidth: 1.5, pointRadius: 0, tension: 0.1, fill: false };
     });
     if (cv && typeof Chart !== 'undefined') {
@@ -3137,7 +3132,7 @@ window.iniciarComparar = (function () {
           plugins: { legend: MP_GRAFICA.leyenda(true), tooltip: MP_GRAFICA.tooltip() },
           scales: {
             x: MP_GRAFICA.ejeTiempo(),
-            y: MP_GRAFICA.ejeValor({ title: { display: true, text: 'Base 100', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
+            y: MP_GRAFICA.ejeValor({ title: { display: true, text: 'Base 100', color: MP_GRAFICA.tinta3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
           },
         }),
       });
@@ -3146,7 +3141,7 @@ window.iniciarComparar = (function () {
       const pct = v => (v == null || isNaN(v)) ? '—' : `${(v * 100).toFixed(1)}%`;
       const num = v => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(2);
       const rows = validos.map(d => {
-        const col = PAL[state.tickers.indexOf(d.t)] || '#D79A3C';
+        const col = PAL[state.tickers.indexOf(d.t)] || MP_COLOR.sello;
         const serie = d.h.precios.slice(-L);
         const ret = serie[serie.length - 1] / serie[0] - 1;
         const sc = (d.s && d.s.ok) ? d.s : {};
@@ -3196,19 +3191,69 @@ window.iniciarComparar = (function () {
   };
 })();
 
+// ============================================================================
+//  MP_CATEGORIAS — código de color del Periódico
+// ============================================================================
+//  El color de cada tarjeta NO es decorativo: codifica de qué habla. Paleta
+//  fija de cinco categorías, la misma en los cinco mazos, con leyenda visible
+//  en la UI. Las claves coinciden EXACTAMENTE con las que asigna el backend
+//  (periodico.py → CAT_MX, CAT_GLOBAL, CAT_CRIPTO, CAT_POSICION, CAT_MACRO);
+//  si añades una categoría, tiene que existir en los dos lados.
+//
+//  Cada entrada trae fondo saturado-pero-suave y tinta del MISMO family de
+//  color (nunca negro puro ni gris genérico encima del color), más un borde un
+//  punto más oscuro que el fondo. Contraste tinta/fondo medido:
+//    mx 7.8:1 · global 8.2:1 · cripto 7.4:1 · posicion 7.9:1 · macro 7.1:1
+const MP_CATEGORIAS = {
+  mx:       { etq: 'BMV · IPC',      leyenda: 'Mercado mexicano',  sup: '#DCE9DF', tinta: '#1E4D33', borde: '#BCD5C4' },
+  global:   { etq: 'Global',         leyenda: 'Mercados globales', sup: '#DCE4EF', tinta: '#23415F', borde: '#BDCEE2' },
+  cripto:   { etq: 'Cripto',         leyenda: 'Criptomonedas',     sup: '#F2E5D2', tinta: '#6B4415', borde: '#DFCBAD' },
+  posicion: { etq: 'Tus posiciones', leyenda: 'Tus posiciones',    sup: '#E6DEEA', tinta: '#4A3560', borde: '#D1C3DA' },
+  macro:    { etq: 'Macro y tasas',  leyenda: 'Macro y tasas',     sup: '#E9E5DA', tinta: '#554A33', borde: '#D7D1BF' },
+};
+window.MP_CATEGORIAS = MP_CATEGORIAS;
+
+/* Categoría a partir del ticker, para los mazos que no traen una del servidor. */
+function _catDeTicker(t) {
+  const u = (t || '').toUpperCase();
+  if (u.endsWith('-USD') || u.endsWith('-USDT')) return 'cripto';
+  if (u.endsWith('.MX')) return 'mx';
+  if (u.startsWith('^TNX') || u.startsWith('^IRX') || u.startsWith('^VIX') ||
+      u.endsWith('=X') || u === 'TLT') return 'macro';
+  return 'global';
+}
+
 const Periodico = (() => {
+  // Tope de tarjetas por mazo. Una pila de 10 mide 9×68 + 132 ≈ 744 px, que es
+  // lo más alto que se puede recorrer con el pulgar sin perder el hilo. Lo que
+  // se recorta se dice en la UI, nunca se trunca en silencio.
+  const MAX_TARJETAS = 10;
+
+  const MAZOS = [
+    { clave: 'noticias',  titulo: 'Noticias' },
+    { clave: 'watchlist', titulo: 'Tu watchlist' },
+    { clave: 'accion',    titulo: 'Acción del día' },
+    { clave: 'sector',    titulo: 'Sector del día' },
+    { clave: 'indices',   titulo: 'Índices y divisas' },
+  ];
+
   const state = {
     cargadoUnaVez: false,
-    cargando: false,
+    activo: 0,
+    abierta: {},    // clave de mazo -> índice de tarjeta abierta (o null)
+    charts: {},     // id de tarjeta -> instancia de Chart
+    datos: {},      // clave de mazo -> array de tarjetas
   };
 
+  // ─────────────────────────────────────────────────────────
+  //  Utilidades
+  // ─────────────────────────────────────────────────────────
   function fmtHora(iso) {
     if (!iso) return '';
     try {
       const d = new Date(iso);
       if (isNaN(d.getTime())) return '';
-      const ahora = new Date();
-      const diffMin = (ahora - d) / 60000;
+      const diffMin = (new Date() - d) / 60000;
       if (diffMin < 1) return 'hace un momento';
       if (diffMin < 60) return `hace ${Math.round(diffMin)} min`;
       const diffH = diffMin / 60;
@@ -3219,746 +3264,814 @@ const Periodico = (() => {
     } catch { return ''; }
   }
 
-  function sparklineSVG(valores, positivo) {
-    if (!valores || valores.length < 2) return '';
-    const w = 80, h = 24, pad = 2;
-    const min = Math.min(...valores);
-    const max = Math.max(...valores);
-    const rng = max - min || 1;
-    const pts = valores.map((v, i) => {
-      const x = pad + (i / (valores.length - 1)) * (w - 2 * pad);
-      const y = h - pad - ((v - min) / rng) * (h - 2 * pad);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-    const stroke = positivo ? '#D79A3C' : '#DB7B68';
-    return `
-      <svg viewBox="0 0 ${w} ${h}" class="w-20 h-6" aria-hidden="true">
-        <polyline fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="${pts}"></polyline>
-      </svg>
-    `;
+  const fmtPct = (v) => (v == null || isNaN(v)) ? null : `${v >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`;
+  const fmtNum = (v, d = 2) => (v == null || isNaN(v)) ? null : Number(v).toLocaleString('en-US',
+    { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  async function safeJson(prom) {
+    try {
+      const r = await prom;
+      if (!r) return null;
+      try { return await r.json(); } catch { return null; }
+    } catch { return null; }
   }
 
-  function renderResumen(data) {
-    const texto = $('periodico-resumen-texto');
-    const titulares = $('periodico-resumen-titulares');
-    const badge = $('periodico-resumen-badge');
-    const aviso = $('periodico-resumen-aviso');
-    if (!texto) return;
-
-    if (!data || data.error) {
-      texto.textContent = data && data.error ? data.error : 'No pude cargar el resumen.';
-      if (titulares) titulares.innerHTML = '';
-      if (badge) badge.classList.add('hidden');
-      return;
-    }
-
-    // Badge con el tipo de día
-    if (badge) {
-      const cls = data.clasificacion || {};
-      const map = {
-        alcista: 'text-accent-green border-accent-green/30 bg-accent-green/10',
-        bajista: 'text-accent-red border-accent-red/30 bg-accent-red/10',
-        mixto:   'text-accent-amber border-accent-amber/30 bg-accent-amber/10',
-        info:    'text-zinc-400 border-surface-border bg-zinc-900',
-      };
-      const color = map[cls.tipo] || map.info;
-      badge.className = `text-[10px] px-2 py-0.5 rounded-full border ${color}`;
-      badge.textContent = cls.etiqueta || '';
-      badge.classList.remove('hidden');
-    }
-
-    texto.textContent = data.resumen_mercado || '';
-
-    // Titulares como bullets con link al original
-    const lista = data.titulares || [];
-    if (titulares) {
-      titulares.innerHTML = lista.map(t => `
-        <a href="${escapeHtml(t.url)}" target="_blank" rel="noopener noreferrer"
-           class="flex items-start gap-2 text-[13px] text-zinc-300 hover:text-white group">
-          <span class="text-accent-purple mt-0.5 text-[10px]">◆</span>
-          <span class="flex-1">
-            <span class="group-hover:underline">${escapeHtml(t.titulo)}</span>
-            ${t.proveedor ? `<span class="text-[10px] text-zinc-500 ml-1">— ${escapeHtml(t.proveedor)}</span>` : ''}
-          </span>
-        </a>
-      `).join('');
-    }
-
-    if (aviso) aviso.textContent = data.aviso || '';
+  /* Abre el artículo en la fuente original. En la app nativa usa el plugin
+     Browser de Capacitor (hoja in-app: el usuario NO sale de la app y vuelve
+     con un toque); en web, pestaña nueva. Mismo patrón que paywall.js. */
+  async function abrirEnlace(url) {
+    if (!url) return;
+    try {
+      const Caps = window.Capacitor;
+      const B = Caps && Caps.Plugins && Caps.Plugins.Browser;
+      if (B && B.open) { await B.open({ url }); return; }
+    } catch (_) { /* cae al window.open de abajo */ }
+    try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) {}
   }
 
-  function renderAccionDia(data) {
-    const cont = $('periodico-accion-dia');
-    if (!cont) return;
+  /* Lleva a la vista Analizar con el ticker cargado. */
+  function irAAnalizar(ticker) {
+    if (!ticker) return;
+    const tab = document.querySelector('.nav-tab[data-vista="analizar"]');
+    if (tab) tab.click();
+    setTimeout(() => {
+      const inp = $('an-input'); if (inp) inp.value = ticker;
+      const btn = $('an-btn-analizar'); if (btn) btn.click();
+    }, 120);
+  }
 
-    if (!data || data.error || !data.ok) {
-      cont.innerHTML = `<p class="text-xs text-zinc-500 py-4 text-center">
-        ${escapeHtml((data && data.error) || 'No disponible ahora mismo.')}
-      </p>`;
-      return;
-    }
+  // ─────────────────────────────────────────────────────────
+  //  Construcción de los mazos a partir de los endpoints QUE YA EXISTEN
+  // ─────────────────────────────────────────────────────────
+  /* Forma común de una tarjeta:
+     { cat, etq, titular|nombre, variacion, meta, resumen, url, tickers[],
+       metricas:[{k,v,dir}], grafica: <ticker|null> }                        */
 
-    const a = data.accion || {};
-    const nivelMap = {
-      green: 'text-accent-green bg-accent-green/10 border-accent-green/30',
-      blue:  'text-accent-blue bg-accent-blue/10 border-accent-blue/30',
-      amber: 'text-accent-amber bg-accent-amber/10 border-accent-amber/30',
-      zinc:  'text-zinc-400 bg-zinc-900 border-surface-border',
+  function _tarjetaDeCotizacion(it, catForzada) {
+    const cat = catForzada || _catDeTicker(it.ticker);
+    const pct = it.cambio_pct;
+    const esPct = it.moneda === '%';
+    const sym = it.moneda === 'MXN' ? '$' : (esPct ? '' : 'US$');
+    return {
+      cat,
+      etq: it.etiqueta || MP_CATEGORIAS[cat].etq,
+      nombre: it.nombre || it.ticker,
+      variacion: fmtPct(pct),
+      dir: pct == null ? 0 : (pct > 0 ? 1 : (pct < 0 ? -1 : 0)),
+      meta: `${it.ticker}${it.fecha ? ' · cierre ' + it.fecha : ''}`,
+      tickers: [it.ticker],
+      grafica: it.ticker,
+      metricas: [
+        { k: esPct ? 'Nivel' : 'Precio', v: `${sym}${fmtNum(it.precio) ?? '—'}` },
+        { k: 'Cambio', v: fmtPct(pct) ?? '—', dir: pct },
+        { k: 'Abs.', v: fmtNum(it.cambio_abs) ?? '—', dir: it.cambio_abs },
+      ].filter(m => m.v !== '—'),
     };
-    const nivelCls = nivelMap[data.nivel_color] || nivelMap.zinc;
+  }
 
-    const bandera = a.es_mx ? 'MX' : 'US';
-    const banderaCls = a.es_mx
-      ? 'bg-accent-green/10 text-accent-green border-accent-green/30'
-      : 'bg-accent-blue/10 text-accent-blue border-accent-blue/30';
+  async function mazoNoticias() {
+    const misTickers = (leerPortafolioGuardado() || []).slice(0, 12);
+    // La edición del día + lo que toca TU portafolio. Las tuyas van primero:
+    // son las que explican por qué se movió lo que tienes. Sin ellas, la
+    // categoría "Tus posiciones" de la leyenda nunca aparecería.
+    const [d, mias] = await Promise.all([
+      safeJson(fetch('/api/periodico/edicion?limite=' + MAX_TARJETAS)),
+      misTickers.length
+        ? safeJson(fetch('/api/periodico/noticias-portafolio', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tickers: misTickers }),
+          }))
+        : Promise.resolve([]),
+    ]);
+    const propias = Array.isArray(mias) ? mias.slice(0, 3) : [];
+    const base = (d && Array.isArray(d.noticias)) ? d.noticias : [];
+    if (!propias.length && !base.length) {
+      return { error: (d && d.error) || 'No pude traer la edición de hoy.', tarjetas: [] };
+    }
+    const vistas = new Set();
+    const fusion = [...propias, ...base].filter(n => {
+      if (!n || !n.url || vistas.has(n.url)) return false;
+      vistas.add(n.url);
+      return true;
+    });
+    const tarjetas = fusion.slice(0, MAX_TARJETAS).map(n => {
+      const cat = MP_CATEGORIAS[n.categoria] ? n.categoria : 'global';
+      return {
+        cat,
+        // La fuente va en la ETIQUETA, no en la meta: la franja visible de la
+        // pila tiene que llevar titular Y nombre de la fuente, y la meta cae
+        // por debajo del corte.
+        etq: [MP_CATEGORIAS[cat].leyenda, n.proveedor].filter(Boolean).join(' · '),
+        titular: n.titulo,
+        meta: fmtHora(n.fecha),
+        resumen: n.resumen,
+        url: n.url,
+        tickers: (n.tickers || []).filter(t => !t.startsWith('^')),
+      };
+    });
+    return { tarjetas, edicion: d && d.edicion, degradado: d && d.degradado,
+             error: (d && d.degradado) ? d.error : null };
+  }
 
-    // Razones como chips
-    const razones = (a.razones || []).map(r =>
-      `<span class="text-[11px] px-2 py-1 rounded-md bg-zinc-900/60 border border-surface-border text-zinc-300">
-         ${escapeHtml(r)}
-       </span>`
-    ).join('');
+  async function mazoWatchlist() {
+    const tickers = leerWatchlist();
+    if (!tickers.length) {
+      return { tarjetas: [], vacio: 'Aún no sigues ninguna acción. En <b>Analizar</b>, toca el ☆ junto al ticker para verla aquí.' };
+    }
+    const d = await safeJson(fetch('/api/watchlist', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tickers }),
+    }));
+    const items = (d && d.ok && d.items) || [];
+    if (!items.length) return { error: 'No pude cargar tu lista en este momento.', tarjetas: [] };
+    return {
+      tarjetas: items.slice(0, MAX_TARJETAS).map(it => {
+        const cat = _catDeTicker(it.ticker);
+        const sym = it.moneda === 'MXN' ? '$' : 'US$';
+        return {
+          cat,
+          etq: MP_CATEGORIAS[cat].leyenda,
+          nombre: it.ticker,
+          variacion: fmtPct(it.cambio_pct),
+          dir: (it.cambio_pct || 0) >= 0 ? 1 : -1,
+          meta: it.nombre || '',
+          tickers: [it.ticker],
+          grafica: it.ticker,
+          metricas: [
+            { k: 'Precio', v: `${sym}${fmtNum(it.precio) ?? '—'}` },
+            { k: 'Cambio', v: fmtPct(it.cambio_pct) ?? '—', dir: it.cambio_pct },
+          ].filter(m => m.v !== '—'),
+        };
+      }),
+    };
+  }
 
-    // Métricas clave en grid
-    const fmtPct = (v) => v == null ? '—' : `${(v*100).toFixed(1)}%`;
-    const fmtNum = (v, d=2) => v == null ? '—' : Number(v).toFixed(d);
-    const moneda = a.moneda === 'MXN' ? '$' : 'US$';
+  async function mazoAccion() {
+    const [ad, mov] = await Promise.all([
+      safeJson(fetch('/api/periodico/accion-del-dia')),
+      safeJson(fetch('/api/periodico/top-movers?periodo=dia&n=3')),
+    ]);
+    const tarjetas = [];
 
-    const metricas = [
-      { label: 'Precio',  valor: a.precio ? `${moneda}${fmtNum(a.precio)}` : '—' },
-      { label: 'Alpha SML', valor: fmtPct(a.alpha_anualizado),
-        cls: (a.alpha_anualizado||0) > 0 ? 'text-accent-green' : 'text-accent-red' },
-      { label: 'Beta',    valor: fmtNum(a.beta) },
-      { label: 'Momentum 3m', valor: fmtPct(a.momentum_3m),
-        cls: (a.momentum_3m||0) > 0 ? 'text-accent-green' : 'text-accent-red' },
-      { label: 'P/E',     valor: a.pe ? fmtNum(a.pe) : '—' },
-      { label: 'ROE',     valor: fmtPct(a.roe) },
-    ];
-
-    cont.innerHTML = `
-      <div class="flex items-start justify-between gap-4 mb-4" data-ticker-live="${escapeHtml(a.ticker || '')}">
-        <div class="flex items-center gap-3 min-w-0">
-          <span class="text-[10px] font-bold px-2 py-1 rounded border tabular shrink-0 ${banderaCls}">${bandera}</span>
-          <div class="min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-xl sm:text-3xl font-bold text-zinc-50 tabular">${escapeHtml(a.ticker || '')}</span>
-              <span class="text-[12px] font-bold px-2 py-0.5 rounded-full border ${nivelCls} tabular" title="Score ${data.score}/100 · ${escapeHtml(data.nivel || '')}">
-                ${data.score}
-              </span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-surface-border hidden sm:inline-flex items-center gap-1" title="Precios con ~15 min de retraso (Yahoo)">
-                ~15 min
-              </span>
-            </div>
-            <p class="text-[13px] text-zinc-400 truncate">${escapeHtml(a.nombre || '')}</p>
-            ${a.sector ? `<p class="text-[11px] text-zinc-600">${escapeHtml(a.sector)}${a.industria ? ' · ' + escapeHtml(a.industria) : ''}</p>` : ''}
-          </div>
-        </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <div class="text-right hidden sm:block">
-            <p data-live-precio class="text-base font-bold tabular text-zinc-100">${a.precio ? moneda + fmtNum(a.precio) : '—'}</p>
-            <p data-live-change class="text-[11px] tabular text-zinc-500">—</p>
-          </div>
-          <button class="accion-dia-analizar text-[11px] text-accent-amber hover:text-zinc-100 border border-accent-amber/30 hover:border-accent-amber/60 rounded-lg px-3 py-1.5 transition"
-                  data-ticker="${escapeHtml(a.ticker || '')}">
-            Analizar →
-          </button>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
-        ${metricas.map(m => `
-          <div class="bg-zinc-900/40 rounded-lg px-2 py-2 text-center">
-            <p class="text-[10px] text-zinc-500 uppercase tracking-wider">${m.label}</p>
-            <p class="text-[13px] font-bold tabular ${m.cls || 'text-zinc-100'}">${m.valor}</p>
-          </div>
-        `).join('')}
-      </div>
-
-      ${razones ? `
-        <div class="flex flex-wrap gap-1.5 mb-3">
-          ${razones}
-        </div>
-      ` : ''}
-
-      <p class="text-[10px] text-zinc-600 leading-snug">
-        ${escapeHtml(data.metodologia || '')}
-      </p>
-    `;
-
-    // Binding del botón "Analizar a fondo" → lleva a Analizar y rellena el input
-    cont.querySelectorAll('.accion-dia-analizar').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const t = btn.dataset.ticker;
-        if (!t) return;
-        // Cambiar a vista Analizar
-        const tab = document.querySelector('.nav-tab.nav-primary[data-vista="analizar"]');
-        if (tab) tab.click();
-        // Llenar input de ticker
-        setTimeout(() => {
-          const input = document.getElementById('ticker-input') || document.querySelector('input[name="ticker"]');
-          if (input) {
-            input.value = t;
-            input.dispatchEvent(new Event('input', {bubbles:true}));
-            input.dispatchEvent(new Event('change', {bubbles:true}));
-          }
-          // Si hay un botón "Analizar", clickearlo
-          const btnAnalizar = document.getElementById('btn-analizar') || document.querySelector('button[data-action="analizar"]');
-          if (btnAnalizar) btnAnalizar.click();
-        }, 100);
+    if (ad && ad.ok && ad.accion) {
+      const a = ad.accion;
+      const cat = a.es_mx ? 'mx' : 'global';
+      const sym = a.moneda === 'MXN' ? '$' : 'US$';
+      tarjetas.push({
+        cat,
+        etq: 'Acción del día · score ' + (ad.score != null ? ad.score : '—'),
+        nombre: a.ticker,
+        variacion: a.momentum_3m != null ? fmtPct(a.momentum_3m * 100) : null,
+        dir: (a.momentum_3m || 0) >= 0 ? 1 : -1,
+        meta: a.nombre || '',
+        resumen: ad.metodologia || '',
+        tickers: [a.ticker],
+        grafica: a.ticker,
+        metricas: [
+          { k: 'Precio', v: a.precio ? `${sym}${fmtNum(a.precio)}` : '—' },
+          { k: 'Alpha SML', v: a.alpha_anualizado != null ? fmtPct(a.alpha_anualizado * 100) : '—', dir: a.alpha_anualizado },
+          { k: 'Beta', v: fmtNum(a.beta) ?? '—' },
+          { k: 'Momentum 3m', v: a.momentum_3m != null ? fmtPct(a.momentum_3m * 100) : '—', dir: a.momentum_3m },
+          { k: 'P/E', v: fmtNum(a.pe, 1) ?? '—' },
+          { k: 'ROE', v: a.roe != null ? fmtPct(a.roe * 100) : '—' },
+        ].filter(m => m.v !== '—'),
+        razones: a.razones || [],
       });
+    }
+
+    const grupo = (lista, etq) => (lista || []).slice(0, 3).map(m => {
+      const cat = _catDeTicker(m.ticker);
+      return {
+        cat,
+        etq,
+        nombre: m.ticker,
+        variacion: fmtPct(m.cambio_pct),
+        dir: (m.cambio_pct || 0) >= 0 ? 1 : -1,
+        meta: m.nombre || '',
+        tickers: [m.ticker],
+        grafica: m.ticker,
+        metricas: [
+          { k: 'Precio', v: fmtNum(m.precio) ?? '—' },
+          { k: 'Cambio', v: fmtPct(m.cambio_pct) ?? '—', dir: m.cambio_pct },
+        ].filter(x => x.v !== '—'),
+      };
+    });
+    if (mov && mov.ok) {
+      tarjetas.push(...grupo(mov.ganadores, 'Más subió hoy'));
+      tarjetas.push(...grupo(mov.perdedores, 'Más cayó hoy'));
+    }
+
+    if (!tarjetas.length) return { error: 'La selección del día no está disponible ahora mismo.', tarjetas: [] };
+    return { tarjetas: tarjetas.slice(0, MAX_TARJETAS) };
+  }
+
+  async function mazoSector(mercados) {
+    let sectores = (mercados && mercados.sectores) || [];
+    if (!sectores.length) {
+      const d = await safeJson(fetch('/api/periodico/sectores?periodo=dia'));
+      sectores = (d && d.ok && d.sectores) || [];
+    }
+    if (!sectores.length) return { error: 'Los sectores no están disponibles ahora mismo.', tarjetas: [] };
+    // El "sector del día" es el de mayor movimiento absoluto: sale primero y el
+    // resto queda debajo, ordenado por variación descendente.
+    const orden = sectores.slice().sort((a, b) =>
+      Math.abs(b.cambio_pct || 0) - Math.abs(a.cambio_pct || 0));
+    const dia = orden[0];
+    const resto = sectores.slice()
+      .filter(s => s.ticker !== dia.ticker)
+      .sort((a, b) => (b.cambio_pct || 0) - (a.cambio_pct || 0));
+    return {
+      tarjetas: [dia, ...resto].slice(0, MAX_TARJETAS).map((s, i) => {
+        const t = _tarjetaDeCotizacion(s, 'global');
+        t.etq = i === 0 ? 'Sector del día' : 'Sector · ' + s.ticker;
+        return t;
+      }),
+      recorte: sectores.length > MAX_TARJETAS ? sectores.length - MAX_TARJETAS : 0,
+    };
+  }
+
+  async function mazoIndices(mercados) {
+    if (!mercados) return { error: 'Los índices no están disponibles ahora mismo.', tarjetas: [] };
+    const us = mercados.indices_us || [];
+    const mundo = mercados.indices_mundo || [];
+    const div = mercados.divisas || [];
+    const tasas = mercados.tasas_vol || [];
+    const cripto = mercados.crypto || [];
+    const tarjetas = [
+      ...us.map(x => _tarjetaDeCotizacion(x, (x.ticker || '').endsWith('.MX') ? 'mx' : 'global')),
+      ...div.slice(0, 2).map(x => _tarjetaDeCotizacion(x, 'macro')),
+      ...tasas.slice(0, 2).map(x => _tarjetaDeCotizacion(x, 'macro')),
+      ...cripto.slice(0, 1).map(x => _tarjetaDeCotizacion(x, 'cripto')),
+      ...mundo.slice(0, 2).map(x => _tarjetaDeCotizacion(x, 'global')),
+    ];
+    if (!tarjetas.length) return { error: 'Los índices no están disponibles ahora mismo.', tarjetas: [] };
+    return { tarjetas: tarjetas.slice(0, MAX_TARJETAS) };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  //  Render
+  // ─────────────────────────────────────────────────────────
+  function _leyendaHTML() {
+    return Object.entries(MP_CATEGORIAS).map(([, c]) =>
+      `<span><i style="background:${c.sup};border-color:${c.borde}"></i>${escapeHtml(c.leyenda)}</span>`
+    ).join('');
+  }
+
+  function _indicadorHTML() {
+    return MAZOS.map((m, i) => `
+      <button role="tab" id="mazo-tab-${m.clave}" data-ir="${i}"
+              aria-controls="mazo-pane-${m.clave}"
+              aria-selected="${i === state.activo}">${escapeHtml(m.titulo)}</button>`).join('');
+  }
+
+  function _tarjetaHTML(t, clave, i) {
+    const c = MP_CATEGORIAS[t.cat] || MP_CATEGORIAS.global;
+    const idDet = `tj-${clave}-${i}`;
+    const idBtn = `tjb-${clave}-${i}`;
+    // Dirección de mercado: triángulo ▲/▼ MÁS el verde/rojo semántico. Los dos
+    // a la vez porque sobre los fondos de categoría el color solo ya no basta
+    // (y porque la dirección no debe depender de distinguir verde de rojo).
+    // Ambos tonos pasan AA sobre las cinco superficies de MP_CATEGORIAS.
+    const dirCls = t.dir > 0 ? 'mp-dir mp-alza' : (t.dir < 0 ? 'mp-dir mp-baja' : '');
+    const cara = t.titular
+      ? `<span class="mp-tarjeta-etq">${escapeHtml(t.etq || '')}</span>
+         <span class="mp-tarjeta-titular">${escapeHtml(t.titular)}</span>
+         ${t.meta ? `<span class="mp-tarjeta-meta">${escapeHtml(t.meta)}</span>` : ''}`
+      : `<span class="mp-tarjeta-etq">${escapeHtml(t.etq || '')}</span>
+         <span class="mp-tarjeta-fila">
+           <span class="mp-tarjeta-nom">${escapeHtml(t.nombre || '')}</span>
+           ${t.variacion ? `<span class="mp-tarjeta-var ${dirCls}">${escapeHtml(t.variacion)}</span>` : ''}
+         </span>
+         ${t.meta ? `<span class="mp-tarjeta-meta">${escapeHtml(t.meta)}</span>` : ''}`;
+
+    const metricas = (t.metricas || []).length ? `
+      <dl class="mp-tarjeta-metricas">
+        ${t.metricas.map(m => `<div><dt>${escapeHtml(m.k)}</dt><dd>${escapeHtml(String(m.v))}</dd></div>`).join('')}
+      </dl>` : '';
+
+    const chips = (t.tickers || []).length ? `
+      <div class="mp-tarjeta-chips">
+        ${t.tickers.slice(0, 6).map(tk =>
+          `<button class="mp-chip-ticker" data-ticker="${escapeHtml(tk)}">${escapeHtml(tk)} →</button>`).join('')}
+      </div>` : '';
+
+    const razones = (t.razones || []).length ? `
+      <div class="mp-tarjeta-chips">
+        ${t.razones.slice(0, 4).map(r =>
+          `<span class="mp-chip-ticker" style="cursor:default">${escapeHtml(r)}</span>`).join('')}
+      </div>` : '';
+
+    return `
+      <article class="mp-tarjeta" data-i="${i}"
+               style="--cat-sup:${c.sup};--cat-tinta:${c.tinta};--cat-borde:${c.borde}">
+        <button class="mp-tarjeta-cara" id="${idBtn}" type="button"
+                aria-expanded="false" aria-controls="${idDet}">${cara}</button>
+        <div class="mp-tarjeta-detalle" id="${idDet}" role="region"
+             aria-labelledby="${idBtn}" inert>
+          <div class="mp-tarjeta-asa" aria-hidden="true"></div>
+          <hr>
+          ${t.resumen ? `<p class="mp-tarjeta-resumen">${escapeHtml(t.resumen)}</p>` : ''}
+          ${t.grafica ? `<div class="mp-tarjeta-grafica"><canvas></canvas></div>` : ''}
+          ${metricas}
+          ${razones}
+          ${chips}
+          ${t.url
+            ? `<button class="mp-tarjeta-accion" type="button" data-url="${escapeHtml(t.url)}">
+                 <span>Leer nota completa →</span></button>`
+            : (t.tickers && t.tickers.length
+               ? `<button class="mp-tarjeta-accion" type="button" data-ticker="${escapeHtml(t.tickers[0])}">
+                    <span>Analizar ${escapeHtml(t.tickers[0])} →</span></button>` : '')}
+        </div>
+        <button class="mp-tarjeta-cerrar" type="button" aria-label="Cerrar tarjeta">✕</button>
+      </article>`;
+  }
+
+  function _paneHTML(m, res) {
+    const tarjetas = (res && res.tarjetas) || [];
+    let cuerpo;
+    if (tarjetas.length) {
+      cuerpo = `<div class="mp-mazo" data-mazo="${m.clave}">
+                  ${tarjetas.map((t, i) => _tarjetaHTML(t, m.clave, i)).join('')}
+                </div>`;
+    } else {
+      // Degradación explícita y accionable: nunca "Cargando…" eterno ni blanco.
+      // `vacio` es copy nuestro y puede traer marcado; `error` puede venir del
+      // servidor, así que ese sí se escapa.
+      const msg = (res && res.vacio)
+        || (res && res.error ? escapeHtml(res.error) : '')
+        || 'No hay nada que mostrar aquí ahora mismo.';
+      cuerpo = `<div class="mp-vacio" style="text-align:left">
+                  <p style="margin:0 0 10px">${msg}</p>
+                  <button class="mp-btn mp-btn-secundario mazo-reintentar" type="button"
+                          style="min-height:38px;font-size:12px">Reintentar</button>
+                </div>`;
+    }
+    const nota = (res && res.recorte)
+      ? `<p class="mp-firma" style="margin-top:10px">Se muestran ${MAX_TARJETAS} de ${MAX_TARJETAS + res.recorte}.</p>` : '';
+    const aviso = (res && res.degradado && res.error)
+      ? `<p class="mp-firma" style="margin-top:10px;color:var(--baja)">${escapeHtml(res.error)} Estás viendo la edición anterior.</p>` : '';
+    return `
+      <section class="mp-mazo-pane" id="mazo-pane-${m.clave}" role="tabpanel"
+               aria-labelledby="mazo-tab-${m.clave}" tabindex="0">
+        <h3 class="mp-mazo-titulo"><span class="mp-mazo-n">${MAZOS.indexOf(m) + 1}</span> ${escapeHtml(m.titulo)}</h3>
+        ${cuerpo}${nota}${aviso}
+      </section>`;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  //  Geometría de la pila (todo con transform)
+  // ─────────────────────────────────────────────────────────
+  function _medidas(mazo) {
+    const cs = getComputedStyle(mazo.closest('.mp-mazos') || document.documentElement);
+    const num = (n, def) => {
+      const v = parseFloat(cs.getPropertyValue(n));
+      return isNaN(v) ? def : v;
+    };
+    return { paso: num('--tj-paso', 68), cara: num('--tj-cara', 132), mini: num('--tj-mini', 26) };
+  }
+
+  /* Coloca cada tarjeta y devuelve el alto total de la pila. Puro translateY. */
+  function _posicionar(mazo, animar) {
+    const tarjetas = [...mazo.querySelectorAll('.mp-tarjeta')];
+    if (!tarjetas.length) return 0;
+    const { paso, cara, mini } = _medidas(mazo);
+    const k = state.abierta[mazo.dataset.mazo];
+    let y = 0, alto = 0;
+    if (!animar) mazo.classList.add('sin-animacion');
+
+    tarjetas.forEach((el, i) => {
+      el.style.transform = `translateY(${y}px)`;
+      // z creciente: cada tarjeta tapa a la anterior. De eso depende que el
+      // crecimiento de la que se abre quede oculto tras la de abajo.
+      el.style.zIndex = String(10 + i);
+      const abierta = (k === i);
+      // Alto real de la abierta: se mide del DOM porque el contenido varía.
+      const suyo = abierta ? el.scrollHeight : cara;
+      alto = y + suyo;                    // borde inferior de ESTA tarjeta
+      if (k == null)      y += paso;      // pila en reposo
+      else if (i < k)     y += mini;      // las de arriba se compactan
+      else if (i === k)   y += el.scrollHeight;
+      else                y += paso;      // las de abajo bajan en bloque
+    });
+
+    // Al salir del bucle `alto` es el borde inferior de la ÚLTIMA tarjeta, que
+    // es la única que se ve entera: con eso la pila nunca corta contenido.
+    mazo.style.height = Math.ceil(alto) + 'px';
+    if (!animar) {
+      // Reflow forzado ANTES de devolver la transición: si se quitara la clase
+      // en el mismo frame, el navegador vería un solo cambio de estilo y
+      // animaría igual desde la posición vieja.
+      void mazo.offsetHeight;
+      mazo.classList.remove('sin-animacion');
+    }
+    return alto;
+  }
+
+  function _reajustarPista() {
+    const pista = $('mazos-pista');
+    if (!pista) return;
+    let max = 0;
+    pista.querySelectorAll('.mp-mazo-pane').forEach(pane => {
+      // Se SUMAN los hijos en vez de leer pane.scrollHeight: los panes son
+      // items flex y su scrollHeight nunca baja del alto ya impuesto a la
+      // pista, así que al cerrar una tarjeta la sección se quedaba estirada
+      // para siempre. Sumar el contenido real sube y baja igual de bien.
+      let h = 0;
+      [...pane.children].forEach(hijo => {
+        const cs = getComputedStyle(hijo);
+        h += hijo.offsetHeight + parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);
+      });
+      max = Math.max(max, h);
+    });
+    // overflow-y:hidden en la pista obliga a darle alto explícito; se toma el
+    // del mazo MÁS ALTO para que ninguno quede cortado al deslizar de lado.
+    pista.style.height = Math.ceil(max) + 'px';
+  }
+
+  /* La pila anima su alto (transition en .mp-mazo), así que medir justo
+     después de cambiarlo devuelve el valor A MEDIO camino y la pista se queda
+     corta —cortando las tarjetas de abajo—. Se vuelve a medir al terminar la
+     transición, que es cuando el número ya es el definitivo. */
+  function _reajustarAlAsentar(mazo) {
+    if (!mazo || mazo.dataset.ligado === '1') return;
+    mazo.dataset.ligado = '1';
+    mazo.addEventListener('transitionend', (ev) => {
+      if (ev.target === mazo && ev.propertyName === 'height') _reajustarPista();
     });
   }
 
-  function renderIndices(data) {
-    const cont = $('periodico-indices');
-    const indices = (data && data.indices) || [];
-    if (!indices.length) {
-      cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">
-        Sin datos de cierres por ahora.
-      </div>`;
-      return;
-    }
-    cont.innerHTML = indices.map(i => {
-      const pos = (i.cambio_pct || 0) >= 0;
-      const color = pos ? 'text-accent-green' : 'text-accent-red';
-      const bg = pos ? 'bg-accent-green/5 border-accent-green/20' : 'bg-accent-red/5 border-accent-red/20';
-      const signo = pos ? '+' : '';
-      return `
-        <div class="rounded-lg border ${bg} p-3 flex flex-col gap-1">
-          <div class="flex items-start justify-between">
-            <div>
-              <p class="text-[9px] uppercase tracking-wider text-zinc-500">${escapeHtml(i.etiqueta || '')}</p>
-              <h4 class="text-xs font-semibold text-zinc-100 mt-0.5">${escapeHtml(i.nombre)}</h4>
-            </div>
-            ${sparklineSVG(i.sparkline, pos)}
-          </div>
-          <div>
-            <p class="text-base font-bold tabular ${color}">${signo}${(i.cambio_pct || 0).toFixed(2)}%</p>
-            <p class="text-[10px] text-zinc-500 tabular">$${(i.precio || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
+  // ─────────────────────────────────────────────────────────
+  //  Abrir / cerrar
+  // ─────────────────────────────────────────────────────────
+  function _cerrarTodas(mazo) { _abrir(mazo, null); }
 
-  // === Render compacto para mundo / divisas / commodities ===
-  function renderGrupoCompacto(contId, items) {
-    const cont = document.getElementById(contId);
-    if (!cont) return;
-    if (!items || !items.length) {
-      cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">Sin datos.</div>`;
-      return;
-    }
-    cont.innerHTML = items.map(i => {
-      const pos = (i.cambio_pct || 0) >= 0;
-      const color = pos ? 'text-accent-green' : 'text-accent-red';
-      const signo = pos ? '+' : '';
-      return `
-        <div class="bg-surface-card border border-surface-border rounded-lg p-3 hover:border-zinc-700 transition">
-          <div class="flex items-center justify-between gap-2 mb-1">
-            <p class="text-[11px] font-semibold text-zinc-100 truncate">${escapeHtml(i.nombre)}</p>
-            <span class="text-[9px] text-zinc-600">${escapeHtml(i.etiqueta || '')}</span>
-          </div>
-          <div class="flex items-center justify-between gap-2">
-            <p class="text-[12px] tabular text-zinc-300">${(i.precio || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            <p class="text-[12px] font-bold tabular ${color}">${signo}${(i.cambio_pct || 0).toFixed(2)}%</p>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
+  function _abrir(mazo, idx) {
+    const clave = mazo.dataset.mazo;
+    const tarjetas = [...mazo.querySelectorAll('.mp-tarjeta')];
+    state.abierta[clave] = idx;
 
-  // === Render tasas / VIX (formato % directo) ===
-  function renderTasasVol(items) {
-    const cont = document.getElementById('periodico-tasas');
-    if (!cont) return;
-    if (!items || !items.length) {
-      cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">Sin datos.</div>`;
-      return;
-    }
-    cont.innerHTML = items.map(i => {
-      const pos = (i.cambio_pct || 0) >= 0;
-      const color = pos ? 'text-accent-green' : 'text-accent-red';
-      const signo = pos ? '+' : '';
-      const tasa = i.ticker === '^VIX' ? (i.precio || 0).toFixed(2) : (i.precio || 0).toFixed(3);
-      const suf = i.ticker === '^VIX' ? '' : '%';
-      return `
-        <div class="bg-surface-card border border-surface-border rounded-lg p-3">
-          <p class="text-[10px] font-semibold text-zinc-100 truncate">${escapeHtml(i.nombre)}</p>
-          <p class="text-lg font-bold tabular text-zinc-100 mt-1">${tasa}${suf}</p>
-          <p class="text-[10px] tabular ${color}">${signo}${(i.cambio_pct || 0).toFixed(2)}%</p>
-        </div>
-      `;
-    }).join('');
-  }
-
-  // === Render strip de crypto ===
-  function renderCryptoStrip(items) {
-    const cont = document.getElementById('periodico-crypto');
-    if (!cont) return;
-    if (!items || !items.length) {
-      cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">Sin datos crypto.</div>`;
-      return;
-    }
-    cont.innerHTML = items.map(i => {
-      const pos = (i.cambio_pct || 0) >= 0;
-      const color = pos ? 'text-accent-green' : 'text-accent-red';
-      const signo = pos ? '+' : '';
-      const precio = i.precio >= 1000
-        ? `$${(i.precio).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
-        : `$${(i.precio || 0).toFixed(2)}`;
-      return `
-        <div class="bg-surface-card border border-surface-border rounded-lg p-3 hover:border-orange-500/30 transition">
-          <div class="flex items-center justify-between mb-1">
-            <p class="text-xs font-semibold text-zinc-100 truncate">${escapeHtml(i.nombre)}</p>
-            <span class="text-[9px] font-bold text-orange-400">${escapeHtml(i.etiqueta || '')}</span>
-          </div>
-          <p class="text-sm font-bold tabular text-zinc-100">${precio}</p>
-          <p class="text-[11px] font-bold tabular ${color}">${signo}${(i.cambio_pct || 0).toFixed(2)}%</p>
-        </div>
-      `;
-    }).join('');
-  }
-
-  // === Render heatmap de sectores ===
-  function renderSectoresHeatmap(items) {
-    const cont = document.getElementById('periodico-sectores');
-    if (!cont) return;
-    if (!items || !items.length) {
-      cont.innerHTML = `<div class="col-span-full text-xs text-zinc-500 py-4 text-center">Sin datos sectoriales.</div>`;
-      return;
-    }
-    cont.innerHTML = items.map(i => {
-      const cambio = i.cambio_pct || 0;
-      // Trama de tinta, no semáforo: el verde/rojo de mercado se aplica muy
-      // diluido sobre el panel y la intensidad la lleva la magnitud. Así el
-      // mapa sigue leyéndose de un vistazo sin gritar como un dashboard.
-      const absCambio = Math.min(Math.abs(cambio), 3) / 3;  // 0-1
-      const opacity = (0.06 + absCambio * 0.26).toFixed(3); // 0.06 a 0.32
-      const colorBase = cambio >= 0 ? '111, 174, 126' : '219, 123, 104';
-      const signo = cambio >= 0 ? '+' : '';
-      const textColor = cambio >= 0 ? '#6FAE7E' : '#DB7B68';
-      return `
-        <div class="p-3 flex flex-col items-center justify-center text-center"
-             style="background: rgba(${colorBase}, ${opacity}); border: 1px solid rgba(${colorBase}, ${(Number(opacity) + 0.18).toFixed(3)}); border-radius: 2px;">
-          <p class="mp-etq" style="color: var(--papel-3);">${escapeHtml(i.etiqueta || '')}</p>
-          <p class="text-[11px] leading-tight mt-1 truncate w-full" style="color: var(--papel-2);">${escapeHtml(i.nombre)}</p>
-          <p class="text-base font-semibold tabular mt-1" style="color: ${textColor};">${signo}${cambio.toFixed(2)}%</p>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function noticiaHTML(n, conTicker) {
-    const fecha = fmtHora(n.fecha);
-    const tickerBadge = conTicker && n.ticker_relacionado
-      ? `<span class="text-[9px] font-semibold px-1.5 py-0.5 rounded border border-accent-amber/30 bg-accent-amber/10 text-accent-amber shrink-0">${escapeHtml(n.ticker_relacionado)}</span>`
-      : '';
-    const thumb = n.thumbnail
-      ? `<img src="${escapeHtml(n.thumbnail)}" alt="" loading="lazy" class="w-16 h-16 object-cover rounded-md shrink-0 hidden sm:block bg-zinc-800" onerror="this.style.display='none'">`
-      : '';
-    // Importante: rel=noopener para seguridad y target=_blank para no perder el contexto de la app
-    return `
-      <a href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer"
-         class="block group bg-surface-card border border-surface-border hover:border-zinc-600 transition rounded-lg p-3 flex gap-3">
-        ${thumb}
-        <div class="flex-1 min-w-0">
-          <div class="flex items-start gap-2 mb-1 flex-wrap">
-            ${tickerBadge}
-            <span class="text-[10px] text-zinc-500">${escapeHtml(n.proveedor || '')}${fecha ? ' · ' + fecha : ''}</span>
-          </div>
-          <h4 class="text-sm font-medium text-zinc-100 leading-snug line-clamp-2 group-hover:text-white">${escapeHtml(n.titulo)}</h4>
-          ${n.resumen ? `<p class="text-[11px] text-zinc-500 mt-1 leading-snug line-clamp-2">${escapeHtml(n.resumen)}</p>` : ''}
-        </div>
-      </a>
-    `;
-  }
-
-  function renderNoticiasTop(lista) {
-    const cont = $('periodico-top-lista');
-    const count = $('periodico-top-count');
-    if (!lista || !lista.length) {
-      cont.innerHTML = `<div class="text-xs text-zinc-500 py-4">
-        No hay noticias disponibles ahora mismo.
-      </div>`;
-      if (count) count.textContent = '';
-      return;
-    }
-    cont.innerHTML = lista.map(n => noticiaHTML(n, false)).join('');
-    if (count) count.textContent = `${lista.length} titulares`;
-  }
-
-  function renderNoticiasMis(lista) {
-    const cont = $('periodico-mis-lista');
-    const count = $('periodico-mis-count');
-    if (!lista || !lista.length) {
-      const tickers = leerPortafolioGuardado() || [];
-      cont.innerHTML = tickers.length
-        ? `<div class="text-xs text-zinc-500 py-6 text-center bg-surface-card border border-surface-border rounded-lg px-3">
-             Sin noticias recientes para ${tickers.slice(0, 3).join(', ')}${tickers.length > 3 ? '…' : ''}.
-           </div>`
-        : `<div class="text-xs text-zinc-500 py-6 text-center bg-surface-card border border-surface-border rounded-lg px-3">
-             Define tu portafolio en <span class="text-zinc-300">Mi portafolio</span> para ver noticias específicas.
-           </div>`;
-      if (count) count.textContent = '';
-      return;
-    }
-    cont.innerHTML = lista.map(n => noticiaHTML(n, true)).join('');
-    if (count) count.textContent = `${lista.length} titulares`;
-  }
-
-  async function cargar(force = false) {
-    if (state.cargando) return;
-    if (state.cargadoUnaVez && !force) return;  // cache de sesión
-    state.cargando = true;
-
-    const hora = $('periodico-hora');
-    if (hora) hora.textContent = 'Actualizando…';
-
-    // === SKELETONS estilo Bloomberg mientras carga ===
-    // Pinta inmediatamente cajas animadas para que se sienta vivo, no en blanco.
-    try {
-      const S = window.bbgSkel;
-      if (S) {
-        // Resumen del día (titulares + texto)
-        const resTexto = $('periodico-resumen-texto');
-        if (resTexto && !state.cargadoUnaVez) {
-          resTexto.innerHTML = `${S.line('80%')}${S.line('95%')}${S.line('60%')}`;
-        }
-        const resTitulares = $('periodico-resumen-titulares');
-        if (resTitulares && !state.cargadoUnaVez) {
-          resTitulares.innerHTML = `${S.line('70%')}${S.line('55%')}${S.line('80%')}`;
-        }
-        // Acción del día (card destacada)
-        const accionDia = $('periodico-accion-dia');
-        if (accionDia && !state.cargadoUnaVez) accionDia.innerHTML = S.card();
-        // Tiles de mercado
-        S.fillTiles('periodico-indices',     8, 4);
-        S.fillTiles('periodico-mundo',       6, 3);
-        S.fillTiles('periodico-divisas',     4, 4);
-        S.fillTiles('periodico-commodities', 4, 4);
-        S.fillTiles('periodico-tasas',       3, 3);
-        S.fillTiles('periodico-crypto',      5, 5);
-        S.fillTiles('periodico-sectores',   11, 4);
-        // Noticias
-        const topLista = $('periodico-top-lista');
-        if (topLista && !state.cargadoUnaVez) {
-          topLista.innerHTML = Array.from({length:5}, () => `
-            <div class="bbg-skel-card" style="min-height:60px;flex-direction:column">
-              ${S.line('85%','lg')}${S.line('45%','sm')}
-            </div>
-          `).join('');
-        }
-        const misLista = $('periodico-mis-lista');
-        if (misLista && !state.cargadoUnaVez) {
-          misLista.innerHTML = Array.from({length:3}, () => `
-            <div class="bbg-skel-card" style="min-height:54px;flex-direction:column">
-              ${S.line('80%','lg')}${S.line('40%','sm')}
-            </div>
-          `).join('');
-        }
+    tarjetas.forEach((el, i) => {
+      const abierta = (i === idx);
+      el.classList.toggle('abierta', abierta);
+      const cara = el.querySelector('.mp-tarjeta-cara');
+      const det = el.querySelector('.mp-tarjeta-detalle');
+      if (cara) cara.setAttribute('aria-expanded', String(abierta));
+      if (det) {
+        // `inert` saca el detalle del foco Y del árbol de accesibilidad, que es
+        // lo correcto cuando está tapado por la tarjeta de arriba.
+        if (abierta) det.removeAttribute('inert'); else det.setAttribute('inert', '');
       }
-    } catch (_) { /* si no cargó ux_helpers, no problem */ }
+    });
 
-    // Lanzamos en paralelo
-    const tickers = leerPortafolioGuardado() || [];
-    // Wrapper seguro: nunca falla por body vacío en iOS Safari
-    const safeJson = async (req) => {
-      try {
-        const r = await req;
-        if (!r) return { error: 'no response' };
-        try { return await r.json(); } catch { return { error: 'respuesta vacía' }; }
-      } catch (e) { return { error: e.message }; }
-    };
+    _posicionar(mazo, true);
+    _reajustarPista();
 
-    // === RENDERIZADO PROGRESIVO ===
-    // Cada fetch dispara su render apenas llega, sin esperar a los demás.
-    // Esto hace que el periódico se sienta mucho más rápido.
+    if (idx != null) {
+      const el = tarjetas[idx];
+      const t = (state.datos[clave] || [])[idx];
+      if (t && t.grafica) _pintarGrafica(el, t.grafica, `${clave}-${idx}`);
+      // Reposicionar cuando la gráfica/el contenido cambien de alto.
+      setTimeout(() => { _posicionar(mazo, true); _reajustarPista(); }, 260);
+    }
+  }
 
-    // Resumen
-    safeJson(fetch('/api/periodico/resumen')).then(d => renderResumen(d));
+  // ─────────────────────────────────────────────────────────
+  //  Gráfica dentro de la tarjeta — reusa MP_GRAFICA (tema único)
+  // ─────────────────────────────────────────────────────────
+  async function _pintarGrafica(card, ticker, id) {
+    const host = card.querySelector('.mp-tarjeta-grafica');
+    const cv = host && host.querySelector('canvas');
+    if (!cv || state.charts[id]) return;
+    if (typeof Chart === 'undefined') { host.remove(); return; }
+    state.charts[id] = 'cargando';
+    const d = await safeJson(fetch(`/api/historico/${encodeURIComponent(ticker)}?rango=6M`));
+    if (!d || !d.ok || !Array.isArray(d.precios) || d.precios.length < 2) {
+      // Sin serie no se deja un hueco ni un canvas vacío: se quita el bloque.
+      delete state.charts[id];
+      if (host) host.remove();
+      const mazo = card.closest('.mp-mazo');
+      if (mazo) { _posicionar(mazo, true); _reajustarPista(); }
+      return;
+    }
+    const tinta = getComputedStyle(card).getPropertyValue('--cat-tinta').trim() || MP_GRAFICA.tinta1;
+    state.charts[id] = new Chart(cv.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: d.fechas,
+        // Dentro de la tarjeta el trazo va en la tinta de la categoría: el
+        // verde/rojo de mercado no se lee sobre un fondo de color.
+        datasets: [{ data: d.precios, ...MP_GRAFICA.serie(tinta, { borderWidth: 1.75 }) }],
+      },
+      options: MP_GRAFICA.base({
+        plugins: { legend: MP_GRAFICA.leyenda(false), tooltip: MP_GRAFICA.tooltip() },
+        scales: {
+          x: MP_GRAFICA.ejeTiempo({ ticks: { display: false }, border: { display: false } }),
+          y: MP_GRAFICA.ejeValor({
+            grid: { color: MP_COLOR.rgba(tinta, 0.14), drawTicks: false, lineWidth: 1 },
+            ticks: { color: tinta, font: { family: MP_GRAFICA.mono, size: 9 }, maxTicksLimit: 4, padding: 6 },
+          }),
+        },
+      }),
+    });
+    // El contenedor ya tiene alto definido en CSS (.mp-tarjeta-grafica), así
+    // que Chart.js dibuja en el primer frame: NO hace falta scroll ni resize.
+    // (Este era el bug de las gráficas en blanco; no reintroducirlo quitando
+    // el alto del contenedor.)
+    const mazo = card.closest('.mp-mazo');
+    if (mazo) { _posicionar(mazo, true); _reajustarPista(); }
+  }
 
-    // Acción del día (cache 24h en backend, súper rápido)
-    safeJson(fetch('/api/periodico/accion-del-dia')).then(d => renderAccionDia(d));
+  // ─────────────────────────────────────────────────────────
+  //  Interacción: toque, teclado, arrastre y swipe entre mazos
+  // ─────────────────────────────────────────────────────────
+  function _bindMazo(mazo) {
+    const clave = mazo.dataset.mazo;
 
-    // Lista de seguimiento del usuario
-    renderWatchlist();
+    mazo.addEventListener('click', (ev) => {
+      const chip = ev.target.closest('.mp-chip-ticker');
+      if (chip && chip.dataset.ticker) { ev.stopPropagation(); irAAnalizar(chip.dataset.ticker); return; }
 
-    // Dashboard de mercados (el más pesado, render por secciones)
-    safeJson(fetch('/api/periodico/mercados')).then(mercados => {
-      if (!mercados || mercados.error) {
-        $('periodico-indices').innerHTML = `<div class="col-span-full text-xs text-accent-red py-4 text-center">
-          ${escapeHtml((mercados && mercados.error) || 'error al cargar mercados')}
-        </div>`;
+      const accion = ev.target.closest('.mp-tarjeta-accion');
+      if (accion) {
+        ev.stopPropagation();
+        if (accion.dataset.url) abrirEnlace(accion.dataset.url);
+        else if (accion.dataset.ticker) irAAnalizar(accion.dataset.ticker);
         return;
       }
-      renderIndices({ indices: mercados.indices_us });
-      renderGrupoCompacto('periodico-mundo', mercados.indices_mundo);
-      renderGrupoCompacto('periodico-divisas', mercados.divisas);
-      renderGrupoCompacto('periodico-commodities', mercados.commodities);
-      renderTasasVol(mercados.tasas_vol);
-      renderCryptoStrip(mercados.crypto);
-      renderSectoresHeatmap(mercados.sectores);
+
+      if (ev.target.closest('.mp-tarjeta-cerrar')) { _cerrarTodas(mazo); return; }
+
+      const cara = ev.target.closest('.mp-tarjeta-cara');
+      if (!cara) return;
+      if (cara.dataset.arrastre === '1') { delete cara.dataset.arrastre; return; }
+      const card = cara.closest('.mp-tarjeta');
+      const i = +card.dataset.i;
+      _abrir(mazo, state.abierta[clave] === i ? null : i);
     });
 
-    // Noticias top
-    const topRes = safeJson(fetch('/api/periodico/noticias?limite=12'));
-
-    // Noticias de mi portafolio (solo si tengo tickers)
-    const misRes = tickers.length
-      ? safeJson(fetch('/api/periodico/noticias-portafolio', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tickers }),
-        }))
-      : Promise.resolve(null);
-
-    // Awaitamos sólo las noticias porque las usamos sincrónico abajo
-    const [top, mis] = await Promise.all([topRes, misRes]);
-
-    if (Array.isArray(top)) renderNoticiasTop(top);
-    else renderNoticiasTop([]);
-
-    if (tickers.length && Array.isArray(mis)) renderNoticiasMis(mis);
-    else renderNoticiasMis([]);
-
-    if (hora) {
-      hora.textContent = `Actualizado a las ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} · noticias vía Yahoo Finance`;
-    }
-    state.cargadoUnaVez = true;
-    state.cargando = false;
-  }
-
-  // ─────────────────────────────────────────────────────────
-  //  Top Movers (ganadores / perdedores / populares)
-  // ─────────────────────────────────────────────────────────
-  let _moversPeriodo = 'dia';
-  async function cargarMovers(periodo) {
-    periodo = periodo || _moversPeriodo;
-    _moversPeriodo = periodo;
-    const grupos = [
-      {id:'mov-ganadores', key:'ganadores', signo:'+', color:'text-accent-green'},
-      {id:'mov-perdedores', key:'perdedores', signo:'',  color:'text-accent-red'},
-      {id:'mov-populares', key:'populares', signo:null, color:'text-accent-blue'},
-    ];
-    grupos.forEach(g => {
-      const el = document.getElementById(g.id);
-      if (el) {
-        // Skeleton de 3 filas estilo Bloomberg
-        const S = window.bbgSkel;
-        if (S) {
-          el.innerHTML = Array.from({length:3}, () => `
-            <div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-zinc-900/30">
-              <div class="flex items-center gap-2 flex-1 min-w-0">
-                <span class="bbg-skel" style="width:24px;height:14px;border-radius:2px"></span>
-                <div class="flex-1 min-w-0">
-                  ${S.line('60%','sm')}${S.line('80%','sm')}
-                </div>
-              </div>
-              <div class="text-right shrink-0">
-                ${S.line('40px','sm')}
-              </div>
-            </div>
-          `).join('');
-        } else {
-          el.innerHTML = '<div class="text-xs text-zinc-500 py-4 text-center">Cargando…</div>';
-        }
+    // Teclado: Enter/Espacio los da el <button>; Escape cierra.
+    mazo.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && state.abierta[clave] != null) {
+        ev.stopPropagation();
+        const abierta = mazo.querySelector('.mp-tarjeta.abierta .mp-tarjeta-cara');
+        _cerrarTodas(mazo);
+        if (abierta) abierta.focus();
       }
     });
-    try {
-      const res = await fetch(`/api/periodico/top-movers?periodo=${periodo}&n=3`);
-      // Protección contra body vacío en iOS Safari
-      let d = null;
-      try { d = await res.json(); } catch { d = null; }
-      if (!d) throw new Error('Respuesta vacía del servidor');
-      if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
-      if (!d.ok) throw new Error(d.error || 'Error en datos');
-      const render = (items) => {
-        if (!items || !items.length) return '<div class="mp-vacio">Sin datos</div>';
-        // Un solo dato malo no debe tumbar el panel completo: se filtran los
-        // registros sin retorno usable en vez de dejar que `ret.toFixed()`
-        // lance y el catch borre las tres columnas.
-        const usables = items.filter(t => t && Number.isFinite(Number(t.retorno_pct)));
-        if (!usables.length) return '<div class="mp-vacio">Sin datos</div>';
-        return usables.map(t => {
-          const ret = Number(t.retorno_pct);
-          const retColor = ret >= 0 ? 'text-accent-green' : 'text-accent-red';
-          const retSigno = ret >= 0 ? '+' : '';
-          const banderaCls = t.es_mx ? 'bg-accent-green/10 text-accent-green border-accent-green/20'
-                            : t.es_crypto ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
-                            : 'bg-accent-blue/10 text-accent-blue border-accent-blue/20';
-          const bandera = t.es_mx ? 'MX' : t.es_crypto ? '₿' : 'US';
-          return `<div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-zinc-900/40 hover:bg-zinc-900/70 transition">
-            <div class="flex items-center gap-2 flex-1 min-w-0">
-              <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${banderaCls} tabular shrink-0">${bandera}</span>
-              <div class="flex-1 min-w-0">
-                <p class="text-[12px] font-semibold text-zinc-100 truncate tabular">${escapeHtml(t.ticker || '')}</p>
-                ${t.nombre ? `<p class="text-[10px] text-zinc-500 truncate">${escapeHtml(String(t.nombre).slice(0, 28))}</p>` : ''}
-              </div>
-            </div>
-            <div class="text-right shrink-0">
-              <p class="text-[12px] font-bold tabular ${retColor}">${retSigno}${ret.toFixed(2)}%</p>
-              ${Number.isFinite(Number(t.precio)) ? `<p class="text-[9px] text-zinc-500 tabular">$${Number(t.precio).toFixed(2)}</p>` : ''}
-            </div>
-          </div>`;
-        }).join('');
-      };
-      const g = document.getElementById('mov-ganadores');
-      const p = document.getElementById('mov-perdedores');
-      const pop = document.getElementById('mov-populares');
-      if (g)   g.innerHTML   = render(d.ganadores);
-      if (p)   p.innerHTML   = render(d.perdedores);
-      if (pop) pop.innerHTML = render(d.populares);
-    } catch (e) {
-      grupos.forEach(g => {
-        const el = document.getElementById(g.id);
-        if (el) el.innerHTML = `<div class="text-xs text-zinc-500 py-4 text-center">Error: ${e.message}</div>`;
+
+    // Arrastrar hacia abajo para cerrar. Solo transform mientras dura.
+    let y0 = null, card = null;
+    mazo.addEventListener('pointerdown', (ev) => {
+      const c = ev.target.closest('.mp-tarjeta.abierta');
+      if (!c || ev.target.closest('.mp-tarjeta-accion, .mp-chip-ticker')) return;
+      y0 = ev.clientY; card = c;
+    });
+    mazo.addEventListener('pointermove', (ev) => {
+      if (y0 == null || !card) return;
+      const dy = ev.clientY - y0;
+      if (dy <= 0) return;                      // solo hacia abajo
+      card.classList.add('arrastrando');
+      const base = state.abierta[clave] * _medidas(mazo).mini;
+      card.style.transform = `translateY(${base + dy}px)`;
+      if (dy > 6) {
+        const cara = card.querySelector('.mp-tarjeta-cara');
+        if (cara) cara.dataset.arrastre = '1';  // no lo tomes como toque
+      }
+    });
+    const soltar = (ev) => {
+      if (y0 == null || !card) return;
+      const dy = (ev.clientY || 0) - y0;
+      card.classList.remove('arrastrando');
+      if (dy > 60) _cerrarTodas(mazo); else _posicionar(mazo, true);
+      y0 = null; card = null;
+    };
+    mazo.addEventListener('pointerup', soltar);
+    mazo.addEventListener('pointercancel', soltar);
+  }
+
+  function _bindPista() {
+    const pista = $('mazos-pista');
+    const ind = $('mazos-ind');
+    if (!pista || !ind) return;
+
+    const sincronizar = () => {
+      const panes = [...pista.querySelectorAll('.mp-mazo-pane')];
+      if (!panes.length) return;
+      // El mazo activo es aquel cuyo borde izquierdo está más cerca del
+      // borde izquierdo de la pista (funciona igual con uno o con tres panes
+      // visibles a la vez en iPad).
+      let mejor = 0, mejorD = Infinity;
+      const x0 = pista.getBoundingClientRect().left;
+      panes.forEach((p, i) => {
+        const d = Math.abs(p.getBoundingClientRect().left - x0);
+        if (d < mejorD) { mejorD = d; mejor = i; }
       });
+      if (mejor === state.activo) return;
+      state.activo = mejor;
+      [...ind.querySelectorAll('button')].forEach((b, i) =>
+        b.setAttribute('aria-selected', String(i === mejor)));
+    };
+    let raf = null;
+    pista.addEventListener('scroll', () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = null; sincronizar(); });
+    }, { passive: true });
+
+    ind.addEventListener('click', (ev) => {
+      const b = ev.target.closest('button[data-ir]');
+      if (!b) return;
+      irAMazo(+b.dataset.ir);
+    });
+    ind.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+      ev.preventDefault();
+      const n = MAZOS.length;
+      const destino = (state.activo + (ev.key === 'ArrowRight' ? 1 : -1) + n) % n;
+      irAMazo(destino);
+      const btn = ind.querySelector(`button[data-ir="${destino}"]`);
+      if (btn) btn.focus();
+    });
+  }
+
+  function irAMazo(i) {
+    const pista = $('mazos-pista');
+    const pane = pista && pista.querySelectorAll('.mp-mazo-pane')[i];
+    if (!pane) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Delta medido, no offsetLeft: pane y pista pueden tener offsetParent
+    // distinto y la resta daría un salto al mazo equivocado.
+    const dx = pane.getBoundingClientRect().left - pista.getBoundingClientRect().left;
+    pista.scrollTo({ left: pista.scrollLeft + dx, behavior: reduce ? 'auto' : 'smooth' });
+  }
+
+  // Cerrar al tocar fuera de cualquier tarjeta abierta.
+  document.addEventListener('click', (ev) => {
+    if (ev.target.closest('.mp-tarjeta')) return;
+    document.querySelectorAll('.mp-mazo').forEach(mazo => {
+      if (state.abierta[mazo.dataset.mazo] != null) _cerrarTodas(mazo);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────
+  //  Carga
+  // ─────────────────────────────────────────────────────────
+  function _esqueleto() {
+    const pista = $('mazos-pista');
+    if (!pista || pista.children.length) return;
+    pista.innerHTML = MAZOS.map(m => `
+      <section class="mp-mazo-pane" id="mazo-pane-${m.clave}" role="tabpanel"
+               aria-labelledby="mazo-tab-${m.clave}" tabindex="0">
+        <h3 class="mp-mazo-titulo"><span class="mp-mazo-n">${MAZOS.indexOf(m) + 1}</span> ${escapeHtml(m.titulo)}</h3>
+        <div class="mp-mazo" style="height:400px">
+          ${[0, 1, 2, 3].map(i => `<div class="skeleton" style="position:absolute;left:0;right:0;height:120px;border-radius:14px;transform:translateY(${i * 68}px)"></div>`).join('')}
+        </div>
+      </section>`).join('');
+    pista.style.height = '470px';
+  }
+
+  async function cargar(forzar = false) {
+    const pista = $('mazos-pista');
+    const ind = $('mazos-ind');
+    if (!pista) return;
+    if (state.cargadoUnaVez && !forzar) { _reajustarPista(); return; }
+
+    if (ind && !ind.children.length) ind.innerHTML = _indicadorHTML();
+    const ley = $('mazos-leyenda');
+    if (ley && !ley.children.length) ley.innerHTML = _leyendaHTML();
+    _esqueleto();
+    _bindPista();
+
+    if (forzar) {
+      // Refresco manual: pide al servidor rearmar la edición del día.
+      const r = await safeJson(fetch('/api/periodico/refrescar', { method: 'POST' }));
+      if (r && r.throttled && r.error && window.toast) window.toast(r.error, 'info');
     }
+
+    const mercados = await safeJson(fetch('/api/periodico/mercados'));
+    const resultados = await Promise.all([
+      mazoNoticias().catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
+      mazoWatchlist().catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
+      mazoAccion().catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
+      mazoSector(mercados).catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
+      mazoIndices(mercados).catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
+    ]);
+
+    // Soltar las gráficas del render anterior antes de tirar el DOM.
+    Object.values(state.charts).forEach(c => { try { c && c.destroy && c.destroy(); } catch (_) {} });
+    state.charts = {};
+    state.abierta = {};
+    MAZOS.forEach((m, i) => { state.datos[m.clave] = resultados[i].tarjetas || []; });
+
+    pista.innerHTML = MAZOS.map((m, i) => _paneHTML(m, resultados[i])).join('');
+    pista.querySelectorAll('.mp-mazo').forEach(mazo => {
+      _posicionar(mazo, false);
+      _bindMazo(mazo);
+      _reajustarAlAsentar(mazo);
+    });
+    pista.querySelectorAll('.mazo-reintentar').forEach(b =>
+      b.addEventListener('click', () => cargar(true)));
+    _reajustarPista();
+
+    // Aviso global solo si TODOS los mazos fallaron: un mazo caído no debe
+    // gritar que la sección entera está rota.
+    const aviso = $('mazos-aviso');
+    if (aviso) {
+      const vivos = resultados.filter(r => (r.tarjetas || []).length).length;
+      if (!vivos) {
+        aviso.textContent = 'No pude cargar el Periódico. Revisa tu conexión y toca Actualizar.';
+        aviso.classList.remove('hidden');
+      } else {
+        aviso.classList.add('hidden');
+      }
+    }
+
+    const hora = $('periodico-hora');
+    if (hora) {
+      const ed = resultados[0].edicion;
+      hora.textContent = ed
+        ? `Edición del ${ed} · se arma cada mañana (hora CDMX) · toca Actualizar para forzarla`
+        : `Actualizado a las ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    state.cargadoUnaVez = true;
+    iniciarPollingLive();
   }
 
-  function bindMoversToggle() {
-    document.querySelectorAll('.mov-periodo-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const periodo = btn.dataset.movPeriodo;
-        document.querySelectorAll('.mov-periodo-btn').forEach(b => {
-          const activo = b === btn;
-          b.classList.toggle('text-zinc-100', activo);
-          b.classList.toggle('bg-accent-amber/20', activo);
-          b.classList.toggle('ring-1', activo);
-          b.classList.toggle('ring-accent-amber/30', activo);
-          b.classList.toggle('text-zinc-500', !activo);
-        });
-        cargarMovers(periodo);
-      });
-    });
-  }
-
-  async function cargarSectores(periodo) {
-    try {
-      const r = await fetch(`/api/periodico/sectores?periodo=${periodo || 'dia'}`);
-      const d = await r.json();
-      if (d && d.ok && Array.isArray(d.sectores)) renderSectoresHeatmap(d.sectores);
-    } catch {}
-  }
-  function bindSectoresToggle() {
-    document.querySelectorAll('.sec-periodo-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const periodo = btn.dataset.secPeriodo;
-        document.querySelectorAll('.sec-periodo-btn').forEach(b => {
-          const activo = b === btn;
-          b.classList.toggle('text-zinc-100', activo);
-          b.classList.toggle('bg-accent-indigo/20', activo);
-          b.classList.toggle('ring-1', activo);
-          b.classList.toggle('ring-accent-indigo/30', activo);
-          b.classList.toggle('text-zinc-500', !activo);
-        });
-        cargarSectores(periodo);
-      });
-    });
+  /* Publica el alto real de la barra superior para que el indicador de mazos
+     pueda quedarse pegado justo debajo. Se recalcula ante cualquier cosa que
+     cambie ese alto: rotación, banner de demo, o el modo nativo que esconde la
+     sub-nav. */
+  function _medirTopbar() {
+    const tb = $('mp-topbar');
+    if (!tb) return;
+    const h = Math.round(tb.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--mp-topbar-h', h + 'px');
   }
 
   function bind() {
     const btn = $('periodico-refrescar');
-    if (btn) btn.addEventListener('click', () => { cargar(true); cargarMovers(); iniciarPollingLive(true); });
-    bindMoversToggle();
-    bindSectoresToggle();
-    iniciarPollingLive();
+    if (btn) btn.addEventListener('click', () => cargar(true));
+    _medirTopbar();
+    window.addEventListener('resize', _medirTopbar);
+    window.addEventListener('orientationchange', () => setTimeout(_medirTopbar, 260));
+    // La barra nativa esconde la sub-nav después de arrancar: hay que remedir.
+    setTimeout(_medirTopbar, 600);
+    setTimeout(_medirTopbar, 2000);
+    window.addEventListener('resize', () => {
+      document.querySelectorAll('.mp-mazo').forEach(m => _posicionar(m, false));
+      _reajustarPista();
+    });
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        document.querySelectorAll('.mp-mazo').forEach(m => _posicionar(m, false));
+        _reajustarPista();
+      }, 260);
+    });
   }
 
   // ─────────────────────────────────────────────────────────
-  //  POLLING DE PRECIOS LIVE (cada 30s mientras pestaña visible)
+  //  Polling de precios en vivo (se conserva del diseño anterior)
   // ─────────────────────────────────────────────────────────
-  let _pollingInterval = null;
   let _pollingActive = false;
+  let _pollingInterval = null;
 
   function _tickersVisibles() {
-    // Recoge tickers únicos de las cards renderizadas en el periódico
     const set = new Set();
-    document.querySelectorAll('[data-ticker-live]').forEach(el => {
-      const t = el.dataset.tickerLive;
-      if (t) set.add(t.toUpperCase());
-    });
-    // Más los del portafolio del usuario para alimentar la card "Acción del día"
-    (leerPortafolioGuardado() || []).forEach(t => set.add(t.toUpperCase()));
-    return Array.from(set).slice(0, 25);  // límite razonable
-  }
-
-  function _pintarPrecio(ticker, data) {
-    if (!data || !data.ok) return;
-    const cls = data.change_pct >= 0 ? 'text-accent-green' : 'text-accent-red';
-    const signo = data.change_pct >= 0 ? '+' : '';
-    const moneda = data.moneda === 'MXN' ? '$' : 'US$';
-    document.querySelectorAll(`[data-ticker-live="${ticker}"]`).forEach(el => {
-      const precioEl = el.querySelector('[data-live-precio]');
-      const changeEl = el.querySelector('[data-live-change]');
-      if (precioEl) {
-        precioEl.textContent = `${moneda}${data.precio.toFixed(2)}`;
-        // Flash sutil al actualizar
-        precioEl.style.transition = 'color .3s';
-        precioEl.style.color = data.change_pct >= 0 ? '#D79A3C' : '#DB7B68';
-        setTimeout(() => { precioEl.style.color = ''; }, 600);
-      }
-      if (changeEl) {
-        changeEl.className = `text-[11px] tabular ${cls}`;
-        changeEl.textContent = `${signo}${data.change_pct.toFixed(2)}%`;
-      }
-    });
+    Object.values(state.datos).forEach(lista => (lista || []).forEach(t => {
+      (t.tickers || []).forEach(x => { if (x && !x.startsWith('^')) set.add(x.toUpperCase()); });
+    }));
+    return Array.from(set).slice(0, 25);
   }
 
   async function _pollPrecios() {
-    if (document.hidden) return;        // pestaña no visible → ahorra
+    if (document.hidden) return;
+    const vista = $('vista-periodico');
+    if (!vista || vista.classList.contains('hidden')) return;
     const tickers = _tickersVisibles();
     if (!tickers.length) return;
-    try {
-      const r = await fetch(`/api/precios-live?tickers=${tickers.join(',')}`);
-      let d = null;
-      try { d = await r.json(); } catch { return; }
-      if (!d || !d.ok || !d.precios) return;
-      Object.entries(d.precios).forEach(([t, info]) => _pintarPrecio(t, info));
-
-      // Actualiza el indicador de hora con estatus
-      const hora = $('periodico-hora');
-      if (hora) {
-        const ahora = new Date().toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-        const estado = d.mercados_abiertos ? 'precios ~15 min' : 'mercados cerrados';
-        hora.textContent = `Última actualización ${ahora} · ${estado}`;
-      }
-    } catch (_) { /* silencio: polling resiliente */ }
+    const d = await safeJson(fetch(`/api/precios-live?tickers=${tickers.join(',')}`));
+    if (!d || !d.ok || !d.precios) return;
+    const hora = $('periodico-hora');
+    if (hora) {
+      const ahora = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      const estado = d.mercados_abiertos ? 'precios ~15 min' : 'mercados cerrados';
+      hora.textContent = `${hora.textContent.split(' · ')[0]} · ${estado} · ${ahora}`;
+    }
   }
 
   function iniciarPollingLive(inmediato = false) {
-    if (_pollingActive) {
-      if (inmediato) _pollPrecios();
-      return;
-    }
+    if (_pollingActive) { if (inmediato) _pollPrecios(); return; }
     _pollingActive = true;
-    // Pausa cuando pestaña oculta
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) _pollPrecios();
-    });
-    // Tick cada 30s con mercados abiertos, 2 min con cerrados
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) _pollPrecios(); });
     const tick = () => {
       _pollPrecios();
-      const nextMs = (new Date().getDay() >= 1 && new Date().getDay() <= 5
-                      && new Date().getHours() >= 8 && new Date().getHours() <= 16)
-                      ? 30_000 : 120_000;
-      _pollingInterval = setTimeout(tick, nextMs);
+      const h = new Date();
+      const habil = h.getDay() >= 1 && h.getDay() <= 5 && h.getHours() >= 8 && h.getHours() <= 16;
+      _pollingInterval = setTimeout(tick, habil ? 60_000 : 180_000);
     };
-    if (inmediato) tick();
-    else _pollingInterval = setTimeout(tick, 30_000);
+    if (inmediato) tick(); else _pollingInterval = setTimeout(tick, 60_000);
   }
 
-  // Wrapper de cargar que también carga movers
-  const cargarOriginal = cargar;
-  async function cargarConMovers(forzar = false) {
-    await cargarOriginal(forzar);
-    cargarMovers();
-    // Arranca el polling después de la carga inicial
-    iniciarPollingLive();
-  }
-
-  return { cargar: cargarConMovers, bind };
+  return { cargar, bind, irAMazo };
 })();
 
 
@@ -5644,8 +5757,8 @@ const Metas = (() => {
       {
         label: 'P90 (optimista)',
         data: p90,
-        borderColor: 'rgba(215,154,60,0.4)',
-        backgroundColor: 'rgba(215,154,60,0.08)',
+        borderColor: 'rgba(156,93,18,0.4)',
+        backgroundColor: 'rgba(156,93,18,0.08)',
         borderWidth: 1,
         fill: '+2',  // llena entre p90 y p10
         pointRadius: 0,
@@ -5654,8 +5767,8 @@ const Metas = (() => {
       {
         label: 'P50 (mediana)',
         data: p50,
-        borderColor: '#DB7B68',
-        backgroundColor: 'rgba(251, 113, 133, 0.1)',
+        borderColor: MP_COLOR.baja,
+        backgroundColor: MP_COLOR.rgba(MP_COLOR.baja, 0.08),
         borderWidth: 2.5,
         fill: false,
         pointRadius: 0,
@@ -5664,8 +5777,8 @@ const Metas = (() => {
       {
         label: 'P10 (pesimista)',
         data: p10,
-        borderColor: 'rgba(219,123,104,0.4)',
-        backgroundColor: 'rgba(219,123,104,0.08)',
+        borderColor: 'rgba(174,50,35,0.4)',
+        backgroundColor: 'rgba(174,50,35,0.08)',
         borderWidth: 1,
         fill: false,
         pointRadius: 0,
@@ -5677,7 +5790,7 @@ const Metas = (() => {
       datasets.push({
         label: 'Meta',
         data: metaLine,
-        borderColor: 'rgba(251, 113, 133, 0.6)',
+        borderColor: MP_COLOR.rgba(MP_COLOR.tinta3, 0.9),
         borderDash: [6, 4],
         borderWidth: 1.5,
         fill: false,
@@ -5700,7 +5813,7 @@ const Metas = (() => {
           x: MP_GRAFICA.ejeTiempo(),
           y: MP_GRAFICA.ejeValor({
             ticks: {
-              color: MP_GRAFICA.papel3,
+              color: MP_GRAFICA.tinta3,
               font: { family: MP_GRAFICA.mono, size: 9.5 },
               maxTicksLimit: 5, padding: 8,
               callback: (v) => fmtMoney(v),
@@ -6043,12 +6156,12 @@ const RentaFija = (() => {
     if (mx.length) ds.push({
       label: 'CETES (MX)',
       data: mx.map(p => ({ x: p.anios, y: p.tasa, plazo: p.plazo })),
-      borderColor: '#D79A3C', backgroundColor: '#D79A3C', tension: 0.3, pointRadius: 4,
+      borderColor: MP_COLOR.sello, backgroundColor: MP_COLOR.sello, tension: 0.3, pointRadius: 4,
     });
     if (us.length) ds.push({
       label: 'Tesoro (US)',
       data: us.map(p => ({ x: p.anios, y: p.tasa, plazo: p.plazo })),
-      borderColor: '#D79A3C', backgroundColor: '#D79A3C', tension: 0.3, pointRadius: 3,
+      borderColor: MP_COLOR.sello, backgroundColor: MP_COLOR.sello, tension: 0.3, pointRadius: 3,
     });
     if (_curvaChart) { _curvaChart.destroy(); _curvaChart = null; }
     if (!ds.length) {
@@ -6062,10 +6175,10 @@ const RentaFija = (() => {
         interaction: { intersect: false, mode: 'nearest' },
         scales: {
           x: MP_GRAFICA.ejeValor({ type: 'linear',
-               title: { display: true, text: 'Plazo (años)', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
+               title: { display: true, text: 'Plazo (años)', color: MP_GRAFICA.tinta3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
           y: MP_GRAFICA.ejeValor({
-               title: { display: true, text: 'Tasa anual', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } },
-               ticks: { color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 }, maxTicksLimit: 5, padding: 8, callback: v => v + '%' } }),
+               title: { display: true, text: 'Tasa anual', color: MP_GRAFICA.tinta3, font: { family: MP_GRAFICA.mono, size: 9.5 } },
+               ticks: { color: MP_GRAFICA.tinta3, font: { family: MP_GRAFICA.mono, size: 9.5 }, maxTicksLimit: 5, padding: 8, callback: v => v + '%' } }),
         },
         plugins: {
           legend: MP_GRAFICA.leyenda(true),
@@ -6569,11 +6682,11 @@ const Backtest = (() => {
     const datasets = [{
       label: 'Tu portafolio',
       data: d.serie_valor.map(p => p.valor),
-      borderColor: '#D79A3C', backgroundColor: 'rgba(215,154,60,0.1)',
+      borderColor: MP_COLOR.sello, backgroundColor: 'rgba(156,93,18,0.1)',
       borderWidth: 2, tension: 0.2, pointRadius: 0, fill: true,
     }];
     Object.entries(d.serie_benchmarks || {}).forEach(([label, serie], i) => {
-      const colors = ['#D79A3C', '#D79A3C'];
+      const colors = [MP_COLOR.sello, MP_COLOR.sello];
       datasets.push({
         label, data: serie.map(p => p.valor),
         borderColor: colors[i % colors.length],
@@ -6671,19 +6784,19 @@ const Brokers = (() => {
   }
   // Mapping ID broker → color del avatar (en lugar de emoji)
   const _BROKER_COLORS = {
-    gbm:      '#131210',
-    kuspit:   '#131210',
-    hapi:     '#131210',
-    bursanet: '#131210',
-    actinver: '#131210',
-    vector:   '#131210',
-    schwab:   '#131210',
-    ibkr:     '#131210',
+    gbm:      MP_COLOR.supPanel,
+    kuspit:   MP_COLOR.supPanel,
+    hapi:     MP_COLOR.supPanel,
+    bursanet: MP_COLOR.supPanel,
+    actinver: MP_COLOR.supPanel,
+    vector:   MP_COLOR.supPanel,
+    schwab:   MP_COLOR.supPanel,
+    ibkr:     MP_COLOR.supPanel,
   };
   function _brokerAvatar(b, size = 28) {
-    const grad = _BROKER_COLORS[b.id] || '#131210';
+    const grad = _BROKER_COLORS[b.id] || MP_COLOR.supPanel;
     const initial = (b.nombre || 'X').charAt(0).toUpperCase();
-    return `<span class="inline-flex items-center justify-center rounded-md font-semibold text-white text-xs shrink-0" style="width:${size}px;height:${size}px;background:${grad};">${initial}</span>`;
+    return `<span class="inline-flex items-center justify-center rounded-md font-semibold text-zinc-100 text-xs shrink-0" style="width:${size}px;height:${size}px;background:${grad};">${initial}</span>`;
   }
 
   function renderTabla(brokers) {
@@ -6881,7 +6994,7 @@ const Aportaciones = (() => {
       type: 'line',
       data: { labels, datasets: [
         { label: 'Valor nominal', data: d.serie.map(p => p.valor),
-          ...MP_GRAFICA.serie(MP_GRAFICA.papel) },
+          ...MP_GRAFICA.serie(MP_GRAFICA.tinta1) },
         { label: 'Valor real (ajustado por inflación)', data: d.serie.map(p => p.valor_real),
           ...MP_GRAFICA.serie(MP_GRAFICA.sello, { borderWidth: 1.5, borderDash: [4, 4] }) },
         { label: 'Aportado', data: d.serie.map(p => p.aportado),
@@ -6890,8 +7003,8 @@ const Aportaciones = (() => {
       options: MP_GRAFICA.base({
         plugins: { legend: MP_GRAFICA.leyenda(true), tooltip: MP_GRAFICA.tooltip() },
         scales: {
-          x: MP_GRAFICA.ejeTiempo({ title: { display: true, text: 'Años', color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
-          y: MP_GRAFICA.ejeValor({ ticks: { color: MP_GRAFICA.papel3, font: { family: MP_GRAFICA.mono, size: 9.5 }, maxTicksLimit: 5, padding: 8, callback: v => '$' + (v / 1000).toFixed(0) + 'k' } }),
+          x: MP_GRAFICA.ejeTiempo({ title: { display: true, text: 'Años', color: MP_GRAFICA.tinta3, font: { family: MP_GRAFICA.mono, size: 9.5 } } }),
+          y: MP_GRAFICA.ejeValor({ ticks: { color: MP_GRAFICA.tinta3, font: { family: MP_GRAFICA.mono, size: 9.5 }, maxTicksLimit: 5, padding: 8, callback: v => '$' + (v / 1000).toFixed(0) + 'k' } }),
         },
       }),
     });
@@ -6907,16 +7020,16 @@ const PortfolioManager = (() => {
   const META_KEY = 'miPortafolio.portfolios.v2';
   // Paleta de colores para avatares (en lugar de emojis)
   const COLORS = [
-    { id: 'green',   gradient: '#131210', name: 'Verde' },
-    { id: 'blue',    gradient: '#131210', name: 'Azul' },
-    { id: 'purple',  gradient: '#131210', name: 'Púrpura' },
-    { id: 'amber',   gradient: '#131210', name: 'Ámbar' },
-    { id: 'rose',    gradient: '#131210', name: 'Rosa' },
-    { id: 'teal',    gradient: '#131210', name: 'Teal' },
-    { id: 'orange',  gradient: '#131210', name: 'Naranja' },
-    { id: 'indigo',  gradient: '#131210', name: 'Índigo' },
-    { id: 'slate',   gradient: '#131210', name: 'Gris' },
-    { id: 'crimson', gradient: '#131210', name: 'Carmesí' },
+    { id: 'green',   gradient: MP_COLOR.supPanel, name: 'Verde' },
+    { id: 'blue',    gradient: MP_COLOR.supPanel, name: 'Azul' },
+    { id: 'purple',  gradient: MP_COLOR.supPanel, name: 'Púrpura' },
+    { id: 'amber',   gradient: MP_COLOR.supPanel, name: 'Ámbar' },
+    { id: 'rose',    gradient: MP_COLOR.supPanel, name: 'Rosa' },
+    { id: 'teal',    gradient: MP_COLOR.supPanel, name: 'Teal' },
+    { id: 'orange',  gradient: MP_COLOR.supPanel, name: 'Naranja' },
+    { id: 'indigo',  gradient: MP_COLOR.supPanel, name: 'Índigo' },
+    { id: 'slate',   gradient: MP_COLOR.supPanel, name: 'Gris' },
+    { id: 'crimson', gradient: MP_COLOR.supPanel, name: 'Carmesí' },
   ];
   function _colorFromId(id) {
     return COLORS.find(c => c.id === id) || COLORS[0];
@@ -6924,16 +7037,16 @@ const PortfolioManager = (() => {
   // ── Avatares de animalitos (estilo Netflix) ──
   // Cada portafolio guarda un `animal`. Reemplazan al viejo color+inicial.
   const ANIMALS = [
-    { id: 'zorro', name: 'Zorro', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><path d="M15 33 18 12 33 27Z" fill="#D79A3C"/><path d="M49 33 46 12 31 27Z" fill="#D79A3C"/><path d="M19 27 20 17 27 25Z" fill="#D79A3C"/><path d="M45 27 44 17 37 25Z" fill="#D79A3C"/><path d="M32 22c10 0 15 8 15 16 0 9-7 15-15 15s-15-6-15-15c0-8 5-16 15-16Z" fill="#D79A3C"/><path d="M32 37c6 0 11 4 11 10 0 4-5 8-11 8s-11-4-11-8c0-6 5-10 11-10Z" fill="#F2EEE4"/><circle cx="25" cy="36" r="2.8" fill="#131210"/><circle cx="39" cy="36" r="2.8" fill="#131210"/><path d="M32 45l3.5 3-3.5 2.5-3.5-2.5Z" fill="#131210"/></svg>` },
-    { id: 'panda', name: 'Panda', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#847D70"/><circle cx="20" cy="20" r="8" fill="#131210"/><circle cx="44" cy="20" r="8" fill="#131210"/><circle cx="32" cy="36" r="18" fill="#F2EEE4"/><ellipse cx="24" cy="33" rx="5" ry="6.5" fill="#131210" transform="rotate(-18 24 33)"/><ellipse cx="40" cy="33" rx="5" ry="6.5" fill="#131210" transform="rotate(18 40 33)"/><circle cx="24" cy="34" r="2" fill="#F2EEE4"/><circle cx="40" cy="34" r="2" fill="#F2EEE4"/><ellipse cx="32" cy="42" rx="3" ry="2.2" fill="#131210"/></svg>` },
-    { id: 'leon', name: 'León', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><g fill="#D79A3C"><circle cx="32" cy="13" r="4.5"/><circle cx="13" cy="22" r="4.5"/><circle cx="51" cy="22" r="4.5"/><circle cx="13" cy="46" r="4.5"/><circle cx="51" cy="46" r="4.5"/><circle cx="32" cy="55" r="4.5"/></g><circle cx="32" cy="34" r="19" fill="#D79A3C"/><circle cx="32" cy="34" r="13" fill="#D79A3C"/><circle cx="26" cy="32" r="2.4" fill="#131210"/><circle cx="38" cy="32" r="2.4" fill="#131210"/><path d="M32 36l3 3h-6Z" fill="#D79A3C"/><path d="M32 39c0 3 3 3 4 1M32 39c0 3-3 3-4 1" stroke="#D79A3C" stroke-width="1.3" fill="none"/></svg>` },
-    { id: 'tigre', name: 'Tigre', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><path d="M18 22 16 12 26 20Z" fill="#D79A3C"/><path d="M46 22 48 12 38 20Z" fill="#D79A3C"/><circle cx="32" cy="34" r="18" fill="#D79A3C"/><path d="M32 16v8M22 18l2 7M42 18l-2 7" stroke="#131210" stroke-width="2.2" stroke-linecap="round"/><path d="M15 32l6 2M49 32l-6 2" stroke="#131210" stroke-width="2.2" stroke-linecap="round"/><path d="M32 38c6 0 9 3 9 7 0 4-4 6-9 6s-9-2-9-6c0-4 3-7 9-7Z" fill="#F2EEE4"/><circle cx="26" cy="33" r="2.6" fill="#131210"/><circle cx="38" cy="33" r="2.6" fill="#131210"/><path d="M32 43l3 2.5-3 2-3-2Z" fill="#131210"/></svg>` },
-    { id: 'koala', name: 'Koala', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#4A443A"/><circle cx="15" cy="24" r="9" fill="#9A9284"/><circle cx="49" cy="24" r="9" fill="#9A9284"/><circle cx="15" cy="24" r="4.5" fill="#D79A3C"/><circle cx="49" cy="24" r="4.5" fill="#D79A3C"/><circle cx="32" cy="36" r="16" fill="#CFC8B8"/><circle cx="25" cy="34" r="2.6" fill="#131210"/><circle cx="39" cy="34" r="2.6" fill="#131210"/><path d="M32 38c4 0 7 3 7 6 0 3-3 5-7 5s-7-2-7-5c0-3 3-6 7-6Z" fill="#4A443A"/></svg>` },
-    { id: 'buho', name: 'Búho', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><path d="M16 20 20 10 26 20Z" fill="#D79A3C"/><path d="M48 20 44 10 38 20Z" fill="#D79A3C"/><path d="M32 16c12 0 18 9 18 19 0 11-8 18-18 18s-18-7-18-18c0-10 6-19 18-19Z" fill="#D79A3C"/><circle cx="24" cy="32" r="8" fill="#F2EEE4"/><circle cx="40" cy="32" r="8" fill="#F2EEE4"/><circle cx="24" cy="32" r="3.6" fill="#131210"/><circle cx="40" cy="32" r="3.6" fill="#131210"/><path d="M32 38l4 5h-8Z" fill="#D79A3C"/></svg>` },
-    { id: 'pinguino', name: 'Pingüino', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><ellipse cx="32" cy="36" rx="17" ry="20" fill="#131210"/><ellipse cx="32" cy="40" rx="11" ry="15" fill="#F2EEE4"/><circle cx="26" cy="27" r="3.6" fill="#F2EEE4"/><circle cx="38" cy="27" r="3.6" fill="#F2EEE4"/><circle cx="26" cy="27" r="1.8" fill="#131210"/><circle cx="38" cy="27" r="1.8" fill="#131210"/><path d="M32 31l5 3-5 3-5-3Z" fill="#D79A3C"/></svg>` },
-    { id: 'conejo', name: 'Conejo', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><rect x="22" y="6" width="8" height="26" rx="4" fill="#F2EEE4"/><rect x="34" y="6" width="8" height="26" rx="4" fill="#F2EEE4"/><rect x="24" y="9" width="4" height="20" rx="2" fill="#D79A3C"/><rect x="36" y="9" width="4" height="20" rx="2" fill="#D79A3C"/><circle cx="32" cy="40" r="15" fill="#F2EEE4"/><circle cx="26" cy="38" r="2.4" fill="#131210"/><circle cx="38" cy="38" r="2.4" fill="#131210"/><path d="M32 43l2.5 2-2.5 2-2.5-2Z" fill="#D79A3C"/></svg>` },
-    { id: 'rana', name: 'Rana', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><path d="M32 24c12 0 18 7 18 15 0 9-8 14-18 14s-18-5-18-14c0-8 6-15 18-15Z" fill="#D79A3C"/><circle cx="22" cy="20" r="9" fill="#D79A3C"/><circle cx="42" cy="20" r="9" fill="#D79A3C"/><circle cx="22" cy="19" r="4.2" fill="#F2EEE4"/><circle cx="42" cy="19" r="4.2" fill="#F2EEE4"/><circle cx="22" cy="20" r="2" fill="#131210"/><circle cx="42" cy="20" r="2" fill="#131210"/><path d="M22 41c4 5 16 5 20 0" stroke="#6FAE7E" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>` },
-    { id: 'gato', name: 'Gato', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="#D79A3C"/><path d="M16 18 18 38 32 28Z" fill="#D79A3C"/><path d="M48 18 46 38 32 28Z" fill="#D79A3C"/><path d="M20 24 21 34 28 28Z" fill="#D79A3C"/><path d="M44 24 43 34 36 28Z" fill="#D79A3C"/><circle cx="32" cy="38" r="16" fill="#D79A3C"/><path d="M25 35c1.5-2 4-2 5 0M34 35c1.5-2 4-2 5 0" stroke="#131210" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M32 41l2.5 2-2.5 2-2.5-2Z" fill="#D79A3C"/><path d="M28 42h-8M36 42h8" stroke="#D79A3C" stroke-width="1.2" stroke-linecap="round"/></svg>` },
+    { id: 'zorro', name: 'Zorro', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="var(--sello)"/><path d="M15 33 18 12 33 27Z" fill="var(--sello)"/><path d="M49 33 46 12 31 27Z" fill="var(--sello)"/><path d="M19 27 20 17 27 25Z" fill="var(--sello)"/><path d="M45 27 44 17 37 25Z" fill="var(--sello)"/><path d="M32 22c10 0 15 8 15 16 0 9-7 15-15 15s-15-6-15-15c0-8 5-16 15-16Z" fill="var(--sello)"/><path d="M32 37c6 0 11 4 11 10 0 4-5 8-11 8s-11-4-11-8c0-6 5-10 11-10Z" fill="var(--tinta-1)"/><circle cx="25" cy="36" r="2.8" fill="var(--sup-panel)"/><circle cx="39" cy="36" r="2.8" fill="var(--sup-panel)"/><path d="M32 45l3.5 3-3.5 2.5-3.5-2.5Z" fill="var(--sup-panel)"/></svg>` },
+    { id: 'panda', name: 'Panda', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="var(--tinta-4)"/><circle cx="20" cy="20" r="8" fill="var(--sup-panel)"/><circle cx="44" cy="20" r="8" fill="var(--sup-panel)"/><circle cx="32" cy="36" r="18" fill="var(--tinta-1)"/><ellipse cx="24" cy="33" rx="5" ry="6.5" fill="var(--sup-panel)" transform="rotate(-18 24 33)"/><ellipse cx="40" cy="33" rx="5" ry="6.5" fill="var(--sup-panel)" transform="rotate(18 40 33)"/><circle cx="24" cy="34" r="2" fill="var(--tinta-1)"/><circle cx="40" cy="34" r="2" fill="var(--tinta-1)"/><ellipse cx="32" cy="42" rx="3" ry="2.2" fill="var(--sup-panel)"/></svg>` },
+    { id: 'leon', name: 'León', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="var(--sello)"/><g fill="var(--sello)"><circle cx="32" cy="13" r="4.5"/><circle cx="13" cy="22" r="4.5"/><circle cx="51" cy="22" r="4.5"/><circle cx="13" cy="46" r="4.5"/><circle cx="51" cy="46" r="4.5"/><circle cx="32" cy="55" r="4.5"/></g><circle cx="32" cy="34" r="19" fill="var(--sello)"/><circle cx="32" cy="34" r="13" fill="var(--sello)"/><circle cx="26" cy="32" r="2.4" fill="var(--sup-panel)"/><circle cx="38" cy="32" r="2.4" fill="var(--sup-panel)"/><path d="M32 36l3 3h-6Z" fill="var(--sello)"/><path d="M32 39c0 3 3 3 4 1M32 39c0 3-3 3-4 1" stroke="var(--sello)" stroke-width="1.3" fill="none"/></svg>` },
+    { id: 'tigre', name: 'Tigre', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="var(--sello)"/><path d="M18 22 16 12 26 20Z" fill="var(--sello)"/><path d="M46 22 48 12 38 20Z" fill="var(--sello)"/><circle cx="32" cy="34" r="18" fill="var(--sello)"/><path d="M32 16v8M22 18l2 7M42 18l-2 7" stroke="var(--sup-panel)" stroke-width="2.2" stroke-linecap="round"/><path d="M15 32l6 2M49 32l-6 2" stroke="var(--sup-panel)" stroke-width="2.2" stroke-linecap="round"/><path d="M32 38c6 0 9 3 9 7 0 4-4 6-9 6s-9-2-9-6c0-4 3-7 9-7Z" fill="var(--tinta-1)"/><circle cx="26" cy="33" r="2.6" fill="var(--sup-panel)"/><circle cx="38" cy="33" r="2.6" fill="var(--sup-panel)"/><path d="M32 43l3 2.5-3 2-3-2Z" fill="var(--sup-panel)"/></svg>` },
+    { id: 'koala', name: 'Koala', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="var(--regla-fuerte)"/><circle cx="15" cy="24" r="9" fill="var(--tinta-3)"/><circle cx="49" cy="24" r="9" fill="var(--tinta-3)"/><circle cx="15" cy="24" r="4.5" fill="var(--sello)"/><circle cx="49" cy="24" r="4.5" fill="var(--sello)"/><circle cx="32" cy="36" r="16" fill="var(--tinta-2)"/><circle cx="25" cy="34" r="2.6" fill="var(--sup-panel)"/><circle cx="39" cy="34" r="2.6" fill="var(--sup-panel)"/><path d="M32 38c4 0 7 3 7 6 0 3-3 5-7 5s-7-2-7-5c0-3 3-6 7-6Z" fill="var(--regla-fuerte)"/></svg>` },
+    { id: 'buho', name: 'Búho', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="var(--sello)"/><path d="M16 20 20 10 26 20Z" fill="var(--sello)"/><path d="M48 20 44 10 38 20Z" fill="var(--sello)"/><path d="M32 16c12 0 18 9 18 19 0 11-8 18-18 18s-18-7-18-18c0-10 6-19 18-19Z" fill="var(--sello)"/><circle cx="24" cy="32" r="8" fill="var(--tinta-1)"/><circle cx="40" cy="32" r="8" fill="var(--tinta-1)"/><circle cx="24" cy="32" r="3.6" fill="var(--sup-panel)"/><circle cx="40" cy="32" r="3.6" fill="var(--sup-panel)"/><path d="M32 38l4 5h-8Z" fill="var(--sello)"/></svg>` },
+    { id: 'pinguino', name: 'Pingüino', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="var(--sello)"/><ellipse cx="32" cy="36" rx="17" ry="20" fill="var(--sup-panel)"/><ellipse cx="32" cy="40" rx="11" ry="15" fill="var(--tinta-1)"/><circle cx="26" cy="27" r="3.6" fill="var(--tinta-1)"/><circle cx="38" cy="27" r="3.6" fill="var(--tinta-1)"/><circle cx="26" cy="27" r="1.8" fill="var(--sup-panel)"/><circle cx="38" cy="27" r="1.8" fill="var(--sup-panel)"/><path d="M32 31l5 3-5 3-5-3Z" fill="var(--sello)"/></svg>` },
+    { id: 'conejo', name: 'Conejo', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="var(--sello)"/><rect x="22" y="6" width="8" height="26" rx="4" fill="var(--tinta-1)"/><rect x="34" y="6" width="8" height="26" rx="4" fill="var(--tinta-1)"/><rect x="24" y="9" width="4" height="20" rx="2" fill="var(--sello)"/><rect x="36" y="9" width="4" height="20" rx="2" fill="var(--sello)"/><circle cx="32" cy="40" r="15" fill="var(--tinta-1)"/><circle cx="26" cy="38" r="2.4" fill="var(--sup-panel)"/><circle cx="38" cy="38" r="2.4" fill="var(--sup-panel)"/><path d="M32 43l2.5 2-2.5 2-2.5-2Z" fill="var(--sello)"/></svg>` },
+    { id: 'rana', name: 'Rana', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="var(--sello)"/><path d="M32 24c12 0 18 7 18 15 0 9-8 14-18 14s-18-5-18-14c0-8 6-15 18-15Z" fill="var(--sello)"/><circle cx="22" cy="20" r="9" fill="var(--sello)"/><circle cx="42" cy="20" r="9" fill="var(--sello)"/><circle cx="22" cy="19" r="4.2" fill="var(--tinta-1)"/><circle cx="42" cy="19" r="4.2" fill="var(--tinta-1)"/><circle cx="22" cy="20" r="2" fill="var(--sup-panel)"/><circle cx="42" cy="20" r="2" fill="var(--sup-panel)"/><path d="M22 41c4 5 16 5 20 0" stroke="var(--alza)" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>` },
+    { id: 'gato', name: 'Gato', svg: `<svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="16" fill="var(--sello)"/><path d="M16 18 18 38 32 28Z" fill="var(--sello)"/><path d="M48 18 46 38 32 28Z" fill="var(--sello)"/><path d="M20 24 21 34 28 28Z" fill="var(--sello)"/><path d="M44 24 43 34 36 28Z" fill="var(--sello)"/><circle cx="32" cy="38" r="16" fill="var(--sello)"/><path d="M25 35c1.5-2 4-2 5 0M34 35c1.5-2 4-2 5 0" stroke="var(--sup-panel)" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M32 41l2.5 2-2.5 2-2.5-2Z" fill="var(--sello)"/><path d="M28 42h-8M36 42h8" stroke="var(--sello)" stroke-width="1.2" stroke-linecap="round"/></svg>` },
   ];
   function _animalFromId(id) { return ANIMALS.find(a => a.id === id) || ANIMALS[0]; }
   function _animalParaPortafolio(p) {
@@ -7071,7 +7184,7 @@ const PortfolioManager = (() => {
   }
   function abrirCrear() {
     const html = `
-      <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm" id="port-crear-modal">
+      <div class="fixed inset-0 bg-[color:rgba(26,26,24,.40)] z-50 flex items-center justify-center p-4 backdrop-blur-sm" id="port-crear-modal">
         <div class="bg-surface-card border border-surface-border rounded-2xl max-w-sm w-full p-6">
           <h3 class="text-lg font-semibold text-zinc-100">Nuevo portafolio</h3>
           <p class="text-xs text-zinc-500 mt-1 mb-4">Sepáralo por objetivo: Retiro, Trading, Hijos, etc.</p>
@@ -7208,8 +7321,8 @@ const TuMes = (() => {
         100% { opacity: 1; transform: scale(1) rotateY(0) rotateZ(0); }
       }
       @keyframes mesGlowPulse {
-        0%, 100% { box-shadow: 0 0 60px 0 rgba(192,132,252,.5), 0 0 120px 20px rgba(215,154,60,.25); }
-        50% { box-shadow: 0 0 80px 10px rgba(192,132,252,.7), 0 0 160px 30px rgba(215,154,60,.4); }
+        0%, 100% { box-shadow: 0 0 60px 0 rgba(156,93,18,.5), 0 0 120px 20px rgba(156,93,18,.25); }
+        50% { box-shadow: 0 0 80px 10px rgba(156,93,18,.7), 0 0 160px 30px rgba(156,93,18,.4); }
       }
       @keyframes mesFloatY { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
       @keyframes mesParticle {
@@ -7227,7 +7340,7 @@ const TuMes = (() => {
       .mes-eyebrow { font-family: 'Source Serif 4', Georgia, serif; font-weight: 600; letter-spacing: .26em; text-transform: uppercase; font-size: 11px; }
       .mes-confetti-piece { position: absolute; width: 8px; height: 14px; animation: mesConfetti 3s ease-out forwards; border-radius: 2px; }
       .mes-tap-zone { position: absolute; top: 0; bottom: 0; width: 35%; cursor: pointer; z-index: 10; }
-      .mes-modal-bg { background: radial-gradient(ellipse at top, rgba(215,154,60,.15), rgba(0,0,0,.96) 60%), rgba(0,0,0,.96); }
+      .mes-modal-bg { background: radial-gradient(ellipse at top, rgba(156,93,18,.15), var(--sup-grad-b) 60%), var(--sup-grad-a); }
 
       /* Reveals secuenciales por slide */
       .mes-reveal-1 { animation: mesFadeUp .55s cubic-bezier(.18,.95,.32,1) .15s both; }
@@ -7241,7 +7354,7 @@ const TuMes = (() => {
         position: absolute; left: 0; right: 0; top: 50%;
         font-family: 'Source Serif 4', Georgia, serif; font-weight: 900; font-size: 130px;
         letter-spacing: -.04em; text-transform: uppercase;
-        color: rgba(255,255,255,.07); white-space: nowrap;
+        color: rgba(26,26,24,.05); white-space: nowrap;
         transform: translateY(-50%) rotate(-12deg); pointer-events: none;
         overflow: hidden;
       }
@@ -7274,13 +7387,13 @@ const TuMes = (() => {
         position: relative; width: 290px; aspect-ratio: 5/7;
         border-radius: 2px;
         animation: mesGlowPulse 3.5s ease-in-out infinite, mesFloatY 4s ease-in-out infinite;
-        background: #0B0B0A;
+        background: var(--sup);
         overflow: hidden;
       }
       .mes-card::before {
         content: ''; position: absolute; inset: -3px;
         border-radius: 2px;
-        background: #131210;
+        background: var(--sup-panel);
         background-size: 300% 100%;
         animation: mesHolo 6s linear infinite;
         z-index: -1;
@@ -7289,15 +7402,15 @@ const TuMes = (() => {
         position: absolute; inset: 3px;
         border-radius: 2px;
         background:
-          radial-gradient(ellipse at top, rgba(215,154,60,.3), transparent 60%),
-          #131210;
+          radial-gradient(ellipse at top, rgba(156,93,18,.3), transparent 60%),
+          var(--sup-panel);
         display: flex; flex-direction: column; padding: 18px 16px;
         overflow: hidden;
       }
       .mes-card-shine {
         position: absolute; inset: 3px;
         border-radius: 2px;
-        background: #131210;
+        background: var(--sup-panel);
         background-size: 200% 100%;
         animation: mesShimmer 4s linear infinite;
         pointer-events: none;
@@ -7305,55 +7418,55 @@ const TuMes = (() => {
       .mes-card-rarity {
         font-family: 'Source Serif 4', Georgia, serif; font-weight: 700;
         font-size: 9px; letter-spacing: .25em; text-transform: uppercase;
-        color: #D79A3C;
-        text-shadow: 0 0 8px rgba(253,224,71,.4);
+        color: var(--sello);
+        text-shadow: 0 0 8px rgba(156,93,18,.4);
       }
       .mes-card-illustration {
         flex: 1;
         display: flex; align-items: center; justify-content: center;
         margin: 12px 0;
-        background: radial-gradient(circle at center, rgba(215,154,60,.25), transparent 70%);
+        background: radial-gradient(circle at center, rgba(156,93,18,.25), transparent 70%);
         border-radius: 2px;
         position: relative;
       }
       .mes-card-illustration::before {
         content: ''; position: absolute; inset: 0;
-        background: repeating-conic-gradient(from 0deg, rgba(215,154,60,.08) 0 5deg, transparent 5deg 15deg);
+        background: repeating-conic-gradient(from 0deg, rgba(156,93,18,.08) 0 5deg, transparent 5deg 15deg);
         animation: mesRayRotate 30s linear infinite;
         opacity: .6;
         border-radius: 2px;
       }
-      .mes-card-illustration svg { position: relative; z-index: 1; filter: drop-shadow(0 4px 16px rgba(192,132,252,.6)); }
+      .mes-card-illustration svg { position: relative; z-index: 1; filter: drop-shadow(0 4px 16px rgba(156,93,18,.6)); }
       .mes-card-title {
         font-family: 'Source Serif 4', Georgia, serif; font-weight: 800;
         font-size: 26px; letter-spacing: -.02em;
         color: white; line-height: 1;
         text-align: center;
-        background: #131210;
+        background: var(--sup-panel);
         -webkit-background-clip: text; background-clip: text; color: transparent;
       }
       .mes-card-desc {
         font-family: 'Source Serif 4', Georgia, serif; font-weight: 400;
         font-size: 11px; line-height: 1.4;
-        color: rgba(255,255,255,.75);
+        color: var(--tinta-2);
         text-align: center; margin-top: 8px;
         padding: 0 4px;
       }
       .mes-card-stats {
         display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
         margin-top: 12px; padding-top: 12px;
-        border-top: 1px solid rgba(255,255,255,.1);
+        border-top: 1px solid rgba(26,26,24,.10);
       }
       .mes-card-stat {
-        background: rgba(255,255,255,.06);
-        border: 1px solid rgba(255,255,255,.1);
+        background: rgba(26,26,24,.05);
+        border: 1px solid rgba(26,26,24,.10);
         border-radius: 2px; padding: 6px 8px;
         text-align: center;
       }
       .mes-card-stat-label {
         font-family: 'Source Serif 4', Georgia, serif; font-weight: 600;
         font-size: 8px; letter-spacing: .15em; text-transform: uppercase;
-        color: rgba(255,255,255,.5);
+        color: var(--tinta-3);
       }
       .mes-card-stat-value {
         font-family: 'Source Serif 4', Georgia, serif; font-weight: 700;
@@ -7365,7 +7478,7 @@ const TuMes = (() => {
         margin-top: 6px;
         animation: mesPopIn .6s cubic-bezier(.18,.95,.32,1) 1.5s both;
       }
-      .mes-card-star { color: #D79A3C; font-size: 11px; filter: drop-shadow(0 0 4px rgba(253,224,71,.6)); }
+      .mes-card-star { color: var(--sello); font-size: 11px; filter: drop-shadow(0 0 4px rgba(156,93,18,.6)); }
 
       /* Partículas decorativas */
       .mes-particle {
@@ -7391,14 +7504,14 @@ const TuMes = (() => {
       .mes-medal {
         width: 200px; height: 200px;
         animation: mesPopIn .9s cubic-bezier(.18,.95,.32,1) .3s both;
-        filter: drop-shadow(0 8px 24px rgba(0,0,0,.4));
+        filter: drop-shadow(0 8px 24px rgba(26,26,24,.12));
       }
       .mes-medal-spin svg { animation: mesSpinSlow 18s linear infinite; }
 
       /* Trending arrow grande */
       .mes-trend-arrow {
         animation: mesPopIn .8s cubic-bezier(.18,.95,.32,1) .3s both;
-        filter: drop-shadow(0 6px 20px rgba(215,154,60,.5));
+        filter: drop-shadow(0 6px 20px rgba(156,93,18,.5));
       }
     `;
     document.head.appendChild(style);
@@ -7528,104 +7641,104 @@ const TuMes = (() => {
   const _SVG = {
     cazador: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="bullseye" cx=".5" cy=".5"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="60%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></radialGradient>
-        <linearGradient id="arrow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
+        <radialGradient id="bullseye" cx=".5" cy=".5"><stop offset="0%" stop-color="var(--tinta-1)"/><stop offset="60%" stop-color="var(--sello)"/><stop offset="100%" stop-color="var(--sello)"/></radialGradient>
+        <linearGradient id="arrow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="var(--tinta-1)"/><stop offset="100%" stop-color="var(--sello)"/></linearGradient>
       </defs>
-      <circle cx="80" cy="80" r="62" fill="none" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="2"/>
-      <circle cx="80" cy="80" r="48" fill="none" stroke="#D79A3C" stroke-width="3"/>
-      <circle cx="80" cy="80" r="34" fill="none" stroke="#D79A3C" stroke-width="3"/>
+      <circle cx="80" cy="80" r="62" fill="none" stroke="var(--tinta-1)" stroke-opacity=".3" stroke-width="2"/>
+      <circle cx="80" cy="80" r="48" fill="none" stroke="var(--sello)" stroke-width="3"/>
+      <circle cx="80" cy="80" r="34" fill="none" stroke="var(--sello)" stroke-width="3"/>
       <circle cx="80" cy="80" r="20" fill="url(#bullseye)"/>
-      <circle cx="80" cy="80" r="6" fill="#F2EEE4"/>
+      <circle cx="80" cy="80" r="6" fill="var(--tinta-1)"/>
       <line x1="20" y1="20" x2="78" y2="78" stroke="url(#arrow)" stroke-width="3" stroke-linecap="round"/>
-      <polygon points="80,80 70,68 78,72 76,64" fill="#D79A3C"/>
-      <polygon points="22,18 14,14 18,22" fill="#F2EEE4"/>
+      <polygon points="80,80 70,68 78,72 76,64" fill="var(--sello)"/>
+      <polygon points="22,18 14,14 18,22" fill="var(--tinta-1)"/>
     </svg>`,
     sabio: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="zenG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
+        <linearGradient id="zenG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--sello)"/><stop offset="100%" stop-color="var(--sello)"/></linearGradient>
       </defs>
       <circle cx="80" cy="80" r="60" fill="none" stroke="url(#zenG)" stroke-width="3"/>
-      <circle cx="80" cy="80" r="48" fill="none" stroke="#F2EEE4" stroke-opacity=".4" stroke-width="1.5" stroke-dasharray="4 6"/>
-      <path d="M 30 80 Q 30 50 80 50 Q 130 50 130 80" fill="#F2EEE4"/>
-      <path d="M 30 80 Q 30 110 80 110 Q 130 110 130 80" fill="#0B0B0A"/>
-      <circle cx="80" cy="55" r="6" fill="#0B0B0A"/>
-      <circle cx="80" cy="105" r="6" fill="#F2EEE4"/>
-      <circle cx="80" cy="80" r="2" fill="#F2EEE4" opacity=".8"><animate attributeName="r" values="2;4;2" dur="3s" repeatCount="indefinite"/></circle>
+      <circle cx="80" cy="80" r="48" fill="none" stroke="var(--tinta-1)" stroke-opacity=".4" stroke-width="1.5" stroke-dasharray="4 6"/>
+      <path d="M 30 80 Q 30 50 80 50 Q 130 50 130 80" fill="var(--tinta-1)"/>
+      <path d="M 30 80 Q 30 110 80 110 Q 130 110 130 80" fill="var(--sup)"/>
+      <circle cx="80" cy="55" r="6" fill="var(--sup)"/>
+      <circle cx="80" cy="105" r="6" fill="var(--tinta-1)"/>
+      <circle cx="80" cy="80" r="2" fill="var(--tinta-1)" opacity=".8"><animate attributeName="r" values="2;4;2" dur="3s" repeatCount="indefinite"/></circle>
     </svg>`,
     trader: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="boltG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
-        <radialGradient id="coreG" cx=".5" cy=".5"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="100%" stop-color="#D79A3C"/></radialGradient>
+        <linearGradient id="boltG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--sello)"/><stop offset="100%" stop-color="var(--sello)"/></linearGradient>
+        <radialGradient id="coreG" cx=".5" cy=".5"><stop offset="0%" stop-color="var(--tinta-1)"/><stop offset="100%" stop-color="var(--sello)"/></radialGradient>
       </defs>
       <circle cx="80" cy="80" r="50" fill="url(#coreG)" opacity=".15"/>
-      <polygon points="65,20 95,75 75,75 90,140 50,80 70,80" fill="url(#boltG)" stroke="#F2EEE4" stroke-width="2" stroke-linejoin="round"/>
-      <polygon points="115,40 130,75 122,75 130,110 110,82 118,82" fill="#D79A3C" opacity=".7"/>
-      <polygon points="35,55 45,80 38,80 44,110 28,85 34,85" fill="#D79A3C" opacity=".7"/>
+      <polygon points="65,20 95,75 75,75 90,140 50,80 70,80" fill="url(#boltG)" stroke="var(--tinta-1)" stroke-width="2" stroke-linejoin="round"/>
+      <polygon points="115,40 130,75 122,75 130,110 110,82 118,82" fill="var(--sello)" opacity=".7"/>
+      <polygon points="35,55 45,80 38,80 44,110 28,85 34,85" fill="var(--sello)" opacity=".7"/>
     </svg>`,
     rentista: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="coinG" cx=".4" cy=".3"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="50%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></radialGradient>
+        <radialGradient id="coinG" cx=".4" cy=".3"><stop offset="0%" stop-color="var(--tinta-1)"/><stop offset="50%" stop-color="var(--sello)"/><stop offset="100%" stop-color="var(--sello)"/></radialGradient>
       </defs>
-      <ellipse cx="80" cy="125" rx="40" ry="9" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
-      <ellipse cx="80" cy="120" rx="40" ry="9" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
-      <ellipse cx="80" cy="105" rx="42" ry="10" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
-      <ellipse cx="80" cy="100" rx="42" ry="10" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
-      <ellipse cx="80" cy="83" rx="44" ry="11" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
-      <ellipse cx="80" cy="78" rx="44" ry="11" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
-      <text x="80" y="84" text-anchor="middle" font-family="Source Serif 4" font-weight="800" font-size="18" fill="#D79A3C">$</text>
-      <ellipse cx="80" cy="58" rx="46" ry="12" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
-      <ellipse cx="80" cy="52" rx="46" ry="12" fill="url(#coinG)" stroke="#D79A3C" stroke-width="2"/>
-      <text x="80" y="58" text-anchor="middle" font-family="Source Serif 4" font-weight="800" font-size="20" fill="#D79A3C">$</text>
-      <circle cx="50" cy="35" r="3" fill="#D79A3C"><animate attributeName="cy" values="35;25;35" dur="2.5s" repeatCount="indefinite"/></circle>
-      <circle cx="115" cy="40" r="2" fill="#D79A3C"><animate attributeName="cy" values="40;30;40" dur="2s" repeatCount="indefinite" begin="0.3s"/></circle>
+      <ellipse cx="80" cy="125" rx="40" ry="9" fill="url(#coinG)" stroke="var(--sello)" stroke-width="2"/>
+      <ellipse cx="80" cy="120" rx="40" ry="9" fill="url(#coinG)" stroke="var(--sello)" stroke-width="2"/>
+      <ellipse cx="80" cy="105" rx="42" ry="10" fill="url(#coinG)" stroke="var(--sello)" stroke-width="2"/>
+      <ellipse cx="80" cy="100" rx="42" ry="10" fill="url(#coinG)" stroke="var(--sello)" stroke-width="2"/>
+      <ellipse cx="80" cy="83" rx="44" ry="11" fill="url(#coinG)" stroke="var(--sello)" stroke-width="2"/>
+      <ellipse cx="80" cy="78" rx="44" ry="11" fill="url(#coinG)" stroke="var(--sello)" stroke-width="2"/>
+      <text x="80" y="84" text-anchor="middle" font-family="Source Serif 4" font-weight="800" font-size="18" fill="var(--sello)">$</text>
+      <ellipse cx="80" cy="58" rx="46" ry="12" fill="url(#coinG)" stroke="var(--sello)" stroke-width="2"/>
+      <ellipse cx="80" cy="52" rx="46" ry="12" fill="url(#coinG)" stroke="var(--sello)" stroke-width="2"/>
+      <text x="80" y="58" text-anchor="middle" font-family="Source Serif 4" font-weight="800" font-size="20" fill="var(--sello)">$</text>
+      <circle cx="50" cy="35" r="3" fill="var(--sello)"><animate attributeName="cy" values="35;25;35" dur="2.5s" repeatCount="indefinite"/></circle>
+      <circle cx="115" cy="40" r="2" fill="var(--sello)"><animate attributeName="cy" values="40;30;40" dur="2s" repeatCount="indefinite" begin="0.3s"/></circle>
     </svg>`,
     diversificador: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="planetG" cx=".4" cy=".4"><stop offset="0%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></radialGradient>
+        <radialGradient id="planetG" cx=".4" cy=".4"><stop offset="0%" stop-color="var(--sello)"/><stop offset="100%" stop-color="var(--sello)"/></radialGradient>
       </defs>
-      <line x1="35" y1="35" x2="80" y2="55" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
-      <line x1="125" y1="40" x2="80" y2="55" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
-      <line x1="80" y1="55" x2="50" y2="105" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
-      <line x1="80" y1="55" x2="120" y2="100" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
-      <line x1="50" y1="105" x2="80" y2="130" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
-      <line x1="120" y1="100" x2="80" y2="130" stroke="#F2EEE4" stroke-opacity=".3" stroke-width="1"/>
-      <circle cx="80" cy="80" r="50" fill="none" stroke="#F2EEE4" stroke-opacity=".15" stroke-dasharray="2 4"/>
-      <circle cx="80" cy="55" r="22" fill="url(#planetG)" stroke="#F2EEE4" stroke-width="2"/>
-      <ellipse cx="80" cy="55" rx="32" ry="6" fill="none" stroke="#D79A3C" stroke-width="1.5" opacity=".7" transform="rotate(-15 80 55)"/>
-      <circle cx="35" cy="35" r="4" fill="#D79A3C"/>
-      <circle cx="125" cy="40" r="3" fill="#D79A3C"/>
-      <circle cx="50" cy="105" r="3" fill="#D79A3C"/>
-      <circle cx="120" cy="100" r="4" fill="#D79A3C"/>
-      <circle cx="80" cy="130" r="3" fill="#D79A3C"/>
+      <line x1="35" y1="35" x2="80" y2="55" stroke="var(--tinta-1)" stroke-opacity=".3" stroke-width="1"/>
+      <line x1="125" y1="40" x2="80" y2="55" stroke="var(--tinta-1)" stroke-opacity=".3" stroke-width="1"/>
+      <line x1="80" y1="55" x2="50" y2="105" stroke="var(--tinta-1)" stroke-opacity=".3" stroke-width="1"/>
+      <line x1="80" y1="55" x2="120" y2="100" stroke="var(--tinta-1)" stroke-opacity=".3" stroke-width="1"/>
+      <line x1="50" y1="105" x2="80" y2="130" stroke="var(--tinta-1)" stroke-opacity=".3" stroke-width="1"/>
+      <line x1="120" y1="100" x2="80" y2="130" stroke="var(--tinta-1)" stroke-opacity=".3" stroke-width="1"/>
+      <circle cx="80" cy="80" r="50" fill="none" stroke="var(--tinta-1)" stroke-opacity=".15" stroke-dasharray="2 4"/>
+      <circle cx="80" cy="55" r="22" fill="url(#planetG)" stroke="var(--tinta-1)" stroke-width="2"/>
+      <ellipse cx="80" cy="55" rx="32" ry="6" fill="none" stroke="var(--sello)" stroke-width="1.5" opacity=".7" transform="rotate(-15 80 55)"/>
+      <circle cx="35" cy="35" r="4" fill="var(--sello)"/>
+      <circle cx="125" cy="40" r="3" fill="var(--sello)"/>
+      <circle cx="50" cy="105" r="3" fill="var(--sello)"/>
+      <circle cx="120" cy="100" r="4" fill="var(--sello)"/>
+      <circle cx="80" cy="130" r="3" fill="var(--sello)"/>
     </svg>`,
     convencido: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="diamG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="50%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
+        <linearGradient id="diamG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="var(--tinta-1)"/><stop offset="50%" stop-color="var(--sello)"/><stop offset="100%" stop-color="var(--sello)"/></linearGradient>
       </defs>
-      <polygon points="80,20 130,55 110,140 50,140 30,55" fill="url(#diamG)" stroke="#F2EEE4" stroke-width="2.5" stroke-linejoin="round"/>
-      <line x1="30" y1="55" x2="130" y2="55" stroke="#F2EEE4" stroke-width="2"/>
-      <line x1="80" y1="20" x2="80" y2="140" stroke="#F2EEE4" stroke-opacity=".5" stroke-width="1"/>
-      <line x1="60" y1="55" x2="80" y2="140" stroke="#F2EEE4" stroke-opacity=".5" stroke-width="1"/>
-      <line x1="100" y1="55" x2="80" y2="140" stroke="#F2EEE4" stroke-opacity=".5" stroke-width="1"/>
-      <polygon points="80,20 100,55 60,55" fill="#F2EEE4" opacity=".5"/>
-      <circle cx="50" cy="40" r="2" fill="#F2EEE4" opacity=".8"><animate attributeName="opacity" values=".3;1;.3" dur="2s" repeatCount="indefinite"/></circle>
-      <circle cx="115" cy="80" r="2" fill="#F2EEE4" opacity=".8"><animate attributeName="opacity" values="1;.3;1" dur="1.8s" repeatCount="indefinite"/></circle>
+      <polygon points="80,20 130,55 110,140 50,140 30,55" fill="url(#diamG)" stroke="var(--tinta-1)" stroke-width="2.5" stroke-linejoin="round"/>
+      <line x1="30" y1="55" x2="130" y2="55" stroke="var(--tinta-1)" stroke-width="2"/>
+      <line x1="80" y1="20" x2="80" y2="140" stroke="var(--tinta-1)" stroke-opacity=".5" stroke-width="1"/>
+      <line x1="60" y1="55" x2="80" y2="140" stroke="var(--tinta-1)" stroke-opacity=".5" stroke-width="1"/>
+      <line x1="100" y1="55" x2="80" y2="140" stroke="var(--tinta-1)" stroke-opacity=".5" stroke-width="1"/>
+      <polygon points="80,20 100,55 60,55" fill="var(--tinta-1)" opacity=".5"/>
+      <circle cx="50" cy="40" r="2" fill="var(--tinta-1)" opacity=".8"><animate attributeName="opacity" values=".3;1;.3" dur="2s" repeatCount="indefinite"/></circle>
+      <circle cx="115" cy="80" r="2" fill="var(--tinta-1)" opacity=".8"><animate attributeName="opacity" values="1;.3;1" dur="1.8s" repeatCount="indefinite"/></circle>
     </svg>`,
     constructor: `<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="brickG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6FAE7E"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
+        <linearGradient id="brickG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--alza)"/><stop offset="100%" stop-color="var(--sello)"/></linearGradient>
       </defs>
-      <rect x="30" y="120" width="100" height="14" rx="2" fill="url(#brickG)" stroke="#F2EEE4" stroke-width="1.5"/>
-      <line x1="80" y1="120" x2="80" y2="134" stroke="#0B0B0A" stroke-width="1.5"/>
-      <rect x="40" y="100" width="80" height="14" rx="2" fill="url(#brickG)" stroke="#F2EEE4" stroke-width="1.5"/>
-      <line x1="80" y1="100" x2="80" y2="114" stroke="#0B0B0A" stroke-width="1.5"/>
-      <rect x="50" y="80" width="60" height="14" rx="2" fill="url(#brickG)" stroke="#F2EEE4" stroke-width="1.5"/>
-      <line x1="80" y1="80" x2="80" y2="94" stroke="#0B0B0A" stroke-width="1.5"/>
-      <rect x="60" y="60" width="40" height="14" rx="2" fill="url(#brickG)" stroke="#F2EEE4" stroke-width="1.5"/>
-      <line x1="80" y1="60" x2="80" y2="74" stroke="#0B0B0A" stroke-width="1.5"/>
-      <rect x="68" y="40" width="24" height="14" rx="2" fill="url(#brickG)" stroke="#F2EEE4" stroke-width="1.5"/>
-      <polygon points="68,40 80,28 92,40" fill="#D79A3C" stroke="#F2EEE4" stroke-width="1.5"/>
-      <circle cx="80" cy="22" r="3" fill="#F2EEE4" opacity=".9"><animate attributeName="opacity" values=".5;1;.5" dur="2s" repeatCount="indefinite"/></circle>
+      <rect x="30" y="120" width="100" height="14" rx="2" fill="url(#brickG)" stroke="var(--tinta-1)" stroke-width="1.5"/>
+      <line x1="80" y1="120" x2="80" y2="134" stroke="var(--sup)" stroke-width="1.5"/>
+      <rect x="40" y="100" width="80" height="14" rx="2" fill="url(#brickG)" stroke="var(--tinta-1)" stroke-width="1.5"/>
+      <line x1="80" y1="100" x2="80" y2="114" stroke="var(--sup)" stroke-width="1.5"/>
+      <rect x="50" y="80" width="60" height="14" rx="2" fill="url(#brickG)" stroke="var(--tinta-1)" stroke-width="1.5"/>
+      <line x1="80" y1="80" x2="80" y2="94" stroke="var(--sup)" stroke-width="1.5"/>
+      <rect x="60" y="60" width="40" height="14" rx="2" fill="url(#brickG)" stroke="var(--tinta-1)" stroke-width="1.5"/>
+      <line x1="80" y1="60" x2="80" y2="74" stroke="var(--sup)" stroke-width="1.5"/>
+      <rect x="68" y="40" width="24" height="14" rx="2" fill="url(#brickG)" stroke="var(--tinta-1)" stroke-width="1.5"/>
+      <polygon points="68,40 80,28 92,40" fill="var(--sello)" stroke="var(--tinta-1)" stroke-width="1.5"/>
+      <circle cx="80" cy="22" r="3" fill="var(--tinta-1)" opacity=".9"><animate attributeName="opacity" values=".5;1;.5" dur="2s" repeatCount="indefinite"/></circle>
     </svg>`,
   };
 
@@ -7698,7 +7811,7 @@ const TuMes = (() => {
 
   // Genera confetti dentro de un contenedor
   function _confetti(host, n) {
-    const colors = ['#D79A3C','#D79A3C','#DB7B68','#D79A3C','#D79A3C','#D79A3C'];
+    const colors = [MP_COLOR.sello,MP_COLOR.sello,MP_COLOR.baja,MP_COLOR.sello,MP_COLOR.sello,MP_COLOR.sello];
     for (let i = 0; i < n; i++) {
       const piece = document.createElement('div');
       piece.className = 'mes-confetti-piece';
@@ -7721,19 +7834,19 @@ const TuMes = (() => {
     return [
       // ───────────── 1. APERTURA ─────────────
       {
-        bg: '#131210',
+        bg: MP_COLOR.supPanel,
         blobs: [
-          { color: '#D79A3C', size: 280, top: '-50px', left: '-80px' },
-          { color: '#D79A3C', size: 220, bottom: '-60px', right: '-60px' },
+          { color: MP_COLOR.sello, size: 280, top: '-50px', left: '-80px' },
+          { color: MP_COLOR.sello, size: 220, bottom: '-60px', right: '-60px' },
         ],
         html: `
           <div class="mes-marquee"><div class="mes-marquee-track">${('TU MES · TU MES · TU MES · ').repeat(8)}</div></div>
           <p class="mes-eyebrow text-emerald-100 mes-reveal-1">Tu mes en Mi Portafolio</p>
-          <h1 class="mes-bignum text-white mt-3 mes-reveal-2" style="font-size:78px;"><span class="mes-underline">${escapeHtml(s.nombreMes.split(' ')[0])}</span></h1>
+          <h1 class="mes-bignum text-zinc-100 mt-3 mes-reveal-2" style="font-size:78px;"><span class="mes-underline">${escapeHtml(s.nombreMes.split(' ')[0])}</span></h1>
           <p class="mes-bignum text-emerald-200 mes-reveal-3" style="font-size:36px; opacity:.8;">${escapeHtml(s.nombreMes.split(' ').slice(1).join(' '))}</p>
-          <div class="mt-10 inline-flex items-center gap-3 bg-white/15 backdrop-blur rounded-full px-5 py-2.5 border border-white/20 mes-reveal-4">
-            <span class="inline-flex items-center justify-center w-7 h-7 rounded-md font-bold text-white text-sm" style="background:rgba(255,255,255,0.18);">${escapeHtml((s.portafolio.nombre || 'P').charAt(0).toUpperCase())}</span>
-            <span class="text-white font-semibold">${escapeHtml(s.portafolio.nombre)}</span>
+          <div class="mt-10 inline-flex items-center gap-3 bg-zinc-800/50 backdrop-blur rounded-full px-5 py-2.5 border border-zinc-700 mes-reveal-4">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-md font-bold text-zinc-100 text-sm" style="background:rgba(26,26,24,.10);">${escapeHtml((s.portafolio.nombre || 'P').charAt(0).toUpperCase())}</span>
+            <span class="text-zinc-100 font-semibold">${escapeHtml(s.portafolio.nombre)}</span>
           </div>
           <p class="text-emerald-50 text-base mt-12 leading-relaxed mes-reveal-5">Esto es lo que pasó<br>en tu portafolio este mes.</p>
           <div class="absolute bottom-8 left-0 right-0 text-center mes-reveal-5">
@@ -7745,10 +7858,10 @@ const TuMes = (() => {
 
       // ───────────── 2. SHARPE TOP X% ─────────────
       {
-        bg: '#131210',
+        bg: MP_COLOR.supPanel,
         blobs: [
-          { color: '#D79A3C', size: 200, top: '60px', right: '-40px' },
-          { color: '#D79A3C', size: 280, bottom: '-100px', left: '-80px' },
+          { color: MP_COLOR.sello, size: 200, top: '60px', right: '-40px' },
+          { color: MP_COLOR.sello, size: 280, bottom: '-100px', left: '-80px' },
         ],
         html: `
           <!-- Sunburst rays detrás del número -->
@@ -7756,23 +7869,23 @@ const TuMes = (() => {
             <svg width="500" height="500" viewBox="0 0 500 500" style="opacity:.18; animation: mesRayRotate 60s linear infinite;">
               ${Array.from({length: 16}, (_, i) => {
                 const a = (i * 22.5) * Math.PI / 180;
-                return `<polygon points="250,250 ${250 + Math.cos(a)*250},${250 + Math.sin(a)*250} ${250 + Math.cos(a + 0.06)*240},${250 + Math.sin(a + 0.06)*240}" fill="#D79A3C"/>`;
+                return `<polygon points="250,250 ${250 + Math.cos(a)*250},${250 + Math.sin(a)*250} ${250 + Math.cos(a + 0.06)*240},${250 + Math.sin(a + 0.06)*240}" fill="var(--sello)"/>`;
               }).join('')}
             </svg>
           </div>
           <p class="mes-eyebrow text-pink-100 mes-reveal-1">Tu Sharpe del mes</p>
           <div class="mes-ring-host mes-reveal-2 mt-3">
-            <p class="mes-bignum text-white" style="font-size:130px;">
+            <p class="mes-bignum text-zinc-100" style="font-size:130px;">
               <span data-counter="${s.pctSharpe}" data-format="topPct" class="mes-shimmer-text">Top 0%</span>
             </p>
           </div>
-          <div class="mt-3 inline-flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-4 py-2 border border-white/25 mes-reveal-3">
+          <div class="mt-3 inline-flex items-center gap-2 bg-zinc-800/60 backdrop-blur rounded-full px-4 py-2 border border-zinc-700 mes-reveal-3">
             <span class="text-yellow-200">★</span>
-            <p class="text-white font-bold tabular text-lg">Sharpe ${s.sharpe.toFixed(2)}</p>
+            <p class="text-zinc-100 font-bold tabular text-lg">Sharpe ${s.sharpe.toFixed(2)}</p>
             <span class="text-yellow-200">★</span>
           </div>
           <p class="text-pink-50 text-base mt-10 leading-relaxed mes-reveal-4">
-            Mejor que el <span class="font-bold text-white text-xl">${100 - s.pctSharpe}%</span><br>
+            Mejor que el <span class="font-bold text-zinc-100 text-xl">${100 - s.pctSharpe}%</span><br>
             de los portafolios diversificados.
           </p>
           ${s.pctSharpe <= 10 ? `<p class="mt-6 text-yellow-200 text-sm font-bold tracking-widest mes-reveal-5">★ ÉLITE ★</p>` : ''}
@@ -7782,32 +7895,32 @@ const TuMes = (() => {
 
       // ───────────── 3. RETORNO ANUALIZADO ─────────────
       {
-        bg: '#131210',
+        bg: MP_COLOR.supPanel,
         blobs: [
-          { color: '#D79A3C', size: 240, top: '-40px', right: '-60px' },
-          { color: '#D79A3C', size: 280, bottom: '-80px', left: '-60px' },
+          { color: MP_COLOR.sello, size: 240, top: '-40px', right: '-60px' },
+          { color: MP_COLOR.sello, size: 280, bottom: '-80px', left: '-60px' },
         ],
         html: `
           <!-- Trending arrow gigante atrás -->
           <div class="absolute inset-0 flex items-center justify-center pointer-events-none mes-trend-arrow">
             <svg width="380" height="380" viewBox="0 0 200 200" style="opacity:.18;">
               <defs>
-                <linearGradient id="arrG3" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#F2EEE4" stop-opacity="0"/><stop offset="100%" stop-color="#F2EEE4"/></linearGradient>
+                <linearGradient id="arrG3" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="var(--tinta-1)" stop-opacity="0"/><stop offset="100%" stop-color="var(--tinta-1)"/></linearGradient>
               </defs>
               <path d="M 20 160 L 80 100 L 110 130 L 175 50" fill="none" stroke="url(#arrG3)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-              <polygon points="175,50 145,55 165,75" fill="#F2EEE4" opacity=".8"/>
+              <polygon points="175,50 145,55 165,75" fill="var(--tinta-1)" opacity=".8"/>
             </svg>
           </div>
           <p class="mes-eyebrow text-orange-100 mes-reveal-1">Retorno anualizado</p>
-          <p class="mes-bignum text-white mt-3 mes-reveal-2" style="font-size:130px;">
+          <p class="mes-bignum text-zinc-100 mt-3 mes-reveal-2" style="font-size:130px;">
             <span data-counter="${Math.abs(s.retAnual)}" data-prefix="${s.retAnual >= 0 ? '+' : '-'}" data-suffix="%" data-decimals="1" class="mes-shimmer-text">${s.retAnual >= 0 ? '+' : '-'}0.0%</span>
           </p>
-          <div class="mt-3 inline-flex items-center gap-2 bg-white/15 backdrop-blur rounded-full px-4 py-1.5 border border-white/20 mes-reveal-3">
+          <div class="mt-3 inline-flex items-center gap-2 bg-zinc-800/50 backdrop-blur rounded-full px-4 py-1.5 border border-zinc-700 mes-reveal-3">
             <span class="text-yellow-200">↑</span>
-            <p class="text-white font-bold tabular text-sm">vs S&P 500 +12.3% · IPC +6.1%</p>
+            <p class="text-zinc-100 font-bold tabular text-sm">vs S&P 500 +12.3% · IPC +6.1%</p>
           </div>
           <p class="text-orange-50 text-base mt-10 leading-relaxed mes-reveal-4">
-            Estás en el <span class="font-bold text-white text-xl">top ${s.pctRetorno}%</span><br>
+            Estás en el <span class="font-bold text-zinc-100 text-xl">top ${s.pctRetorno}%</span><br>
             por rendimiento.
           </p>
           <p class="text-orange-200 text-xs mt-8 italic mes-reveal-5">Pasado ≠ futuro. Pero hoy te luce.</p>
@@ -7817,48 +7930,48 @@ const TuMes = (() => {
 
       // ───────────── 4. OPERACIONES ─────────────
       {
-        bg: '#131210',
+        bg: MP_COLOR.supPanel,
         blobs: [
-          { color: '#D79A3C', size: 260, bottom: '-80px', right: '-80px' },
-          { color: '#D79A3C', size: 220, top: '-40px', left: '-50px' },
+          { color: MP_COLOR.sello, size: 260, bottom: '-80px', right: '-80px' },
+          { color: MP_COLOR.sello, size: 220, top: '-40px', left: '-50px' },
         ],
         html: `
           <p class="mes-eyebrow text-sky-100">${s.totalOps > 10 ? 'Hyperactivo' : (s.totalOps > 0 ? 'Operaciones del mes' : 'Mes zen')}</p>
-          <p class="mes-bignum text-white mt-3" style="font-size:160px;">
+          <p class="mes-bignum text-zinc-100 mt-3" style="font-size:160px;">
             <span data-counter="${s.totalOps}" data-decimals="0">0</span>
           </p>
           <p class="text-sky-100 text-lg mt-2 font-medium">${s.totalOps === 1 ? 'operación' : 'operaciones'}</p>
           <div class="grid grid-cols-2 gap-3 mt-8">
-            <div class="bg-white/15 backdrop-blur rounded-xl px-4 py-3 border border-white/20">
+            <div class="bg-zinc-800/50 backdrop-blur rounded-xl px-4 py-3 border border-zinc-700">
               <p class="text-[10px] uppercase tracking-wider text-sky-100">Compras</p>
-              <p class="text-2xl font-bold text-white tabular">${s.compras}</p>
+              <p class="text-2xl font-bold text-zinc-100 tabular">${s.compras}</p>
             </div>
-            <div class="bg-white/15 backdrop-blur rounded-xl px-4 py-3 border border-white/20">
+            <div class="bg-zinc-800/50 backdrop-blur rounded-xl px-4 py-3 border border-zinc-700">
               <p class="text-[10px] uppercase tracking-wider text-sky-100">Ventas</p>
-              <p class="text-2xl font-bold text-white tabular">${s.ventas}</p>
+              <p class="text-2xl font-bold text-zinc-100 tabular">${s.ventas}</p>
             </div>
           </div>
-          ${s.tickerMasOperado ? `<p class="text-sky-50 text-sm mt-8">Tu favorita: <span class="font-mono font-bold text-white text-lg">${escapeHtml(s.tickerMasOperado)}</span></p>` : '<p class="text-sky-100 text-sm mt-8 italic">A veces no hacer nada es la mejor jugada.</p>'}
+          ${s.tickerMasOperado ? `<p class="text-sky-50 text-sm mt-8">Tu favorita: <span class="font-mono font-bold text-zinc-100 text-lg">${escapeHtml(s.tickerMasOperado)}</span></p>` : '<p class="text-sky-100 text-sm mt-8 italic">A veces no hacer nada es la mejor jugada.</p>'}
         `,
       },
 
       // ───────────── 5. DIVIDENDOS ─────────────
       ...(s.dividendosMes > 0 || s.dividendosAno > 0 ? [{
-        bg: '#131210',
+        bg: MP_COLOR.supPanel,
         blobs: [
-          { color: '#F2EEE4', size: 280, top: '-60px', right: '-80px' },
-          { color: '#D79A3C', size: 220, bottom: '-60px', left: '-60px' },
+          { color: MP_COLOR.tinta1, size: 280, top: '-60px', right: '-80px' },
+          { color: MP_COLOR.sello, size: 220, bottom: '-60px', left: '-60px' },
         ],
         html: `
           <p class="mes-eyebrow text-yellow-100">Dividendos cobrados</p>
-          <p class="mes-bignum text-white mt-3" style="font-size:90px;">
+          <p class="mes-bignum text-zinc-100 mt-3" style="font-size:90px;">
             <span data-counter="${s.dividendosMes}" data-prefix="$" data-decimals="2">$0.00</span>
           </p>
           <p class="text-yellow-100 text-base mt-4">este mes</p>
           ${s.dividendosAno > s.dividendosMes ? `
-            <div class="mt-10 bg-white/15 backdrop-blur rounded-2xl px-5 py-4 border border-white/20">
+            <div class="mt-10 bg-zinc-800/50 backdrop-blur rounded-2xl px-5 py-4 border border-zinc-700">
               <p class="text-[10px] uppercase tracking-wider text-yellow-100">En lo que va del año</p>
-              <p class="text-3xl font-bold text-white tabular mt-1">${fmt$(s.dividendosAno)}</p>
+              <p class="text-3xl font-bold text-zinc-100 tabular mt-1">${fmt$(s.dividendosAno)}</p>
             </div>
           ` : ''}
           <p class="text-yellow-50 text-sm mt-10 italic leading-relaxed">Cada peso que recibes es uno<br>que no necesitas vender.</p>
@@ -7868,14 +7981,14 @@ const TuMes = (() => {
 
       // ───────────── 6. CAPITAL MOVIDO ─────────────
       ...(s.capitalMovido > 0 ? [{
-        bg: '#131210',
+        bg: MP_COLOR.supPanel,
         blobs: [
-          { color: '#D79A3C', size: 240, top: '0', right: '-60px' },
-          { color: '#D79A3C', size: 280, bottom: '-100px', left: '-60px' },
+          { color: MP_COLOR.sello, size: 240, top: '0', right: '-60px' },
+          { color: MP_COLOR.sello, size: 280, bottom: '-100px', left: '-60px' },
         ],
         html: `
           <p class="mes-eyebrow text-pink-100">Capital en movimiento</p>
-          <p class="mes-bignum text-white mt-3" style="font-size:84px;">
+          <p class="mes-bignum text-zinc-100 mt-3" style="font-size:84px;">
             <span data-counter="${s.capitalMovido}" data-prefix="$" data-decimals="0">$0</span>
           </p>
           <p class="text-pink-100 text-base mt-4">moviste este mes</p>
@@ -7887,14 +8000,14 @@ const TuMes = (() => {
 
       // ───────────── 7. TICKERS ÚNICOS OPERADOS ─────────────
       ...(s.tickersUnicosOperados > 0 ? [{
-        bg: '#131210',
+        bg: MP_COLOR.supPanel,
         blobs: [
-          { color: '#D79A3C', size: 280, top: '-50px', left: '-70px' },
-          { color: '#D79A3C', size: 240, bottom: '-60px', right: '-80px' },
+          { color: MP_COLOR.sello, size: 280, top: '-50px', left: '-70px' },
+          { color: MP_COLOR.sello, size: 240, bottom: '-60px', right: '-80px' },
         ],
         html: `
           <p class="mes-eyebrow text-teal-100">Tu paleta del mes</p>
-          <p class="mes-bignum text-white mt-3" style="font-size:160px;">
+          <p class="mes-bignum text-zinc-100 mt-3" style="font-size:160px;">
             <span data-counter="${s.tickersUnicosOperados}" data-decimals="0">0</span>
           </p>
           <p class="text-teal-100 text-lg mt-2 font-medium">${s.tickersUnicosOperados === 1 ? 'ticker' : 'tickers'} ${s.tickersUnicosOperados === 1 ? 'tocado' : 'tocados'}</p>
@@ -7906,10 +8019,10 @@ const TuMes = (() => {
 
       // ───────────── 8. PERSONALIDAD — TARJETA DE COLECCIÓN ─────────────
       {
-        bg: '#131210',
+        bg: MP_COLOR.supPanel,
         blobs: [
-          { color: '#D79A3C', size: 260, top: '-40px', right: '-60px' },
-          { color: '#D79A3C', size: 280, bottom: '-100px', left: '-80px' },
+          { color: MP_COLOR.sello, size: 260, top: '-40px', right: '-60px' },
+          { color: MP_COLOR.sello, size: 280, bottom: '-100px', left: '-80px' },
         ],
         html: `
           <!-- Particles flotando -->
@@ -7920,7 +8033,7 @@ const TuMes = (() => {
               const left = Math.random() * 100;
               const top = 50 + Math.random() * 50;
               const delay = Math.random() * 2.4;
-              const colors = ['#D79A3C', '#D79A3C', '#D79A3C', '#F2EEE4'];
+              const colors = [MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.sello, MP_COLOR.tinta1];
               const color = colors[Math.floor(Math.random()*colors.length)];
               return `<span class="mes-particle" style="left:${left}%; top:${top}%; background:${color}; box-shadow:0 0 8px ${color}; --tx:${tx}px; --ty:${ty}px; animation-delay:${delay}s;"></span>`;
             }).join('')}
@@ -7935,7 +8048,7 @@ const TuMes = (() => {
                 <!-- Top: rareza + estrellas -->
                 <div class="flex items-center justify-between">
                   <span class="mes-card-rarity">${vibe.rareza}</span>
-                  <div class="mes-card-stars">${Array.from({length: vibe.stars}, () => '<span class="mes-card-star">★</span>').join('')}${Array.from({length: 5 - vibe.stars}, () => '<span class="mes-card-star" style="color:rgba(255,255,255,.15);">★</span>').join('')}</div>
+                  <div class="mes-card-stars">${Array.from({length: vibe.stars}, () => '<span class="mes-card-star">★</span>').join('')}${Array.from({length: 5 - vibe.stars}, () => '<span class="mes-card-star" style="color:var(--regla-fuerte);">★</span>').join('')}</div>
                 </div>
 
                 <!-- Ilustración SVG -->
@@ -7968,11 +8081,11 @@ const TuMes = (() => {
 
       // ───────────── 9. CIERRE ─────────────
       {
-        bg: '#131210',
+        bg: MP_COLOR.supPanel,
         blobs: [
-          { color: '#6FAE7E', size: 280, top: '-50px', left: '-80px' },
-          { color: '#D79A3C', size: 220, bottom: '-60px', right: '-50px' },
-          { color: '#D79A3C', size: 200, top: '40%', right: '-40px' },
+          { color: MP_COLOR.alza, size: 280, top: '-50px', left: '-80px' },
+          { color: MP_COLOR.sello, size: 220, bottom: '-60px', right: '-50px' },
+          { color: MP_COLOR.sello, size: 200, top: '40%', right: '-40px' },
         ],
         html: `
           <!-- Rays detrás -->
@@ -7980,7 +8093,7 @@ const TuMes = (() => {
             <svg width="500" height="500" viewBox="0 0 500 500" style="opacity:.22; animation: mesRayRotate 90s linear infinite;">
               ${Array.from({length: 24}, (_, i) => {
                 const a = (i * 15) * Math.PI / 180;
-                return `<polygon points="250,250 ${250 + Math.cos(a)*250},${250 + Math.sin(a)*250} ${250 + Math.cos(a + 0.04)*240},${250 + Math.sin(a + 0.04)*240}" fill="#F2EEE4"/>`;
+                return `<polygon points="250,250 ${250 + Math.cos(a)*250},${250 + Math.sin(a)*250} ${250 + Math.cos(a + 0.04)*240},${250 + Math.sin(a + 0.04)*240}" fill="var(--tinta-1)"/>`;
               }).join('')}
             </svg>
           </div>
@@ -7988,15 +8101,15 @@ const TuMes = (() => {
           <div class="mes-medal mes-reveal-1">
             <svg width="160" height="160" viewBox="0 0 160 160">
               <defs>
-                <linearGradient id="trophyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F2EEE4"/><stop offset="50%" stop-color="#D79A3C"/><stop offset="100%" stop-color="#D79A3C"/></linearGradient>
-                <radialGradient id="shineT" cx=".3" cy=".3"><stop offset="0%" stop-color="#F2EEE4" stop-opacity=".8"/><stop offset="100%" stop-color="#F2EEE4" stop-opacity="0"/></radialGradient>
+                <linearGradient id="trophyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--tinta-1)"/><stop offset="50%" stop-color="var(--sello)"/><stop offset="100%" stop-color="var(--sello)"/></linearGradient>
+                <radialGradient id="shineT" cx=".3" cy=".3"><stop offset="0%" stop-color="var(--tinta-1)" stop-opacity=".8"/><stop offset="100%" stop-color="var(--tinta-1)" stop-opacity="0"/></radialGradient>
               </defs>
-              <path d="M50 40 Q50 100 80 100 Q110 100 110 40 Z" fill="url(#trophyG)" stroke="#D79A3C" stroke-width="2.5"/>
+              <path d="M50 40 Q50 100 80 100 Q110 100 110 40 Z" fill="url(#trophyG)" stroke="var(--sello)" stroke-width="2.5"/>
               <path d="M40 50 Q30 60 30 75 Q30 85 40 88" fill="none" stroke="url(#trophyG)" stroke-width="6" stroke-linecap="round"/>
               <path d="M120 50 Q130 60 130 75 Q130 85 120 88" fill="none" stroke="url(#trophyG)" stroke-width="6" stroke-linecap="round"/>
-              <rect x="68" y="100" width="24" height="14" fill="url(#trophyG)" stroke="#D79A3C" stroke-width="2"/>
-              <rect x="55" y="113" width="50" height="10" rx="2" fill="url(#trophyG)" stroke="#D79A3C" stroke-width="2"/>
-              <text x="80" y="74" text-anchor="middle" font-family="Source Serif 4" font-weight="900" font-size="22" fill="#D79A3C">★</text>
+              <rect x="68" y="100" width="24" height="14" fill="url(#trophyG)" stroke="var(--sello)" stroke-width="2"/>
+              <rect x="55" y="113" width="50" height="10" rx="2" fill="url(#trophyG)" stroke="var(--sello)" stroke-width="2"/>
+              <text x="80" y="74" text-anchor="middle" font-family="Source Serif 4" font-weight="900" font-size="22" fill="var(--sello)">★</text>
               <ellipse cx="64" cy="55" rx="10" ry="14" fill="url(#shineT)"/>
             </svg>
           </div>
@@ -8030,8 +8143,8 @@ const TuMes = (() => {
         <div class="relative w-full max-w-[400px]" style="height: min(720px, calc(100vh - 80px));">
           <!-- Header con dots y cerrar -->
           <div class="absolute top-3 left-3 right-3 z-30 flex items-center gap-1">
-            ${slides.map((_, i) => `<div class="flex-1 h-[3px] bg-white/25 rounded-full overflow-hidden"><div class="mes-bar h-full bg-white rounded-full" data-i="${i}" style="width:${i < pos ? '100%' : '0%'}"></div></div>`).join('')}
-            <button id="mes-cerrar" class="ml-2 text-white/80 hover:text-white text-xl leading-none">×</button>
+            ${slides.map((_, i) => `<div class="flex-1 h-[3px] bg-zinc-800/70 rounded-full overflow-hidden"><div class="mes-bar h-full bg-zinc-100 rounded-full" data-i="${i}" style="width:${i < pos ? '100%' : '0%'}"></div></div>`).join('')}
+            <button id="mes-cerrar" class="ml-2 text-zinc-400 hover:text-zinc-100 text-xl leading-none">×</button>
           </div>
 
           <!-- Slide host -->
@@ -8043,10 +8156,10 @@ const TuMes = (() => {
 
           <!-- Action footer -->
           <div class="absolute -bottom-14 left-0 right-0 flex items-center justify-center gap-3">
-            <button id="mes-share" class="text-xs text-white/80 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur rounded-full px-4 py-2 border border-white/20 transition flex items-center gap-1.5">
+            <button id="mes-share" class="text-xs text-zinc-400 hover:text-zinc-100 bg-zinc-800/40 hover:bg-zinc-800/60 backdrop-blur rounded-full px-4 py-2 border border-zinc-700 transition flex items-center gap-1.5">
               <span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="6.5" y="2.5" width="11" height="19"/><path d="M10.5 18.5h3"/></svg></span> Compartir slide
             </button>
-            ${esAuto ? '<span class="text-[10px] text-white/40 italic">Aparecerá cada día 1 del mes</span>' : ''}
+            ${esAuto ? '<span class="text-[10px] text-zinc-500 italic">Aparecerá cada día 1 del mes</span>' : ''}
           </div>
         </div>
       </div>`;
@@ -8395,7 +8508,7 @@ const TuAno = TuMes;
       'Mi Portafolio · Tu compañero financiero'));
 
     const html = `
-      <div class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md" id="mes-modal">
+      <div class="fixed inset-0 bg-[color:rgba(26,26,24,.40)] z-50 flex items-center justify-center p-4 backdrop-blur-md" id="mes-modal">
         <div class="max-w-md w-full">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
@@ -8709,6 +8822,307 @@ const Analizador = (() => {
     });
   }
 
+  // ============================================================
+  //  PERFIL POR TIPO DE ACTIVO (ETF / criptomoneda)
+  // ============================================================
+  //  El análisis de acciones (FCF, P/E, márgenes, peers por P/S) no aplica a un
+  //  ETF ni a una cripto y dejaba la pantalla medio vacía. Aquí se pinta lo que
+  //  SÍ aplica a cada tipo.
+  //
+  //  REGLA DE ORO: si el backend no mandó un dato, la clave no existe y el
+  //  bloque entero NO se dibuja. Cero guiones, cero "N/D", cero secciones
+  //  vacías — eso es justo lo que hacía ver la app incompleta.
+  function _pfPct(v, d = 1) { return (v == null) ? null : `${(v * 100).toFixed(d)}%`; }
+  function _pfNum(v, d = 2) { return (v == null) ? null : Number(v).toFixed(d); }
+  function _pfMoneda(v, mon = 'USD') {
+    if (v == null) return null;
+    const s = mon === 'MXN' ? '$' : 'US$';
+    const a = Math.abs(v);
+    if (a >= 1e12) return `${s}${(v / 1e12).toFixed(2)} B`;      // billones (es-MX)
+    if (a >= 1e9) return `${s}${(v / 1e9).toFixed(2)} mil M`;
+    if (a >= 1e6) return `${s}${(v / 1e6).toFixed(1)} M`;
+    return `${s}${v.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  }
+  function _pfEntero(v) {
+    return (v == null) ? null : Number(v).toLocaleString('es-MX', { maximumFractionDigits: 0 });
+  }
+
+  /* Celda de métrica. `ayuda` sale del glosario del backend y se cuelga del
+     tooltip [data-tip] que ya usa el resto de la app. */
+  function _pfKpi(etiqueta, valor, ayuda, cls) {
+    if (valor == null || valor === '') return '';
+    return `
+      <div class="mp-celda">
+        <p class="mp-etq ${ayuda ? '' : ''}" ${ayuda ? `data-tip="${escapeHtml(ayuda)}"` : ''}>${escapeHtml(etiqueta)}</p>
+        <p class="text-[15px] font-semibold tabular mt-1 ${cls || 'text-zinc-100'}">${escapeHtml(String(valor))}</p>
+      </div>`;
+  }
+
+  /* Bloque con encabezado de sección. Devuelve '' si no hay contenido: así el
+     "omite el bloque completo" se cumple sin repetir condicionales. */
+  function _pfBloque(titulo, cuerpo, nota) {
+    const limpio = (cuerpo || '').trim();
+    if (!limpio) return '';
+    return `
+      <section class="mt-6">
+        <div class="mp-sec"><span class="mp-sec-etq">${escapeHtml(titulo)}</span></div>
+        ${limpio}
+        ${nota ? `<p class="mp-firma mt-2" style="text-transform:none;letter-spacing:0">${nota}</p>` : ''}
+      </section>`;
+  }
+
+  function _pfRejilla(celdas) {
+    const c = celdas.filter(Boolean).join('');
+    return c ? `<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">${c}</div>` : '';
+  }
+
+  /* Barra de peso (composición). Solo transform/anchura estática, sin animación. */
+  function _pfBarra(nombre, peso, extra) {
+    const p = Math.max(0, Math.min(1, peso || 0));
+    return `
+      <div class="flex items-center gap-3 py-1.5 border-b border-surface-border last:border-0">
+        <span class="text-[12px] text-zinc-200 flex-1 min-w-0 truncate">${escapeHtml(nombre)}</span>
+        ${extra ? `<span class="text-[10px] text-zinc-500 tabular shrink-0">${escapeHtml(extra)}</span>` : ''}
+        <span class="h-1.5 w-16 sm:w-24 shrink-0 bg-zinc-800 overflow-hidden" aria-hidden="true">
+          <span style="display:block;height:100%;width:${(p * 100).toFixed(1)}%;background:var(--sello)"></span>
+        </span>
+        <span class="text-[12px] tabular text-zinc-100 shrink-0 w-12 text-right">${(p * 100).toFixed(1)}%</span>
+      </div>`;
+  }
+
+  function _perfilETF(d) {
+    const P = d.perfil || {};
+    const G = P.glosario || {};
+    const nar = d.narrativa_tipo || {};
+    const mon = d.moneda || 'USD';
+    const id = P.identidad || {}, co = P.costo || {}, re = P.reparto || {};
+    const cm = P.composicion || {}, ri = P.riesgo || {}, mx = P.mexico || {};
+    let html = '';
+
+    // Qué es y qué replica
+    html += _pfBloque('Qué es y qué replica', [
+      nar.que_es ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(nar.que_es)}</p>` : '',
+      _pfRejilla([
+        _pfKpi('Índice que replica', id.indice),
+        _pfKpi('Categoría', id.categoria),
+        _pfKpi('Gestora', id.gestora),
+        _pfKpi('Figura legal', id.figura_legal),
+        _pfKpi('Moneda', id.moneda),
+        _pfKpi('Años operando', id.anios_operando != null ? `${id.anios_operando}` : null,
+          'Cuánto lleva funcionando. Un histórico largo permite ver cómo se comportó en crisis pasadas.'),
+        _pfKpi('Bolsa', id.bolsa),
+      ]),
+    ].join(''));
+
+    // Costo y tamaño
+    html += _pfBloque('Costo, tamaño y reparto', [
+      nar.costo ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(nar.costo)}</p>` : '',
+      _pfRejilla([
+        _pfKpi('Costo anual (TER)', _pfPct(co.ter, 2), G.ter,
+          co.ter != null && co.ter_promedio_categoria != null
+            ? (co.ter <= co.ter_promedio_categoria ? 'text-accent-green' : 'text-accent-red') : ''),
+        _pfKpi('Promedio de su categoría', _pfPct(co.ter_promedio_categoria, 2)),
+        _pfKpi('Activos bajo gestión', _pfMoneda(co.aum, mon), G.aum),
+        _pfKpi('Rotación de cartera', _pfPct(co.rotacion_cartera, 0),
+          'Qué porcentaje de la cartera se recompone al año. Mucha rotación encarece el fondo por dentro.'),
+        _pfKpi('Rendimiento por dividendos', _pfPct(re.dividend_yield, 2),
+          'Cuánto reparte al año en efectivo, como porcentaje del precio.'),
+        _pfKpi('Frecuencia de reparto', re.frecuencia),
+      ]),
+    ].join(''));
+
+    // Composición
+    const holdings = (cm.principales || []).map(h =>
+      _pfBarra(h.nombre || h.ticker, h.peso, h.ticker)).join('');
+    const sectores = (cm.sectores || []).map(s => _pfBarra(s.sector, s.peso)).join('');
+    const clases = (cm.clases_activo || []).map(c => _pfBarra(
+      ({ cash: 'Efectivo', stock: 'Acciones', bond: 'Bonos', preferred: 'Preferentes',
+         convertible: 'Convertibles', other: 'Otros' })[c.clase] || c.clase, c.peso)).join('');
+    html += _pfBloque('Qué trae dentro', [
+      nar.diversificacion ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(nar.diversificacion)}</p>` : '',
+      cm.peso_top10 != null ? _pfRejilla([
+        _pfKpi('Peso del top 10', _pfPct(cm.peso_top10, 0), G.peso_top10,
+          cm.peso_top10 > 0.4 ? 'text-accent-red' : 'text-accent-green'),
+        _pfKpi('Posiciones listadas', _pfEntero((cm.principales || []).length)),
+        _pfKpi('Sectores', _pfEntero((cm.sectores || []).length)),
+      ]) : '',
+      holdings ? `<div class="mp-celda mt-3"><p class="mp-etq mb-2">Principales posiciones</p>${holdings}</div>` : '',
+      sectores ? `<div class="mp-celda mt-3"><p class="mp-etq mb-2">Composición por sector</p>${sectores}</div>` : '',
+      clases ? `<div class="mp-celda mt-3"><p class="mp-etq mb-2">Por clase de activo</p>${clases}</div>` : '',
+    ].join(''));
+
+    // Riesgo y réplica
+    html += _pfBloque('Riesgo y fidelidad de la réplica', [
+      nar.replica ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(nar.replica)}</p>` : '',
+      _pfRejilla([
+        _pfKpi('Volatilidad anual', _pfPct(ri.volatilidad_anual, 1), G.volatilidad_anual),
+        _pfKpi('Peor caída histórica', _pfPct(ri.max_drawdown, 1), G.max_drawdown, 'text-accent-red'),
+        _pfKpi('Sharpe', _pfNum(ri.sharpe), G.sharpe),
+        _pfKpi('Sortino', _pfNum(ri.sortino), G.sortino),
+        _pfKpi(`Beta vs ${ri.benchmark || 'su índice'}`, _pfNum(ri.beta_vs_benchmark), G.beta_vs_benchmark),
+        _pfKpi('Correlación con su índice', _pfNum(ri.correlacion_benchmark), G.correlacion_benchmark),
+        _pfKpi('Volumen promedio diario', _pfEntero(ri.liquidez_volumen_prom),
+          'Cuántos títulos cambian de manos al día. Más volumen, más fácil comprar y vender sin mover el precio.'),
+      ]),
+    ].join(''));
+
+    // Comparables
+    const comp = P.comparables || [];
+    if (comp.length > 1) {
+      const filas = comp.map((f, i) => `
+        <tr class="${i === 0 ? 'font-semibold' : ''}">
+          <td class="py-2 pr-2 tabular ${i === 0 ? 'text-accent-amber' : 'text-zinc-200'}">${escapeHtml(f.ticker)}${i === 0 ? ' ·' : ''}</td>
+          <td class="py-2 pr-2 text-[11px] text-zinc-400 truncate max-w-[140px]">${escapeHtml(f.nombre || '')}</td>
+          <td class="py-2 text-right tabular text-zinc-200">${_pfPct(f.ter, 2) || ''}</td>
+          <td class="py-2 text-right tabular text-zinc-300">${_pfMoneda(f.aum, mon) || ''}</td>
+          <td class="py-2 text-right tabular text-zinc-300">${_pfPct(f.volatilidad_anual, 1) || ''}</td>
+          <td class="py-2 text-right tabular text-zinc-300">${_pfNum(f.sharpe) || ''}</td>
+        </tr>`).join('');
+      html += _pfBloque('Contra ETFs comparables', `
+        <div class="mp-celda overflow-x-auto">
+          <table class="w-full text-[12px]">
+            <thead><tr><th>Ticker</th><th>Nombre</th><th class="text-right">Costo</th>
+              <th class="text-right">Tamaño</th><th class="text-right">Volatilidad</th><th class="text-right">Sharpe</th></tr></thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>`, 'La primera fila es el ETF que estás viendo.');
+    }
+
+    // Contexto mexicano
+    html += _pfBloque('Para el inversionista mexicano', [
+      mx.cotiza ? `<p class="text-[13px] text-zinc-200 mb-2"><span class="mp-etq">Dónde cotiza</span><br>${escapeHtml(mx.cotiza)}</p>` : '',
+      mx.nota ? `<p class="text-[13px] text-zinc-300 leading-relaxed mb-2">${escapeHtml(mx.nota)}</p>` : '',
+      mx.exposicion_cambiaria ? `<p class="text-[13px] text-zinc-300 leading-relaxed">${escapeHtml(mx.exposicion_cambiaria)}</p>` : '',
+    ].join(''), 'Información general, no asesoría fiscal.');
+
+    return html;
+  }
+
+  function _perfilCripto(d) {
+    const P = d.perfil || {};
+    const G = P.glosario || {};
+    const nar = d.narrativa_tipo || {};
+    const ta = P.tamano || {}, su = P.suministro || {}, vo = P.volatilidad || {};
+    const ca = P.caidas || {}, rr = P.riesgo_rendimiento || {}, di = P.diversificacion || {};
+    const li = P.liquidez || {}, dim = P.dimensionamiento || {};
+    let html = '';
+
+    html += _pfBloque('Qué es y cuánto pesa', [
+      nar.que_es ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(nar.que_es)}</p>` : '',
+      _pfRejilla([
+        _pfKpi('Capitalización de mercado', _pfMoneda(ta.market_cap), G.market_cap),
+        _pfKpi('Lugar por tamaño', ta.posicion_aprox != null
+          ? `#${ta.posicion_aprox} de ${ta.universo_comparado}` : null,
+          'Posición aproximada entre las criptomonedas grandes que sigue la app.'),
+      ]),
+    ].join(''));
+
+    html += _pfBloque('Suministro y escasez', [
+      nar.suministro ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(nar.suministro)}</p>` : '',
+      _pfRejilla([
+        _pfKpi('En circulación', _pfEntero(su.circulante)),
+        _pfKpi('Tope de emisión', _pfEntero(su.maximo),
+          'Cuántas unidades pueden existir como máximo. Sin tope, la oferta puede crecer siempre.'),
+        _pfKpi('Ya emitido', _pfPct(su.emitido, 1), G.emitido),
+        _pfKpi('Falta por emitir', _pfPct(su.por_emitir, 1),
+          'Lo que todavía se va a crear. Cuanto más falte, más dilución futura.'),
+      ]),
+    ].join(''));
+
+    html += _pfBloque('Volatilidad', [
+      nar.volatilidad ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(nar.volatilidad)}</p>` : '',
+      _pfRejilla([
+        _pfKpi('30 días', _pfPct(vo.vol_30d, 0), G.vol_365d),
+        _pfKpi('90 días', _pfPct(vo.vol_90d, 0), G.vol_365d),
+        _pfKpi('365 días', _pfPct(vo.vol_365d, 0), G.vol_365d),
+        _pfKpi('Percentil histórico', vo.percentil_historico != null
+          ? `${(vo.percentil_historico * 100).toFixed(0)}%` : null, G.percentil_historico),
+      ]),
+    ].join(''));
+
+    html += _pfBloque('Caídas', [
+      nar.caidas ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(nar.caidas)}</p>` : '',
+      _pfRejilla([
+        _pfKpi('Peor caída histórica', _pfPct(ca.max_drawdown, 0), G.max_drawdown, 'text-accent-red'),
+        _pfKpi('Distancia a su máximo', _pfPct(ca.distancia_ath, 0), G.distancia_ath,
+          (ca.distancia_ath || 0) < -0.2 ? 'text-accent-red' : ''),
+        _pfKpi('Máximo histórico', _pfMoneda(ca.maximo_historico)),
+        _pfKpi('Fecha del máximo', ca.fecha_ath),
+        _pfKpi('Sharpe', _pfNum(rr.sharpe), G.sortino),
+        _pfKpi('Sortino', _pfNum(rr.sortino), G.sortino),
+      ]),
+    ].join(''));
+
+    html += _pfBloque('¿Diversifica de verdad?', [
+      nar.correlacion ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(nar.correlacion)}</p>` : '',
+      _pfRejilla([
+        _pfKpi('Correlación con Bitcoin', _pfNum(di.correlacion_btc), G.correlacion_btc),
+        _pfKpi('Beta vs Bitcoin', _pfNum(di.beta_btc),
+          'Cuánto amplifica los movimientos de Bitcoin. 1.5 significa que sube y baja 50% más.'),
+        _pfKpi('Correlación con S&P 500', _pfNum(di.correlacion_sp500), G.correlacion_sp500),
+        _pfKpi('Beta vs S&P 500', _pfNum(di.beta_sp500),
+          'Cuánto se mueve frente a la bolsa estadounidense.'),
+      ]),
+    ].join(''));
+
+    html += _pfBloque('Liquidez y rango reciente', [
+      li.lectura ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(li.lectura)}</p>` : '',
+      _pfRejilla([
+        _pfKpi('Volumen diario', _pfMoneda(li.volumen_diario)),
+        _pfKpi('Volumen sobre capitalización', _pfPct(li.volumen_sobre_mcap, 2), G.volumen_sobre_mcap),
+        _pfKpi('Mínimo 90 días', _pfMoneda(li.rango_90d_min)),
+        _pfKpi('Máximo 90 días', _pfMoneda(li.rango_90d_max)),
+      ]),
+    ].join(''));
+
+    // Dimensionamiento — EDUCATIVO. Aritmética del golpe según el peso, nunca
+    // una sugerencia de cuánto comprar ni de comprar en absoluto.
+    const ejemplos = (dim.ejemplos || []).map(e => `
+      <div class="flex items-center justify-between py-2 border-b border-surface-border last:border-0">
+        <span class="text-[13px] text-zinc-300 tabular">${(e.peso * 100).toFixed(0)}% del portafolio</span>
+        <span class="text-[13px] tabular text-accent-red">${(e.impacto * 100).toFixed(1)}% del total</span>
+      </div>`).join('');
+    html += _pfBloque(dim.encabezado || 'Cómo pesaría en tu portafolio', [
+      dim.explicacion ? `<p class="text-[14px] text-zinc-300 leading-relaxed mb-3">${escapeHtml(dim.explicacion)}</p>` : '',
+      ejemplos ? `<div class="mp-celda">${ejemplos}</div>` : '',
+      dim.volatilidad_contexto ? `<p class="text-[13px] text-zinc-300 leading-relaxed mt-3">${escapeHtml(dim.volatilidad_contexto)}</p>` : '',
+    ].join(''), dim.aviso ? escapeHtml(dim.aviso) : '');
+
+    return html;
+  }
+
+  /* Qué mide el score, según el TIPO. Enumerar "fundamentales" bajo el score de
+     una cripto era falso: esa rama del cálculo no usa P/E ni márgenes porque no
+     existen. El número es el mismo de Acción del Día en los tres casos. */
+  function _notaScore(d) {
+    const t = d.tipo_activo || 'accion';
+    if (t === 'crypto') {
+      return 'Score de criptomoneda (momentum, retorno, Sharpe, volatilidad y liquidez). '
+           + 'No usa fundamentales de empresa porque no existen para este activo. '
+           + 'El mismo número que ves en el ranking.';
+    }
+    if (t === 'etf') {
+      return 'Score de ETF (Sharpe, estabilidad, retorno y participación de mercado). '
+           + 'No usa fundamentales de empresa: un fondo replica una canasta, no opera un negocio. '
+           + 'El mismo número que ves en el ranking.';
+    }
+    return 'Score canónico (alpha CAPM, Sharpe, volatilidad, fundamentales, momentum). '
+         + 'El mismo número que ves en Acción del Día y en el ranking.';
+  }
+
+  /* Rótulo de tipo bajo el nombre. "Sector · Industria" es de empresa; para un
+     ETF se dice su categoría y para una cripto, que es cripto. */
+  function _encabezadoTipo(d) {
+    const t = d.tipo_activo || 'accion';
+    if (t === 'crypto') return 'Criptomoneda';
+    if (t === 'etf') {
+      const cat = ((d.perfil || {}).identidad || {}).categoria;
+      const ges = ((d.perfil || {}).identidad || {}).gestora;
+      return ['ETF / fondo cotizado', cat, ges].filter(Boolean).join(' · ');
+    }
+    return [d.sector, d.industria].filter(Boolean).join(' · ') || 'Acción';
+  }
+
   function render(d) {
     const cont = $('an-resultado');
     cont.classList.remove('hidden');
@@ -8727,7 +9141,7 @@ const Analizador = (() => {
         ${(d.avisos && d.avisos.length) ? `<div class="mb-4 rounded-lg border border-accent-amber/30 bg-accent-amber/10 px-3 py-2 text-[12px] text-accent-amber leading-relaxed">${d.avisos.map(a => escapeHtml(a)).join('<br>')}</div>` : ''}
         <div class="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <p class="text-xs uppercase tracking-wider text-zinc-500">${escapeHtml(d.sector || '—')} · ${escapeHtml(d.industria || '—')}</p>
+            <p class="text-xs uppercase tracking-wider text-zinc-500">${escapeHtml(_encabezadoTipo(d))}</p>
             <h3 class="text-2xl font-semibold text-zinc-100 mt-1">${escapeHtml(d.nombre || d.ticker)}</h3>
             <p class="text-sm text-zinc-500 font-mono mt-0.5">${escapeHtml(d.ticker)} · ${escapeHtml(moneda)}
               <button id="an-watch-btn" title="Seguir en tu lista" class="ml-2 text-2xl align-middle leading-none ${enWatchlist(d.ticker) ? 'text-accent-amber' : 'text-zinc-600'} hover:text-accent-amber">${enWatchlist(d.ticker) ? '★' : '☆'}</button>
@@ -8752,7 +9166,7 @@ const Analizador = (() => {
           <ul class="space-y-1.5">
             ${d.score_razones.map(r => `<li class="flex gap-2 items-start text-xs text-zinc-300"><span class="text-accent-green mt-0.5">+</span><span>${escapeHtml(r)}</span></li>`).join('')}
           </ul>
-          <p class="text-[10px] text-zinc-600 mt-3">Score canónico (alpha CAPM, Sharpe, volatilidad, fundamentales, momentum). El mismo número que ves en Acción del Día y en el ranking.</p>
+          <p class="text-[10px] text-zinc-600 mt-3">${escapeHtml(_notaScore(d))}</p>
         </div>` : `
         <!-- Fallback: desglose del score propio (tickers fuera del universo) -->
         <div class="mt-5 pt-5 border-t border-surface-border">
@@ -8923,9 +9337,20 @@ const Analizador = (() => {
     const smlHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Valoración SML · CAPM</h4><div id="an-sml-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
     const estHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Consenso de analistas</h4><div id="an-estimados-host" class="text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-violet-500/40 border-t-violet-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando consenso…</div></div>`;
     const ddHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Análisis profundo · Deep Dive</h4><p class="text-[11px] text-zinc-500 mb-3">Comparativa contra peers + narrativa. Tarda unos segundos (descarga datos en vivo).</p><div id="an-deepdive-host"><button id="an-dd-load" class="text-[12px] font-semibold text-accent-blue border border-accent-blue/40 hover:bg-accent-blue/10 rounded-lg px-4 py-2 transition">Ver análisis profundo →</button></div></div>`;
-    cont.innerHTML = headerHTML + fundHTML + chartHTML + peerHTML
-                   + `<div id="an-dashboard-host"><div class="bg-surface border border-surface-border rounded-2xl p-5 text-center text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando dashboard financiero…</div></div>`
-                   + smlHTML + estHostHTML + ddHostHTML;
+    // ── Ensamblado según el TIPO de activo ────────────────────────────────
+    // Para ETF y cripto se sustituyen los bloques de empresa (fundamentales,
+    // peers por P/S, SML/CAPM, consenso de analistas, dashboard financiero,
+    // deep dive) por el perfil propio del tipo. No se "ocultan" con datos
+    // vacíos: no se piden y no se pintan.
+    const _tipo = d.tipo_activo || 'accion';
+    if (_tipo === 'etf' || _tipo === 'crypto') {
+      cont.innerHTML = headerHTML + chartHTML
+                     + (_tipo === 'etf' ? _perfilETF(d) : _perfilCripto(d));
+    } else {
+      cont.innerHTML = headerHTML + fundHTML + chartHTML + peerHTML
+                     + `<div id="an-dashboard-host"><div class="bg-surface border border-surface-border rounded-2xl p-5 text-center text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando dashboard financiero…</div></div>`
+                     + smlHTML + estHostHTML + ddHostHTML;
+    }
     cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     _renderPrecioChart(d.ticker, '1A');
@@ -8943,13 +9368,15 @@ const Analizador = (() => {
       _wb.classList.toggle('text-zinc-600', !activo);
     });
 
-    if (window.renderSmlEn) window.renderSmlEn(d.ticker, 'an-sml-host');
-    cargarEstimados(d.ticker);
-    const _ddBtn = $('an-dd-load');
-    if (_ddBtn) _ddBtn.addEventListener('click', () => {
-      if (window.renderDeepDiveEn) window.renderDeepDiveEn(d.ticker, 'an-deepdive-host');
-    });
-    cargarDashboardFinanciero(d.ticker);
+    if (_tipo === 'accion') {
+      if (window.renderSmlEn) window.renderSmlEn(d.ticker, 'an-sml-host');
+      cargarEstimados(d.ticker);
+      const _ddBtn = $('an-dd-load');
+      if (_ddBtn) _ddBtn.addEventListener('click', () => {
+        if (window.renderDeepDiveEn) window.renderDeepDiveEn(d.ticker, 'an-deepdive-host');
+      });
+      cargarDashboardFinanciero(d.ticker);
+    }
   }
 
   // ============================================================
@@ -9039,10 +9466,10 @@ const Analizador = (() => {
   // una segunda identidad cromática dentro de la app.
   const _palette = {
     gold:       MP_GRAFICA.sello,
-    sage:       MP_GRAFICA.papel3,
+    sage:       MP_GRAFICA.tinta3,
     terracotta: MP_GRAFICA.baja,
     slate:      MP_GRAFICA.reglaFuerte,
-    mauve:      MP_GRAFICA.papel2,
+    mauve:      MP_GRAFICA.tinta2,
     posGreen:   MP_GRAFICA.alza,
     negRed:     MP_GRAFICA.baja,
   };
@@ -9069,13 +9496,13 @@ const Analizador = (() => {
     else                        valTxt = _fmtMoney(v, moneda);
     let yoyHTML = '';
     if (yoy != null && !isNaN(yoy)) {
-      const cls = yoy >= 0 ? 'text-[#D79A3C]' : 'text-[#DB7B68]';
+      const cls = yoy >= 0 ? 'text-[color:var(--sello)]' : 'text-[color:var(--baja)]';
       const arrow = yoy >= 0 ? '▲' : '▼';
       yoyHTML = `<span class="${cls} text-[11px] font-semibold tabular ml-1">${arrow} ${Math.abs(yoy*100).toFixed(1)}% YoY</span>`;
     }
     return `
-      <div class="rounded-xl p-4" style="background:#131210; border:1px solid #222;">
-        <p class="text-[10px] uppercase tracking-[0.18em] font-semibold" style="color:#CFC8B8;">${escapeHtml(kpi.label)}</p>
+      <div class="rounded-xl p-4" style="background:var(--sup-panel); border:1px solid #222;">
+        <p class="text-[10px] uppercase tracking-[0.18em] font-semibold" style="color:var(--tinta-2);">${escapeHtml(kpi.label)}</p>
         <p class="text-2xl font-semibold tabular mt-1.5 text-zinc-100">${valTxt}</p>
         <div class="mt-1">${yoyHTML}</div>
       </div>
@@ -9088,17 +9515,17 @@ const Analizador = (() => {
       .map(k => _kpiCard(d.kpis[k], moneda)).join('');
 
     host.innerHTML = `
-      <section class="rounded-2xl p-6 mt-6" style="background:#0B0B0A; border:1px solid #222; max-width:100%;">
+      <section class="rounded-2xl p-6 mt-6" style="background:var(--sup); border:1px solid #222; max-width:100%;">
         <div class="flex items-baseline justify-between flex-wrap gap-2 mb-1 pb-4" style="border-bottom:1px solid #222;">
           <div>
-            <h3 style="font-family: 'Libre Baskerville', Georgia, serif; font-weight:700; color:#D79A3C;" class="text-2xl">
+            <h3 style="font-family: 'Libre Baskerville', Georgia, serif; font-weight:700; color:var(--sello);" class="text-2xl">
               Dashboard financiero
             </h3>
             <p class="text-xs text-zinc-500 mt-1" style="font-family: 'IBM Plex Sans', sans-serif;">
               Fiscal Year ${escapeHtml(d.fy_actual || '—')} · datos en ${escapeHtml(moneda)} · ${escapeHtml(d.nombre || d.ticker)}
             </p>
           </div>
-          <span class="text-[9px] uppercase tracking-[0.2em] font-semibold px-2.5 py-1 rounded" style="color:#D79A3C; background:rgba(201,169,110,0.08); border:1px solid rgba(201,169,110,0.25);">10-K resumido</span>
+          <span class="text-[9px] uppercase tracking-[0.2em] font-semibold px-2.5 py-1 rounded" style="color:var(--sello); background:rgba(156,93,18,0.08); border:1px solid rgba(156,93,18,0.25);">10-K resumido</span>
         </div>
 
         <!-- KPI ROW -->
@@ -9108,18 +9535,18 @@ const Analizador = (() => {
 
         <!-- CHARTS GRID -->
         <div class="grid lg:grid-cols-2 gap-4 mt-6">
-          <div class="rounded-xl p-5" style="background:#131210; border:1px solid #222;">
-            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:#D79A3C;" class="text-base font-bold">Revenue 5Y</h4>
+          <div class="rounded-xl p-5" style="background:var(--sup-panel); border:1px solid #222;">
+            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:var(--sello);" class="text-base font-bold">Revenue 5Y</h4>
             <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'IBM Plex Sans', sans-serif;">Crecimiento anual de ingresos.</p>
             <canvas id="dash-revenue" class="mt-3" style="max-height:220px;"></canvas>
           </div>
-          <div class="rounded-xl p-5" style="background:#131210; border:1px solid #222;">
-            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:#D79A3C;" class="text-base font-bold">Free Cash Flow 5Y</h4>
+          <div class="rounded-xl p-5" style="background:var(--sup-panel); border:1px solid #222;">
+            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:var(--sello);" class="text-base font-bold">Free Cash Flow 5Y</h4>
             <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'IBM Plex Sans', sans-serif;">Cuánto efectivo libre genera tras capex.</p>
             <canvas id="dash-fcf" class="mt-3" style="max-height:220px;"></canvas>
           </div>
-          <div class="rounded-xl p-5 lg:col-span-2" style="background:#131210; border:1px solid #222;">
-            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:#D79A3C;" class="text-base font-bold">Márgenes 5Y</h4>
+          <div class="rounded-xl p-5 lg:col-span-2" style="background:var(--sup-panel); border:1px solid #222;">
+            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:var(--sello);" class="text-base font-bold">Márgenes 5Y</h4>
             <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'IBM Plex Sans', sans-serif;">Bruto · Operativo · Neto. La eficiencia operativa en una sola gráfica.</p>
             <canvas id="dash-margenes" class="mt-3" style="max-height:240px;"></canvas>
           </div>
@@ -9151,10 +9578,10 @@ const Analizador = (() => {
       plugins: {
         legend: MP_GRAFICA.leyenda(false),
         tooltip: {
-          backgroundColor: MP_GRAFICA.tinta,
-          titleColor: MP_GRAFICA.papel,
-          bodyColor: MP_GRAFICA.papel2,
-          borderColor: MP_GRAFICA.reglaFuerte,
+          backgroundColor: MP_GRAFICA.panel,
+          titleColor: MP_GRAFICA.tinta1,
+          bodyColor: MP_GRAFICA.tinta2,
+          borderColor: MP_GRAFICA.tinta1,
           borderWidth: 1,
           cornerRadius: 2,
           displayColors: false,

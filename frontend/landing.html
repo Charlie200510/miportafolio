@@ -19,9 +19,9 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png?v=2">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
   <link rel="manifest" href="/static/manifest.webmanifest" />
-  <meta name="theme-color" content="#0B0B0A" />
+  <meta name="theme-color" content="#EFEFEC" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Mi Portafolio" />
 
   <!-- Open Graph (Facebook, LinkedIn, WhatsApp) -->
@@ -203,15 +203,18 @@
           colors: {
             /* Se conservan los nombres (ink/brand) para no tocar el markup:
                lo que cambia es la tinta a la que apuntan. */
-            ink:   { 900: '#0B0B0A', 800: '#131210', 700: '#191713', 600: '#2A2721', 500: '#4A443A' },
-            brand: { 50: '#F2EEE4', 100: '#F2EEE4', 200: '#EDB259', 300: '#D79A3C',
-                     400: '#D79A3C', 500: '#C98A2B', 600: '#C98A2B', 700: '#B4761B',
-                     800: '#8E5D14', 900: '#0B0B0A' },
-            zinc:  { 50:'#F2EEE4', 100:'#F2EEE4', 200:'#CFC8B8', 300:'#CFC8B8', 400:'#9A9284',
-                     500:'#9A9284', 600:'#847D70', 700:'#4A443A', 800:'#2A2721', 900:'#131210', 950:'#0B0B0A' },
+            /* Mismo espejo de mp-tokens.css que en index.html. La escala va
+               INVERTIDA respecto a Tailwind: los índices bajos son texto (tinta
+               oscura) y los altos superficies (papel claro). */
+            ink:   { 900: '#F4F2ED', 800: '#FDFCF8', 700: '#FFFDF8', 600: '#DFDBD0', 500: '#B9B2A2' },
+            brand: { 50: '#1A1A18', 100: '#1A1A18', 200: '#46443E', 300: '#9C5D12',
+                     400: '#9C5D12', 500: '#9C5D12', 600: '#9C5D12', 700: '#7E4A0C',
+                     800: '#7E4A0C', 900: '#F4F2ED' },
+            zinc:  { 50:'#1A1A18', 100:'#1A1A18', 200:'#46443E', 300:'#46443E', 400:'#5E5A51',
+                     500:'#5E5A51', 600:'#6F6A5C', 700:'#B9B2A2', 800:'#DFDBD0', 900:'#FDFCF8', 950:'#F4F2ED' },
             /* La landing usa un bg-amber-500/60 suelto; sin remapear la familia
                saldría el ámbar de fábrica de Tailwind en vez del sello. */
-            amber: { 300:'#D79A3C', 400:'#D79A3C', 500:'#C98A2B', 600:'#C98A2B' },
+            amber: { 300:'#9C5D12', 400:'#9C5D12', 500:'#9C5D12', 600:'#7E4A0C' },
           },
           borderRadius: { none:'0px', sm:'0px', DEFAULT:'2px', md:'2px', lg:'2px',
                           xl:'2px', '2xl':'2px', '3xl':'2px' },
@@ -225,8 +228,8 @@
   <style>
     html { scroll-behavior: smooth; }
     body {
-      background: #0B0B0A;
-      color: #CFC8B8;
+      background: transparent;   /* el degradado de página lo pinta mp-editorial en `html` */
+      color: var(--tinta-2);
     }
     .display { font-family: var(--ff-serif); }
 
@@ -237,7 +240,7 @@
     /* Botón de acción: sello sólido con tinta encima. */
     .btn-primary {
       background: var(--sello-solido);
-      color: var(--tinta);
+      color: var(--sobre-sello);
       border: 1px solid var(--sello-solido);
       transition: background-color var(--t-rapida) var(--easing);
     }
@@ -245,7 +248,7 @@
 
     /* Celdas con hairline en vez de tarjetas flotantes. */
     .card {
-      background: var(--tinta-panel);
+      background: var(--sup-panel);
       border: var(--hairline) solid var(--regla);
       border-radius: var(--radio);
     }
@@ -260,12 +263,12 @@
       font-weight: 600;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--papel-3);
+      color: var(--tinta-3);
     }
 
     .lift { border: var(--hairline) solid var(--regla); }
     .mock {
-      background: var(--tinta-panel);
+      background: var(--sup-panel);
       border: 1px solid var(--regla);
       border-radius: var(--radio);
     }
@@ -363,12 +366,12 @@
               <svg class="w-full h-full" viewBox="0 0 400 100" preserveAspectRatio="none">
                 <defs>
                   <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#D79A3C" stop-opacity="0.4"/>
-                    <stop offset="100%" stop-color="#D79A3C" stop-opacity="0"/>
+                    <stop offset="0%" stop-color="var(--sello)" stop-opacity="0.4"/>
+                    <stop offset="100%" stop-color="var(--sello)" stop-opacity="0"/>
                   </linearGradient>
                 </defs>
                 <path d="M0,80 Q50,75 100,65 T200,40 T300,25 T400,15 L400,100 L0,100 Z" fill="url(#g1)"/>
-                <path d="M0,80 Q50,75 100,65 T200,40 T300,25 T400,15" stroke="#D79A3C" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                <path d="M0,80 Q50,75 100,65 T200,40 T300,25 T400,15" stroke="var(--sello)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
               </svg>
             </div>
           </div>
@@ -571,14 +574,14 @@
             <svg class="w-full h-full" viewBox="0 0 400 100" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#D79A3C" stop-opacity="0.4"/>
-                  <stop offset="100%" stop-color="#D79A3C" stop-opacity="0"/>
+                  <stop offset="0%" stop-color="var(--sello)" stop-opacity="0.4"/>
+                  <stop offset="100%" stop-color="var(--sello)" stop-opacity="0"/>
                 </linearGradient>
               </defs>
               <path d="M0,90 Q100,80 200,55 T400,10 L400,100 L0,100 Z" fill="url(#g2)"/>
-              <path d="M0,90 Q100,80 200,55 T400,10" stroke="#D79A3C" stroke-width="2" fill="none" stroke-dasharray="0"/>
-              <path d="M0,95 Q100,88 200,72 T400,40" stroke="rgba(242,238,228,0.2)" stroke-width="1.5" fill="none" stroke-dasharray="3,3"/>
-              <path d="M0,85 Q100,72 200,40 T400,-5" stroke="rgba(242,238,228,0.2)" stroke-width="1.5" fill="none" stroke-dasharray="3,3"/>
+              <path d="M0,90 Q100,80 200,55 T400,10" stroke="var(--sello)" stroke-width="2" fill="none" stroke-dasharray="0"/>
+              <path d="M0,95 Q100,88 200,72 T400,40" stroke="rgba(26,26,24,0.2)" stroke-width="1.5" fill="none" stroke-dasharray="3,3"/>
+              <path d="M0,85 Q100,72 200,40 T400,-5" stroke="rgba(26,26,24,0.2)" stroke-width="1.5" fill="none" stroke-dasharray="3,3"/>
             </svg>
           </div>
           <div class="grid grid-cols-3 gap-2 mt-3 text-[11px] text-zinc-500">
@@ -745,24 +748,24 @@
         <div class="overflow-x-auto">
           <table class="w-full text-[13px]" style="border-collapse:collapse;">
             <thead>
-              <tr style="background:rgba(242,238,228,0.03);">
-                <th style="padding:14px 16px;text-align:left;font-weight:600;color:#9A9284;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">Feature</th>
-                <th style="padding:14px 16px;text-align:center;color:#D79A3C;font-weight:700;">Mi Portafolio</th>
-                <th style="padding:14px 16px;text-align:center;color:#9A9284;font-weight:500;">Yahoo Finance</th>
-                <th style="padding:14px 16px;text-align:center;color:#9A9284;font-weight:500;">App de tu broker</th>
-                <th style="padding:14px 16px;text-align:center;color:#9A9284;font-weight:500;">Portfolio Visualizer</th>
+              <tr style="background:rgba(26,26,24,0.03);">
+                <th style="padding:14px 16px;text-align:left;font-weight:600;color:var(--tinta-3);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">Feature</th>
+                <th style="padding:14px 16px;text-align:center;color:var(--sello);font-weight:700;">Mi Portafolio</th>
+                <th style="padding:14px 16px;text-align:center;color:var(--tinta-3);font-weight:500;">Yahoo Finance</th>
+                <th style="padding:14px 16px;text-align:center;color:var(--tinta-3);font-weight:500;">App de tu broker</th>
+                <th style="padding:14px 16px;text-align:center;color:var(--tinta-3);font-weight:500;">Portfolio Visualizer</th>
               </tr>
             </thead>
             <tbody>
-              <tr style="border-top:1px solid rgba(242,238,228,0.05);"><td style="padding:12px 16px;color:#CFC8B8;">Optimización Markowitz</td><td style="text-align:center;color:#D79A3C;">✓</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#D79A3C;">✓</td></tr>
-              <tr style="border-top:1px solid rgba(242,238,228,0.05);"><td style="padding:12px 16px;color:#CFC8B8;">ISR mexicano automático</td><td style="text-align:center;color:#D79A3C;">✓</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#D79A3C;">parcial</td><td style="text-align:center;color:#847D70;">—</td></tr>
-              <tr style="border-top:1px solid rgba(242,238,228,0.05);"><td style="padding:12px 16px;color:#CFC8B8;">Comparativa vs AFOREs</td><td style="text-align:center;color:#D79A3C;">✓</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#847D70;">—</td></tr>
-              <tr style="border-top:1px solid rgba(242,238,228,0.05);"><td style="padding:12px 16px;color:#CFC8B8;">Stress tests escenarios MX</td><td style="text-align:center;color:#D79A3C;">✓</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#D79A3C;">solo USA</td></tr>
-              <tr style="border-top:1px solid rgba(242,238,228,0.05);"><td style="padding:12px 16px;color:#CFC8B8;">Comparativa brokers MX</td><td style="text-align:center;color:#D79A3C;">✓</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#847D70;">—</td></tr>
-              <tr style="border-top:1px solid rgba(242,238,228,0.05);"><td style="padding:12px 16px;color:#CFC8B8;">Calendario fiscal SAT</td><td style="text-align:center;color:#D79A3C;">✓</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#847D70;">—</td><td style="text-align:center;color:#847D70;">—</td></tr>
-              <tr style="border-top:1px solid rgba(242,238,228,0.05);"><td style="padding:12px 16px;color:#CFC8B8;">Interfaz en español</td><td style="text-align:center;color:#D79A3C;">✓</td><td style="text-align:center;color:#D79A3C;">parcial</td><td style="text-align:center;color:#D79A3C;">✓</td><td style="text-align:center;color:#DB7B68;">solo inglés</td></tr>
-              <tr style="border-top:1px solid rgba(242,238,228,0.05);"><td style="padding:12px 16px;color:#CFC8B8;">Sin credenciales bancarias</td><td style="text-align:center;color:#D79A3C;">✓</td><td style="text-align:center;color:#D79A3C;">✓</td><td style="text-align:center;color:#DB7B68;">requiere login</td><td style="text-align:center;color:#D79A3C;">✓</td></tr>
-              <tr style="border-top:1px solid rgba(242,238,228,0.05);"><td style="padding:12px 16px;color:#CFC8B8;">Precio</td><td style="text-align:center;color:#D79A3C;font-weight:700;">$65 MXN/mes</td><td style="text-align:center;color:#D79A3C;">$0</td><td style="text-align:center;color:#D79A3C;">$0</td><td style="text-align:center;color:#DB7B68;">$30+ USD/mes</td></tr>
+              <tr style="border-top:1px solid rgba(26,26,24,0.05);"><td style="padding:12px 16px;color:var(--tinta-2);">Optimización Markowitz</td><td style="text-align:center;color:var(--sello);">✓</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--sello);">✓</td></tr>
+              <tr style="border-top:1px solid rgba(26,26,24,0.05);"><td style="padding:12px 16px;color:var(--tinta-2);">ISR mexicano automático</td><td style="text-align:center;color:var(--sello);">✓</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--sello);">parcial</td><td style="text-align:center;color:var(--tinta-4);">—</td></tr>
+              <tr style="border-top:1px solid rgba(26,26,24,0.05);"><td style="padding:12px 16px;color:var(--tinta-2);">Comparativa vs AFOREs</td><td style="text-align:center;color:var(--sello);">✓</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--tinta-4);">—</td></tr>
+              <tr style="border-top:1px solid rgba(26,26,24,0.05);"><td style="padding:12px 16px;color:var(--tinta-2);">Stress tests escenarios MX</td><td style="text-align:center;color:var(--sello);">✓</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--sello);">solo USA</td></tr>
+              <tr style="border-top:1px solid rgba(26,26,24,0.05);"><td style="padding:12px 16px;color:var(--tinta-2);">Comparativa brokers MX</td><td style="text-align:center;color:var(--sello);">✓</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--tinta-4);">—</td></tr>
+              <tr style="border-top:1px solid rgba(26,26,24,0.05);"><td style="padding:12px 16px;color:var(--tinta-2);">Calendario fiscal SAT</td><td style="text-align:center;color:var(--sello);">✓</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--tinta-4);">—</td><td style="text-align:center;color:var(--tinta-4);">—</td></tr>
+              <tr style="border-top:1px solid rgba(26,26,24,0.05);"><td style="padding:12px 16px;color:var(--tinta-2);">Interfaz en español</td><td style="text-align:center;color:var(--sello);">✓</td><td style="text-align:center;color:var(--sello);">parcial</td><td style="text-align:center;color:var(--sello);">✓</td><td style="text-align:center;color:var(--baja);">solo inglés</td></tr>
+              <tr style="border-top:1px solid rgba(26,26,24,0.05);"><td style="padding:12px 16px;color:var(--tinta-2);">Sin credenciales bancarias</td><td style="text-align:center;color:var(--sello);">✓</td><td style="text-align:center;color:var(--sello);">✓</td><td style="text-align:center;color:var(--baja);">requiere login</td><td style="text-align:center;color:var(--sello);">✓</td></tr>
+              <tr style="border-top:1px solid rgba(26,26,24,0.05);"><td style="padding:12px 16px;color:var(--tinta-2);">Precio</td><td style="text-align:center;color:var(--sello);font-weight:700;">$65 MXN/mes</td><td style="text-align:center;color:var(--sello);">$0</td><td style="text-align:center;color:var(--sello);">$0</td><td style="text-align:center;color:var(--baja);">$30+ USD/mes</td></tr>
             </tbody>
           </table>
         </div>

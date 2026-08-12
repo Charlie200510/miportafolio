@@ -584,6 +584,11 @@ def _fundamentals_ticker(ticker: str, con_estados: bool = False) -> Dict[str, An
             # True si yfinance no devolvió .info (mostramos lo que se pueda igual)
             "datos_parciales":   not bool(info),
             "_es_fondo":         _es_fondo,
+            # quoteType crudo de Yahoo (ETF / MUTUALFUND / CRYPTOCURRENCY /
+            # EQUITY). Es la señal MÁS fiable para decidir qué análisis mostrar,
+            # así que se propaga en vez de re-consultar .info aguas arriba.
+            "quote_type":        (info.get("quoteType") or "") or None,
+            "info_raw":          info if _es_fondo or (info.get("quoteType") or "").upper() == "CRYPTOCURRENCY" else None,
         })
     except Exception as e:
         out["error"] = f"{type(e).__name__}: {e}"
