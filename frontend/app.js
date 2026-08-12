@@ -3268,11 +3268,32 @@ const Periodico = (() => {
   const fmtNum = (v, d = 2) => (v == null || isNaN(v)) ? null : Number(v).toLocaleString('en-US',
     { minimumFractionDigits: d, maximumFractionDigits: d });
 
-  async function safeJson(prom) {
+  /* Petición con TOPE de tiempo. Sin él, una sola petición colgada dejaba el
+     Periódico en el esqueleto para siempre: `cargar()` espera a los cinco
+     mazos con Promise.all y `fetch` no caduca por su cuenta. Pasado el tope se
+     aborta y ese mazo degrada con su mensaje y su botón de reintento, que es
+     justo lo que debe pasar. */
+  const TOPE_MS = 12000;
+
+  async function safeJson(entrada) {
+    // Acepta una promesa ya empezada (fetch(...)) o una función que la crea.
+    // Con función se puede abortar de verdad; con promesa solo se deja de
+    // esperar, que para el caso —degradar la sección— es suficiente.
+    const conTope = (prom) => Promise.race([
+      prom,
+      new Promise((_, rechaza) => setTimeout(() => rechaza(new Error('tope de tiempo')), TOPE_MS)),
+    ]);
     try {
-      const r = await prom;
+      let r;
+      if (typeof entrada === 'function') {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), TOPE_MS);
+        try { r = await entrada(ctrl.signal); } finally { clearTimeout(t); }
+      } else {
+        r = await conTope(entrada);
+      }
       if (!r) return null;
-      try { return await r.json(); } catch { return null; }
+      try { return await conTope(r.json()); } catch { return null; }
     } catch { return null; }
   }
 
@@ -3335,11 +3356,11 @@ const Periodico = (() => {
     // son las que explican por qué se movió lo que tienes. Sin ellas, la
     // categoría "Tus posiciones" de la leyenda nunca aparecería.
     const [d, mias] = await Promise.all([
-      safeJson(fetch('/api/periodico/edicion?limite=' + MAX_TARJETAS)),
+      safeJson(s => fetch('/api/periodico/edicion?limite=' + MAX_TARJETAS, { signal: s })),
       misTickers.length
-        ? safeJson(fetch('/api/periodico/noticias-portafolio', {
+        ? safeJson(s => fetch('/api/periodico/noticias-portafolio', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tickers: misTickers }),
+            body: JSON.stringify({ tickers: misTickers }), signal: s,
           }))
         : Promise.resolve([]),
     ]);
@@ -3378,9 +3399,9 @@ const Periodico = (() => {
     if (!tickers.length) {
       return { tarjetas: [], vacio: 'Aún no sigues ninguna acción. En <b>Analizar</b>, toca el ☆ junto al ticker para verla aquí.' };
     }
-    const d = await safeJson(fetch('/api/watchlist', {
+    const d = await safeJson(s => fetch('/api/watchlist', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tickers }),
+      body: JSON.stringify({ tickers }), signal: s,
     }));
     const items = (d && d.ok && d.items) || [];
     if (!items.length) return { error: 'No pude cargar tu lista en este momento.', tarjetas: [] };
@@ -3408,8 +3429,8 @@ const Periodico = (() => {
 
   async function mazoAccion() {
     const [ad, mov] = await Promise.all([
-      safeJson(fetch('/api/periodico/accion-del-dia')),
-      safeJson(fetch('/api/periodico/top-movers?periodo=dia&n=3')),
+      safeJson(s => fetch('/api/periodico/accion-del-dia', { signal: s })),
+      safeJson(s => fetch('/api/periodico/top-movers?periodo=dia&n=3', { signal: s })),
     ]);
     const tarjetas = [];
 
@@ -3468,7 +3489,7 @@ const Periodico = (() => {
   async function mazoSector(mercados) {
     let sectores = (mercados && mercados.sectores) || [];
     if (!sectores.length) {
-      const d = await safeJson(fetch('/api/periodico/sectores?periodo=dia'));
+      const d = await safeJson(s => fetch('/api/periodico/sectores?periodo=dia', { signal: s }));
       sectores = (d && d.ok && d.sectores) || [];
     }
     if (!sectores.length) return { error: 'Los sectores no están disponibles ahora mismo.', tarjetas: [] };
@@ -3744,7 +3765,7 @@ const Periodico = (() => {
     if (!cv || state.charts[id]) return;
     if (typeof Chart === 'undefined') { host.remove(); return; }
     state.charts[id] = 'cargando';
-    const d = await safeJson(fetch(`/api/historico/${encodeURIComponent(ticker)}?rango=6M`));
+    const d = await safeJson(s => fetch(`/api/historico/${encodeURIComponent(ticker)}?rango=6M`, { signal: s }));
     if (!d || !d.ok || !Array.isArray(d.precios) || d.precios.length < 2) {
       // Sin serie no se deja un hueco ni un canvas vacío: se quita el bloque.
       delete state.charts[id];
@@ -3951,11 +3972,11 @@ const Periodico = (() => {
 
     if (forzar) {
       // Refresco manual: pide al servidor rearmar la edición del día.
-      const r = await safeJson(fetch('/api/periodico/refrescar', { method: 'POST' }));
+      const r = await safeJson(s => fetch('/api/periodico/refrescar', { method: 'POST', signal: s }));
       if (r && r.throttled && r.error && window.toast) window.toast(r.error, 'info');
     }
 
-    const mercados = await safeJson(fetch('/api/periodico/mercados'));
+    const mercados = await safeJson(s => fetch('/api/periodico/mercados', { signal: s }));
     const resultados = await Promise.all([
       mazoNoticias().catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
       mazoWatchlist().catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
@@ -4056,7 +4077,7 @@ const Periodico = (() => {
     if (!vista || vista.classList.contains('hidden')) return;
     const tickers = _tickersVisibles();
     if (!tickers.length) return;
-    const d = await safeJson(fetch(`/api/precios-live?tickers=${tickers.join(',')}`));
+    const d = await safeJson(s => fetch(`/api/precios-live?tickers=${tickers.join(',')}`, { signal: s }));
     if (!d || !d.ok || !d.precios) return;
     const hora = $('periodico-hora');
     if (hora) {
