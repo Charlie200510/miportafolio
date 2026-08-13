@@ -18,6 +18,7 @@ y NO recalcular por su cuenta.
 """
 from __future__ import annotations
 
+import math
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -164,7 +165,16 @@ def beta_canonica(
         var = rm.var()
         if not var or var == 0:
             return None
-        return float(ra.cov(rm) / var)
+        beta = float(ra.cov(rm) / var)
+        # Beta fuera de banda = artefacto de regresión, no sensibilidad real.
+        # Pasa con activos muy volátiles y poco correlacionados frente a un
+        # mercado tranquilo: la varianza del denominador es diminuta al lado de
+        # la covarianza y el cociente se dispara. El screener llegó a enseñar
+        # beta −36.34 en una cripto, que como dato no significa nada y como
+        # pantalla parece un error. Ninguna acción real pasa de ~3.
+        if not math.isfinite(beta) or abs(beta) > 5:
+            return None
+        return beta
     except Exception:
         return None
 

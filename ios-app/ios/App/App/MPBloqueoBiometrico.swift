@@ -45,7 +45,7 @@ final class MPBloqueoBiometrico {
         guard activado, velo == nil, let v = ventana else { return }
         let capa = UIView(frame: v.bounds)
         capa.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        capa.backgroundColor = UIColor(red: 0.980, green: 0.973, blue: 0.953, alpha: 1)  // #FAF8F3
+        capa.backgroundColor = UIColor(red: 0.937, green: 0.945, blue: 0.961, alpha: 1)  // #EFF1F5
 
         let candado = UIImageView(image: UIImage(systemName: "lock.fill"))
         candado.tintColor = UIColor(red: 0.612, green: 0.365, blue: 0.071, alpha: 1)     // #9C5D12

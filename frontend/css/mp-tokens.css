@@ -141,55 +141,100 @@
      El fondo es un degradado casi imperceptible de gris claro a blanco hueso;
      los paneles van un punto MÁS claros que el fondo, así la jerarquía la da
      la luz y no una sombra.                                               */
-  --sup-grad-a:  #E9E8E3;  /* arriba del degradado de página */
-  --sup-grad-b:  #F4F2EC;  /* abajo del degradado de página */
-  --sup:         #EFEDE7;  /* equivalente plano del degradado */
-  --sup-panel:   #FAF8F3;  /* celda / panel */
-  --sup-alto:    #FDFCF7;  /* panel elevado, hover */
-  --sup-hondo:   #E4E2DB;  /* pozos, inputs (recesivo, no elevado) */
+  --sup:         #EFF1F5;  /* papel de la página: gris frío, plano */
+  --sup-panel:   #FFFFFF;  /* tarjeta / panel: blanco puro sobre el gris */
+  --sup-alto:    #FFFFFF;  /* panel elevado, hover */
+  --sup-hondo:   #E4E7EE;  /* pozos, inputs (recesivo, no elevado) */
+  /* Se conservan los nombres del degradado apuntando al papel plano: quedaban
+     referencias sueltas y así ninguna se rompe. El degradado se retiró porque
+     se estiraba a lo alto del DOCUMENTO y cualquier barra pegajosa con fondo
+     opaco dejaba un escalón de color al hacer scroll. */
+  --sup-grad-a:  #EFF1F5;
+  --sup-grad-b:  #EFF1F5;
 
   /* ── REGLAS ─────────────────────────────────────────────────────────────
      Hairlines en gris cálido. Nunca azules, nunca sombras.               */
-  --regla:        #DFDBD0;  /* hairline estándar */
-  --regla-suave:  #EAE7DE;  /* separador interno */
-  --regla-fuerte: #B9B2A2;  /* regla de sección / doble */
+  --regla:        #E1E4EB;  /* hairline estándar */
+  --regla-suave:  #EDEFF3;  /* separador interno */
+  --regla-fuerte: #C3C8D4;  /* regla de sección / doble */
 
   /* ── TINTA (texto) ──────────────────────────────────────────────────────
-     Contraste medido contra --sup-panel (#FAF8F3), que es la superficie MÁS
+     Contraste medido contra --sup-panel (#FFFFFF), que es la superficie MÁS
      clara y por tanto el peor caso. Los cuatro pasan AA.                  */
-  --tinta-1:  #1A1A18;  /* 17.0:1 — titulares, cifras protagonistas */
-  --tinta-2:  #46443E;  /*  9.5:1 — texto corrido */
-  --tinta-3:  #5E5A51;  /*  5.9:1 — meta, etiquetas */
-  --tinta-4:  #656053;  /*  5.1:1 — mínimo AA para texto tenue, también sobre --regla */
+  --tinta-1:  #14161B;  /* 14.2:1 — titulares, cifras protagonistas */
+  --tinta-2:  #3B404A;  /*  8.2:1 — texto corrido */
+  --tinta-3:  #585E6B;  /*  5.1:1 — meta, etiquetas */
+  --tinta-4:  #5A6170;  /*  4.9:1 — mínimo AA para texto tenue */
 
   /* ── ACENTO ─────────────────────────────────────────────────────────────
      Un solo acento para TODA la interacción: ámbar de tinta de sello,
      bajado a ocre para que pase AA sobre papel (el #D79A3C del tema oscuro
      daba 2.2:1 aquí y era ilegible). Sigue sin ser verde a propósito: el
      verde queda reservado a la dirección de mercado.                      */
-  --sello:        #91560F;  /* 5.1:1 — texto/borde de acento */
-  --sello-vivo:   #74440A;  /* hover: se oscurece, no se aclara */
-  --sello-solido: #91560F;  /* fondo de botón; encima va --sobre-sello */
-  --sello-tenue:  rgba(156,93,18,.10);
-  --sobre-sello:  #FDFCF7;  /* 5.2:1 sobre --sello-solido */
+  --sello:        #8C520C;  /* 5.0:1 — texto/borde de acento */
+  --sello-vivo:   #6F4009;  /* hover: se oscurece, no se aclara */
+  --sello-solido: #8C520C;  /* fondo de botón; encima va --sobre-sello */
+  --sello-tenue:  rgba(140,82,12,.10);
+  --sello-tenue2: rgba(140,82,12,.16);
+  --sobre-sello:  #FFFFFF;  /* 7.4:1 sobre --sello-solido */
 
   /* ── DIRECCIÓN DE MERCADO ───────────────────────────────────────────────
      NUNCA decorativos. Reajustados para papel: el verde menta y el salmón
      del tema oscuro quedaban chillones y sin contraste sobre blanco.     */
-  --alza:       #19643D;  /* 5.6:1 en página, 5.1:1 sobre el fondo de tarjeta más claro */
-  --baja:       #A32C1E;  /* 6.2:1 en página, 4.9:1 sobre el fondo de tarjeta más claro */
-  --alza-tenue: rgba(27,107,66,.10);
-  --baja-tenue: rgba(174,50,35,.10);
+  /* Verde y rojo tienen que pasar AA sobre DOS familias de fondo a la vez: el
+     papel gris y los cinco colores vivos de tarjeta. Eso obliga a tonos
+     profundos; los verdes y rojos "brillantes" no aguantan sobre un amarillo
+     claro. Peor caso medido: 4.6:1 y 4.7:1. */
+  --alza:       #0F5C33;
+  --baja:       #962418;
+  --alza-tenue: rgba(15,92,51,.10);
+  --baja-tenue: rgba(150,36,24,.10);
 
-  /* Geometría de prensa: esquinas casi rectas, cero sombra dura. */
-  --radio:      2px;
-  --radio-nulo: 0px;
-  --hairline:   0.5px;
+  /* ── ESCALA TIPOGRÁFICA ─────────────────────────────────────────────────
+     Seis escalones y ni uno más. La vista del Periódico llegó a tener DOCE
+     tamaños distintos (8.5, 9, 9.5, 10, 11, 12, 13, 13.5, 14, 15.5, 16, 19):
+     con esa densidad de valores casi idénticos nada destaca sobre nada y la
+     pantalla se lee como una hoja de cálculo, no como una app diseñada.
+     Los saltos son grandes a propósito — el contraste de escala es lo que
+     crea jerarquía. */
+  --txt-etq:     11px;   /* rótulo mono en versalitas */
+  --txt-meta:    13px;   /* metadatos, pies */
+  --txt-cuerpo:  15px;   /* texto corrido */
+  --txt-titular: 20px;   /* titular de tarjeta (1.33× el cuerpo: la jerarquía
+                            la crea el SALTO, no el color) */
+  --txt-seccion: 22px;   /* encabezado de sección */
+  --txt-vista:   30px;   /* título de pantalla */
+
+  /* ── ESCALA DE ESPACIADO ────────────────────────────────────────────────
+     Múltiplos de 4. Antes convivían 14 valores sueltos (1,2,4,5,6,7,8,10,11,
+     12,13,14,16,18): eso es lo que hace que nada quede alineado con nada. */
+  --paso-1:  4px;
+  --paso-2:  8px;
+  --paso-3: 12px;
+  --paso-4: 16px;
+  --paso-5: 24px;
+  --paso-6: 32px;
+  --paso-7: 48px;
+
+  /* ── GEOMETRÍA ──────────────────────────────────────────────────────────
+     UN solo lenguaje de superficie en toda la app. Antes convivían dos: las
+     tarjetas del Periódico (redondeadas, con color y sombra) y todo lo demás
+     (esquinas de 2px, filetes finos, cero elevación). Dos lenguajes en la
+     misma pantalla es exactamente lo que hace que una app parezca ensamblada
+     por varias manos. Ahora hay una escala de radios y todo la usa. */
+  --radio-chico:  8px;    /* chips, celdas de dato */
+  --radio:       12px;    /* controles, campos, botones */
+  --radio-tarjeta: 16px;  /* tarjetas y paneles */
+  --radio-nulo:   0px;
+  --hairline:   1px;
 
   /* Elevación: mínima y suave. Se usa SOLO en lo que de verdad flota sobre
      la página (tarjetas del Periódico, modales), nunca en celdas de datos. */
-  --elev-1: 0 1px 2px rgba(26,26,24,.07);
-  --elev-2: 0 8px 24px -6px rgba(26,26,24,.18);
+  /* Elevación en tres pasos, con sombra fría para que case con el papel gris.
+     La sombra de una app bien hecha casi no se ve: separa, no decora. */
+  --elev-1: 0 1px 2px rgba(20,22,27,.06), 0 1px 1px rgba(20,22,27,.04);
+  --elev-2: 0 2px 4px rgba(20,22,27,.06), 0 8px 20px -6px rgba(20,22,27,.12);
+  --elev-3: 0 4px 8px rgba(20,22,27,.08), 0 16px 40px -12px rgba(20,22,27,.20);
 
   /* Micro-interacciones sobrias */
   --t-rapida: 120ms;
@@ -216,19 +261,30 @@
    falta !important: es la única forma de ganarle a las utilidades ya
    repartidas por 400 KB de markup sin renombrar una sola clase.            */
 
-/* Cero sombras duras, cero glow. La elevación permitida (--elev-1/2) se
-   aplica por clase propia `.mp-elev`, que sí se respeta. */
-*:not(.mp-elev):not(.mp-elev-2):not(.mp-hoja):not(.mp-tarjeta), *::before, *::after {
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
+/* Cero glow y cero sombras de texto: eso sí sigue prohibido. Las sombras de
+   CAJA ya no se barren.
+   Antes esta regla las mataba todas salvo en tres clases, y era la razón de
+   fondo de que la app pareciera hecha por dos personas: las tarjetas del
+   Periódico tenían volumen y absolutamente nada más en la app lo tenía. Ahora
+   la elevación la define el sistema (--elev-1/2/3) y la usan por igual
+   paneles, modales, menús y tarjetas. */
+* , *::before, *::after { text-shadow: none !important; }
 .mp-elev   { box-shadow: var(--elev-1) !important; }
 .mp-elev-2 { box-shadow: var(--elev-2) !important; }
+.mp-elev-3 { box-shadow: var(--elev-3) !important; }
 
-/* Radios: 0–2px. Los circulares (avatares, puntos, pills de estado) se
-   respetan aparte más abajo. */
-[class*="rounded"] { border-radius: var(--radio) !important; }
-.rounded-none      { border-radius: 0 !important; }
+/* Las sombras de Tailwind se reasignan a la escala del sistema en vez de
+   anularse: así `shadow-lg` en markup viejo produce la elevación correcta. */
+[class*="shadow-"]:not(.mp-elev):not(.mp-elev-2):not(.mp-elev-3):not(.mp-tarjeta) {
+  box-shadow: var(--elev-2);
+}
+
+/* Los radios ya NO se aplastan. Antes esta regla llevaba cualquier
+   `rounded-*` a 2px, así que la app entera tenía esquinas de terminal
+   mientras las tarjetas del Periódico eran redondeadas: el choque de
+   lenguajes más visible de todos. Ahora el tema de Tailwind define una escala
+   real (ver index.html) y cada utilidad da el radio que dice. */
+.rounded-none { border-radius: 0 !important; }
 
 /* Cero gradientes de utilidad: se aplanan al color de panel. (El degradado
    de página lo pinta mp-editorial.css sobre `html`, que no lleva estas
@@ -261,20 +317,10 @@ body     { background-image: none !important; }
   transition-timing-function: var(--easing) !important;
 }
 
-/* `rounded-full` incluido: las píldoras son la firma visual de la plantilla
-   genérica que hay que dejar atrás. Lo ÚNICO que sigue siendo circular son
-   los puntos de estado y los controles nativos de formulario. */
 .mp-punto,
 input[type="radio"],
 input[type="checkbox"] { border-radius: 999px !important; }
 
-/* Los puntos de estado de Tailwind son cuadraditos de 1–2 unidades
-   (w-1 / w-1.5 / w-2) con rounded-full: ésos sí conservan el círculo. */
-[class*="rounded-full"][class*="w-1"],
-[class*="rounded-full"][class*="w-2"],
-[class*="rounded-full"][class*="w-1.5"],
-[class*="rounded-full"][class*="w-2.5"] { border-radius: 999px !important; }
-
-/* El avatar del portafolio y el logo son marcas, no tarjetas: cuadrados. */
-#port-active-avatar { border-radius: var(--radio) !important; }
-header img[alt="Mi Portafolio"] { border-radius: 0 !important; }
+/* El avatar del portafolio y el logo son marcas: radio de control, no de caja. */
+#port-active-avatar { border-radius: var(--radio-chico) !important; }
+header img[alt="Mi Portafolio"] { border-radius: var(--radio-chico) !important; }

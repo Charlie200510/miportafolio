@@ -56,7 +56,7 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
 
         // Tinta y papel: los mismos tokens que mp-tokens.css, para que la barra
         // nativa no se sienta pegada encima de otra app.
-        let fondo   = UIColor(red: 0.980, green: 0.973, blue: 0.953, alpha: 1)  // #FAF8F3
+        let fondo   = UIColor(red: 0.937, green: 0.945, blue: 0.961, alpha: 1)  // #EFF1F5
         let sello   = UIColor(red: 0.612, green: 0.365, blue: 0.071, alpha: 1)  // #9C5D12
         let tinta3  = UIColor(red: 0.369, green: 0.353, blue: 0.318, alpha: 1)  // #5E5A51
         let regla   = UIColor(red: 0.875, green: 0.859, blue: 0.816, alpha: 1)  // #DFDBD0

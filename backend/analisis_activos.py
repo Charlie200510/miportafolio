@@ -86,6 +86,28 @@ def _redondear(v: Optional[float], n: int = 4) -> Optional[float]:
     return None if v is None else round(v, n)
 
 
+def _por_fecha(s: Optional[pd.Series]) -> Optional[pd.Series]:
+    """Indexa la serie por FECHA, sin hora ni zona horaria.
+
+    Las dos fuentes de precios no coinciden en formato: el universo local viene
+    tz-naive y Yahoo devuelve tz-aware (America/Mexico_City para la BMV,
+    America/New_York para EE.UU.). Cruzar una con otra levantaba
+    "Cannot join tz-naive with tz-aware", que `_beta_corr` se tragaba y
+    reportaba como n=0 — o sea, la beta y la correlación de un ETF contra su
+    índice desaparecían del análisis sin dejar rastro de por qué. Normalizar
+    aquí lo arregla para todos los consumidores a la vez."""
+    if s is None:
+        return None
+    try:
+        idx = pd.DatetimeIndex(s.index)
+        if idx.tz is not None:
+            idx = idx.tz_localize(None)
+        s = pd.Series(s.values, index=idx.normalize(), name=getattr(s, "name", None))
+        return s[~s.index.duplicated(keep="last")]
+    except Exception:
+        return s
+
+
 def _serie(ticker: str, period: str = "5y") -> Optional[pd.Series]:
     """Cierres diarios. Primero el universo local (instantáneo), luego Yahoo."""
     try:
@@ -94,17 +116,68 @@ def _serie(ticker: str, period: str = "5y") -> Optional[pd.Series]:
         if df is not None and ticker in df.columns:
             s = df[ticker].dropna()
             if len(s) > 30:
-                return s
+                return _por_fecha(s)
     except Exception:
         pass
     try:
         import sml as _sml
         s = _sml._descargar_close(ticker, period=period)
         if s is not None and len(s) > 30:
-            return s.dropna()
+            return _por_fecha(s.dropna())
     except Exception:
         pass
     return None
+
+
+def _primer_dia(ticker: str):
+    """Primer día con precio. Para los ETF de la BMV es la única forma de saber
+    desde cuándo existe el producto: Yahoo no expone su fecha de constitución."""
+    try:
+        h = yf.Ticker(ticker).history(period="max")
+        if h is not None and not h.empty:
+            return h.index.min().to_pydatetime().astimezone(timezone.utc)
+    except Exception:
+        pass
+    return None
+
+
+def _volumen_medio(ticker: str, dias: int = 252) -> Optional[float]:
+    """Volumen diario promedio del último año, del historial."""
+    try:
+        h = yf.Ticker(ticker).history(period="1y")
+        if h is not None and not h.empty and "Volume" in h:
+            v = h["Volume"].tail(dias)
+            v = v[v > 0]
+            if len(v) > 20:
+                return float(round(v.mean()))
+    except Exception:
+        pass
+    return None
+
+
+def _yield_calculado(tk: "yf.Ticker") -> Optional[float]:
+    """Dividendos repartidos en los últimos 12 meses / precio. Cuando Yahoo no
+    publica el campo `yield` —todos los ETF de la BMV— este cálculo sí existe,
+    porque los pagos individuales sí están en el historial."""
+    try:
+        div = tk.dividends
+        if div is None or len(div) == 0:
+            return None
+        ult = div[div.index >= (div.index.max() - pd.Timedelta(days=370))]
+        pagado = float(ult.sum())
+        if pagado <= 0:
+            return None
+        # Si el último pago es de hace más de año y medio, el fondo dejó de
+        # repartir y publicar un yield sería engañoso.
+        if (pd.Timestamp.now(tz=div.index.tz) - div.index.max()).days > 550:
+            return None
+        h = tk.history(period="5d")
+        precio = float(h["Close"].iloc[-1]) if h is not None and not h.empty else None
+        if not precio:
+            return None
+        return pagado / precio
+    except Exception:
+        return None
 
 
 def _rets(s: pd.Series) -> pd.Series:
@@ -175,7 +248,10 @@ def _beta_corr(s: pd.Series, m: pd.Series) -> Dict[str, Optional[float]]:
         var = float(b.var())
         beta = float(a.cov(b) / var) if var else None
         return {"beta": beta, "correlacion": float(a.corr(b)), "n": len(comun)}
-    except Exception:
+    except Exception as exc:
+        # Sin esta línea, un desajuste de índices se veía igual que "no hay
+        # datos suficientes" y el bloque desaparecía sin explicación.
+        print(f"[analisis] beta/correlación falló: {type(exc).__name__}: {exc}", flush=True)
         return {"beta": None, "correlacion": None, "n": 0}
 
 
@@ -224,16 +300,22 @@ _SIC_CONOCIDOS = {
 # NO se cura el TER: ese sí cambia, y preferimos omitir el dato a inventarlo.
 _CATALOGO_ETF = {
     "NAFTRAC.MX": {"indice": "S&P/BMV IPC", "gestora": "BlackRock (iShares)",
-                   "categoria": "Renta variable México · mercado amplio"},
+                   "categoria": "Renta variable México · mercado amplio",
+                   "simbolo_indice": "^MXX",
+                   "figura_legal": "Trac (fondo de inversión en instrumentos de "
+                                   "renta variable, listado en la BMV)"},
     "MEXTRAC.MX": {"indice": "S&P/BMV IPC", "gestora": "BlackRock (iShares)",
-                   "categoria": "Renta variable México · mercado amplio"},
-    "VOO":  {"indice": "S&P 500"},
-    "SPY":  {"indice": "S&P 500"},
-    "IVV":  {"indice": "S&P 500"},
-    "QQQ":  {"indice": "Nasdaq-100"},
+                   "categoria": "Renta variable México · mercado amplio",
+                   "simbolo_indice": "^MXX",
+                   "figura_legal": "Trac (fondo de inversión en instrumentos de "
+                                   "renta variable, listado en la BMV)"},
+    "VOO":  {"indice": "S&P 500", "simbolo_indice": "^GSPC"},
+    "SPY":  {"indice": "S&P 500", "simbolo_indice": "^GSPC"},
+    "IVV":  {"indice": "S&P 500", "simbolo_indice": "^GSPC"},
+    "QQQ":  {"indice": "Nasdaq-100", "simbolo_indice": "^NDX"},
     "VTI":  {"indice": "CRSP US Total Market"},
-    "IWM":  {"indice": "Russell 2000"},
-    "DIA":  {"indice": "Dow Jones Industrial Average"},
+    "IWM":  {"indice": "Russell 2000", "simbolo_indice": "^RUT"},
+    "DIA":  {"indice": "Dow Jones Industrial Average", "simbolo_indice": "^DJI"},
     "VXUS": {"indice": "FTSE Global All Cap ex US"},
     "VEA":  {"indice": "FTSE Developed All Cap ex US"},
     "VWO":  {"indice": "FTSE Emerging Markets All Cap"},
@@ -242,6 +324,24 @@ _CATALOGO_ETF = {
     "BND":  {"indice": "Bloomberg US Aggregate Float Adjusted"},
     "AGG":  {"indice": "Bloomberg US Aggregate Bond"},
     "HYG":  {"indice": "iBoxx USD Liquid High Yield"},
+    # Sectoriales del S&P 500 (Select Sector SPDR). Aparecen arriba en el
+    # screener y sin esto la columna de nombre repetía el ticker.
+    "XLK":  {"indice": "S&P 500 · Tecnología"},
+    "XLF":  {"indice": "S&P 500 · Financiero"},
+    "XLI":  {"indice": "S&P 500 · Industrial"},
+    "XLE":  {"indice": "S&P 500 · Energía"},
+    "XLV":  {"indice": "S&P 500 · Salud"},
+    "XLY":  {"indice": "S&P 500 · Consumo discrecional"},
+    "XLP":  {"indice": "S&P 500 · Consumo básico"},
+    "XLU":  {"indice": "S&P 500 · Servicios públicos"},
+    "XLB":  {"indice": "S&P 500 · Materiales"},
+    "XLRE": {"indice": "S&P 500 · Bienes raíces"},
+    "XLC":  {"indice": "S&P 500 · Comunicaciones"},
+    "ACWI": {"indice": "MSCI ACWI (mundo desarrollado + emergente)"},
+    "VT":   {"indice": "FTSE Global All Cap"},
+    "GLD":  {"indice": "Precio del oro (lingote físico)"},
+    "IAU":  {"indice": "Precio del oro (lingote físico)"},
+    "SLV":  {"indice": "Precio de la plata (lingote físico)"},
 }
 
 _SECTOR_ES = {
@@ -294,18 +394,33 @@ def analisis_etf(ticker: str, info: Dict[str, Any], moneda: str = "USD") -> Dict
     _poner(ident, "indice", cur.get("indice"))
     _poner(ident, "categoria", fo.get("categoryName") or info.get("category") or cur.get("categoria"))
     _poner(ident, "gestora", fo.get("family") or info.get("fundFamily") or cur.get("gestora"))
-    _poner(ident, "figura_legal", fo.get("legalType") or info.get("legalType"))
+    _poner(ident, "figura_legal", fo.get("legalType") or info.get("legalType")
+           or cur.get("figura_legal"))
     _poner(ident, "moneda", info.get("currency") or moneda)
-    _poner(ident, "bolsa", info.get("exchange"))
-    # Antigüedad
+    # Yahoo reporta "YHD" —una bolsa fantasma— para varios instrumentos de la
+    # BMV. Enseñarle eso al usuario no informa de nada; el sufijo .MX sí dice
+    # con certeza dónde cotiza.
+    _bolsa = info.get("exchange")
+    if ticker.upper().endswith(".MX"):
+        _bolsa = "BMV"
+    elif _bolsa in ("YHD", "", None):
+        _bolsa = None
+    _poner(ident, "bolsa", _bolsa)
+    # Antigüedad. Yahoo solo trae fundInceptionDate para los ETF de EE.UU.; para
+    # los de la BMV se deduce del primer día con precio, que es un hecho
+    # verificable (desde cuándo cotiza) y no una estimación.
     inicio = _num(info.get("fundInceptionDate"))
+    d0 = None
     if inicio:
         try:
             d0 = datetime.fromtimestamp(inicio, tz=timezone.utc)
-            _poner(ident, "inicio", d0.date().isoformat())
-            _poner(ident, "anios_operando", round((datetime.now(timezone.utc) - d0).days / 365.25, 1))
         except Exception:
-            pass
+            d0 = None
+    if d0 is None:
+        d0 = _primer_dia(ticker)
+    if d0 is not None:
+        _poner(ident, "inicio", d0.date().isoformat())
+        _poner(ident, "anios_operando", round((datetime.now(timezone.utc) - d0).days / 365.25, 1))
     _poner(out, "identidad", ident)
 
     # ── Costo y tamaño ───────────────────────────────────────────────────
@@ -333,6 +448,11 @@ def analisis_etf(ticker: str, info: Dict[str, Any], moneda: str = "USD") -> Dict
     dy = _num(info.get("yield")) or _num(info.get("trailingAnnualDividendYield"))
     if dy is not None and dy > 1:      # a veces viene en porcentaje
         dy = dy / 100.0
+    if dy is None:
+        # Calculado: lo repartido en los últimos 12 meses entre el precio. Es lo
+        # mismo que publica Yahoo, pero sale de los pagos reales, así que existe
+        # también para los ETF de la BMV, donde ese campo viene vacío.
+        dy = _yield_calculado(tk)
     _poner(reparto, "dividend_yield", _redondear(dy))
     _poner(reparto, "frecuencia", _frecuencia_dividendos(tk))
     _poner(out, "reparto", reparto)
@@ -381,13 +501,20 @@ def analisis_etf(ticker: str, info: Dict[str, Any], moneda: str = "USD") -> Dict
     if s is not None and len(s) > 60:
         import metricas_canonicas as _mc
         rf = _mc.rf_para(ticker)
-        bench_tk = _mc.benchmark_para(ticker)
+        # Contra su ÍNDICE, no contra un ETF hermano: la sección promete
+        # "fidelidad de la réplica" y eso solo se mide contra lo replicado.
+        # benchmark_para() devuelve el propio ticker para NAFTRAC —es el proxy
+        # del mercado mexicano— y entonces el bloque entero se omitía.
+        bench_tk = cur.get("simbolo_indice") or _mc.benchmark_para(ticker)
         riesgo: Dict[str, Any] = {}
         _poner(riesgo, "volatilidad_anual", _redondear(_vol_anual(s)))
         _poner(riesgo, "max_drawdown", _redondear(_max_drawdown(s)))
         _poner(riesgo, "sharpe", _redondear(_sharpe(s, rf), 2))
         _poner(riesgo, "sortino", _redondear(_sortino(s, rf), 2))
-        _poner(riesgo, "liquidez_volumen_prom", _num(info.get("averageVolume")))
+        _poner(riesgo, "liquidez_volumen_prom",
+               _num(info.get("averageVolume"))
+               or _num(info.get("averageDailyVolume3Month"))
+               or _volumen_medio(ticker))
         if bench_tk != ticker:
             m = _serie(bench_tk, period="5y")
             if m is not None:
@@ -438,6 +565,15 @@ def analisis_etf(ticker: str, info: Dict[str, Any], moneda: str = "USD") -> Dict
     mx: Dict[str, Any] = {}
     if ticker.upper().endswith(".MX"):
         mx["cotiza"] = "BMV (mercado local)"
+        # El costo anual y la cartera de los ETF locales no están en ninguna
+        # fuente pública automatizable: Yahoo no tiene datos de fondo para la
+        # BMV. En vez de dejar un hueco mudo —o peor, inventar la cifra— se
+        # dice dónde está el dato.
+        mx["donde_ver_costo"] = (
+            "El costo anual (TER) y la lista de posiciones de los ETF locales no "
+            "se publican en las fuentes de datos que alimentan esta app. Vienen en "
+            "la ficha técnica del emisor y en el prospecto, que están en el sitio "
+            "de la gestora y en la ficha del instrumento en bmv.com.mx.")
         mx["nota"] = ("Al cotizar en la BMV en pesos, la compraventa se liquida en "
                       "moneda local. La ganancia por venta de acciones y ETFs en bolsa "
                       "mexicana causa el ISR del 10% del Artículo 129 de la LISR, que "

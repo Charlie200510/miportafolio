@@ -29,11 +29,11 @@ const API_BASE = (window.MP_API_BASE || '').replace(/\/$/, '');
 //    · valor que consume JS        →  MP_COLOR.x     (Chart.js, canvas)
 const MP_COLOR = (() => {
   const respaldo = {
-    sup: '#EFEDE7', supPanel: '#FAF8F3', supAlto: '#FDFCF7', supHondo: '#E4E2DB',
-    regla: '#DFDBD0', reglaSuave: '#EAE7DE', reglaFuerte: '#B9B2A2',
-    tinta1: '#1A1A18', tinta2: '#46443E', tinta3: '#5E5A51', tinta4: '#656053',
-    sello: '#91560F', selloVivo: '#74440A', selloSolido: '#91560F', sobreSello: '#FDFCF7',
-    alza: '#19643D', baja: '#A32C1E',
+    sup: '#EFF1F5', supPanel: '#FFFFFF', supAlto: '#FFFFFF', supHondo: '#E4E7EE',
+    regla: '#E1E4EB', reglaSuave: '#EDEFF3', reglaFuerte: '#C3C8D4',
+    tinta1: '#14161B', tinta2: '#3B404A', tinta3: '#585E6B', tinta4: '#5A6170',
+    sello: '#8C520C', selloVivo: '#6F4009', selloSolido: '#8C520C', sobreSello: '#FFFFFF',
+    alza: '#0F5C33', baja: '#962418',
   };
   const tokens = {
     sup: '--sup', supPanel: '--sup-panel', supAlto: '--sup-alto', supHondo: '--sup-hondo',
@@ -3204,15 +3204,22 @@ window.iniciarComparar = (function () {
 //  family de color (nunca negro puro ni gris genérico encima del color), más un
 //  borde un punto más oscuro que sirve de canto a la tarjeta. Contraste
 //  tinta/fondo medido:
-//    mx 6.4:1 · global 8.3:1 · cripto 7.6:1 · posicion 7.9:1 · macro 7.3:1
+//    mx 7.2:1 · global 7.8:1 · cripto 7.7:1 · posicion 7.5:1 · macro 7.2:1
 //  El verde y el rojo de mercado (--alza/--baja) también pasan AA sobre las
 //  cinco superficies: 4.7:1 en el peor caso.
+//
+//  `suave` es el texto secundario de la tarjeta (rótulo de categoría, fuente,
+//  hora). Es un color REAL y no `tinta` con opacity: la opacidad compone contra
+//  el fondo y hundía esos rótulos a 2.9:1 —el contraste medido arriba es de la
+//  tinta pura, que es justo lo que hizo que el fallo pasara desapercibido—.
+//  Cada `suave` está medido ≥5:1 contra su propio `sup`:
+//    mx 5.1:1 · global 5.0:1 · cripto 5.1:1 · posicion 5.1:1 · macro 5.1:1
 const MP_CATEGORIAS = {
-  mx:       { etq: 'BMV · IPC',      leyenda: 'Mercado mexicano',  sup: '#BFE0C8', tinta: '#14532D', borde: '#A6D0B2' },
-  global:   { etq: 'Global',         leyenda: 'Mercados globales', sup: '#C3D8F0', tinta: '#17375C', borde: '#A9C6E6' },
-  cripto:   { etq: 'Cripto',         leyenda: 'Criptomonedas',     sup: '#F4DEB0', tinta: '#5E3A08', borde: '#E4C88E' },
-  posicion: { etq: 'Tus posiciones', leyenda: 'Tus posiciones',    sup: '#D9CCEC', tinta: '#3E2A6B', borde: '#C4B2E0' },
-  macro:    { etq: 'Macro y tasas',  leyenda: 'Macro y tasas',     sup: '#E0DBC0', tinta: '#4A4118', borde: '#CCC5A4' },
+  mx:       { etq: 'BMV · IPC',      leyenda: 'Mercado mexicano',  sup: '#A8DCB8', tinta: '#0E4526', suave: '#255C3C', borde: '#8BCB9F' },
+  global:   { etq: 'Global',         leyenda: 'Mercados globales', sup: '#AECDF2', tinta: '#123457', suave: '#305174', borde: '#8FB8E8' },
+  cripto:   { etq: 'Cripto',         leyenda: 'Criptomonedas',     sup: '#F6D28C', tinta: '#573305', suave: '#724E1C', borde: '#E8BE6B' },
+  posicion: { etq: 'Tus posiciones', leyenda: 'Tus posiciones',    sup: '#CFBBEE', tinta: '#382461', suave: '#533F7A', borde: '#BBA2E4' },
+  macro:    { etq: 'Macro y tasas',  leyenda: 'Macro y tasas',     sup: '#F5C7A3', tinta: '#5A3212', suave: '#714828', borde: '#EAB183' },
 };
 window.MP_CATEGORIAS = MP_CATEGORIAS;
 
@@ -3269,6 +3276,20 @@ const Periodico = (() => {
     } catch { return ''; }
   }
 
+  /* "2026-08-12" → "miércoles 12 de agosto". La fecha ISO es un dato de
+     máquina; en pantalla va la fecha como la diría una persona. */
+  function _fechaLarga(iso) {
+    try {
+      const [a, m, d] = String(iso).split('-').map(Number);
+      const t = new Date(a, m - 1, d).toLocaleDateString('es-MX',
+        { weekday: 'long', day: 'numeric', month: 'long' });
+      // toLocaleDateString devuelve "miércoles, 12 de agosto": fuera la coma
+      // y mayúscula inicial, que es como se escribe una fecha en un titular.
+      const limpio = t.replace(',', '');
+      return limpio.charAt(0).toUpperCase() + limpio.slice(1);
+    } catch { return iso; }
+  }
+
   const fmtPct = (v) => (v == null || isNaN(v)) ? null : `${v >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`;
   const fmtNum = (v, d = 2) => (v == null || isNaN(v)) ? null : Number(v).toLocaleString('en-US',
     { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -3315,7 +3336,10 @@ const Periodico = (() => {
     try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) {}
   }
 
-  /* Lleva a la vista Analizar con el ticker cargado. */
+  /* Lleva a la vista Analizar con el ticker cargado. Se expone en window
+     porque el screener (herramientas_avanzadas.js) necesita el mismo salto:
+     encontrar un ticker en una tabla y tener que teclearlo a mano en otra
+     pantalla deja el hallazgo en nada. */
   function irAAnalizar(ticker) {
     if (!ticker) return;
     const tab = document.querySelector('.nav-tab[data-vista="analizar"]');
@@ -3325,6 +3349,7 @@ const Periodico = (() => {
       const btn = $('an-btn-analizar'); if (btn) btn.click();
     }, 120);
   }
+  window.analizarTicker = irAAnalizar;
 
   // ─────────────────────────────────────────────────────────
   //  Construcción de los mazos a partir de los endpoints QUE YA EXISTEN
@@ -3608,7 +3633,7 @@ const Periodico = (() => {
 
     return `
       <article class="mp-tarjeta" data-i="${i}"
-               style="--cat-sup:${c.sup};--cat-tinta:${c.tinta};--cat-borde:${c.borde}">
+               style="--cat-sup:${c.sup};--cat-tinta:${c.tinta};--cat-suave:${c.suave};--cat-borde:${c.borde}">
         <button class="mp-tarjeta-cara" id="${idBtn}" type="button"
                 aria-expanded="false" aria-controls="${idDet}">${cara}</button>
         <div class="mp-tarjeta-detalle" id="${idDet}" role="region"
@@ -3647,18 +3672,17 @@ const Periodico = (() => {
         || 'No hay nada que mostrar aquí ahora mismo.';
       cuerpo = `<div class="mp-vacio" style="text-align:left">
                   <p style="margin:0 0 10px">${msg}</p>
-                  <button class="mp-btn mp-btn-secundario mazo-reintentar" type="button"
-                          style="min-height:38px;font-size:12px">Reintentar</button>
+                  <button class="mp-btn mp-btn-secundario mazo-reintentar" type="button">Reintentar</button>
                 </div>`;
     }
     const nota = (res && res.recorte)
       ? `<p class="mp-firma" style="margin-top:10px">Se muestran ${MAX_TARJETAS} de ${MAX_TARJETAS + res.recorte}.</p>` : '';
     const aviso = (res && res.degradado && res.error)
-      ? `<p class="mp-firma" style="margin-top:10px;color:var(--baja)">${escapeHtml(res.error)} Estás viendo la edición anterior.</p>` : '';
+      ? `<p class="mp-firma" style="margin-top:var(--paso-3);color:var(--baja)">${escapeHtml(res.error)} Estás viendo la edición anterior.</p>` : '';
     return `
       <section class="mp-mazo-pane" id="mazo-pane-${m.clave}" role="tabpanel"
                aria-labelledby="mazo-tab-${m.clave}" tabindex="0">
-        <h3 class="mp-mazo-titulo"><span class="mp-mazo-n">${MAZOS.indexOf(m) + 1}</span> ${escapeHtml(m.titulo)}</h3>
+        <h3 class="mp-mazo-titulo">${escapeHtml(m.titulo)}</h3>
         ${cuerpo}${nota}${aviso}
       </section>`;
   }
@@ -3813,7 +3837,7 @@ const Periodico = (() => {
           x: MP_GRAFICA.ejeTiempo({ ticks: { display: false }, border: { display: false } }),
           y: MP_GRAFICA.ejeValor({
             grid: { color: MP_COLOR.rgba(tinta, 0.14), drawTicks: false, lineWidth: 1 },
-            ticks: { color: tinta, font: { family: MP_GRAFICA.mono, size: 9 }, maxTicksLimit: 4, padding: 6 },
+            ticks: { color: tinta, font: { family: MP_GRAFICA.mono, size: 11 }, maxTicksLimit: 4, padding: 6 },
           }),
         },
       }),
@@ -3902,10 +3926,34 @@ const Periodico = (() => {
     mazo.addEventListener('pointercancel', soltar);
   }
 
+  /* Marca en qué punto del recorrido va un carrusel horizontal para que el CSS
+     desvanezca el borde por el que aún queda contenido. Sin esto la fila de
+     mazos y la cintilla de mercados se ven CORTADAS a media palabra en iPhone
+     —parece un error de maquetación, no un carrusel— y nadie descubre que se
+     pueden deslizar. */
+  function _bordesDeScroll(el) {
+    if (!el) return;
+    const marcar = () => {
+      const sobra = el.scrollWidth - el.clientWidth;
+      if (sobra <= 4) { el.dataset.borde = 'no'; return; }
+      const x = el.scrollLeft;
+      el.dataset.borde = x <= 2 ? 'ini' : x >= sobra - 2 ? 'fin' : 'medio';
+    };
+    let raf = null;
+    el.addEventListener('scroll', () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = null; marcar(); });
+    }, { passive: true });
+    if (window.ResizeObserver) new ResizeObserver(marcar).observe(el);
+    marcar();
+  }
+  window.MP_bordesDeScroll = _bordesDeScroll;
+
   function _bindPista() {
     const pista = $('mazos-pista');
     const ind = $('mazos-ind');
     if (!pista || !ind) return;
+    _bordesDeScroll(ind);
 
     const sincronizar = () => {
       const panes = [...pista.querySelectorAll('.mp-mazo-pane')];
@@ -3921,8 +3969,15 @@ const Periodico = (() => {
       });
       if (mejor === state.activo) return;
       state.activo = mejor;
-      [...ind.querySelectorAll('button')].forEach((b, i) =>
-        b.setAttribute('aria-selected', String(i === mejor)));
+      const botones = [...ind.querySelectorAll('button')];
+      botones.forEach((b, i) => b.setAttribute('aria-selected', String(i === mejor)));
+      // Si el mazo activo queda fuera de la fila de píldoras, el usuario pierde
+      // la referencia de dónde está. La píldora sigue al mazo.
+      const act = botones[mejor];
+      if (act && act.scrollIntoView) {
+        act.scrollIntoView({ inline: 'nearest', block: 'nearest',
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      }
     };
     let raf = null;
     pista.addEventListener('scroll', () => {
@@ -3974,7 +4029,7 @@ const Periodico = (() => {
     pista.innerHTML = MAZOS.map(m => `
       <section class="mp-mazo-pane" id="mazo-pane-${m.clave}" role="tabpanel"
                aria-labelledby="mazo-tab-${m.clave}" tabindex="0">
-        <h3 class="mp-mazo-titulo"><span class="mp-mazo-n">${MAZOS.indexOf(m) + 1}</span> ${escapeHtml(m.titulo)}</h3>
+        <h3 class="mp-mazo-titulo">${escapeHtml(m.titulo)}</h3>
         <div class="mp-mazo" style="height:400px">
           ${[0, 1, 2, 3].map(i => `<div class="skeleton" style="position:absolute;left:0;right:0;height:120px;border-radius:14px;transform:translateY(${i * 68}px)"></div>`).join('')}
         </div>
@@ -4042,8 +4097,11 @@ const Periodico = (() => {
     const hora = $('periodico-hora');
     if (hora) {
       const ed = resultados[0].edicion;
+      // Una línea, en lenguaje normal. Antes eran dos renglones de
+      // versalitas explicando el mecanismo de caché: eso es documentación,
+      // no interfaz.
       hora.textContent = ed
-        ? `Edición del ${ed} · se arma cada mañana (hora CDMX) · toca Actualizar para forzarla`
+        ? _fechaLarga(ed)
         : `Actualizado a las ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`;
     }
     state.cargadoUnaVez = true;
@@ -4063,7 +4121,14 @@ const Periodico = (() => {
 
   function bind() {
     const btn = $('periodico-refrescar');
-    if (btn) btn.addEventListener('click', () => cargar(true));
+    if (btn) btn.addEventListener('click', async () => {
+      btn.classList.add('girando');
+      btn.disabled = true;
+      try { await cargar(true); } finally {
+        btn.disabled = false;
+        setTimeout(() => btn.classList.remove('girando'), 700);
+      }
+    });
     _medirTopbar();
     window.addEventListener('resize', _medirTopbar);
     window.addEventListener('orientationchange', () => setTimeout(_medirTopbar, 260));
@@ -4106,9 +4171,8 @@ const Periodico = (() => {
     if (!d || !d.ok || !d.precios) return;
     const hora = $('periodico-hora');
     if (hora) {
-      const ahora = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-      const estado = d.mercados_abiertos ? 'precios ~15 min' : 'mercados cerrados';
-      hora.textContent = `${hora.textContent.split(' · ')[0]} · ${estado} · ${ahora}`;
+      const base = hora.textContent.split(' · ')[0];
+      hora.textContent = `${base} · ${d.mercados_abiertos ? 'mercados abiertos' : 'mercados cerrados'}`;
     }
   }
 
@@ -7392,7 +7456,7 @@ const TuMes = (() => {
       .mes-blob { position: absolute; border-radius: 50%; filter: blur(40px); animation: mesBlob 12s infinite ease-in-out; pointer-events: none; }
       .mes-bignum { font-family: 'Source Serif 4', Georgia, serif; font-weight: 800; letter-spacing: -0.04em; line-height: .88; }
       .mes-eyebrow { font-family: 'Source Serif 4', Georgia, serif; font-weight: 600; letter-spacing: .26em; text-transform: uppercase; font-size: 11px; }
-      .mes-confetti-piece { position: absolute; width: 8px; height: 14px; animation: mesConfetti 3s ease-out forwards; border-radius: 2px; }
+      .mes-confetti-piece { position: absolute; width: 8px; height: 14px; animation: mesConfetti 3s ease-out forwards; border-radius:var(--radio); }
       .mes-tap-zone { position: absolute; top: 0; bottom: 0; width: 35%; cursor: pointer; z-index: 10; }
       .mes-modal-bg { background: radial-gradient(ellipse at top, rgba(156,93,18,.15), var(--sup-grad-b) 60%), var(--sup-grad-a); }
 
@@ -7439,14 +7503,14 @@ const TuMes = (() => {
       }
       .mes-card {
         position: relative; width: 290px; aspect-ratio: 5/7;
-        border-radius: 2px;
+        border-radius:var(--radio);
         animation: mesGlowPulse 3.5s ease-in-out infinite, mesFloatY 4s ease-in-out infinite;
         background: var(--sup);
         overflow: hidden;
       }
       .mes-card::before {
         content: ''; position: absolute; inset: -3px;
-        border-radius: 2px;
+        border-radius:var(--radio);
         background: var(--sup-panel);
         background-size: 300% 100%;
         animation: mesHolo 6s linear infinite;
@@ -7454,7 +7518,7 @@ const TuMes = (() => {
       }
       .mes-card-inner {
         position: absolute; inset: 3px;
-        border-radius: 2px;
+        border-radius:var(--radio);
         background:
           radial-gradient(ellipse at top, rgba(156,93,18,.3), transparent 60%),
           var(--sup-panel);
@@ -7463,7 +7527,7 @@ const TuMes = (() => {
       }
       .mes-card-shine {
         position: absolute; inset: 3px;
-        border-radius: 2px;
+        border-radius:var(--radio-tarjeta);
         background: var(--sup-panel);
         background-size: 200% 100%;
         animation: mesShimmer 4s linear infinite;
@@ -7480,7 +7544,7 @@ const TuMes = (() => {
         display: flex; align-items: center; justify-content: center;
         margin: 12px 0;
         background: radial-gradient(circle at center, rgba(156,93,18,.25), transparent 70%);
-        border-radius: 2px;
+        border-radius:var(--radio);
         position: relative;
       }
       .mes-card-illustration::before {
@@ -7488,7 +7552,7 @@ const TuMes = (() => {
         background: repeating-conic-gradient(from 0deg, rgba(156,93,18,.08) 0 5deg, transparent 5deg 15deg);
         animation: mesRayRotate 30s linear infinite;
         opacity: .6;
-        border-radius: 2px;
+        border-radius:var(--radio);
       }
       .mes-card-illustration svg { position: relative; z-index: 1; filter: drop-shadow(0 4px 16px rgba(156,93,18,.6)); }
       .mes-card-title {
@@ -7514,7 +7578,7 @@ const TuMes = (() => {
       .mes-card-stat {
         background: rgba(26,26,24,.05);
         border: 1px solid rgba(26,26,24,.10);
-        border-radius: 2px; padding: 6px 8px;
+        border-radius:999px; padding: 6px 8px;
         text-align: center;
       }
       .mes-card-stat-label {
@@ -7549,7 +7613,7 @@ const TuMes = (() => {
       }
       .mes-underline::after {
         content: ''; position: absolute; left: 0; right: 0; bottom: -4px;
-        height: 3px; background: currentColor; border-radius: 2px;
+        height: 3px; background: currentColor; border-radius:var(--radio);
         transform-origin: left;
         animation: mesUnderline .8s cubic-bezier(.18,.95,.32,1) .6s both;
       }
@@ -9047,6 +9111,7 @@ const Analizador = (() => {
       mx.cotiza ? `<p class="text-[13px] text-zinc-200 mb-2"><span class="mp-etq">Dónde cotiza</span><br>${escapeHtml(mx.cotiza)}</p>` : '',
       mx.nota ? `<p class="text-[13px] text-zinc-300 leading-relaxed mb-2">${escapeHtml(mx.nota)}</p>` : '',
       mx.exposicion_cambiaria ? `<p class="text-[13px] text-zinc-300 leading-relaxed">${escapeHtml(mx.exposicion_cambiaria)}</p>` : '',
+      mx.donde_ver_costo ? `<p class="text-[13px] text-zinc-300 leading-relaxed mt-2">${escapeHtml(mx.donde_ver_costo)}</p>` : '',
     ].join(''), 'Información general, no asesoría fiscal.');
 
     return html;
@@ -9813,6 +9878,11 @@ function bindNav() {
           } else {
             t.classList.add(activo ? 'text-zinc-200' : 'text-zinc-600');
           }
+          // La pestaña activa se marca con la clase `activa`, que el CSS
+          // convierte en píldora rellena. El .nav-indicator (el filete de 2px
+          // de debajo) queda apagado por CSS: dos estilos de pestaña —éste y
+          // el selector de mazos— era el choque visual más evidente.
+          t.classList.toggle('activa', activo);
           const ind = t.querySelector('.nav-indicator');
           if (ind) ind.classList.toggle('hidden', !activo);
         }
@@ -10272,6 +10342,8 @@ function fecharEdicion() {
 function renderCintillaMercados() {
   const pista = document.getElementById('mp-cintilla-pista');
   if (!pista) return;
+  const scroller = pista.closest('.mp-cintilla') || pista;
+  if (!scroller.dataset.borde && window.MP_bordesDeScroll) window.MP_bordesDeScroll(scroller);
 
   // El backend cotiza los índices vía ETF (NAFTRAC para el IPC, SPY para el
   // S&P 500) porque yfinance los sirve más consistentes que ^MXX / ^GSPC. La

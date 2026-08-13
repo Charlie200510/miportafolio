@@ -26,7 +26,7 @@
     .mp-toast {
       pointer-events: auto;
       background: var(--sup-panel); border: 1px solid var(--regla);
-      border-radius: 2px; padding: 12px 16px;
+      border-radius: var(--radio-tarjeta); padding: 12px 16px;
       display: flex; align-items: center; gap: 10px;
       font-size: 13px; color: var(--tinta-1);
       min-width: 260px; max-width: 380px;
@@ -53,7 +53,7 @@
       position: absolute; bottom: calc(100% + 6px); left: 50%;
       transform: translateX(-50%);
       background: var(--sup-panel); color: var(--tinta-1);
-      padding: 8px 12px; border-radius: 2px;
+      padding: 8px 12px; border-radius: var(--radio-chico);
       border: 1px solid var(--regla);
       font-size: 11px; line-height: 1.4;
       white-space: normal; width: max-content; max-width: 240px;
@@ -76,20 +76,20 @@
       background: var(--sup-panel);
       background-size: 200% 100%;
       animation: mpSkeletonShimmer 1.6s ease-in-out infinite;
-      border-radius: 2px;
+      border-radius: var(--radio-chico);
       display: inline-block;
       vertical-align: middle;
     }
-    .bbg-skel-line { display: block; height: 10px; margin: 6px 0; border-radius: 2px; }
+    .bbg-skel-line { display: block; height: 10px; margin: 6px 0; border-radius: 999px; }
     .bbg-skel-line.lg { height: 14px; }
     .bbg-skel-line.sm { height: 8px; }
-    .bbg-skel-pill { display:inline-block; width: 56px; height: 18px; border-radius: 2px; }
+    .bbg-skel-pill { display:inline-block; width: 56px; height: 18px; border-radius: 999px; }
 
     /* Card skeleton — caja con borde tenue + líneas internas */
     .bbg-skel-card {
       background: rgba(26,26,24,.05);
       border: 1px solid rgba(26,26,24,.05);
-      border-radius: 2px;
+      border-radius: var(--radio-tarjeta);
       padding: 14px;
       display: flex; flex-direction: column; gap: 6px;
       min-height: 86px;
@@ -100,7 +100,7 @@
     .bbg-skel-tile {
       background: rgba(26,26,24,.05);
       border: 1px solid rgba(26,26,24,.05);
-      border-radius: 2px;
+      border-radius: var(--radio-tarjeta);
       padding: 10px 12px;
       display: flex; flex-direction: column; gap: 4px;
       min-height: 64px;
@@ -112,7 +112,7 @@
       padding: 8px 12px;
       background: rgba(26,26,24,.05);
       border: 1px solid rgba(26,26,24,.05);
-      border-radius: 2px;
+      border-radius: var(--radio-tarjeta);
     }
     .bbg-tape .bbg-skel-line { margin: 0; }
 
@@ -121,7 +121,7 @@
       background: linear-gradient(90deg, rgba(26,26,24,.05) 0%, rgba(26,26,24,.10) 50%, rgba(26,26,24,.05) 100%);
       background-size: 200% 100%;
       animation: mpSkeletonShimmer 1.6s ease-in-out infinite;
-      border-radius: 2px;
+      border-radius: var(--radio-chico);
       display: inline-block;
     }
 
@@ -134,7 +134,7 @@
     #mp-tour-tooltip {
       position: fixed; z-index: 10001; max-width: 320px;
       background: var(--sup-panel); border: 1px solid var(--sello);
-      border-radius: 2px; padding: 18px 20px;
+      border-radius: var(--radio-tarjeta); padding: 18px 20px;
       box-shadow: 0 0 0 4px rgba(156,93,18,0.15), 0 24px 64px -12px rgba(26,26,24,.12);
       display: none;
     }
@@ -156,7 +156,7 @@
     }
     #mp-tour-tooltip button {
       background: var(--sello); color: var(--sup); font-weight: 600; font-size: 13px;
-      border: none; padding: 8px 16px; border-radius: 2px; cursor: pointer;
+      border: none; padding: 8px 16px; border-radius: var(--radio); cursor: pointer;
       min-height: 36px;
     }
     #mp-tour-tooltip button.skip {
@@ -170,7 +170,7 @@
       }
       #mp-tour-tooltip {
         padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
-        border-radius: 2px 16px 0 0;
+        border-radius: var(--radio-tarjeta) var(--radio-tarjeta) 0 0;
         border-top: 2px solid var(--sello);
         border-left: none; border-right: none; border-bottom: none;
       }
@@ -181,7 +181,7 @@
       }
       #mp-tour-tooltip button {
         font-size: 15px; padding: 12px 22px; min-height: 48px;
-        border-radius: 2px;
+        border-radius: var(--radio);
       }
       #mp-tour-tooltip button.skip {
         font-size: 14px;
@@ -192,7 +192,7 @@
         outline: 3px solid var(--sello) !important;
         outline-offset: 4px;
         box-shadow: none !important;
-        border-radius: 2px;
+        border-radius: var(--radio);
       }
     }
     /* Desktop: highlight con shadow trick */
@@ -200,7 +200,7 @@
       .mp-tour-highlight {
         position: relative; z-index: 9999 !important;
         box-shadow: 0 0 0 4px rgba(156,93,18,0.5), 0 0 0 9999px rgba(26,26,24,.40) !important;
-        border-radius: 2px;
+        border-radius: var(--radio);
         transition: box-shadow .3s;
       }
     }
@@ -235,7 +235,7 @@
         font-size: 16px !important;
         min-height: 44px;
         padding: 10px 12px;
-        border-radius: 2px;
+        border-radius: var(--radio);
       }
       textarea { min-height: 80px; }
       /* Inputs especiales para teclados móviles inteligentes */
@@ -266,7 +266,7 @@
       /* --- Padding mobile-first en cards --- */
       .bg-surface-card {
         padding: 14px !important;
-        border-radius: 2px !important;
+        border-radius: var(--radio-tarjeta) !important;
       }
       .bg-surface-card.p-3, .bg-surface-card.p-3\\.5 {
         padding: 12px !important;
@@ -286,8 +286,14 @@
         line-height: 1.55;
       }
       h1, .text-3xl, .text-4xl { font-size: 22px !important; line-height: 1.2 !important; }
-      h2, .text-2xl { font-size: 19px !important; line-height: 1.25 !important; }
-      h3, .text-xl  { font-size: 16px !important; line-height: 1.3 !important; }
+      /* El :not() es obligatorio. Sin él, este !important aplastaba a 19px
+         CUALQUIER h2, incluido el título de pantalla (.mp-titulo-vista, 30px):
+         "El mercado hoy" se renderizaba 2px MÁS CHICO que el nombre de un
+         ticker dentro de una tarjeta. Jerarquía invertida en el teléfono más
+         común del público. Solo 2 de los 17 h2 del markup llevan clase mp-,
+         así que la excepción no afecta a nada más. */
+      h2:not([class*="mp-"]), .text-2xl { font-size: 19px !important; line-height: 1.25 !important; }
+      h3:not([class*="mp-"]), .text-xl  { font-size: 16px !important; line-height: 1.3 !important; }
       .text-lg      { font-size: 15px !important; }
       .text-sm      { font-size: 13px !important; }
       .text-xs      { font-size: 12px !important; }
@@ -297,11 +303,11 @@
       .tabular.text-2xl, .text-2xl.tabular { font-size: 22px !important; }
 
       /* --- Spacings entre secciones --- */
-      main, .container, section {
+      main:not(:has(.mp-mazos)), .container, section:not([class*="mp-"]) {
         padding-left:  14px !important;
         padding-right: 14px !important;
       }
-      section + section { margin-top: 16px !important; }
+      section:not([class*="mp-"]) + section:not([class*="mp-"]) { margin-top: 16px !important; }
       .mt-10 { margin-top: 18px !important; }
       .mt-8  { margin-top: 14px !important; }
       .my-8  { margin-top: 14px !important; margin-bottom: 14px !important; }
@@ -405,7 +411,7 @@
       header img[alt="Mi Portafolio"], header img[alt*="Portafolio"] {
         width: 30px !important;
         height: 30px !important;
-        border-radius: 2px !important;
+        border-radius: var(--radio-chico) !important;
       }
       /* Ocultar el subtítulo "Análisis de inversión" en mobile (espacio precioso) */
       header h1 + p { display: none !important; }
@@ -465,12 +471,16 @@
         min-height: 44px !important;
       }
 
-      /* --- SECTIONS: padding lateral consistente --- */
-      .max-w-7xl {
+      /* --- SECTIONS: padding lateral consistente ---
+         Las secciones del sistema de diseño (clases mp-) quedan FUERA: su
+         espaciado sale de la escala de --paso-N y estas reglas se lo pisaban
+         con números sueltos (14/12), que es exactamente lo que hacía que el
+         Periódico se sintiera de otra app que el resto de la pantalla. */
+      .max-w-7xl:not([class*="mp-"]) {
         padding-left: 14px !important;
         padding-right: 14px !important;
       }
-      section.max-w-7xl, main > section {
+      section.max-w-7xl:not([class*="mp-"]), main > section:not([class*="mp-"]) {
         padding-top: 12px !important;
         padding-bottom: 12px !important;
       }
@@ -503,7 +513,7 @@
         z-index: 20;
         margin-left: -14px;
         margin-right: -14px;
-        border-radius: 2px 14px 0 0;
+        border-radius: var(--radio-tarjeta) var(--radio-tarjeta) 0 0;
         border-bottom: none;
         padding: 12px 14px !important;
         background: var(--sup-panel) !important;
@@ -554,10 +564,15 @@
        ==================================================================== */
     @media (max-width: 379px) {
       body { font-size: 13.5px; }
-      h1, .text-3xl, .text-4xl { font-size: 20px !important; }
-      h2, .text-2xl { font-size: 17px !important; }
+      /* Mismo :not() que arriba: los títulos del sistema (clase mp-) llevan su
+         propia escala y no deben aplastarse. */
+      h1:not([class*="mp-"]), .text-3xl, .text-4xl { font-size: 20px !important; }
+      h2:not([class*="mp-"]), .text-2xl { font-size: 17px !important; }
       .bg-surface-card { padding: 12px !important; }
-      main, .container, section {
+      /* El padding lateral NO se toca en las secciones del sistema: la pista de
+         mazos y la cabecera del Periódico ya definen su propio aire con la
+         escala de espaciado, y bajarlo a 10px descuadraba la retícula. */
+      main:not(:has(.mp-mazos)), .container, section:not([class*="mp-"]) {
         padding-left: 10px !important;
         padding-right: 10px !important;
       }
@@ -950,7 +965,7 @@
         <!-- Contenido central -->
         <div style="flex:1; display:flex; flex-direction:column; justify-content:center; padding: 40px 0;">
           <div id="mpm-icono" style="
-            width: 64px; height: 64px; border-radius: 2px;
+            width: 64px; height: 64px; border-radius: var(--radio-tarjeta);
             background: var(--sup-panel);
             display: flex; align-items: center; justify-content: center;
             font-size: 32px; margin-bottom: 24px;
@@ -972,7 +987,7 @@
           <button id="mpm-siguiente" style="
             display: block; width: 100%;
             background: var(--sello); color: var(--sup);
-            border: none; border-radius: 2px;
+            border: none; border-radius: var(--radio);
             padding: 18px;
             font-size: 17px; font-weight: 700;
             cursor: pointer;
@@ -1001,7 +1016,7 @@
       document.getElementById('mpm-siguiente').textContent = (idx === total-1) ? 'Empezar a usar la app' : 'Siguiente';
       // Dots
       const dots = TOUR_STEPS.map((_, i) =>
-        `<span style="width:${i===idx?'24':'8'}px;height:8px;border-radius:2px;background:${i===idx?MP_COLOR.sello:MP_COLOR.reglaFuerte};transition:width .25s;"></span>`
+        `<span style="width:${i===idx?'24':'8'}px;height:8px;border-radius:999px;background:${i===idx?MP_COLOR.sello:MP_COLOR.reglaFuerte};transition:width .25s;"></span>`
       ).join('');
       document.getElementById('mpm-dots').innerHTML = dots;
     }
@@ -1072,7 +1087,7 @@
     }
     @keyframes mpSplashOut { to { opacity: 0; pointer-events: none; visibility: hidden; } }
     #mp-splash img {
-      width: 80px; height: 80px; border-radius: 2px;
+      width: 80px; height: 80px; border-radius: var(--radio-tarjeta);
       box-shadow: 0 0 60px rgba(156,93,18,0.5);
       animation: mpSplashLogo .6s cubic-bezier(.18,.95,.32,1) both;
     }
@@ -1206,7 +1221,7 @@
       padding: 3px 7px;
       background: transparent;
       border: 1px solid rgba(156,93,18,0.4);
-      border-radius: 2px;
+      border-radius: 999px;
       font-family: 'IBM Plex Mono', ui-monospace, monospace;
       font-variant-numeric: tabular-nums lining-nums;
       font-size: 10.5px; font-weight: 500; line-height: 1;
@@ -1268,7 +1283,7 @@
     if (document.getElementById('mp-faq-modal')) return;
     const html = `
       <div id="mp-faq-modal" style="position:fixed;inset:0;background:rgba(26,26,24,.40);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
-        <div style="background:var(--sup);border:1px solid var(--regla);border-radius:2px;max-width:640px;width:100%;max-height:85vh;overflow-y:auto;">
+        <div style="background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);max-width:640px;width:100%;max-height:85vh;overflow-y:auto;">
           <div style="position:sticky;top:0;background:var(--sup);border-bottom:1px solid var(--regla);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;">
             <h2 style="margin:0;font-size:18px;font-weight:600;color:var(--tinta-1);">Preguntas frecuentes</h2>
             <button onclick="document.getElementById('mp-faq-modal').remove()" style="background:transparent;border:none;color:var(--tinta-4);font-size:24px;cursor:pointer;line-height:1;">×</button>
@@ -1477,7 +1492,7 @@
     if (document.getElementById('mp-gloss-modal')) return;
     const html = `
       <div id="mp-gloss-modal" style="position:fixed;inset:0;background:rgba(26,26,24,.40);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
-        <div style="background:var(--sup);border:1px solid var(--regla);border-radius:2px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;">
+        <div style="background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);max-width:680px;width:100%;max-height:85vh;overflow-y:auto;">
           <div style="position:sticky;top:0;background:var(--sup);border-bottom:1px solid var(--regla);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;">
             <div>
               <h2 style="margin:0;font-size:18px;font-weight:600;color:var(--tinta-1);">Glosario financiero</h2>
@@ -1486,7 +1501,7 @@
             <button onclick="document.getElementById('mp-gloss-modal').remove()" style="background:transparent;border:none;color:var(--tinta-4);font-size:24px;cursor:pointer;line-height:1;">×</button>
           </div>
           <div style="padding:8px 24px 24px;">
-            <input type="text" id="mp-gloss-search" placeholder="Filtrar términos..." style="width:100%;background:var(--sup-panel);border:1px solid var(--regla);color:var(--tinta-1);padding:10px 14px;border-radius:2px;font-size:13px;margin:12px 0 16px;outline:none;">
+            <input type="text" id="mp-gloss-search" placeholder="Filtrar términos..." style="width:100%;background:var(--sup-panel);border:1px solid var(--regla);color:var(--tinta-1);padding:10px 14px;border-radius:var(--radio);font-size:13px;margin:12px 0 16px;outline:none;">
             <div id="mp-gloss-list">
               ${GLOSARIO.map(item => `
                 <div class="gloss-item" style="border-bottom:1px solid var(--regla);padding:12px 0;">
@@ -1568,7 +1583,7 @@
     }
     const html = `
       <div id="mp-curso-modal" style="position:fixed;inset:0;background:rgba(26,26,24,.40);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);">
-        <div style="background:var(--sup);border:1px solid var(--sello);border-radius:2px;max-width:480px;width:100%;box-shadow:0 0 80px -20px rgba(156,93,18,0.4);">
+        <div style="background:var(--sup);border:1px solid var(--sello);border-radius:var(--radio-tarjeta);max-width:480px;width:100%;box-shadow:0 0 80px -20px rgba(156,93,18,0.4);">
           <div style="padding:16px 20px 12px;border-bottom:1px solid var(--regla);display:flex;align-items:center;justify-content:space-between;">
             <div>
               <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--sello);">Mini-curso</p>
@@ -1584,9 +1599,9 @@
             <p class="mp-curso-cuerpo" style="margin:0;font-size:14px;color:var(--tinta-3);line-height:1.65;"></p>
           </div>
           <div style="padding:14px 20px;border-top:1px solid var(--regla);display:flex;align-items:center;justify-content:space-between;">
-            <button class="mp-curso-prev" style="background:transparent;border:1px solid var(--regla);color:var(--tinta-3);padding:6px 14px;border-radius:2px;font-size:12px;cursor:pointer;">← Atrás</button>
+            <button class="mp-curso-prev" style="background:transparent;border:1px solid var(--regla);color:var(--tinta-3);padding:6px 14px;border-radius:var(--radio);font-size:12px;cursor:pointer;">← Atrás</button>
             <span class="mp-curso-pos" style="font-size:11px;color:var(--tinta-4);font-weight:600;letter-spacing:0.1em;"></span>
-            <button class="mp-curso-next" style="background:var(--sello);border:none;color:var(--sup);padding:6px 18px;border-radius:2px;font-size:12px;font-weight:600;cursor:pointer;"></button>
+            <button class="mp-curso-next" style="background:var(--sello);border:none;color:var(--sup);padding:6px 18px;border-radius:var(--radio);font-size:12px;font-weight:600;cursor:pointer;"></button>
           </div>
         </div>
       </div>`;
@@ -1602,7 +1617,7 @@
   };
   window.abrirCursosIndex = function() {
     const items = Object.entries(CURSOS).map(([id, c]) => `
-      <button onclick="document.getElementById('mp-cursos-index').remove(); window.abrirCurso('${id}')" style="display:block;width:100%;text-align:left;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:14px 16px;margin-bottom:8px;cursor:pointer;color:var(--tinta-1);transition:border-color .2s;" onmouseover="this.style.borderColor=MP_COLOR.sello" onmouseout="this.style.borderColor=MP_COLOR.regla">
+      <button onclick="document.getElementById('mp-cursos-index').remove(); window.abrirCurso('${id}')" style="display:block;width:100%;text-align:left;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:14px 16px;margin-bottom:8px;cursor:pointer;color:var(--tinta-1);transition:border-color .2s;" onmouseover="this.style.borderColor=MP_COLOR.sello" onmouseout="this.style.borderColor=MP_COLOR.regla">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div>
             <p style="margin:0;font-size:14px;font-weight:600;color:var(--tinta-1);">${c.titulo}</p>
@@ -1614,7 +1629,7 @@
     `).join('');
     document.body.insertAdjacentHTML('beforeend', `
       <div id="mp-cursos-index" style="position:fixed;inset:0;background:rgba(26,26,24,.40);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
-        <div style="background:var(--sup);border:1px solid var(--regla);border-radius:2px;max-width:440px;width:100%;padding:20px 24px;">
+        <div style="background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);max-width:440px;width:100%;padding:20px 24px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div>
               <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--sello);">Aprende rápido</p>
@@ -1662,7 +1677,7 @@
       margin-top: 8px; padding: 6px 10px;
       background: var(--sup-panel);
       border: 1px solid rgba(156,93,18,0.25);
-      border-radius: 2px; font-size: 10px; line-height: 1.4;
+      border-radius: var(--radio-chico); font-size: 10px; line-height: 1.4;
       color: var(--sello);
     `;
     let msg;

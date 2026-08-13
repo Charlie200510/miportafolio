@@ -356,7 +356,7 @@
       <div style="display:flex;flex-direction:column;gap:8px">
         <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
           placeholder="tu@correo.com"
-          style="width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:2px;padding:13px 14px;font-size:15px;color:var(--tinta-1);outline:none;box-sizing:border-box">
+          style="width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:var(--radio-tarjeta);padding:13px 14px;font-size:15px;color:var(--tinta-1);outline:none;box-sizing:border-box">
         <button data-x="email-continuar" style="${BTN_PRI}">Continuar</button>
         <p style="color:var(--tinta-4);font-size:11px;margin:2px 0 0;text-align:center">
           Te enviamos un enlace de acceso a este correo.</p>
@@ -403,10 +403,10 @@
       ${legal}`;
   }
 
-  const BTN_PRI = 'width:100%;background:var(--sello-solido);color:var(--sup);font-weight:600;border:1px solid var(--sello-solido);border-radius:2px;padding:14px;font-size:15px;cursor:pointer;font-family:inherit;letter-spacing:-.005em';
-  const BTN_SEC = 'width:100%;background:transparent;color:var(--tinta-1);font-weight:600;border:1px solid var(--regla-fuerte);border-radius:2px;padding:12px;font-size:14px;cursor:pointer;font-family:inherit';
+  const BTN_PRI = 'width:100%;background:var(--sello-solido);color:var(--sup);font-weight:600;border:1px solid var(--sello-solido);border-radius:var(--radio-tarjeta);padding:14px;font-size:15px;cursor:pointer;font-family:inherit;letter-spacing:-.005em';
+  const BTN_SEC = 'width:100%;background:transparent;color:var(--tinta-1);font-weight:600;border:1px solid var(--regla-fuerte);border-radius:var(--radio-tarjeta);padding:12px;font-size:14px;cursor:pointer;font-family:inherit';
   // font-size:16px en inputs evita el auto-zoom de iOS al enfocar.
-  const INP = 'width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:2px;padding:13px 14px;font-size:16px;color:var(--tinta-1);outline:none;box-sizing:border-box';
+  const INP = 'width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:var(--radio-tarjeta);padding:13px 14px;font-size:16px;color:var(--tinta-1);outline:none;box-sizing:border-box';
   const BTN_LINK = 'background:none;border:0;color:var(--tinta-4);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 0;width:100%';
 
   // El correo se interpola en varias plantillas de este archivo; lo escapamos
@@ -467,7 +467,7 @@
     const izquierda = o.badge
       ? `<span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
            <span>${o.nombre}</span>
-           <span style="background:rgba(26,26,24,.14);color:${destacado ? MP_COLOR.sup : MP_COLOR.sello};border:1px solid ${destacado ? 'rgba(26,26,24,.35)' : 'rgba(156,93,18,.4)'};font-family:IBM Plex Mono,ui-monospace,monospace;font-size:9px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:2px;white-space:nowrap">${o.badge}</span>
+           <span style="background:rgba(26,26,24,.14);color:${destacado ? MP_COLOR.sup : MP_COLOR.sello};border:1px solid ${destacado ? 'rgba(26,26,24,.35)' : 'rgba(156,93,18,.4)'};font-family:IBM Plex Mono,ui-monospace,monospace;font-size:9px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:999px;white-space:nowrap">${o.badge}</span>
          </span>`
       : `<span>${o.nombre}</span>`;
     const pkgAttr = (o.idx == null) ? '' : ` data-pkg="${o.idx}"`;
@@ -680,7 +680,7 @@
     _overlay.setAttribute('role', 'dialog');
     _overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(26,26,24,.55);display:flex;align-items:center;justify-content:center;padding:16px';
     _overlay.innerHTML = `
-      <div style="position:relative;max-width:420px;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:24px;color:var(--tinta-1);font-family:system-ui,-apple-system,sans-serif;max-height:90vh;overflow:auto">
+      <div style="position:relative;max-width:420px;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:24px;color:var(--tinta-1);font-family:system-ui,-apple-system,sans-serif;max-height:90vh;overflow:auto">
         ${btnCerrar}
         <div data-x="body">${vista(_email, premium, bloqueante)}</div>
       </div>`;
@@ -740,7 +740,7 @@
           <div style="display:flex;flex-direction:column;gap:8px">
             <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
               placeholder="tu@correo.com"
-              style="width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:2px;padding:13px 14px;font-size:15px;color:var(--tinta-1);outline:none;box-sizing:border-box">
+              style="width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:var(--radio-tarjeta);padding:13px 14px;font-size:15px;color:var(--tinta-1);outline:none;box-sizing:border-box">
             <button data-x="email-continuar" style="${BTN_PRI}">${esNativo() ? 'Enviarme un código' : 'Enviarme el enlace'}</button>
             <button data-x="volver" style="${BTN_SEC}">Volver a los planes</button>
           </div>`;
@@ -976,7 +976,7 @@
     _authOverlay = document.createElement('div');
     _authOverlay.setAttribute('role', 'dialog');
     _authOverlay.style.cssText = 'position:fixed;inset:0;z-index:99998;background:var(--sup);display:flex;align-items:center;justify-content:center;padding:16px';
-    _authOverlay.innerHTML = `<div style="max-width:420px;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:24px;color:var(--tinta-1);font-family:system-ui,-apple-system,sans-serif;max-height:92vh;overflow:auto"><div data-x="auth-body">${_authCuerpo('')}</div></div>`;
+    _authOverlay.innerHTML = `<div style="max-width:420px;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:24px;color:var(--tinta-1);font-family:system-ui,-apple-system,sans-serif;max-height:92vh;overflow:auto"><div data-x="auth-body">${_authCuerpo('')}</div></div>`;
     document.body.appendChild(_authOverlay);
 
     _authOverlay.addEventListener('keydown', (ev) => {
@@ -1056,7 +1056,10 @@
     if (!strip) {
       strip = document.createElement('button');
       strip.id = 'mp-trial-strip';
-      strip.style.cssText = 'display:block;width:100%;background:rgba(156,93,18,.10);border:0;border-bottom:1px solid rgba(156,93,18,.25);color:var(--sello);font-size:10.5px;font-weight:500;padding:5px 12px;text-align:center;cursor:pointer;font-family:IBM Plex Mono,ui-monospace,monospace;letter-spacing:.04em';
+      // El estilo vive en mp-editorial.css (.mp-franja-prueba). Estaba aquí en
+      // cssText con colores y tipografía a mano, que es justo lo que hacía que
+      // esta franja no se pareciera a nada más de la app.
+      strip.className = 'mp-franja-prueba';
       const hdr = document.querySelector('header');
       if (hdr) hdr.appendChild(strip); else document.body.prepend(strip);
       strip.addEventListener('click', () => abrir());

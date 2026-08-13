@@ -23,7 +23,7 @@
     if (existente) existente.remove();
     document.body.insertAdjacentHTML('beforeend', `
       <div id="${id}" style="position:fixed;inset:0;background:rgba(26,26,24,.40);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:20px;backdrop-filter:blur(6px);overflow-y:auto;-webkit-overflow-scrolling:touch;">
-        <div style="background:var(--sup);border:1px solid var(--regla);border-radius:2px;max-width:720px;width:100%;margin:20px 0;">
+        <div style="background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);max-width:720px;width:100%;margin:20px 0;">
           ${htmlContent}
         </div>
       </div>`);
@@ -47,8 +47,8 @@
           <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:var(--tinta-4);font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px;">
-          <input id="mp-dd-ticker" type="text" value="${tickerInicial}" placeholder="WALMEX.MX, AAPL, BIMBOA.MX..." style="flex:1;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:10px 12px;font-size:14px;color:var(--tinta-1);text-transform:uppercase;font-family:monospace;">
-          <button id="mp-dd-analizar" style="background:var(--sello);color:var(--tinta-1);border:none;border-radius:2px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;">Analizar →</button>
+          <input id="mp-dd-ticker" type="text" value="${tickerInicial}" placeholder="WALMEX.MX, AAPL, BIMBOA.MX..." style="flex:1;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:10px 12px;font-size:14px;color:var(--tinta-1);text-transform:uppercase;font-family:monospace;">
+          <button id="mp-dd-analizar" style="background:var(--sello);color:var(--tinta-1);border:none;border-radius:var(--radio);padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;">Analizar →</button>
         </div>
         <div id="mp-dd-resultado"></div>
       </div>`;
@@ -91,9 +91,9 @@
       return `<tr><td style="padding:6px 12px;color:var(--tinta-3);font-size:13px;">${label}</td><td style="padding:6px 12px;color:var(--tinta-1);font-weight:600;text-align:right;font-family:monospace;font-size:13px;">${v}${cmp}</td></tr>`;
     };
     const narr = (d.narrativa || []).map(n => `<li style="padding:6px 0;color:var(--tinta-2);font-size:13px;line-height:1.6;list-style:none;">${n}</li>`).join('');
-    const peers = (d.peers || []).map(p => `<span style="display:inline-block;padding:3px 8px;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;font-size:11px;color:var(--tinta-3);font-family:monospace;margin:2px;">${p.ticker}</span>`).join('');
+    const peers = (d.peers || []).map(p => `<span style="display:inline-block;padding:3px 8px;background:var(--sup-panel);border:1px solid var(--regla);border-radius:999px;font-size:11px;color:var(--tinta-3);font-family:monospace;margin:2px;">${p.ticker}</span>`).join('');
     return `
-      <div style="background:var(--sup-panel);border:1px solid rgba(156,93,18,0.25);border-radius:2px;padding:16px;margin-bottom:16px;">
+      <div style="background:var(--sup-panel);border:1px solid rgba(156,93,18,0.25);border-radius:var(--radio-tarjeta);padding:16px;margin-bottom:16px;">
         <h3 style="margin:0;font-size:18px;color:var(--tinta-1);font-weight:700;">${emp.nombre || d.ticker}</h3>
         <p style="margin:4px 0 0;font-size:11px;color:var(--tinta-3);">${emp.sector || ''} · ${emp.industria || ''} · ${emp.pais || ''}</p>
         ${emp.precio ? `<p style="margin:8px 0 0;font-size:24px;color:var(--sello);font-weight:700;font-family:monospace;">$${emp.precio.toFixed(2)} ${emp.moneda || ''}</p>` : ''}
@@ -101,7 +101,7 @@
       </div>
 
       <h4 style="font-size:11px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Métricas vs ${peers ? 'peers del sector' : 'mercado'}</h4>
-      <table style="width:100%;border-collapse:collapse;background:var(--sup);border:1px solid var(--sup-panel);border-radius:2px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;background:var(--sup);border:1px solid var(--sup-panel);border-radius:var(--radio);overflow:hidden;">
         ${fila('P/E (trailing)',    met.pe,           v => _fmt.num(v, 2), comp.pe)}
         ${fila('P/B',               met.pb,           v => _fmt.num(v, 2), comp.pb)}
         ${fila('PEG',               met.peg,          v => _fmt.num(v, 2), null)}
@@ -115,7 +115,7 @@
 
       ${narr ? `
         <h4 style="font-size:11px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Observaciones automáticas</h4>
-        <ul style="margin:0;padding:0;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:8px 16px;">${narr}</ul>
+        <ul style="margin:0;padding:0;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:8px 16px;">${narr}</ul>
       ` : ''}
 
       ${peers ? `
@@ -141,15 +141,15 @@
           </div>
           <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:var(--tinta-4);font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
-        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:14px;margin-bottom:16px;">
+        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:14px;margin-bottom:16px;">
           <label style="display:block;font-size:11px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Monto a liquidar (MXN)</label>
-          <input id="mp-of-monto" type="number" min="100" step="1000" value="50000" style="width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:10px;font-size:16px;color:var(--tinta-1);font-family:monospace;">
+          <input id="mp-of-monto" type="number" min="100" step="1000" value="50000" style="width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:10px;font-size:16px;color:var(--tinta-1);font-family:monospace;">
           <label style="display:block;font-size:11px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;margin:10px 0 6px;">Año fiscal</label>
-          <input id="mp-of-ano" type="number" min="2020" max="2030" value="${new Date().getFullYear()}" style="width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:10px;font-size:16px;color:var(--tinta-1);font-family:monospace;">
+          <input id="mp-of-ano" type="number" min="2020" max="2030" value="${new Date().getFullYear()}" style="width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:10px;font-size:16px;color:var(--tinta-1);font-family:monospace;">
           <label style="display:block;font-size:11px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;margin:10px 0 6px;">Pérdidas de años anteriores (opcional, MXN)</label>
-          <input id="mp-of-perdidas" type="number" min="0" step="1000" value="0" style="width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:10px;font-size:16px;color:var(--tinta-1);font-family:monospace;">
+          <input id="mp-of-perdidas" type="number" min="0" step="1000" value="0" style="width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:10px;font-size:16px;color:var(--tinta-1);font-family:monospace;">
         </div>
-        <button id="mp-of-calcular" style="display:block;width:100%;background:var(--sello);color:var(--tinta-1);border:none;border-radius:2px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Calcular plan óptimo →</button>
+        <button id="mp-of-calcular" style="display:block;width:100%;background:var(--sello);color:var(--tinta-1);border:none;border-radius:var(--radio);padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Calcular plan óptimo →</button>
         <div id="mp-of-resultado" style="margin-top:16px;"></div>
       </div>`;
     _abrirModal(formHTML);
@@ -160,7 +160,7 @@
         // Recolectar transacciones y precios actuales del localStorage / state
         const txs = JSON.parse(localStorage.getItem('miPortafolio.transacciones.v1') || '[]');
         if (!txs.length) {
-          cont.innerHTML = `<p style="color:var(--sello);font-size:13px;padding:14px;background:rgba(156,93,18,0.08);border-radius:2px;">Primero registra tus transacciones en la pestaña <strong>Transacciones</strong> para que el optimizador sepa qué tienes.</p>`;
+          cont.innerHTML = `<p style="color:var(--sello);font-size:13px;padding:14px;background:rgba(156,93,18,0.08);border-radius:var(--radio-tarjeta);">Primero registra tus transacciones en la pestaña <strong>Transacciones</strong> para que el optimizador sepa qué tienes.</p>`;
           return;
         }
         // Precios actuales — pedimos al backend de info_activos del universo
@@ -217,12 +217,12 @@
     const isrAhorroColor = ahorro > 0 ? MP_COLOR.alza : ahorro < 0 ? MP_COLOR.sello : MP_COLOR.tinta4;
     return `
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;">
-        <div style="background:rgba(156,93,18,0.08);border:1px solid rgba(156,93,18,0.25);border-radius:2px;padding:14px;text-align:center;">
+        <div style="background:rgba(156,93,18,0.08);border:1px solid rgba(156,93,18,0.25);border-radius:var(--radio-tarjeta);padding:14px;text-align:center;">
           <p style="margin:0;font-size:10px;color:var(--sello);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">ISR proyectado</p>
           <p style="margin:6px 0 0;font-size:24px;font-weight:700;color:var(--tinta-1);font-family:monospace;">$${d.isr_proyectado.toLocaleString()}</p>
           <p style="margin:2px 0 0;font-size:11px;color:var(--tinta-3);">con plan óptimo</p>
         </div>
-        <div style="background:rgba(156,93,18,0.08);border:1px solid rgba(156,93,18,0.25);border-radius:2px;padding:14px;text-align:center;">
+        <div style="background:rgba(156,93,18,0.08);border:1px solid rgba(156,93,18,0.25);border-radius:var(--radio-tarjeta);padding:14px;text-align:center;">
           <p style="margin:0;font-size:10px;color:var(--alza);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Ahorro vs vender al azar</p>
           <p style="margin:6px 0 0;font-size:24px;font-weight:700;color:${isrAhorroColor};font-family:monospace;">$${ahorro.toLocaleString()}</p>
           <p style="margin:2px 0 0;font-size:11px;color:var(--tinta-3);">menos ISR pagado</p>
@@ -231,7 +231,7 @@
 
       <h4 style="font-size:11px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 8px;">Plan ordenado de ventas (de menos a más impacto fiscal)</h4>
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-        <table style="width:100%;border-collapse:collapse;background:var(--sup);border:1px solid var(--sup-panel);border-radius:2px;">
+        <table style="width:100%;border-collapse:collapse;background:var(--sup);border:1px solid var(--sup-panel);border-radius:var(--radio);">
           <thead>
             <tr style="background:var(--sup-panel);">
               <th style="padding:8px 12px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;">#</th>
@@ -246,7 +246,7 @@
         </table>
       </div>
 
-      <div style="margin-top:14px;padding:12px;background:rgba(26,26,24,.12);border:1px solid var(--sup-panel);border-radius:2px;font-size:11px;color:var(--tinta-3);line-height:1.6;">
+      <div style="margin-top:14px;padding:12px;background:rgba(26,26,24,.12);border:1px solid var(--sup-panel);border-radius:var(--radio-tarjeta);font-size:11px;color:var(--tinta-3);line-height:1.6;">
         <p style="margin:0 0 4px;"><strong style="color:var(--tinta-1);">Ganancia realizada del año:</strong> $${d.ganancia_realizada_ano.toLocaleString()}</p>
         <p style="margin:0 0 4px;"><strong style="color:var(--tinta-1);">Impacto del plan:</strong> ${d.impacto_plan_mxn >= 0 ? '+' : ''}$${d.impacto_plan_mxn.toLocaleString()}</p>
         <p style="margin:0 0 4px;"><strong style="color:var(--tinta-1);">Base gravable proyectada:</strong> $${d.base_gravable_proyectada.toLocaleString()}</p>
@@ -271,15 +271,15 @@
           <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:var(--tinta-4);font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;">
-          <label style="font-size:11px;color:var(--tinta-4);">Tipo<select id="mp-sc-tipo" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:8px;color:var(--tinta-1);margin-top:4px;"><option value="">Todos</option><option value="acciones">Acciones</option><option value="etfs">ETFs</option><option value="crypto">Crypto</option></select></label>
-          <label style="font-size:11px;color:var(--tinta-4);">Mercado<select id="mp-sc-mercado" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:8px;color:var(--tinta-1);margin-top:4px;"><option value="">Todos</option><option value="MX">México (BMV)</option><option value="US">USA</option><option value="INTL">Internacional</option><option value="Crypto">Crypto</option></select></label>
-          <label style="font-size:11px;color:var(--tinta-4);">Sector<input id="mp-sc-sector" type="text" placeholder="Technology, Financial..." style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:8px;color:var(--tinta-1);margin-top:4px;"></label>
-          <label style="font-size:11px;color:var(--tinta-4);">Market cap mín. USD<input id="mp-sc-mc" type="number" placeholder="10000000000" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:8px;color:var(--tinta-1);margin-top:4px;font-family:monospace;"></label>
-          <label style="font-size:11px;color:var(--tinta-4);">P/E máx.<input id="mp-sc-pemax" type="number" placeholder="25" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:8px;color:var(--tinta-1);margin-top:4px;font-family:monospace;"></label>
-          <label style="font-size:11px;color:var(--tinta-4);">Yield mín. (%)<input id="mp-sc-ymin" type="number" step="0.5" placeholder="2" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:8px;color:var(--tinta-1);margin-top:4px;font-family:monospace;"></label>
-          <label style="font-size:11px;color:var(--tinta-4);">Beta máx.<input id="mp-sc-bmax" type="number" step="0.1" placeholder="1.2" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:8px;color:var(--tinta-1);margin-top:4px;font-family:monospace;"></label>
+          <label style="font-size:11px;color:var(--tinta-4);">Tipo<select id="mp-sc-tipo" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:8px;color:var(--tinta-1);margin-top:4px;"><option value="">Todos</option><option value="acciones">Acciones</option><option value="etfs">ETFs</option><option value="crypto">Crypto</option></select></label>
+          <label style="font-size:11px;color:var(--tinta-4);">Mercado<select id="mp-sc-mercado" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:8px;color:var(--tinta-1);margin-top:4px;"><option value="">Todos</option><option value="MX">México (BMV)</option><option value="US">USA</option><option value="INTL">Internacional</option><option value="Crypto">Crypto</option></select></label>
+          <label style="font-size:11px;color:var(--tinta-4);">Sector<input id="mp-sc-sector" type="text" placeholder="Technology, Financial..." style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:8px;color:var(--tinta-1);margin-top:4px;"></label>
+          <label style="font-size:11px;color:var(--tinta-4);">Market cap mín. USD<input id="mp-sc-mc" type="number" placeholder="10000000000" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:8px;color:var(--tinta-1);margin-top:4px;font-family:monospace;"></label>
+          <label style="font-size:11px;color:var(--tinta-4);">P/E máx.<input id="mp-sc-pemax" type="number" placeholder="25" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:8px;color:var(--tinta-1);margin-top:4px;font-family:monospace;"></label>
+          <label style="font-size:11px;color:var(--tinta-4);">Yield mín. (%)<input id="mp-sc-ymin" type="number" step="0.5" placeholder="2" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:8px;color:var(--tinta-1);margin-top:4px;font-family:monospace;"></label>
+          <label style="font-size:11px;color:var(--tinta-4);">Beta máx.<input id="mp-sc-bmax" type="number" step="0.1" placeholder="1.2" style="display:block;width:100%;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:8px;color:var(--tinta-1);margin-top:4px;font-family:monospace;"></label>
         </div>
-        <button id="mp-sc-buscar" style="display:block;width:100%;background:var(--sello);color:var(--sup);border:none;border-radius:2px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Buscar →</button>
+        <button id="mp-sc-buscar" style="display:block;width:100%;background:var(--sello);color:var(--sup);border:none;border-radius:var(--radio);padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Buscar →</button>
         <div id="mp-sc-resultado" style="margin-top:16px;"></div>
       </div>`;
     _abrirModal(formHTML);
@@ -313,36 +313,57 @@
   };
 
   function _renderScreener(d) {
+    const ETQ = { etf: 'ETF', crypto: 'Cripto' };
     const filas = (d.resultados || []).map(r => {
       const sym = r.moneda === 'MXN' ? '$' : 'US$';
-      const precio = r.precio != null ? `${sym}${Number(r.precio).toLocaleString('en-US',{maximumFractionDigits:2})}` : '—';
-      const score = r.score != null ? `<span style="font-weight:700;color:var(--sello);">${Math.round(r.score)}</span>` : '—';
-      return `<tr>
-        <td style="padding:6px 10px;font-family:monospace;color:var(--tinta-1);font-weight:600;font-size:12px;">${r.ticker}</td>
-        <td style="padding:6px 10px;color:var(--tinta-3);font-size:11px;">${r.mercado || '—'}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;font-size:12px;">${score}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:var(--tinta-2);font-size:11px;">${r.beta != null ? Number(r.beta).toFixed(2) : '—'}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:var(--tinta-2);font-size:11px;">${precio}</td>
+      const precio = r.precio != null
+        ? `${sym}${Number(r.precio).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
+      const tipo = r.mercado === 'Crypto' ? 'crypto' : r.es_etf ? 'etf' : 'accion';
+      const nombre = r.nombre && r.nombre !== r.ticker ? r.nombre : '';
+      return `<tr data-ticker="${r.ticker}" tabindex="0" role="button"
+                  aria-label="Analizar ${r.ticker}">
+        <td class="mp-tabla-clave">${r.ticker}
+          ${ETQ[tipo] ? `<span class="mp-insignia">${ETQ[tipo]}</span>` : ''}
+          ${nombre ? `<span class="mp-tabla-sub">${nombre}</span>` : ''}</td>
+        <td class="mp-num">${r.score != null ? Math.round(r.score) : '—'}</td>
+        <td class="mp-num mp-tabla-peso">${r.beta != null ? Number(r.beta).toFixed(2) : '—'}</td>
+        <td class="mp-num">${precio}</td>
       </tr>`;
     }).join('');
+
+    // Los ETF y las cripto no se puntúan con la misma receta que las acciones
+    // —no tienen P/E, ROE ni márgenes—, y decirlo aquí evita que alguien
+    // compare un 89 de VOO con un 89 de una acción como si midieran lo mismo.
+    const nota = (d.resultados || []).some(r => r.mercado === 'Crypto' || r.es_etf)
+      ? `<p class="mp-modal-nota" style="margin-top:var(--paso-3)">En ETFs y criptomonedas el
+         score se calcula sin fundamentales de empresa (no existen): pesa Sharpe, retorno,
+         momentum y estabilidad. Está en la misma escala 0–100, pero no mide lo mismo.</p>`
+      : '';
+
     return `
-      <p style="font-size:12px;color:var(--tinta-3);margin:0 0 8px;">${d.total} resultados (ordenados por score)</p>
-      <div style="overflow-x:auto;max-height:400px;overflow-y:auto;-webkit-overflow-scrolling:touch;">
-        <table style="width:100%;border-collapse:collapse;background:var(--sup);border:1px solid var(--sup-panel);border-radius:2px;">
-          <thead style="position:sticky;top:0;background:var(--sup-panel);">
-            <tr>
-              <th style="padding:8px 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;text-align:left;">Ticker</th>
-              <th style="padding:8px 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;text-align:left;">Mercado</th>
-              <th style="padding:8px 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;text-align:right;">Score</th>
-              <th style="padding:8px 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;text-align:right;">Beta</th>
-              <th style="padding:8px 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;text-align:right;">Precio</th>
-            </tr>
-          </thead>
-          <tbody>${filas || '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--tinta-4);">Sin resultados con esos criterios</td></tr>'}</tbody>
+      <p class="mp-modal-nota" style="margin:0 0 var(--paso-3)">${d.total} resultados, del score más alto al más bajo.</p>
+      <div class="mp-tabla-envoltura" style="max-height:440px;overflow-y:auto;">
+        <table class="mp-tabla-plan mp-tabla-clicable">
+          <thead><tr>
+            <th>Activo</th><th>Score</th><th class="mp-tabla-peso">Beta</th><th>Precio</th>
+          </tr></thead>
+          <tbody>${filas || '<tr><td colspan="4" style="text-align:center;padding:var(--paso-6);color:var(--tinta-4)">Sin resultados con esos criterios</td></tr>'}</tbody>
         </table>
       </div>
-    `;
+      ${nota}`;
   }
+
+  /* Una fila del screener lleva a su análisis: encontrar el ticker y luego
+     tener que teclearlo a mano en otra pestaña es un callejón sin salida. */
+  document.addEventListener('click', (ev) => {
+    const fila = ev.target.closest('.mp-tabla-clicable tr[data-ticker]');
+    if (fila && window.analizarTicker) window.analizarTicker(fila.dataset.ticker);
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    const fila = ev.target.closest && ev.target.closest('.mp-tabla-clicable tr[data-ticker]');
+    if (fila && window.analizarTicker) { ev.preventDefault(); window.analizarTicker(fila.dataset.ticker); }
+  });
 
   // ============================================================
   //  4) ALERTAS MULTI-CONDICIÓN
@@ -355,9 +376,9 @@
       ? `<p style="text-align:center;color:var(--tinta-4);font-size:13px;padding:24px;">Aún no tienes reglas custom. Crea una abajo.</p>`
       : reglas.map((r, i) => {
         const condStr = (r.condiciones || []).map(c => `${c.campo} ${c.operador} ${c.valor}`).join(` ${r.operador_logico || 'AND'} `);
-        return `<div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        return `<div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div style="flex:1;min-width:0;"><p style="margin:0;font-size:13px;color:var(--tinta-1);font-weight:600;">${r.nombre || `Regla ${i+1}`}</p><p style="margin:2px 0 0;font-size:11px;color:var(--tinta-3);font-family:monospace;">${condStr}</p></div>
-          <button data-idx="${i}" class="mp-aa-del" style="background:transparent;border:1px solid var(--regla);color:var(--baja);padding:4px 10px;border-radius:2px;font-size:11px;cursor:pointer;">Eliminar</button>
+          <button data-idx="${i}" class="mp-aa-del" style="background:transparent;border:1px solid var(--regla);color:var(--baja);padding:4px 10px;border-radius:999px;font-size:11px;cursor:pointer;">Eliminar</button>
         </div>`;
       }).join('');
     const html = `
@@ -375,16 +396,16 @@
         <div id="mp-aa-lista">${reglasHTML}</div>
 
         <h4 style="font-size:11px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;margin:18px 0 8px;">Nueva regla</h4>
-        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:12px;">
-          <input id="mp-aa-nombre" type="text" placeholder="Nombre (ej. NVDA crítico)" style="display:block;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:8px;color:var(--tinta-1);margin-bottom:8px;">
-          <select id="mp-aa-logico" style="display:block;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:8px;color:var(--tinta-1);margin-bottom:8px;">
+        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:12px;">
+          <input id="mp-aa-nombre" type="text" placeholder="Nombre (ej. NVDA crítico)" style="display:block;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:8px;color:var(--tinta-1);margin-bottom:8px;">
+          <select id="mp-aa-logico" style="display:block;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:8px;color:var(--tinta-1);margin-bottom:8px;">
             <option value="AND">Todas las condiciones (AND)</option>
             <option value="OR">Cualquier condición (OR)</option>
           </select>
           <p style="margin:8px 0 6px;font-size:11px;color:var(--tinta-4);">Condiciones:</p>
           <div id="mp-aa-conds"></div>
-          <button id="mp-aa-addcond" style="background:transparent;border:1px dashed var(--regla);color:var(--tinta-4);padding:8px;width:100%;border-radius:2px;cursor:pointer;font-size:12px;margin-bottom:8px;">+ Agregar condición</button>
-          <button id="mp-aa-guardar" style="display:block;width:100%;background:var(--alza);color:var(--sup);border:none;border-radius:2px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;">Guardar regla</button>
+          <button id="mp-aa-addcond" style="background:transparent;border:1px dashed var(--regla);color:var(--tinta-4);padding:8px;width:100%;border-radius:var(--radio-tarjeta);cursor:pointer;font-size:12px;margin-bottom:8px;">+ Agregar condición</button>
+          <button id="mp-aa-guardar" style="display:block;width:100%;background:var(--alza);color:var(--sup);border:none;border-radius:var(--radio);padding:10px;font-weight:700;font-size:13px;cursor:pointer;">Guardar regla</button>
         </div>
         <p style="margin:14px 0 0;font-size:10px;color:var(--tinta-4);line-height:1.5;">
           Campos disponibles en el contexto: <code>precio_AAPL</code>, <code>precio_NVDA</code>, <code>cambio_AAPL</code>, <code>peso_AAPL</code>, <code>drift_pp</code>, <code>cetes_28d</code>, <code>vix</code>.
@@ -398,12 +419,12 @@
       const cont = document.getElementById('mp-aa-conds');
       cont.innerHTML = conds.map((c, i) => `
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:4px;margin-bottom:4px;">
-          <input data-i="${i}" data-k="campo" type="text" value="${c.campo}" placeholder="precio_NVDA" style="background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:6px;color:var(--tinta-1);font-size:11px;font-family:monospace;">
-          <select data-i="${i}" data-k="operador" style="background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:6px;color:var(--tinta-1);font-size:11px;">
+          <input data-i="${i}" data-k="campo" type="text" value="${c.campo}" placeholder="precio_NVDA" style="background:var(--sup);border:1px solid var(--regla);border-radius:999px;padding:6px;color:var(--tinta-1);font-size:11px;font-family:monospace;">
+          <select data-i="${i}" data-k="operador" style="background:var(--sup);border:1px solid var(--regla);border-radius:999px;padding:6px;color:var(--tinta-1);font-size:11px;">
             ${['mayor','mayor_igual','menor','menor_igual','igual'].map(o => `<option value="${o}" ${c.operador===o?'selected':''}>${o}</option>`).join('')}
           </select>
-          <input data-i="${i}" data-k="valor" type="number" step="any" value="${c.valor}" style="background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:6px;color:var(--tinta-1);font-size:11px;font-family:monospace;">
-          <button data-i="${i}" class="mp-aa-rmcond" style="background:transparent;border:1px solid var(--regla);color:var(--baja);padding:0 8px;border-radius:2px;cursor:pointer;font-size:14px;">×</button>
+          <input data-i="${i}" data-k="valor" type="number" step="any" value="${c.valor}" style="background:var(--sup);border:1px solid var(--regla);border-radius:999px;padding:6px;color:var(--tinta-1);font-size:11px;font-family:monospace;">
+          <button data-i="${i}" class="mp-aa-rmcond" style="background:transparent;border:1px solid var(--regla);color:var(--baja);padding:0 8px;border-radius:var(--radio-tarjeta);cursor:pointer;font-size:14px;">×</button>
         </div>`).join('');
       cont.querySelectorAll('input,select').forEach(el => {
         el.addEventListener('change', (e) => {
@@ -474,8 +495,8 @@
           <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:var(--tinta-4);font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px;">
-          <input id="mp-bk-nombre" type="text" placeholder="Nombre del backup (opcional, ej. Antes del rebalanceo)" style="flex:1;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:10px;font-size:13px;color:var(--tinta-1);">
-          <button id="mp-bk-crear" style="background:var(--sello);color:var(--tinta-1);border:none;border-radius:2px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;">+ Crear backup</button>
+          <input id="mp-bk-nombre" type="text" placeholder="Nombre del backup (opcional, ej. Antes del rebalanceo)" style="flex:1;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:10px;font-size:13px;color:var(--tinta-1);">
+          <button id="mp-bk-crear" style="background:var(--sello);color:var(--tinta-1);border:none;border-radius:var(--radio);padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;">+ Crear backup</button>
         </div>
         <div id="mp-bk-lista" style="margin-top:12px;"></div>
       </div>`;
@@ -496,13 +517,13 @@
           const fecha = new Date(b.created_at).toLocaleString('es-MX', {dateStyle:'short', timeStyle:'short'});
           const tipo = b.es_automatico ? '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><rect x="4" y="8" width="16" height="12"/><path d="M12 4v4"/><circle cx="9" cy="13" r="1.2"/><circle cx="15" cy="13" r="1.2"/><path d="M9.5 17h5"/></svg></span> Auto' : '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1.5A5.5 5.5 0 0 1 9.5 14h5a5.5 5.5 0 0 1 5.5 5.5V21"/></svg></span> Manual';
           const tamano = b.tamano_bytes ? `${(b.tamano_bytes/1024).toFixed(1)} KB` : '';
-          return `<div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          return `<div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
             <div style="flex:1;min-width:0;">
               <p style="margin:0;font-size:13px;color:var(--tinta-1);font-weight:600;">${b.nombre || 'Backup sin nombre'}</p>
               <p style="margin:2px 0 0;font-size:11px;color:var(--tinta-4);">${tipo} · ${fecha} · ${tamano}</p>
             </div>
-            <button data-id="${b.id}" class="mp-bk-restaurar" style="background:var(--alza);color:var(--sup);border:none;padding:6px 12px;border-radius:2px;font-size:11px;font-weight:700;cursor:pointer;">Restaurar</button>
-            <button data-id="${b.id}" class="mp-bk-del" style="background:transparent;border:1px solid var(--regla);color:var(--baja);padding:5px 10px;border-radius:2px;font-size:11px;cursor:pointer;">✕</button>
+            <button data-id="${b.id}" class="mp-bk-restaurar" style="background:var(--alza);color:var(--sup);border:none;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;">Restaurar</button>
+            <button data-id="${b.id}" class="mp-bk-del" style="background:transparent;border:1px solid var(--regla);color:var(--baja);padding:5px 10px;border-radius:999px;font-size:11px;cursor:pointer;">✕</button>
           </div>`;
         }).join('');
         cont.querySelectorAll('.mp-bk-restaurar').forEach(b => b.addEventListener('click', () => restaurar(b.dataset.id)));
@@ -703,7 +724,7 @@
           </div>
           <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:var(--tinta-4);font-size:24px;cursor:pointer;padding:4px 8px;">×</button>
         </div>
-        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:16px;margin-bottom:14px;">
+        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:16px;margin-bottom:14px;">
           <p style="margin:0;font-size:13px;color:${activo ? MP_COLOR.alza : MP_COLOR.tinta3};font-weight:600;">${activo ? '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 12.5 9.5 18 20 6.5"/></svg></span> Notificaciones activas' : '⚪ Notificaciones desactivadas'}</p>
           ${email ? `<p style="margin:6px 0 0;font-size:11px;color:var(--tinta-4);font-family:monospace;">Asociadas a: ${email}</p>` : ''}
         </div>
@@ -714,8 +735,8 @@
           · Desktop: cualquier navegador moderno
         </p>
         ${activo
-          ? `<button id="mp-push-toggle" style="display:block;width:100%;background:var(--baja);color:var(--tinta-1);border:none;border-radius:2px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Desactivar notificaciones</button>`
-          : `<button id="mp-push-toggle" style="display:block;width:100%;background:var(--alza);color:var(--sup);border:none;border-radius:2px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Activar notificaciones →</button>`
+          ? `<button id="mp-push-toggle" style="display:block;width:100%;background:var(--baja);color:var(--tinta-1);border:none;border-radius:var(--radio);padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Desactivar notificaciones</button>`
+          : `<button id="mp-push-toggle" style="display:block;width:100%;background:var(--alza);color:var(--sup);border:none;border-radius:var(--radio);padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Activar notificaciones →</button>`
         }
       </div>`;
     _abrirModal(html);
@@ -741,7 +762,7 @@
     const ejecutar = async () => {
       const t = inp.value.trim().toUpperCase();
       if (!t) return;
-      cont.innerHTML = `<p style="text-align:center;color:var(--tinta-4);font-size:13px;padding:24px;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;">Analizando ${t}… (15-30 seg)</p>`;
+      cont.innerHTML = `<p style="text-align:center;color:var(--tinta-4);font-size:13px;padding:24px;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);">Analizando ${t}… (15-30 seg)</p>`;
       try {
         const res = await fetch(`/api/deep-dive/${encodeURIComponent(t)}`);
         const d = await res.json();
@@ -750,7 +771,7 @@
           return;
         }
         // Usa la misma función _renderDeepDive del modal pero envuelta en card
-        cont.innerHTML = `<div style="background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:20px;">${_renderDeepDive(d)}</div>`;
+        cont.innerHTML = `<div style="background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:20px;">${_renderDeepDive(d)}</div>`;
       } catch (e) {
         cont.innerHTML = `<p style="color:var(--baja);font-size:13px;padding:14px;">Error: ${e.message}</p>`;
       }
@@ -766,7 +787,12 @@
     if (!btn || !cont || btn.dataset.wired === '1') return;
     btn.dataset.wired = '1';
     btn.addEventListener('click', async () => {
-      cont.innerHTML = `<p style="text-align:center;color:var(--tinta-4);font-size:13px;padding:20px;">Filtrando…</p>`;
+      // La primera búsqueda de ETF/cripto del día puede tardar: el servidor
+      // puntúa 233 activos. Decirlo evita que parezca colgado.
+      const _tipo = document.getElementById('sc-tipo').value;
+      cont.innerHTML = `<p class="mp-modal-nota" style="text-align:center;padding:var(--paso-6)">Filtrando…${
+        _tipo === 'etfs' || _tipo === 'crypto'
+          ? '<br>La primera búsqueda del día tarda unos segundos: se calculan los scores.' : ''}</p>`;
       const get = id => document.getElementById(id).value.trim();
       const num = id => { const v = parseFloat(get(id)); return isFinite(v) ? v : null; };
       const criterios = {
@@ -801,7 +827,7 @@
       try {
         const txs = JSON.parse(localStorage.getItem('miPortafolio.transacciones.v1') || '[]');
         if (!txs.length) {
-          cont.innerHTML = `<p style="color:var(--sello);font-size:13px;padding:14px;background:rgba(156,93,18,0.08);border-radius:2px;">Primero registra tus transacciones arriba.</p>`;
+          cont.innerHTML = `<p style="color:var(--sello);font-size:13px;padding:14px;background:rgba(156,93,18,0.08);border-radius:var(--radio-tarjeta);">Primero registra tus transacciones arriba.</p>`;
           return;
         }
         const precios = {};
@@ -980,12 +1006,12 @@
     const ejecutar = async () => {
       const t = inp.value.trim().toUpperCase();
       if (!t) return;
-      cont.innerHTML = `<p style="text-align:center;color:var(--tinta-4);font-size:13px;padding:24px;background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;">Calculando SML para ${t}… (15-30 seg)</p>`;
+      cont.innerHTML = `<p style="text-align:center;color:var(--tinta-4);font-size:13px;padding:24px;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);">Calculando SML para ${t}… (15-30 seg)</p>`;
       try {
         const res = await fetch(`/api/sml/${encodeURIComponent(t)}`);
         const d = await res.json();
         if (!d.ok) {
-          cont.innerHTML = `<div style="padding:16px;background:rgba(174,50,35,0.05);border:1px solid rgba(174,50,35,0.25);border-radius:2px;">
+          cont.innerHTML = `<div style="padding:16px;background:rgba(174,50,35,0.05);border:1px solid rgba(174,50,35,0.25);border-radius:var(--radio-tarjeta);">
             <p style="margin:0;color:var(--baja);font-size:13px;">${d.error || 'Error'}</p>
           </div>`;
           return;
@@ -1012,7 +1038,7 @@
 
     return `
       <!-- Veredicto principal -->
-      <div style="background:${c.bg};border:1px solid ${c.border};border-radius:2px;padding:24px;">
+      <div style="background:${c.bg};border:1px solid ${c.border};border-radius:var(--radio-tarjeta);padding:24px;">
         <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:${c.text};">Veredicto</p>
         <h3 style="margin:6px 0 0;font-size:32px;color:var(--tinta-1);font-weight:800;letter-spacing:-0.02em;">${d.veredicto}</h3>
         <p style="margin:10px 0 0;font-size:13px;color:var(--tinta-2);line-height:1.6;">${d.interpretacion}</p>
@@ -1020,22 +1046,22 @@
 
       <!-- KPIs principales -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
-        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:14px;">
+        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:14px;">
           <p style="margin:0;font-size:10px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Beta (β)</p>
           <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:var(--tinta-1);font-family:monospace;">${d.beta.toFixed(2)}</p>
           <p style="margin:2px 0 0;font-size:10px;color:var(--tinta-3);">${d.clase_beta}</p>
         </div>
-        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:14px;">
+        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:14px;">
           <p style="margin:0;font-size:10px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Retorno real anual</p>
           <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:${d.retorno_real_anual >= 0 ? MP_COLOR.alza : MP_COLOR.baja};font-family:monospace;">${fmtPctSigno(d.retorno_real_anual)}</p>
           <p style="margin:2px 0 0;font-size:10px;color:var(--tinta-3);">últimos 5 años</p>
         </div>
-        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:14px;">
+        <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:14px;">
           <p style="margin:0;font-size:10px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Esperado por CAPM</p>
           <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:var(--tinta-1);font-family:monospace;">${fmtPct(d.retorno_esperado_sml)}</p>
           <p style="margin:2px 0 0;font-size:10px;color:var(--tinta-3);">según su β</p>
         </div>
-        <div style="background:${c.bg};border:1px solid ${c.border};border-radius:2px;padding:14px;">
+        <div style="background:${c.bg};border:1px solid ${c.border};border-radius:var(--radio-tarjeta);padding:14px;">
           <p style="margin:0;font-size:10px;color:${c.text};text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Alpha (α)</p>
           <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:${alphaColor};font-family:monospace;">${fmtPctSigno(d.alpha)}</p>
           <p style="margin:2px 0 0;font-size:10px;color:var(--tinta-3);">real − esperado</p>
@@ -1043,7 +1069,7 @@
       </div>
 
       <!-- Detalles del cálculo -->
-      <div style="background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:16px;">
+      <div style="background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:16px;">
         <p style="margin:0 0 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Detalles del cálculo</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:12px;">
           <div style="padding:6px 0;border-bottom:1px solid var(--sup-panel);">
@@ -1071,7 +1097,7 @@
             <span style="color:var(--tinta-1);font-family:monospace;float:right;">${d.periodo}</span>
           </div>
         </div>
-        <div style="margin-top:10px;padding:8px 12px;background:rgba(26,26,24,.05);border-radius:2px;font-family:monospace;font-size:11px;color:var(--tinta-3);">
+        <div style="margin-top:10px;padding:8px 12px;background:rgba(26,26,24,.05);border-radius:var(--radio-tarjeta);font-family:monospace;font-size:11px;color:var(--tinta-3);">
           E(R) = ${(d.tasa_libre_riesgo*100).toFixed(2)}% + ${d.beta.toFixed(2)} × ${(d.premio_mercado*100).toFixed(2)}% = <strong style="color:var(--tinta-1);">${(d.retorno_esperado_sml*100).toFixed(2)}%</strong>
         </div>
       </div>
@@ -1105,7 +1131,7 @@
       clearTimeout(to);
       const d = await res.json();
       cont.innerHTML = d.ok
-        ? `<div style="background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:20px;">${_renderDeepDive(d)}</div>`
+        ? `<div style="background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:20px;">${_renderDeepDive(d)}</div>`
         : `<p style="color:var(--tinta-4);font-size:12px;padding:10px;">Deep dive no disponible: ${d.error || ''}</p>`;
     } catch (e) {
       clearTimeout(to);

@@ -26,15 +26,15 @@
   const TIMEOUT_MS = 8000;
 
   // ---------------------------------------------------------- estilos
-  const CARD   = 'background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:18px;margin:0 0 14px';
+  const CARD   = 'background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:18px;margin:0 0 14px';
   const H2     = 'margin:0 0 6px;font-size:16px;font-weight:700;color:var(--tinta-1)';
   const P      = 'margin:0 0 12px;font-size:13px;color:var(--tinta-3);line-height:1.55';
-  const BTN_PRI = 'width:100%;background:var(--sello);color:var(--sup);font-weight:700;border:0;border-radius:2px;padding:14px;font-size:15px;cursor:pointer;font-family:inherit';
-  const BTN_SEC = 'width:100%;background:transparent;color:var(--tinta-2);font-weight:600;border:1px solid var(--regla);border-radius:2px;padding:12px;font-size:14px;cursor:pointer;font-family:inherit';
-  const BTN_DAN = 'width:100%;background:transparent;color:var(--baja);font-weight:700;border:1px solid rgba(174,50,35,.45);border-radius:2px;padding:13px;font-size:14px;cursor:pointer;font-family:inherit';
-  const BTN_DAN_SOLIDO = 'width:100%;background:var(--baja);color:var(--tinta-1);font-weight:700;border:0;border-radius:2px;padding:14px;font-size:15px;cursor:pointer;font-family:inherit';
+  const BTN_PRI = 'width:100%;background:var(--sello);color:var(--sup);font-weight:700;border:0;border-radius:var(--radio-tarjeta);padding:14px;font-size:15px;cursor:pointer;font-family:inherit';
+  const BTN_SEC = 'width:100%;background:transparent;color:var(--tinta-2);font-weight:600;border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:12px;font-size:14px;cursor:pointer;font-family:inherit';
+  const BTN_DAN = 'width:100%;background:transparent;color:var(--baja);font-weight:700;border:1px solid rgba(174,50,35,.45);border-radius:var(--radio-tarjeta);padding:13px;font-size:14px;cursor:pointer;font-family:inherit';
+  const BTN_DAN_SOLIDO = 'width:100%;background:var(--baja);color:var(--tinta-1);font-weight:700;border:0;border-radius:var(--radio-tarjeta);padding:14px;font-size:15px;cursor:pointer;font-family:inherit';
   // font-size:16px evita el auto-zoom de iOS al enfocar el input.
-  const INP    = 'width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:2px;padding:13px 14px;font-size:16px;color:var(--tinta-1);outline:none;box-sizing:border-box;font-family:inherit';
+  const INP    = 'width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:var(--radio-tarjeta);padding:13px 14px;font-size:16px;color:var(--tinta-1);outline:none;box-sizing:border-box;font-family:inherit';
   const COL    = 'display:flex;flex-direction:column;gap:8px';
 
   function escapeHTML(s) {
@@ -214,7 +214,7 @@
 
     // ── Eliminar cuenta (5.1.1v) ─────────────────────────────
     const eliminar = autenticado
-      ? `<div style="background:rgba(174,50,35,.05);border:1px solid rgba(174,50,35,.28);border-radius:2px;padding:18px;margin:0 0 14px">
+      ? `<div style="background:rgba(174,50,35,.05);border:1px solid rgba(174,50,35,.28);border-radius:var(--radio-tarjeta);padding:18px;margin:0 0 14px">
            <h2 style="${H2}">Eliminar mi cuenta</h2>
            <p style="${P}">Al eliminar tu cuenta borramos de forma <strong style="color:var(--tinta-1)">permanente e irreversible</strong>
              todos tus datos en el servidor:</p>
@@ -323,7 +323,7 @@
   }
 
   function caja(inner) {
-    return `<div style="position:relative;max-width:440px;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:2px;padding:24px;color:var(--tinta-1);font-family:system-ui,-apple-system,sans-serif;max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch">${inner}</div>`;
+    return `<div style="position:relative;max-width:440px;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:24px;color:var(--tinta-1);font-family:system-ui,-apple-system,sans-serif;max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch">${inner}</div>`;
   }
 
   function paso1(email) {
@@ -332,7 +332,7 @@
       <p style="margin:0 0 12px;font-size:14px;color:var(--tinta-3);line-height:1.6">
         Vas a eliminar <strong style="color:var(--tinta-1)">${escapeHTML(email)}</strong>.
         Esta acción es <strong style="color:var(--baja)">permanente e irreversible</strong>.</p>
-      <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:2px;padding:14px;margin:0 0 14px">
+      <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:14px;margin:0 0 14px">
         <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:var(--tinta-1)">Se borrará:</p>
         <ul style="list-style:none;padding:0;margin:0;font-size:13px;color:var(--tinta-2)">
           <li style="display:flex;gap:8px;margin:4px 0"><span style="color:var(--baja)">•</span><span>Tu cuenta y tu correo</span></li>

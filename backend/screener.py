@@ -160,8 +160,12 @@ def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
     metr = {}
     try:
         import accion_del_dia as _ad
-        # Universo EXTENDIDO: puntúa todas las acciones con precios (no solo recomendadas)
-        for r in _ad.ranking(n=5000, solo_recomendadas=False):
+        # Universo EXTENDIDO con ETFs y cripto incluidos. Sin incluir_otros el
+        # ranking los filtra —nació para Acción del Día, que tiene que ser una
+        # acción— y en el screener aparecían todos con el score en blanco.
+        for r in _ad.ranking(n=5000, solo_recomendadas=False,
+                             solo_otros=criterios.get("tipo") in ("etfs", "crypto"),
+                             incluir_otros=True):
             metr[r["ticker"]] = r
     except Exception:
         pass
@@ -237,9 +241,20 @@ def filtrar(criterios: Dict[str, Any]) -> List[Dict[str, Any]]:
         if criterios.get("solo_recomendadas") and not info.get("recomendada"):
             continue
 
+        # El universo guarda el ticker como nombre de casi todos los ETF ("QQQ",
+        # "VOO"). Repetirlo en la columna de nombre no dice nada; el índice que
+        # replican sí, y ya está curado para los que la app usa.
+        nombre = info.get("nombre")
+        if es_etf_val and (not nombre or nombre == ticker):
+            try:
+                import analisis_activos as _aa
+                nombre = (_aa._CATALOGO_ETF.get(ticker.upper()) or {}).get("indice") or nombre
+            except Exception:
+                pass
+
         resultados.append({
             "ticker":      ticker,
-            "nombre":      info.get("nombre"),
+            "nombre":      nombre,
             "sector":      info.get("sector"),
             "mercado":     mercado,
             "pe":          pe,
