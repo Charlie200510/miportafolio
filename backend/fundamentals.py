@@ -231,6 +231,19 @@ def _evaluar_beta(b: Optional[float]) -> Dict[str, Any]:
     return {"nivel": "muy_agresiva", "etiqueta": "Muy volátil","color": "red"}
 
 
+def _ultimo_cierre(t) -> Optional[float]:
+    """Último cierre del historial diario. Es la fuente de precio más fiable
+    que tenemos: a diferencia del quote, existe para todo lo que cotiza y no se
+    queda congelada en una fecha vieja."""
+    try:
+        h = t.history(period="5d")
+        if h is not None and not h.empty:
+            return _safe_float(float(h["Close"].iloc[-1]))
+    except Exception:
+        pass
+    return None
+
+
 def _escala_market_cap(mc: Optional[float]) -> Dict[str, Any]:
     if mc is None or mc <= 0:
         return {"escala": "sin_dato", "etiqueta": "Sin dato"}
@@ -379,6 +392,23 @@ def _fundamentals_ticker(ticker: str, con_estados: bool = False) -> Dict[str, An
             precio = None
         if precio is None:
             precio = _safe_float(info.get("currentPrice")) or _safe_float(info.get("regularMarketPrice"))
+
+        # El quote manda mientras sea CREÍBLE, porque es más fresco (~15 min de
+        # retraso). Pero para varios instrumentos de la BMV Yahoo sirve un
+        # registro fósil de una bolsa fantasma ("YHD"): NAFTRAC.MX devolvía
+        # $45.00 —el precio de 2019— tanto en fast_info como en .info, mientras
+        # el cierre real era $65.29. Un 31% de diferencia no es ruido
+        # intradía, así que cuando el quote se aleja tanto del último cierre
+        # diario gana el cierre, que es la serie que la app usa para todo lo
+        # demás y que en estos casos sí está bien.
+        cierre = _ultimo_cierre(t)
+        if precio is None:
+            precio = cierre
+        elif cierre and abs(precio - cierre) / cierre > 0.15:
+            print(f"[fundamentals] {ticker}: el quote ({precio}) se aleja "
+                  f"{abs(precio - cierre) / cierre:.0%} del último cierre ({cierre}); "
+                  f"se usa el cierre.", flush=True)
+            precio = cierre
 
         nombre = info.get("shortName") or info.get("longName") or ticker
         sector = info.get("sector")

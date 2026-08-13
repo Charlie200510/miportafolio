@@ -9107,6 +9107,7 @@ const Analizador = (() => {
       mx.cotiza ? `<p class="text-[13px] text-zinc-200 mb-2"><span class="mp-etq">Dónde cotiza</span><br>${escapeHtml(mx.cotiza)}</p>` : '',
       mx.nota ? `<p class="text-[13px] text-zinc-300 leading-relaxed mb-2">${escapeHtml(mx.nota)}</p>` : '',
       mx.exposicion_cambiaria ? `<p class="text-[13px] text-zinc-300 leading-relaxed">${escapeHtml(mx.exposicion_cambiaria)}</p>` : '',
+      mx.donde_ver_costo ? `<p class="text-[13px] text-zinc-300 leading-relaxed mt-2">${escapeHtml(mx.donde_ver_costo)}</p>` : '',
     ].join(''), 'Información general, no asesoría fiscal.');
 
     return html;
