@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest" />
-  <meta name="theme-color" content="#E9E8E3" />
+  <meta name="theme-color" content="#EFF1F5" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -79,12 +79,12 @@
        nombres que los tokens (`sup*` superficies, `tinta*` texto). Si tocas
        mp-tokens.css, toca aquí. */
     const _tinta = {
-      base:  '#EFEDE7', panel: '#FAF8F3', alta: '#FDFCF7', honda: '#E4E2DB',
-      regla: '#DFDBD0', reglaSuave: '#EAE7DE', reglaFuerte: '#B9B2A2',
-      tinta1: '#1A1A18', tinta2: '#46443E', tinta3: '#5E5A51', tinta4: '#656053',
-      sello: '#91560F', selloVivo: '#74440A', selloSolido: '#91560F',
-      sobreSello: '#FDFCF7',
-      alza:  '#19643D', baja: '#A32C1E',
+      base:  '#EFF1F5', panel: '#FFFFFF', alta: '#FFFFFF', honda: '#E4E7EE',
+      regla: '#E1E4EB', reglaSuave: '#EDEFF3', reglaFuerte: '#C3C8D4',
+      tinta1: '#14161B', tinta2: '#3B404A', tinta3: '#585E6B', tinta4: '#5A6170',
+      sello: '#8C520C', selloVivo: '#6F4009', selloSolido: '#8C520C',
+      sobreSello: '#FFFFFF',
+      alza:  '#0F5C33', baja: '#962418',
     };
     tailwind.config = {
       theme: {
@@ -106,7 +106,7 @@
                protagonista y `bg-zinc-900` para los paneles. Sobre papel eso se
                INVIERTE respecto a la escala de Tailwind: los índices bajos
                (texto) pasan a ser tinta oscura y los altos (superficies) pasan a
-               ser papel claro. Por eso 50→#1A1A18 y 950→#EFEDE7, que leído en
+               ser papel claro. Por eso 50→#14161B y 950→#EFF1F5, que leído en
                frío parece un error y no lo es.
                950 además es el color del texto sobre botones sólidos
                (`bg-accent-* text-zinc-950`), así que tiene que ser casi blanco. */
@@ -150,9 +150,11 @@
             rose:    { 50: _tinta.tinta3, 100: _tinta.tinta3, 200: _tinta.tinta2, 300: _tinta.baja, 400: _tinta.baja, 500: _tinta.baja },
           },
           /* Prensa: esquinas casi rectas en toda la escala. */
+          /* Escala de radios de verdad. Antes todo valía 2px y la app tenía
+             esquinas de terminal mientras las tarjetas eran redondeadas. */
           borderRadius: {
-            none: '0px', sm: '0px', DEFAULT: '2px', md: '2px',
-            lg: '2px', xl: '2px', '2xl': '2px', '3xl': '2px',
+            none: '0px', sm: '6px', DEFAULT: '8px', md: '10px',
+            lg: '12px', xl: '14px', '2xl': '16px', '3xl': '20px',
           },
           /* Cero sombras: la jerarquía la dan las reglas, no la profundidad. */
           boxShadow: {
@@ -222,7 +224,7 @@
     .nav-tab.nav-secondary .nav-indicator { height: 1.5px !important; opacity: .85; }
     .nav-tab.nav-primary { letter-spacing: -0.005em; }
     .nav-tab.nav-secondary { text-transform: none; }
-    .nav-tab.nav-secondary:hover { background: rgba(26,26,24,0.04); border-radius: 2px; }
+    .nav-tab.nav-secondary:hover { background: rgba(26,26,24,0.04); border-radius:var(--radio); }
 
     /* Skeleton loading */
     @keyframes pulse-bg {
@@ -379,9 +381,15 @@
          línea de meta en monoespaciada fecha la edición como un diario. -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6">
       <hr class="mp-regla-doble" />
+      <!-- Sin fecha: la repetía a 100px de la cabecera de la sección, que ya
+           la lleva y que además refleja la edición realmente servida (puede no
+           ser la de hoy si la fuente falló). Dos veces el mismo dato en la
+           misma pantalla es el tipo de descuido que se nota aunque no se
+           sepa nombrar. #mp-edicion-fecha se conserva oculto porque app.js lo
+           rellena y no vale la pena acoplar los dos archivos. -->
       <p class="mp-masthead-meta pt-[2px] pb-[3px] truncate">
-        <span class="hidden min-[420px]:inline">Análisis para el inversionista mexicano · </span>
-        <span>Edición del <span id="mp-edicion-fecha">—</span></span>
+        Análisis para el inversionista mexicano
+        <span id="mp-edicion-fecha" hidden></span>
       </p>
     </div>
   </header>
@@ -770,19 +778,18 @@
                no cabe en una línea a 375–430px y la regla quedaba en un muñón. -->
           <span class="mp-sec-etq"><span class="mp-sec-orden">Portada</span><span class="hidden min-[560px]:inline">· Tu portafolio</span></span>
           <span class="mp-sec-fin flex items-center gap-2">
-            <button id="btn-editar-portafolio" class="hidden text-[11px] text-zinc-400 hover:text-zinc-100 border border-surface-border hover:border-zinc-600 rounded-md px-2 py-0.5 transition">
+            <button id="btn-editar-portafolio" class="hidden mp-btn mp-btn-secundario mp-btn-chico">
               Editar
             </button>
             <!-- Atajo de UN toque a los perfiles sugeridos. Antes, con un
                  portafolio ya guardado, llegar a ellos exigía cuatro pasos:
                  Editar → picker manual → "Cambiar método" → Automático → bajar
                  más allá del optimizador. -->
-            <button id="btn-perfiles-portafolio" class="hidden text-[11px] border rounded-md px-2 py-0.5 transition"
-                    style="color:var(--sello);border-color:rgba(156,93,18,.4)">
+            <button id="btn-perfiles-portafolio" class="hidden mp-btn mp-btn-secundario mp-btn-chico">
               Perfiles
             </button>
-            <button id="btn-exportar-pdf" class="hidden text-[11px] text-accent-purple hover:text-accent-purple/80 border border-accent-purple/30 hover:border-accent-purple/60 rounded-md px-2 py-0.5 transition inline-flex items-center gap-1.5">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="btn-exportar-pdf" class="hidden mp-btn mp-btn-secundario mp-btn-chico">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
               Reporte PDF
@@ -2165,43 +2172,45 @@
   <!-- VISTA: PERIÓDICO                                              -->
   <!-- ============================================================ -->
   <main id="vista-periodico">
-    <!-- Cabecera -->
-    <section class="max-w-7xl mx-auto px-6 pt-10 pb-4">
-      <div class="flex items-end justify-between flex-wrap gap-4 fade-up">
-        <div class="min-w-0">
-          <p class="mp-etq">Periódico</p>
-          <h2 class="mp-titular mp-titular-l mt-2">El mercado hoy</h2>
-          <p class="text-sm text-zinc-400 mt-3 max-w-2xl leading-relaxed">
-            Cinco mazos de tarjetas: noticias del día, tu lista de seguimiento, la acción
-            y el sector que más se movieron, e índices y divisas. Desliza de lado para
-            cambiar de mazo y toca una tarjeta para abrirla.
-          </p>
-        </div>
-        <button id="periodico-refrescar"
-          class="mp-btn mp-btn-secundario text-[12px]">
-          &#8635; Actualizar
+    <!-- CABECERA
+         Antes ocupaba ~280px: rótulo "Periódico" (que la pestaña activa ya
+         dice), titular, tres líneas explicando cómo funciona el swipe, un
+         botón con borde y dos líneas de mono contando cuándo se arma la
+         edición. Entre eso y las bandas fijas, el 76% de la primera pantalla
+         era chrome y la primera tarjeta caía en el píxel 640 de 844.
+         Ahora: titular, una línea de fecha y el refresco como botón de icono.
+         Las instrucciones se van: la pila y el indicador se explican solos. -->
+    <section class="mp-cabecera max-w-7xl mx-auto">
+      <div class="mp-cabecera-fila fade-up">
+        <h2 class="mp-titulo-vista">El mercado hoy</h2>
+        <button id="periodico-refrescar" class="mp-btn-icono"
+                aria-label="Actualizar la edición de hoy" title="Actualizar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" aria-hidden="true">
+            <path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/>
+          </svg>
         </button>
       </div>
-      <p id="periodico-hora" class="mp-firma mt-3">&#8212;</p>
+      <p id="periodico-hora" class="mp-cabecera-meta">&#8212;</p>
     </section>
 
-    <!-- ═══════════════════════════════════════════════════ -->
-    <!-- MAZOS DE TARJETAS                                    -->
-    <!-- ═══════════════════════════════════════════════════ -->
-    <section class="mp-mazos max-w-7xl mx-auto px-6 pb-10">
-      <!-- Indicador de posición: además de decir en qué mazo estás, cada
-           segmento es un botón que salta a ese mazo (Apple pide hit-testing
-           real, no solo un puntito decorativo). -->
+    <!-- MAZOS DE TARJETAS -->
+    <section class="mp-mazos max-w-7xl mx-auto">
+      <!-- Selector de mazo. Cada segmento es un botón real (Apple pide
+           hit-testing, no un puntito decorativo) y el activo se marca con
+           relleno, no con un filete superior de 2px que se perdía. -->
       <nav id="mazos-ind" class="mp-mazos-ind" role="tablist"
            aria-label="Mazos del periódico"></nav>
 
-      <!-- Leyenda del código de color por categoría -->
-      <div id="mazos-leyenda" class="mp-leyenda" aria-label="Qué significa cada color"></div>
-
       <div id="mazos-pista" class="mp-mazos-pista"></div>
 
+      <!-- Leyenda del código de color. Va DEBAJO de la pila, no encima: cada
+           tarjeta ya lleva escrito su propio rótulo de categoría, así que esto
+           es una nota de pie, no chrome que deba ocupar la primera pantalla. -->
+      <div id="mazos-leyenda" class="mp-leyenda" aria-label="Qué significa cada color"></div>
+
       <!-- Estado degradado / vacío: NUNCA se queda en "Cargando…" -->
-      <div id="mazos-aviso" class="mp-vacio hidden mt-4"></div>
+      <div id="mazos-aviso" class="mp-vacio hidden"></div>
     </section>
   </main><!-- /vista-periodico -->
 
