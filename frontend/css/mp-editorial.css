@@ -128,6 +128,133 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 [data-borde="medio"] { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%);
                                mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%); }
 
+/* ─────────────────────────── MODAL ──────────────────────────────────────
+   Los diálogos de la app estaban escritos a mano, cada uno con su cssText:
+   por eso ninguno se parecía al siguiente. Este es el molde. */
+.mp-modal {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--paso-4);
+  background: rgba(20,22,27,.42);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  animation: mp-modal-entra 160ms var(--easing);
+}
+@keyframes mp-modal-entra { from { opacity: 0 } to { opacity: 1 } }
+.mp-modal-caja {
+  background: var(--sup-panel);
+  border: var(--hairline) solid var(--regla);
+  border-radius: var(--radio-tarjeta);
+  box-shadow: var(--elev-3);
+  max-width: 560px; width: 100%;
+  max-height: min(86vh, 780px); overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mp-modal-cuerpo { padding: var(--paso-5); }
+.mp-modal-cabecera {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--paso-4); margin-bottom: var(--paso-4);
+}
+.mp-modal-etq {
+  font-size: var(--txt-etq); font-weight: 600; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--sello); margin: 0;
+}
+.mp-modal-titulo {
+  font-family: var(--ff-serif) !important;
+  font-size: var(--txt-seccion); font-weight: 700; letter-spacing: -0.02em;
+  color: var(--tinta-1); margin: var(--paso-1) 0 0;
+}
+.mp-modal-cerrar {
+  flex: 0 0 auto; width: 44px; height: 44px; margin: -6px -8px 0 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; cursor: pointer;
+  font-size: 26px; line-height: 1; color: var(--tinta-3);
+  border-radius: 999px;
+}
+.mp-modal-cerrar:hover { background: var(--sup-hondo); color: var(--tinta-1); }
+.mp-modal-parrafo { font-size: var(--txt-cuerpo); line-height: 1.55; color: var(--tinta-2); margin: 0 0 var(--paso-4); }
+.mp-modal-nota    { font-size: var(--txt-meta); line-height: 1.55; color: var(--tinta-3); margin: var(--paso-3) 0 0; }
+.mp-modal-aviso {
+  font-size: var(--txt-meta); line-height: 1.55; color: var(--sello-vivo);
+  background: var(--sello-tenue); border: var(--hairline) solid var(--regla);
+  border-radius: var(--radio); padding: var(--paso-3); margin: 0 0 var(--paso-4);
+}
+.mp-modal-acciones { display: flex; gap: var(--paso-2); margin-top: var(--paso-5); }
+.mp-modal-acciones .mp-btn { flex: 1; }
+.mp-modal-ancho { width: 100%; margin-top: var(--paso-4); }
+
+/* Selector de dos opciones (mínimo / bien balanceado). Segmentado, no radios:
+   son dos respuestas a la misma pregunta y se comparan de un vistazo. */
+.mp-opciones { display: flex; gap: var(--paso-2); margin: 0 0 var(--paso-4); }
+.mp-opcion {
+  flex: 1; display: flex; flex-direction: column; gap: 2px;
+  padding: var(--paso-3); min-height: 44px;
+  background: var(--sup); color: var(--tinta-2);
+  border: var(--hairline) solid var(--regla);
+  border-radius: var(--radio); cursor: pointer; text-align: left;
+  transition: border-color var(--t-rapida) var(--easing),
+              background-color var(--t-rapida) var(--easing);
+}
+.mp-opcion:hover { border-color: var(--regla-fuerte); }
+.mp-opcion.activa {
+  background: var(--sup-panel); border-color: var(--tinta-1);
+  box-shadow: inset 0 0 0 1px var(--tinta-1);
+}
+.mp-opcion-etq   { font-size: var(--txt-etq); font-weight: 600; letter-spacing: .06em;
+                   text-transform: uppercase; color: var(--tinta-3); }
+.mp-opcion.activa .mp-opcion-etq { color: var(--sello); }
+.mp-opcion-cifra { font-family: var(--ff-mono); font-variant-numeric: tabular-nums lining-nums;
+                   font-size: var(--txt-titular); font-weight: 700; color: var(--tinta-1);
+                   letter-spacing: -0.02em; }
+.mp-opcion-nota  { font-size: var(--txt-etq); color: var(--tinta-4);
+                   font-family: var(--ff-mono); font-variant-numeric: tabular-nums; }
+
+/* Tabla del plan de compra. Los números en mono y alineados a la derecha para
+   que las columnas se puedan comparar de un vistazo. */
+.mp-tabla-envoltura { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.mp-tabla-plan { width: 100%; border-collapse: collapse; }
+.mp-tabla-plan th {
+  font-family: var(--ff-sans) !important;
+  font-size: var(--txt-etq); font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--tinta-3);
+  text-align: right; padding: 0 0 var(--paso-2);
+  border-bottom: var(--hairline) solid var(--regla);
+}
+.mp-tabla-plan th:first-child, .mp-tabla-plan td:first-child { text-align: left; }
+.mp-tabla-plan td {
+  padding: var(--paso-3) 0; text-align: right;
+  font-size: var(--txt-meta); color: var(--tinta-2);
+  border-bottom: var(--hairline) solid var(--regla-suave);
+  white-space: nowrap;
+}
+.mp-tabla-plan td:not(:first-child) { padding-left: var(--paso-4); }
+.mp-tabla-plan .mp-tabla-clave { font-weight: 600; color: var(--tinta-1); }
+.mp-tabla-plan .mp-num, .mp-tabla-plan tfoot td {
+  font-family: var(--ff-mono) !important;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.mp-tabla-plan tfoot td {
+  font-weight: 700; color: var(--tinta-1);
+  border-bottom: 0; border-top: 2px solid var(--tinta-1);
+  padding-top: var(--paso-3);
+}
+.mp-tabla-plan tfoot td:first-child {
+  font-family: var(--ff-sans) !important; text-transform: uppercase;
+  font-size: var(--txt-etq); letter-spacing: .07em;
+}
+.mp-tabla-delta { display: inline-block; margin-left: var(--paso-2); color: var(--tinta-4); font-size: var(--txt-etq); }
+.mp-tabla-delta.lejos { color: var(--baja); }
+.mp-tabla-sub { display: none; }
+/* En iPhone la cuarta columna no cabe y se iba fuera del scroll: el peso real
+   baja a segunda línea bajo la emisora, que es donde se lee sin desplazar. */
+@media (max-width: 479px) {
+  .mp-tabla-plan .mp-tabla-peso { display: none; }
+  .mp-tabla-sub {
+    display: block; margin-top: 2px;
+    font-size: var(--txt-etq); font-weight: 400; color: var(--tinta-3);
+  }
+  .mp-tabla-plan td:not(:first-child) { padding-left: var(--paso-3); }
+}
+
 /* Franja de prueba gratuita, bajo el masthead. Es una frase, no un dato: sans,
    caja normal y el mismo sello de la app. */
 .mp-franja-prueba {

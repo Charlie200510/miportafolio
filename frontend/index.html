@@ -2407,6 +2407,17 @@
           Captura cada compra o venta que has hecho. Calculamos tu costo promedio, ganancia real
           (realizada y no realizada) y ROI. Esto es tu portafolio de verdad, no un análisis hipotético.
         </p>
+        <!-- Atajo al cálculo que todo el mundo hace a mano en una hoja: cuánto
+             dinero hace falta, mínimo, para tener el portafolio que analizaste. -->
+        <button id="btn-copiar-portafolio" type="button" class="mp-btn mp-btn-primario mt-4">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="11" height="11" rx="2"/>
+            <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>
+          </svg>
+          Copiar mi portafolio
+        </button>
+        <p class="mp-cabecera-meta mt-2">Con cuánto dinero, como mínimo, puedes replicarlo</p>
         <div class="mt-3 bg-accent-teal/5 border border-accent-teal/20 rounded-lg p-3 max-w-3xl">
           <p class="text-[11px] text-zinc-400 leading-relaxed">
             <span class="text-accent-teal font-semibold">Privacidad:</span> tus transacciones viven
@@ -3353,6 +3364,7 @@
   <script src="/static/app.js"></script>
   <script src="/static/ux_helpers.js"></script>
   <script src="/static/extras.js"></script>
+  <script src="/static/copiar_portafolio.js"></script>
   <script src="/static/herramientas_avanzadas.js"></script>
   <script src="/static/paywall.js"></script>
   <script src="/static/account.js"></script>

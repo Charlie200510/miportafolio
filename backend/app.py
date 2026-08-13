@@ -1193,7 +1193,19 @@ def _precio_actual_de(t: str) -> tuple[str, dict]:
                 continue
         if precio is None:
             return t, {"precio": None, "error": "sin precio"}
-        return t, {"precio": round(precio, 2), "error": None}
+        # La moneda viaja con el precio: sin ella el front no puede sumar un
+        # ticker de la BMV con uno de NYSE, y "cuánto cuesta el portafolio"
+        # daría un número que mezcla pesos con dólares.
+        moneda = None
+        for key in ("currency",):
+            try:
+                v = info[key] if hasattr(info, "__getitem__") else getattr(info, key, None)
+                if v:
+                    moneda = str(v).upper()
+                    break
+            except (KeyError, TypeError):
+                continue
+        return t, {"precio": round(precio, 2), "moneda": moneda, "error": None}
     except Exception as e:
         return t, {"precio": None, "error": str(e)[:80]}
 
