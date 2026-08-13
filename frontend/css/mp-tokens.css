@@ -141,12 +141,12 @@
      El fondo es un degradado casi imperceptible de gris claro a blanco hueso;
      los paneles van un punto MÁS claros que el fondo, así la jerarquía la da
      la luz y no una sombra.                                               */
-  --sup-grad-a:  #EFEFEC;  /* arriba del degradado de página */
-  --sup-grad-b:  #FAF8F3;  /* abajo del degradado de página */
-  --sup:         #F4F2ED;  /* equivalente plano del degradado */
-  --sup-panel:   #FDFCF8;  /* celda / panel */
-  --sup-alto:    #FFFDF8;  /* panel elevado, hover */
-  --sup-hondo:   #EFEDE6;  /* pozos, inputs (recesivo, no elevado) */
+  --sup-grad-a:  #E9E8E3;  /* arriba del degradado de página */
+  --sup-grad-b:  #F4F2EC;  /* abajo del degradado de página */
+  --sup:         #EFEDE7;  /* equivalente plano del degradado */
+  --sup-panel:   #FAF8F3;  /* celda / panel */
+  --sup-alto:    #FDFCF7;  /* panel elevado, hover */
+  --sup-hondo:   #E4E2DB;  /* pozos, inputs (recesivo, no elevado) */
 
   /* ── REGLAS ─────────────────────────────────────────────────────────────
      Hairlines en gris cálido. Nunca azules, nunca sombras.               */
@@ -155,29 +155,29 @@
   --regla-fuerte: #B9B2A2;  /* regla de sección / doble */
 
   /* ── TINTA (texto) ──────────────────────────────────────────────────────
-     Contraste medido contra --sup-panel (#FDFCF8), que es la superficie MÁS
+     Contraste medido contra --sup-panel (#FAF8F3), que es la superficie MÁS
      clara y por tanto el peor caso. Los cuatro pasan AA.                  */
   --tinta-1:  #1A1A18;  /* 17.0:1 — titulares, cifras protagonistas */
   --tinta-2:  #46443E;  /*  9.5:1 — texto corrido */
   --tinta-3:  #5E5A51;  /*  5.9:1 — meta, etiquetas */
-  --tinta-4:  #6F6A5C;  /*  4.7:1 — mínimo AA para texto tenue */
+  --tinta-4:  #656053;  /*  5.1:1 — mínimo AA para texto tenue, también sobre --regla */
 
   /* ── ACENTO ─────────────────────────────────────────────────────────────
      Un solo acento para TODA la interacción: ámbar de tinta de sello,
      bajado a ocre para que pase AA sobre papel (el #D79A3C del tema oscuro
      daba 2.2:1 aquí y era ilegible). Sigue sin ser verde a propósito: el
      verde queda reservado a la dirección de mercado.                      */
-  --sello:        #9C5D12;  /* 5.1:1 — texto/borde de acento */
-  --sello-vivo:   #7E4A0C;  /* hover: se oscurece, no se aclara */
-  --sello-solido: #9C5D12;  /* fondo de botón; encima va --sobre-sello */
+  --sello:        #91560F;  /* 5.1:1 — texto/borde de acento */
+  --sello-vivo:   #74440A;  /* hover: se oscurece, no se aclara */
+  --sello-solido: #91560F;  /* fondo de botón; encima va --sobre-sello */
   --sello-tenue:  rgba(156,93,18,.10);
-  --sobre-sello:  #FFFDF8;  /* 5.2:1 sobre --sello-solido */
+  --sobre-sello:  #FDFCF7;  /* 5.2:1 sobre --sello-solido */
 
   /* ── DIRECCIÓN DE MERCADO ───────────────────────────────────────────────
      NUNCA decorativos. Reajustados para papel: el verde menta y el salmón
      del tema oscuro quedaban chillones y sin contraste sobre blanco.     */
-  --alza:       #1B6B42;  /* 5.6:1 en página, 5.1:1 sobre el fondo de tarjeta más claro */
-  --baja:       #AE3223;  /* 6.2:1 en página, 4.9:1 sobre el fondo de tarjeta más claro */
+  --alza:       #19643D;  /* 5.6:1 en página, 5.1:1 sobre el fondo de tarjeta más claro */
+  --baja:       #A32C1E;  /* 6.2:1 en página, 4.9:1 sobre el fondo de tarjeta más claro */
   --alza-tenue: rgba(27,107,66,.10);
   --baja-tenue: rgba(174,50,35,.10);
 
@@ -188,8 +188,8 @@
 
   /* Elevación: mínima y suave. Se usa SOLO en lo que de verdad flota sobre
      la página (tarjetas del Periódico, modales), nunca en celdas de datos. */
-  --elev-1: 0 1px 2px rgba(26,26,24,.05);
-  --elev-2: 0 6px 18px rgba(26,26,24,.09);
+  --elev-1: 0 1px 2px rgba(26,26,24,.07);
+  --elev-2: 0 8px 24px -6px rgba(26,26,24,.18);
 
   /* Micro-interacciones sobrias */
   --t-rapida: 120ms;

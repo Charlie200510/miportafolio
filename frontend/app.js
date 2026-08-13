@@ -29,11 +29,11 @@ const API_BASE = (window.MP_API_BASE || '').replace(/\/$/, '');
 //    · valor que consume JS        →  MP_COLOR.x     (Chart.js, canvas)
 const MP_COLOR = (() => {
   const respaldo = {
-    sup: '#F4F2ED', supPanel: '#FDFCF8', supAlto: '#FFFDF8', supHondo: '#EFEDE6',
+    sup: '#EFEDE7', supPanel: '#FAF8F3', supAlto: '#FDFCF7', supHondo: '#E4E2DB',
     regla: '#DFDBD0', reglaSuave: '#EAE7DE', reglaFuerte: '#B9B2A2',
-    tinta1: '#1A1A18', tinta2: '#46443E', tinta3: '#5E5A51', tinta4: '#6F6A5C',
-    sello: '#9C5D12', selloVivo: '#7E4A0C', selloSolido: '#9C5D12', sobreSello: '#FFFDF8',
-    alza: '#1B6B42', baja: '#AE3223',
+    tinta1: '#1A1A18', tinta2: '#46443E', tinta3: '#5E5A51', tinta4: '#656053',
+    sello: '#91560F', selloVivo: '#74440A', selloSolido: '#91560F', sobreSello: '#FDFCF7',
+    alza: '#19643D', baja: '#A32C1E',
   };
   const tokens = {
     sup: '--sup', supPanel: '--sup-panel', supAlto: '--sup-alto', supHondo: '--sup-hondo',
@@ -3200,16 +3200,19 @@ window.iniciarComparar = (function () {
 //  (periodico.py → CAT_MX, CAT_GLOBAL, CAT_CRIPTO, CAT_POSICION, CAT_MACRO);
 //  si añades una categoría, tiene que existir en los dos lados.
 //
-//  Cada entrada trae fondo saturado-pero-suave y tinta del MISMO family de
-//  color (nunca negro puro ni gris genérico encima del color), más un borde un
-//  punto más oscuro que el fondo. Contraste tinta/fondo medido:
-//    mx 7.8:1 · global 8.2:1 · cripto 7.4:1 · posicion 7.9:1 · macro 7.1:1
+//  Cada entrada trae fondo CROMÁTICO —no un pastel lavado— y tinta del MISMO
+//  family de color (nunca negro puro ni gris genérico encima del color), más un
+//  borde un punto más oscuro que sirve de canto a la tarjeta. Contraste
+//  tinta/fondo medido:
+//    mx 6.4:1 · global 8.3:1 · cripto 7.6:1 · posicion 7.9:1 · macro 7.3:1
+//  El verde y el rojo de mercado (--alza/--baja) también pasan AA sobre las
+//  cinco superficies: 4.7:1 en el peor caso.
 const MP_CATEGORIAS = {
-  mx:       { etq: 'BMV · IPC',      leyenda: 'Mercado mexicano',  sup: '#DCE9DF', tinta: '#1E4D33', borde: '#BCD5C4' },
-  global:   { etq: 'Global',         leyenda: 'Mercados globales', sup: '#DCE4EF', tinta: '#23415F', borde: '#BDCEE2' },
-  cripto:   { etq: 'Cripto',         leyenda: 'Criptomonedas',     sup: '#F2E5D2', tinta: '#6B4415', borde: '#DFCBAD' },
-  posicion: { etq: 'Tus posiciones', leyenda: 'Tus posiciones',    sup: '#E6DEEA', tinta: '#4A3560', borde: '#D1C3DA' },
-  macro:    { etq: 'Macro y tasas',  leyenda: 'Macro y tasas',     sup: '#E9E5DA', tinta: '#554A33', borde: '#D7D1BF' },
+  mx:       { etq: 'BMV · IPC',      leyenda: 'Mercado mexicano',  sup: '#BFE0C8', tinta: '#14532D', borde: '#A6D0B2' },
+  global:   { etq: 'Global',         leyenda: 'Mercados globales', sup: '#C3D8F0', tinta: '#17375C', borde: '#A9C6E6' },
+  cripto:   { etq: 'Cripto',         leyenda: 'Criptomonedas',     sup: '#F4DEB0', tinta: '#5E3A08', borde: '#E4C88E' },
+  posicion: { etq: 'Tus posiciones', leyenda: 'Tus posiciones',    sup: '#D9CCEC', tinta: '#3E2A6B', borde: '#C4B2E0' },
+  macro:    { etq: 'Macro y tasas',  leyenda: 'Macro y tasas',     sup: '#E0DBC0', tinta: '#4A4118', borde: '#CCC5A4' },
 };
 window.MP_CATEGORIAS = MP_CATEGORIAS;
 
@@ -3229,12 +3232,14 @@ const Periodico = (() => {
   // se recorta se dice en la UI, nunca se trunca en silencio.
   const MAX_TARJETAS = 10;
 
+  // El orden del swipe lo fija esta lista y nada más: el indicador, los paneles
+  // y la carga se generan a partir de ella.
   const MAZOS = [
     { clave: 'noticias',  titulo: 'Noticias' },
-    { clave: 'watchlist', titulo: 'Tu watchlist' },
     { clave: 'accion',    titulo: 'Acción del día' },
-    { clave: 'sector',    titulo: 'Sector del día' },
     { clave: 'indices',   titulo: 'Índices y divisas' },
+    { clave: 'sector',    titulo: 'Sector del día' },
+    { clave: 'watchlist', titulo: 'Tu watchlist' },
   ];
 
   const state = {
@@ -3364,7 +3369,22 @@ const Periodico = (() => {
           }))
         : Promise.resolve([]),
     ]);
-    const propias = Array.isArray(mias) ? mias.slice(0, 3) : [];
+    // Una tarjeta POR EMISORA tuya que tenga noticia, no tres de la misma. Si
+    // cinco de tus posiciones traen noticia se ven cinco tarjetas moradas
+    // distintas; si solo una tiene, se ve una. Se reparte por rondas
+    // (la más reciente de cada emisora primero) y se topa en la mitad del mazo
+    // para que la edición del día no desaparezca detrás de tu portafolio.
+    const porEmisora = new Map();
+    for (const n of (Array.isArray(mias) ? mias : [])) {
+      if (!n || !n.url) continue;
+      const t = (n.tickers && n.tickers[0]) || n.ticker_relacionado || '·';
+      // La lista viene ordenada por fecha desc: la primera de cada emisora es
+      // la más reciente y es la única que se queda.
+      if (!porEmisora.has(t)) porEmisora.set(t, n);
+    }
+    // UNA tarjeta por emisora tuya con noticia. El tope es la mitad del mazo
+    // para que la edición del día no acabe sepultada bajo tu portafolio.
+    const propias = [...porEmisora.values()].slice(0, Math.floor(MAX_TARJETAS / 2));
     const base = (d && Array.isArray(d.noticias)) ? d.noticias : [];
     if (!propias.length && !base.length) {
       return { error: (d && d.error) || 'No pude traer la edición de hoy.', tarjetas: [] };
@@ -3381,8 +3401,12 @@ const Periodico = (() => {
         cat,
         // La fuente va en la ETIQUETA, no en la meta: la franja visible de la
         // pila tiene que llevar titular Y nombre de la fuente, y la meta cae
-        // por debajo del corte.
-        etq: [MP_CATEGORIAS[cat].leyenda, n.proveedor].filter(Boolean).join(' · '),
+        // por debajo del corte. En las de tu portafolio manda el TICKER: es lo
+        // que te dice de golpe cuál de tus posiciones se movió.
+        etq: (cat === 'posicion'
+                ? [(n.tickers && n.tickers[0]) || n.ticker_relacionado, n.proveedor]
+                : [MP_CATEGORIAS[cat].leyenda, n.proveedor]
+             ).filter(Boolean).join(' · '),
         titular: n.titulo,
         meta: fmtHora(n.fecha),
         resumen: n.resumen,
@@ -3977,12 +4001,13 @@ const Periodico = (() => {
     }
 
     const mercados = await safeJson(s => fetch('/api/periodico/mercados', { signal: s }));
+    // MISMO ORDEN que MAZOS: los resultados se asignan por índice más abajo.
     const resultados = await Promise.all([
       mazoNoticias().catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
-      mazoWatchlist().catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
       mazoAccion().catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
-      mazoSector(mercados).catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
       mazoIndices(mercados).catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
+      mazoSector(mercados).catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
+      mazoWatchlist().catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
     ]);
 
     // Soltar las gráficas del render anterior antes de tirar el DOM.
