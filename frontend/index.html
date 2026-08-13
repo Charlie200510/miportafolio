@@ -2034,6 +2034,63 @@
 
       <!-- Resultado -->
       <div id="an-resultado" class="hidden space-y-6"></div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           TUS LISTAS — watchlist del Periódico y tickers del widget.
+           Van al FINAL de "Una acción" a propósito, no como sub-pestaña
+           nueva: el conmutador de sub-vistas solo conoce cinco secciones y
+           añadir una sexta obliga a tocarlo. Aquí se llega bajando, que es
+           donde el usuario ya está después de analizar algo.
+      ══════════════════════════════════════════════════════════════ -->
+      <section id="an-listas" class="mp-listas">
+        <div class="mp-sec">
+          <span class="mp-sec-etq"><span class="mp-sec-orden">Tus listas</span></span>
+        </div>
+
+        <!-- ── Watchlist ─────────────────────────────────────────────── -->
+        <div class="mp-panel">
+          <h3 class="mp-panel-titulo">Tu watchlist</h3>
+          <p class="mp-panel-nota">
+            Las emisoras que sigues. Cada una tiene su tarjeta en el mazo
+            <strong>Tu watchlist</strong> del Periódico, con su precio y su gráfica del día.
+          </p>
+          <div class="mp-buscador">
+            <svg class="mp-buscador-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+            </svg>
+            <input id="wl-buscar" type="text" autocomplete="off" autocapitalize="characters"
+                   placeholder="Busca una acción, ETF o cripto"
+                   aria-label="Buscar para añadir a tu watchlist" />
+          </div>
+          <div id="wl-chips" class="mp-chips" aria-live="polite"></div>
+        </div>
+
+        <!-- ── Widget ────────────────────────────────────────────────── -->
+        <div class="mp-panel" id="wg-panel">
+          <h3 class="mp-panel-titulo">Widget de pantalla de inicio</h3>
+          <p class="mp-panel-nota">
+            Lo que enseña el widget del iPhone sin abrir la app. Hasta
+            <strong>4</strong>; el orden es el que ves aquí.
+          </p>
+          <div class="mp-buscador">
+            <svg class="mp-buscador-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+            </svg>
+            <input id="wg-buscar" type="text" autocomplete="off" autocapitalize="characters"
+                   placeholder="Añade un ticker al widget"
+                   aria-label="Buscar para añadir al widget" />
+          </div>
+          <div id="wg-chips" class="mp-chips" aria-live="polite"></div>
+          <div class="mp-panel-pie">
+            <button id="wg-reset" type="button" class="mp-btn mp-btn-secundario mp-btn-chico">
+              Volver a los de fábrica
+            </button>
+            <span id="wg-estado" class="mp-panel-estado"></span>
+          </div>
+        </div>
+      </section>
     </section>
 
     <!-- Sub-vista: Deep Dive (oculta por default) -->
@@ -3365,6 +3422,7 @@
   <script src="/static/ux_helpers.js"></script>
   <script src="/static/extras.js"></script>
   <script src="/static/copiar_portafolio.js"></script>
+  <script src="/static/listas.js"></script>
   <script src="/static/herramientas_avanzadas.js"></script>
   <script src="/static/paywall.js"></script>
   <script src="/static/account.js"></script>

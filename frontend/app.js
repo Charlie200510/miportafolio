@@ -3453,7 +3453,23 @@ const Periodico = (() => {
       body: JSON.stringify({ tickers }), signal: s,
     }));
     const items = (d && d.ok && d.items) || [];
-    if (!items.length) return { error: 'No pude cargar tu lista en este momento.', tarjetas: [] };
+    const faltantes = (d && d.faltantes) || [];
+    if (!items.length && !faltantes.length) {
+      return { error: 'No pude cargar tu lista en este momento.', tarjetas: [] };
+    }
+    /* Las emisoras sin datos llevan SU PROPIA tarjeta en vez de desaparecer.
+       La lupa consulta Yahoo, así que se pueden seguir emisoras que no están en
+       el universo local; antes esas se caían del mazo sin explicación y parecía
+       que la app había perdido la lista. */
+    const sinDatos = faltantes.slice(0, 4).map(t => ({
+      cat: _catDeTicker(t),
+      etq: MP_CATEGORIAS[_catDeTicker(t)].leyenda,
+      nombre: t,
+      meta: 'Sin precios en nuestro universo',
+      tickers: [t],
+      detalle: 'Sigues esta emisora, pero todavía no tenemos su serie de precios, '
+             + 'así que no podemos dibujar su tarjeta. Su análisis individual sí funciona.',
+    }));
     return {
       tarjetas: items.slice(0, MAX_TARJETAS).map(it => {
         const cat = _catDeTicker(it.ticker);
@@ -3472,7 +3488,7 @@ const Periodico = (() => {
             { k: 'Cambio', v: fmtPct(it.cambio_pct) ?? '—', dir: it.cambio_pct },
           ].filter(m => m.v !== '—'),
         };
-      }),
+      }).concat(sinDatos).slice(0, MAX_TARJETAS),
     };
   }
 

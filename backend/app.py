@@ -2421,12 +2421,20 @@ def api_watchlist():
         df = _ad._cargar_precios()
         info = _ad._cargar_info()
         out = []
+        # Los que se quedan sin datos se REPORTAN. Antes se descartaban en
+        # silencio: el usuario agregaba una emisora desde la lupa (que consulta
+        # Yahoo y por tanto encuentra cosas que no están en el CSV local) y esa
+        # emisora simplemente no aparecía en su mazo, sin ninguna pista de por
+        # qué. Devolverlos permite pintarles una tarjeta que lo explique.
+        faltantes = []
         if df is not None and tickers:
             for t in tickers:
                 if t not in df.columns:
+                    faltantes.append(t)
                     continue
                 s = df[t].dropna()
                 if len(s) < 2:
+                    faltantes.append(t)
                     continue
                 precio = float(s.iloc[-1])
                 # Cambio del día vs el último cierre DISTINTO: salta fines de
@@ -2449,7 +2457,7 @@ def api_watchlist():
                     "moneda":     meta.get("moneda") or ("MXN" if t.endswith(".MX") else "USD"),
                     "spark":      [round(float(v), 4) for v in sp.iloc[::paso].values],
                 })
-        return jsonify({"ok": True, "items": out})
+        return jsonify({"ok": True, "items": out, "faltantes": faltantes})
     except Exception as e:
         return jsonify({"ok": False, "error": f"watchlist falló: {e}"}), 500
 

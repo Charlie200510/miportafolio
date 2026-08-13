@@ -128,6 +128,76 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 [data-borde="medio"] { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%);
                                mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%); }
 
+/* ────────────────── PANELES DE LISTAS (watchlist / widget) ─────────────── */
+.mp-listas { margin-top: var(--paso-7); }
+.mp-panel {
+  background: var(--sup-panel);
+  border: var(--hairline) solid var(--regla);
+  border-radius: var(--radio-tarjeta);
+  box-shadow: var(--elev-1);
+  padding: var(--paso-5);
+  margin-bottom: var(--paso-4);
+}
+.mp-panel-titulo {
+  font-family: var(--ff-serif) !important;
+  font-size: var(--txt-seccion); font-weight: 700; letter-spacing: -0.02em;
+  color: var(--tinta-1); margin: 0;
+}
+.mp-panel-nota {
+  font-size: var(--txt-meta); line-height: 1.55; color: var(--tinta-3);
+  margin: var(--paso-2) 0 var(--paso-4);
+}
+.mp-panel-pie {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--paso-3); flex-wrap: wrap; margin-top: var(--paso-4);
+}
+.mp-panel-estado { font-size: var(--txt-etq); color: var(--tinta-4); }
+
+/* Buscador con lupa. La lupa va DENTRO del campo y el padding izquierdo le
+   deja su sitio: un icono flotando encima del texto es el defecto clásico. */
+.mp-buscador { position: relative; }
+.mp-buscador-lupa {
+  position: absolute; left: var(--paso-3); top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; color: var(--tinta-4); pointer-events: none;
+}
+.mp-buscador input {
+  width: 100%; box-sizing: border-box;
+  /* !important porque la hoja móvil de ux_helpers.js fija `padding: 10px 12px`
+     a todos los input: sin esto el texto arranca bajo la lupa y se lee
+     "(lupa)usca una acción". */
+  padding: var(--paso-3) var(--paso-4) var(--paso-3) calc(var(--paso-3) * 2 + 18px) !important;
+  min-height: 44px !important;
+  font-size: 16px !important;   /* 16px o iOS hace zoom al enfocar */
+  border-radius: var(--radio) !important;
+}
+
+/* Fichas de la lista. Cada una es su propio par (ir al análisis / quitar). */
+.mp-chips {
+  display: flex; flex-wrap: wrap; gap: var(--paso-2);
+  margin-top: var(--paso-3); min-height: 4px;
+}
+.mp-chip {
+  display: inline-flex; align-items: center; gap: 0;
+  background: var(--sup); border: var(--hairline) solid var(--regla);
+  border-radius: 999px; overflow: hidden;
+}
+.mp-chip-nom {
+  font-family: var(--ff-mono); font-variant-numeric: tabular-nums;
+  font-size: var(--txt-meta); font-weight: 600; color: var(--tinta-1);
+  background: transparent; border: 0; cursor: pointer;
+  padding: var(--paso-2) var(--paso-2) var(--paso-2) var(--paso-3);
+  min-height: 36px;
+}
+.mp-chip-nom:hover { color: var(--sello-vivo); }
+.mp-chip-quitar {
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--tinta-4); font-size: 17px; line-height: 1;
+  padding: 0 var(--paso-3) 0 var(--paso-2); min-height: 36px;
+}
+.mp-chip-quitar:hover { color: var(--baja); }
+.mp-chip.arrastrable { cursor: grab; }
+.mp-chips-vacio { font-size: var(--txt-meta); color: var(--tinta-4); margin: var(--paso-2) 0 0; }
+
 /* ─────────────────────────── MODAL ──────────────────────────────────────
    Los diálogos de la app estaban escritos a mano, cada uno con su cssText:
    por eso ninguno se parecía al siguiente. Este es el molde. */
