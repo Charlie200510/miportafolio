@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest" />
-  <meta name="theme-color" content="#EFEFEC" />
+  <meta name="theme-color" content="#E9E8E3" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -79,12 +79,12 @@
        nombres que los tokens (`sup*` superficies, `tinta*` texto). Si tocas
        mp-tokens.css, toca aquí. */
     const _tinta = {
-      base:  '#F4F2ED', panel: '#FDFCF8', alta: '#FFFDF8', honda: '#EFEDE6',
+      base:  '#EFEDE7', panel: '#FAF8F3', alta: '#FDFCF7', honda: '#E4E2DB',
       regla: '#DFDBD0', reglaSuave: '#EAE7DE', reglaFuerte: '#B9B2A2',
-      tinta1: '#1A1A18', tinta2: '#46443E', tinta3: '#5E5A51', tinta4: '#6F6A5C',
-      sello: '#9C5D12', selloVivo: '#7E4A0C', selloSolido: '#9C5D12',
-      sobreSello: '#FFFDF8',
-      alza:  '#1B6B42', baja: '#AE3223',
+      tinta1: '#1A1A18', tinta2: '#46443E', tinta3: '#5E5A51', tinta4: '#656053',
+      sello: '#91560F', selloVivo: '#74440A', selloSolido: '#91560F',
+      sobreSello: '#FDFCF7',
+      alza:  '#19643D', baja: '#A32C1E',
     };
     tailwind.config = {
       theme: {
@@ -106,7 +106,7 @@
                protagonista y `bg-zinc-900` para los paneles. Sobre papel eso se
                INVIERTE respecto a la escala de Tailwind: los índices bajos
                (texto) pasan a ser tinta oscura y los altos (superficies) pasan a
-               ser papel claro. Por eso 50→#1A1A18 y 950→#F4F2ED, que leído en
+               ser papel claro. Por eso 50→#1A1A18 y 950→#EFEDE7, que leído en
                frío parece un error y no lo es.
                950 además es el color del texto sobre botones sólidos
                (`bg-accent-* text-zinc-950`), así que tiene que ser casi blanco. */
