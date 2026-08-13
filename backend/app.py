@@ -700,6 +700,17 @@ def _ejecutar_warmup_blocking():
         return {"ok": d.get("ok", False), "n": len(d.get("acciones", [])) if d.get("ok") else 0}
     _paso("portafolio_optimo_5", _r6)
 
+    # 7) Score de ETFs y cripto para el screener. Son 233 activos y puntuarlos
+    #    tarda ~10 s; si no se calientan aquí, ese costo lo paga el primer
+    #    usuario que filtre por ETF, mirando un "Filtrando…" sin explicación.
+    #    Cachea por día CDMX igual que el resto de rankings.
+    def _r7():
+        import accion_del_dia as _ad
+        filas = _ad.ranking(n=5000, solo_recomendadas=False,
+                            solo_otros=True, incluir_otros=True)
+        return {"ok": bool(filas), "n": len(filas)}
+    _paso("screener_etf_cripto", _r7)
+
     # Resumen final
     elapsed = round(_t.time() - t0, 2)
     ok_count = sum(1 for r in resultados.values() if r.get("ok"))

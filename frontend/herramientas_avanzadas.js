@@ -313,36 +313,57 @@
   };
 
   function _renderScreener(d) {
+    const ETQ = { etf: 'ETF', crypto: 'Cripto' };
     const filas = (d.resultados || []).map(r => {
       const sym = r.moneda === 'MXN' ? '$' : 'US$';
-      const precio = r.precio != null ? `${sym}${Number(r.precio).toLocaleString('en-US',{maximumFractionDigits:2})}` : '—';
-      const score = r.score != null ? `<span style="font-weight:700;color:var(--sello);">${Math.round(r.score)}</span>` : '—';
-      return `<tr>
-        <td style="padding:6px 10px;font-family:monospace;color:var(--tinta-1);font-weight:600;font-size:12px;">${r.ticker}</td>
-        <td style="padding:6px 10px;color:var(--tinta-3);font-size:11px;">${r.mercado || '—'}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;font-size:12px;">${score}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:var(--tinta-2);font-size:11px;">${r.beta != null ? Number(r.beta).toFixed(2) : '—'}</td>
-        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:var(--tinta-2);font-size:11px;">${precio}</td>
+      const precio = r.precio != null
+        ? `${sym}${Number(r.precio).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
+      const tipo = r.mercado === 'Crypto' ? 'crypto' : r.es_etf ? 'etf' : 'accion';
+      const nombre = r.nombre && r.nombre !== r.ticker ? r.nombre : '';
+      return `<tr data-ticker="${r.ticker}" tabindex="0" role="button"
+                  aria-label="Analizar ${r.ticker}">
+        <td class="mp-tabla-clave">${r.ticker}
+          ${ETQ[tipo] ? `<span class="mp-insignia">${ETQ[tipo]}</span>` : ''}
+          ${nombre ? `<span class="mp-tabla-sub">${nombre}</span>` : ''}</td>
+        <td class="mp-num">${r.score != null ? Math.round(r.score) : '—'}</td>
+        <td class="mp-num mp-tabla-peso">${r.beta != null ? Number(r.beta).toFixed(2) : '—'}</td>
+        <td class="mp-num">${precio}</td>
       </tr>`;
     }).join('');
+
+    // Los ETF y las cripto no se puntúan con la misma receta que las acciones
+    // —no tienen P/E, ROE ni márgenes—, y decirlo aquí evita que alguien
+    // compare un 89 de VOO con un 89 de una acción como si midieran lo mismo.
+    const nota = (d.resultados || []).some(r => r.mercado === 'Crypto' || r.es_etf)
+      ? `<p class="mp-modal-nota" style="margin-top:var(--paso-3)">En ETFs y criptomonedas el
+         score se calcula sin fundamentales de empresa (no existen): pesa Sharpe, retorno,
+         momentum y estabilidad. Está en la misma escala 0–100, pero no mide lo mismo.</p>`
+      : '';
+
     return `
-      <p style="font-size:12px;color:var(--tinta-3);margin:0 0 8px;">${d.total} resultados (ordenados por score)</p>
-      <div style="overflow-x:auto;max-height:400px;overflow-y:auto;-webkit-overflow-scrolling:touch;">
-        <table style="width:100%;border-collapse:collapse;background:var(--sup);border:1px solid var(--sup-panel);border-radius:var(--radio);">
-          <thead style="position:sticky;top:0;background:var(--sup-panel);">
-            <tr>
-              <th style="padding:8px 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;text-align:left;">Ticker</th>
-              <th style="padding:8px 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;text-align:left;">Mercado</th>
-              <th style="padding:8px 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;text-align:right;">Score</th>
-              <th style="padding:8px 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;text-align:right;">Beta</th>
-              <th style="padding:8px 10px;font-size:10px;color:var(--tinta-4);text-transform:uppercase;text-align:right;">Precio</th>
-            </tr>
-          </thead>
-          <tbody>${filas || '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--tinta-4);">Sin resultados con esos criterios</td></tr>'}</tbody>
+      <p class="mp-modal-nota" style="margin:0 0 var(--paso-3)">${d.total} resultados, del score más alto al más bajo.</p>
+      <div class="mp-tabla-envoltura" style="max-height:440px;overflow-y:auto;">
+        <table class="mp-tabla-plan mp-tabla-clicable">
+          <thead><tr>
+            <th>Activo</th><th>Score</th><th class="mp-tabla-peso">Beta</th><th>Precio</th>
+          </tr></thead>
+          <tbody>${filas || '<tr><td colspan="4" style="text-align:center;padding:var(--paso-6);color:var(--tinta-4)">Sin resultados con esos criterios</td></tr>'}</tbody>
         </table>
       </div>
-    `;
+      ${nota}`;
   }
+
+  /* Una fila del screener lleva a su análisis: encontrar el ticker y luego
+     tener que teclearlo a mano en otra pestaña es un callejón sin salida. */
+  document.addEventListener('click', (ev) => {
+    const fila = ev.target.closest('.mp-tabla-clicable tr[data-ticker]');
+    if (fila && window.analizarTicker) window.analizarTicker(fila.dataset.ticker);
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    const fila = ev.target.closest && ev.target.closest('.mp-tabla-clicable tr[data-ticker]');
+    if (fila && window.analizarTicker) { ev.preventDefault(); window.analizarTicker(fila.dataset.ticker); }
+  });
 
   // ============================================================
   //  4) ALERTAS MULTI-CONDICIÓN
@@ -766,7 +787,12 @@
     if (!btn || !cont || btn.dataset.wired === '1') return;
     btn.dataset.wired = '1';
     btn.addEventListener('click', async () => {
-      cont.innerHTML = `<p style="text-align:center;color:var(--tinta-4);font-size:13px;padding:20px;">Filtrando…</p>`;
+      // La primera búsqueda de ETF/cripto del día puede tardar: el servidor
+      // puntúa 233 activos. Decirlo evita que parezca colgado.
+      const _tipo = document.getElementById('sc-tipo').value;
+      cont.innerHTML = `<p class="mp-modal-nota" style="text-align:center;padding:var(--paso-6)">Filtrando…${
+        _tipo === 'etfs' || _tipo === 'crypto'
+          ? '<br>La primera búsqueda del día tarda unos segundos: se calculan los scores.' : ''}</p>`;
       const get = id => document.getElementById(id).value.trim();
       const num = id => { const v = parseFloat(get(id)); return isFinite(v) ? v : null; };
       const criterios = {

@@ -244,6 +244,27 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 .mp-tabla-delta { display: inline-block; margin-left: var(--paso-2); color: var(--tinta-4); font-size: var(--txt-etq); }
 .mp-tabla-delta.lejos { color: var(--baja); }
 .mp-tabla-sub { display: none; }
+/* En el screener el nombre va SIEMPRE bajo el ticker, no solo en móvil: es una
+   segunda línea de identidad, no una columna que se cae. */
+.mp-tabla-plan .mp-tabla-clave .mp-tabla-sub {
+  display: block; margin-top: 2px;
+  font-size: var(--txt-etq); font-weight: 400; color: var(--tinta-3);
+  white-space: normal;
+}
+.mp-insignia {
+  display: inline-block; margin-left: var(--paso-2); vertical-align: 2px;
+  padding: 1px 7px; border-radius: 999px;
+  background: var(--sup-hondo); color: var(--tinta-3);
+  font-family: var(--ff-sans); font-size: 10px; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+/* La columna de identidad envuelve; las de cifras no. Con nowrap en todas, un
+   nombre como "CRSP US Total Market" empujaba la tabla fuera del ancho del
+   iPhone y el precio quedaba tras un scroll que nadie descubre. */
+.mp-tabla-clicable td:first-child { white-space: normal; }
+.mp-tabla-clicable tbody tr { cursor: pointer; }
+.mp-tabla-clicable tbody tr:hover td { background: var(--sup-hondo); }
+.mp-tabla-clicable tbody tr:focus-visible { outline: 2px solid var(--sello); outline-offset: -2px; }
 /* En iPhone la cuarta columna no cabe y se iba fuera del scroll: el peso real
    baja a segunda línea bajo la emisora, que es donde se lee sin desplazar. */
 @media (max-width: 479px) {

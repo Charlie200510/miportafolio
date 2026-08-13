@@ -3336,7 +3336,10 @@ const Periodico = (() => {
     try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) {}
   }
 
-  /* Lleva a la vista Analizar con el ticker cargado. */
+  /* Lleva a la vista Analizar con el ticker cargado. Se expone en window
+     porque el screener (herramientas_avanzadas.js) necesita el mismo salto:
+     encontrar un ticker en una tabla y tener que teclearlo a mano en otra
+     pantalla deja el hallazgo en nada. */
   function irAAnalizar(ticker) {
     if (!ticker) return;
     const tab = document.querySelector('.nav-tab[data-vista="analizar"]');
@@ -3346,6 +3349,7 @@ const Periodico = (() => {
       const btn = $('an-btn-analizar'); if (btn) btn.click();
     }, 120);
   }
+  window.analizarTicker = irAAnalizar;
 
   // ─────────────────────────────────────────────────────────
   //  Construcción de los mazos a partir de los endpoints QUE YA EXISTEN

@@ -324,6 +324,24 @@ _CATALOGO_ETF = {
     "BND":  {"indice": "Bloomberg US Aggregate Float Adjusted"},
     "AGG":  {"indice": "Bloomberg US Aggregate Bond"},
     "HYG":  {"indice": "iBoxx USD Liquid High Yield"},
+    # Sectoriales del S&P 500 (Select Sector SPDR). Aparecen arriba en el
+    # screener y sin esto la columna de nombre repetía el ticker.
+    "XLK":  {"indice": "S&P 500 · Tecnología"},
+    "XLF":  {"indice": "S&P 500 · Financiero"},
+    "XLI":  {"indice": "S&P 500 · Industrial"},
+    "XLE":  {"indice": "S&P 500 · Energía"},
+    "XLV":  {"indice": "S&P 500 · Salud"},
+    "XLY":  {"indice": "S&P 500 · Consumo discrecional"},
+    "XLP":  {"indice": "S&P 500 · Consumo básico"},
+    "XLU":  {"indice": "S&P 500 · Servicios públicos"},
+    "XLB":  {"indice": "S&P 500 · Materiales"},
+    "XLRE": {"indice": "S&P 500 · Bienes raíces"},
+    "XLC":  {"indice": "S&P 500 · Comunicaciones"},
+    "ACWI": {"indice": "MSCI ACWI (mundo desarrollado + emergente)"},
+    "VT":   {"indice": "FTSE Global All Cap"},
+    "GLD":  {"indice": "Precio del oro (lingote físico)"},
+    "IAU":  {"indice": "Precio del oro (lingote físico)"},
+    "SLV":  {"indice": "Precio de la plata (lingote físico)"},
 }
 
 _SECTOR_ES = {

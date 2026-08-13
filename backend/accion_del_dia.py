@@ -545,12 +545,30 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
 
 
 _RANKING_CACHE: Dict[str, Any] = {}
-def ranking(n: int = 60, solo_recomendadas: bool = True) -> List[Dict[str, Any]]:
+def ranking(n: int = 60, solo_recomendadas: bool = True,
+            incluir_otros: bool = False, solo_otros: bool = False) -> List[Dict[str, Any]]:
     """Universo rankeado por score canónico (mayor a menor). Cache por día CDMX.
     solo_recomendadas=True → set curado (~120, rápido, para Acción del Día/Analizar).
-    solo_recomendadas=False → universo EXTENDIDO (todas las acciones con precios)."""
+    solo_recomendadas=False → universo EXTENDIDO (todas las acciones con precios).
+
+    incluir_otros=True añade ETFs, cripto e índices. Se quedan fuera por
+    omisión porque este ranking nació para Acción del Día, que por definición
+    tiene que ser una ACCIÓN; pero el screener sí los lista, y sin score
+    salían todos con un guion al final de la tabla. El score que reciben NO es
+    el de acciones: score_compuesto() enruta por tipo y usa solo lo que existe
+    para cada uno (ver _score_por_tipo en metricas_canonicas), de modo que el
+    número es comparable en escala sin fingir que un ETF tiene ROE.
+
+    solo_otros=True devuelve ÚNICAMENTE esos activos (234 de los 8,934 del
+    universo). Es lo que pide el screener cuando filtras por ETF o cripto:
+    puntuar el universo entero para eso tarda ~50 s y las acciones ya vienen
+    del ranking de Neon, así que sería trabajo tirado a la basura."""
     hoy = _fecha_cdmx()
-    ck = "r_rec" if solo_recomendadas else "r_all"
+    ck = ("r_rec" if solo_recomendadas else "r_all")
+    if solo_otros:
+        ck += "_soloOtros"
+    elif incluir_otros:
+        ck += "_otros"
     c = _RANKING_CACHE.get(ck)
     if c and c.get("fecha") == hoy:
         return c["data"][:n]
@@ -564,9 +582,14 @@ def ranking(n: int = 60, solo_recomendadas: bool = True) -> List[Dict[str, Any]]
     out = []
     for t in df.columns:
         info = info_all.get(t, {})
-        if not _es_candidato(t, info):
+        _accion = _es_candidato(t, info)
+        if solo_otros and _accion:
             continue
-        if solo_recomendadas and hay_rec and not info.get("recomendada"):
+        if not solo_otros and not incluir_otros and not _accion:
+            continue
+        # "recomendada" marca el set curado de ACCIONES: ningún ETF ni cripto la
+        # lleva, así que aplicarles ese filtro los dejaría fuera siempre.
+        if solo_recomendadas and hay_rec and _accion and not info.get("recomendada"):
             continue
         res = calcular_metricas_y_score(t, df, info_all, serie_us, serie_mx)
         if res is None:
@@ -575,6 +598,7 @@ def ranking(n: int = 60, solo_recomendadas: bool = True) -> List[Dict[str, Any]]
         out.append({
             "ticker":  det["ticker"], "nombre": det.get("nombre"), "sector": det.get("sector"),
             "score":   score, "beta": det.get("beta"), "sharpe": det.get("sharpe"),
+            "tipo_activo": det.get("tipo_activo"),
             "alpha_anualizado": det.get("alpha_anualizado"), "precio": det.get("precio"),
             "es_mx":   det.get("es_mx"),
             # Fundamentales (merge universo + caché Neon) para el screener:
