@@ -3745,7 +3745,11 @@ const Periodico = (() => {
       // items flex y su scrollHeight nunca baja del alto ya impuesto a la
       // pista, así que al cerrar una tarjeta la sección se quedaba estirada
       // para siempre. Sumar el contenido real sube y baja igual de bien.
-      let h = 0;
+      // El padding del propio pane NO viene en offsetHeight de los hijos, y el
+      // de arriba es el aire que necesita la sombra de apoyo de la primera
+      // tarjeta: sin sumarlo, la pista queda 10px corta y recorta la última.
+      const csp = getComputedStyle(pane);
+      let h = parseFloat(csp.paddingTop || 0) + parseFloat(csp.paddingBottom || 0);
       [...pane.children].forEach(hijo => {
         const cs = getComputedStyle(hijo);
         h += hijo.offsetHeight + parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);

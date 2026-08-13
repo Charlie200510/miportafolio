@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="/static/css/mp-tokens.css">
+<link rel="stylesheet" href="/static/css/mp-editorial.css">
+<style>body{background:#111;color:#eee}
+#out{position:fixed;bottom:0;left:0;right:0;background:#000;color:#0f0;font:11px monospace;white-space:pre;z-index:9999;max-height:45vh;overflow:auto}
+</style>
+</head>
+<body>
+<main id="vista-portafolio">
+<div id="portafolio-dashboard">
+<section class="bg-grid">
+  <div class="max-w-7xl mx-auto px-6 pt-7 pb-6" id="cont">
+    <div class="mb-6 fade-up">
+      <div class="mp-sec" id="sec">
+        <span class="mp-sec-etq" id="etq"><span class="mp-sec-orden" id="orden">Portada</span><span class="hidden min-[560px]:inline" id="resto">· Tu portafolio</span></span>
+        <span class="mp-sec-fin flex items-center gap-2" id="fin">
+          <button id="btn-editar-portafolio" class="mp-btn mp-btn-secundario mp-btn-chico">Editar</button>
+          <button id="btn-perfiles-portafolio" class="mp-btn mp-btn-secundario mp-btn-chico">Perfiles</button>
+          <button id="btn-exportar-pdf" class="mp-btn mp-btn-secundario mp-btn-chico">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Reporte PDF
+          </button>
+        </span>
+      </div>
+      <div class="grid lg:grid-cols-12 gap-x-8 gap-y-4 items-start mt-3">
+        <div class="lg:col-span-8 min-w-0">
+          <h2 class="mp-titular mp-titular-xl" id="hero-titulo">Tu portafolio le gana al mercado por 4.2 puntos</h2>
+          <p class="mp-balazo mt-2.5" id="hero-balazo">Balazo de prueba</p>
+          <p class="mp-firma mt-3" id="hero-subtitulo">Cargando analisis</p>
+        </div>
+        <div class="lg:col-span-4 min-w-0 border-t border-surface-border pt-3 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+          <p class="mp-etq">Rendimiento ultimo ano</p>
+          <p class="text-[44px] sm:text-[56px] leading-none font-bold tabular mt-1.5" id="hero-retorno">+18.4%</p>
+          <p class="mp-firma mt-2" id="hero-periodo">12 meses</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+</main>
+<pre id="out"></pre>
+<script>
+function medir(){
+  const L=[];
+  const vw=document.documentElement.clientWidth;
+  L.push('viewport='+vw);
+  const R=id=>{const e=document.getElementById(id);const r=e.getBoundingClientRect();
+    return id+' x='+r.x.toFixed(1)+' right='+r.right.toFixed(1)+' w='+r.width.toFixed(1)+' scrollW='+e.scrollWidth;};
+  ['cont','sec','etq','fin','btn-editar-portafolio','btn-perfiles-portafolio','btn-exportar-pdf','orden','resto'].forEach(i=>L.push(R(i)));
+  const etq=document.getElementById('etq');
+  const orden=document.getElementById('orden');
+  const resto=document.getElementById('resto');
+  const fin=document.getElementById('fin');
+  const re=etq.getBoundingClientRect(), rf=fin.getBoundingClientRect();
+  L.push('etq.scrollWidth='+etq.scrollWidth+'  etq.clientWidth='+etq.clientWidth+'  DESBORDE_ETQ='+(etq.scrollWidth-etq.clientWidth));
+  // texto real de la etiqueta: hasta donde llega el ultimo hijo visible
+  const hijos=[orden,resto].filter(e=>getComputedStyle(e).display!=='none');
+  const ultimo=hijos[hijos.length-1].getBoundingClientRect();
+  L.push('ultimo hijo etq right='+ultimo.right.toFixed(1)+'  fin.left='+rf.left.toFixed(1)+
+         '  SOLAPE_TEXTO_vs_BOTONES='+(ultimo.right-rf.left).toFixed(1)+'px');
+  L.push('fin.right='+rf.right.toFixed(1)+' vs viewport '+vw+'  DESBORDE_DERECHA='+(rf.right-vw).toFixed(1)+'px');
+  const cont=document.getElementById('cont');
+  L.push('cont padding='+getComputedStyle(cont).paddingLeft+'/'+getComputedStyle(cont).paddingRight);
+  L.push('sec.scrollWidth='+document.getElementById('sec').scrollWidth+' clientWidth='+document.getElementById('sec').clientWidth);
+  L.push('body.scrollWidth='+document.body.scrollWidth+' doc.clientWidth='+document.documentElement.clientWidth);
+  const cs=getComputedStyle(document.getElementById('sec'));
+  L.push('mp-sec: display='+cs.display+' flex-wrap='+cs.flexWrap+' gap='+cs.gap);
+  const cf=getComputedStyle(fin); L.push('mp-sec-fin: flex='+cf.flex);
+  const ce=getComputedStyle(etq); L.push('mp-sec-etq: flex='+ce.flex+' min-width='+ce.minWidth+' overflow='+ce.overflow);
+  const b=getComputedStyle(document.getElementById('btn-exportar-pdf'));
+  L.push('btn-chico: minH='+b.minHeight+' pad='+b.padding+' font='+b.fontSize+' h='+document.getElementById('btn-exportar-pdf').getBoundingClientRect().height);
+  document.getElementById('out').textContent=L.join('\n');
+}
+window.addEventListener('load',()=>setTimeout(medir,600));
+</script>
+</body></html>

@@ -368,8 +368,14 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 .mp-sec {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  /* ENVUELVE. Sin esto, cuando las acciones de la derecha no caben junto a la
+     etiqueta, .mp-sec-etq se encoge hasta 0 (tiene min-width:0) pero su TEXTO
+     no se recorta, así que "PORTADA" quedaba impreso ENCIMA del botón Editar.
+     Se veía al subir los tres botones de la portada de 11px a 36px de alto:
+     el ancho que pedían dejó de caber a 390px. */
+  flex-wrap: wrap;
+  gap: var(--paso-2) var(--paso-3);
+  margin-bottom: var(--paso-3);
   min-width: 0;
 }
 
@@ -379,15 +385,17 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
    sin tener que editar ni un solo elemento padre en 3,400 líneas de markup. */
 .mp-sec-etq {
   font-family: var(--ff-sans) !important;
-  font-size: 10px !important;
+  font-size: var(--txt-etq) !important;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--tinta-3) !important;
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex: 1 1 auto;
+  gap: var(--paso-3);
+  /* Base de 180px: por debajo de eso la etiqueta ya no cabe con su regla y
+     prefiere bajar las acciones a la línea siguiente antes que estrujarse. */
+  flex: 1 1 180px;
   min-width: 0;
 }
 .mp-sec-etq > * { flex: 0 0 auto; }
@@ -403,7 +411,8 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 /* .mp-sec NO dibuja regla propia: la etiqueta ya la trae en su ::after. Si el
    contenedor también la pintara, quedaría un filete suelto DESPUÉS de la
    acción de la derecha (se veía como un guion colgando tras "Reporte PDF"). */
-.mp-sec-fin { flex: 0 0 auto; }
+/* Pegado a la derecha cuando cabe; en línea propia cuando no. */
+.mp-sec-fin { flex: 0 0 auto; margin-left: auto; display: flex; flex-wrap: wrap; gap: var(--paso-2); }
 
 /* ────────────────────────── TITULARES DE NOTA ───────────────────────────── */
 .mp-titular {
@@ -1011,13 +1020,14 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
 
 .mp-mazos {
   /* La franja está CALCULADA para que quepa exactamente lo que enseña, no
-     elegida a ojo: 16 (padding) + 13 (rótulo) + 8 (aire) + 48 (dos líneas de
-     titular a 20px/1.2) + 9 (respiro) = 94. Si se cambia --txt-titular hay que
-     recalcular esto, o la segunda línea vuelve a quedar rebanada por la
-     tarjeta de encima — y una línea cortada por la mitad es lo que hace que
-     una pantalla se vea rota. */
-  --tj-paso: 94px;   /* franja visible de cada tarjeta apilada */
-  --tj-cara: 162px;  /* alto de la cara completa (la de más abajo) */
+     elegida a ojo: 16 (padding) + 15 (rótulo de 11px con su interlínea) +
+     8 (aire) + 48 (dos líneas de titular a 20px/1.2) + 9 (respiro) = 96.
+     Estaba en 94 con un comentario que decía contar 13px de rótulo; medido,
+     el rótulo ocupa 15 y el respiro real eran 5.5px, no 9. Si se cambia
+     --txt-titular hay que rehacer esta cuenta, o la segunda línea vuelve a
+     quedar rebanada por la tarjeta de encima. */
+  --tj-paso: 96px;   /* franja visible de cada tarjeta apilada */
+  --tj-cara: 164px;  /* alto de la cara completa (la de más abajo) */
   --tj-mini: 30px;   /* franja de las que quedan ARRIBA de la abierta */
   position: relative;
   padding: 0 var(--paso-5) var(--paso-7);
@@ -1051,7 +1061,12 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
   flex: 0 0 100%;
   scroll-snap-align: start;
   min-width: 0;
-  padding: 0 2px;
+  /* El aire de arriba es para la sombra de apoyo de la primera tarjeta: la
+     pista recorta en vertical (overflow-y:hidden) y sin este margen la sombra
+     salía cortada a cuchillo. _reajustarPista() en app.js SUMA estos 10px al
+     alto que calcula; si se cambia aquí, hay que cambiarlo allá o la última
+     tarjeta se queda sin sitio. */
+  padding: 10px 2px 0;
 }
 
 /* Rótulo del mazo */
@@ -1128,12 +1143,24 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
        3) sombra corta arriba    → contacto, pega la tarjeta a la de encima
        4) sombra larga arriba    → separación, da la profundidad
        5) sombra abajo           → peso general del mazo sobre el papel      */
+  /* NINGUNA sombra se sale por los costados. La regla es geométrica: el
+     alcance lateral de un box-shadow es blur/2 + spread, así que con
+     spread <= -blur/2 el alcance es cero o negativo y la sombra solo existe
+     donde la empuja el offset vertical.
+     Esto NO es un detalle de gusto. La pista de mazos es un scrollport con
+     overflow-y:hidden y los paneles solo tienen 2px de aire lateral: la sombra
+     anterior (blur 16, spread -4) alcanzaba 4px por lado, se topaba con el
+     recorte y se veía como un filete gris de canto RECTO pegado a la tarjeta
+     —un doble contorno—, y las de dos tarjetas contiguas se sumaban formando
+     una costilla vertical más oscura cada 94px. Eso es lo que se veía como
+     "sombras raras alrededor".
+     Ya no hay luz de canto en inset: a 16px de radio esa línea recta asomaba
+     por fuera de la curva como dos ganchitos blancos en las esquinas. El
+     brillo del canto lo da el degradado del fondo, que sí sigue la curva. */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .70),
     inset 0 0 0 1px var(--cat-borde, var(--regla)),
-    0 -1px 2px rgba(26, 26, 24, .10),
-    0 -6px 16px -4px rgba(26, 26, 24, .26),
-    0 8px 18px -10px rgba(26, 26, 24, .20);
+    0 -1px 2px -1px rgba(20, 22, 27, .26),
+    0 -8px 16px -8px rgba(20, 22, 27, .42);
   will-change: transform;
   /* !important porque la regla móvil de ux_helpers.js baja la duración de
      todo a 0.18s; aquí el resorte necesita sus 220 ms completos. */
@@ -1141,15 +1168,27 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
   /* SIN `contain: paint`: recortaría el reparto de sombras de arriba, que es
      justo lo que da el efecto de tarjetas encimadas. */
 }
-.mp-tarjeta.abierta {
-  height: auto;
-  /* Abierta, la tarjeta se despega del mazo: la sombra crece y baja. */
+/* La PRIMERA tarjeta no tiene nada encima, así que no puede proyectar sombra
+   hacia arriba: ahí la sombra ascendente no separaba de nada y solo servía
+   para chocar contra el recorte de la pista y dibujar dos escuadras grises en
+   las esquinas de arriba. Es lo que el usuario ve como "se corta raro".
+   La de arriba lleva sombra de apoyo, como una tarjeta suelta sobre el papel. */
+.mp-mazo .mp-tarjeta:first-of-type {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .70),
     inset 0 0 0 1px var(--cat-borde, var(--regla)),
-    0 -2px 6px rgba(26, 26, 24, .10),
-    0 14px 34px -12px rgba(26, 26, 24, .34),
-    0 4px 10px -6px rgba(26, 26, 24, .22);
+    0 1px 2px rgba(20, 22, 27, .08),
+    0 8px 16px -12px rgba(20, 22, 27, .30);
+}
+.mp-tarjeta.abierta,
+.mp-mazo .mp-tarjeta.abierta:first-of-type {
+  height: auto;
+  /* Abierta, la tarjeta se despega del mazo. Misma regla de contención: el
+     spread compensa el desenfoque para que no se derrame a los costados. */
+  box-shadow:
+    inset 0 0 0 1px var(--cat-borde, var(--regla)),
+    0 -2px 6px -4px rgba(20, 22, 27, .22),
+    0 16px 32px -20px rgba(20, 22, 27, .45),
+    0 4px 12px -10px rgba(20, 22, 27, .28);
 }
 /* Mientras se arrastra hacia abajo para cerrar, manda el dedo: sin transición. */
 .mp-tarjeta.arrastrando { transition: none !important; }

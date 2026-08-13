@@ -129,7 +129,9 @@ def _seleccionar_candidatos(
     No le pasamos 1000 a scipy porque la matriz de covarianzas se vuelve
     inestable. Filtramos por liquidez y luego por score canónico.
     """
-    candidatos: List[Tuple[str, float, float]] = []   # (ticker, score, liquidez)
+    # (ticker, score, liquidez, vol_anual, beta) — vol y beta hacen falta para
+    # que el nivel de riesgo pueda inclinar el ranking.
+    candidatos: List[Tuple[str, float, float, Optional[float], Optional[float]]] = []
 
     # Para no llamar score_para_ticker() 1000 veces, hacemos shortcut:
     # importamos accion_del_dia que ya cachea el universo
@@ -162,14 +164,43 @@ def _seleccionar_candidatos(
         res = _ad.calcular_metricas_y_score(t, df_precios, info_all, serie_us, serie_mx)
         if res is None:
             continue
-        score, _ = res
+        score, det = res
         precio = float(df_precios[t].dropna().iloc[-1]) if df_precios[t].dropna().size else 0
         liq = _liquidez_diaria(info, precio)
-        candidatos.append((t, score, liq))
+        candidatos.append((t, score, liq, det.get("volatilidad_anual"), det.get("beta")))
 
-    # Ranking final: ajustar el peso del score por nivel
-    # Conservador (1-3) prefiere baja vol → bonus para tickers con sharpe alto y beta baja
-    # Agresivo (8-10) prefiere alpha alto sin importar vol
+    # Ranking final: el nivel SÍ cambia a quién se prefiere.
+    #
+    # Este bloque decía exactamente esto en un comentario y luego ordenaba solo
+    # por score, así que los diez niveles recibían la MISMA lista de candidatos.
+    # Combinado con el optimizador —que ademAs mezclaba con efectivo en vez de
+    # moverse por la frontera— el resultado era que los diez niveles devolvían
+    # el mismo puñado de acciones, unas veces escaladas y otras idénticas.
+    #
+    # Ahora el score se ajusta con la volatilidad y la beta del propio ticker:
+    #   - Conservador (1-3): premia vol baja y beta baja. Una acción que se
+    #     mueve la mitad que el mercado sube posiciones aunque su score sea
+    #     menor, porque es la que hace posible el objetivo de 6% de vol.
+    #   - Agresivo (8-10): al revés, premia vol alta; sin candidatos volátiles
+    #     es IMPOSIBLE llegar a un objetivo de 28% y todos los niveles altos
+    #     terminan en el mismo sitio.
+    #   - Medios (4-7): el score canónico manda, sin sesgo.
+    for i, (t, score, liq, vol, beta) in enumerate(candidatos):
+        if vol is None:
+            ajuste = 0.0
+        elif nivel <= 3:
+            # Vol de referencia 20%: por debajo suma, por encima resta.
+            ajuste = (0.20 - vol) * 120
+            if beta is not None:
+                ajuste += (1.0 - min(beta, 2.5)) * 8
+        elif nivel >= 8:
+            ajuste = (vol - 0.20) * 120
+            if beta is not None:
+                ajuste += (min(beta, 2.5) - 1.0) * 8
+        else:
+            ajuste = 0.0
+        candidatos[i] = (t, score + ajuste, liq, vol, beta)
+
     candidatos.sort(key=lambda x: x[1], reverse=True)
     return [c[0] for c in candidatos[:max_candidatos]]
 
@@ -177,6 +208,27 @@ def _seleccionar_candidatos(
 # ─────────────────────────────────────────────────────────
 # Optimizador Markowitz
 # ─────────────────────────────────────────────────────────
+def _repartir_exacto(crudos: Dict[str, float], objetivo: float) -> Dict[str, float]:
+    """Reparte `objetivo` (p.ej. 1.0 = 100%) entre `crudos` de forma que la suma
+    cierre EXACTA a cuatro decimales.
+
+    Se trabaja en enteros de una diezmilésima con el método del resto mayor.
+    Redondear cada peso por su cuenta y confiar en que sumen no funciona: dejaba
+    residuos de ±0.0002 y la lista del usuario mostraba 99.98% en vez de 100%.
+    """
+    total = sum(crudos.values())
+    if total <= 0 or objetivo <= 0:
+        return {}
+    meta = int(round(objetivo * 10000))
+    exactos = {t: w / total * meta for t, w in crudos.items()}
+    base = {t: int(v) for t, v in exactos.items()}
+    faltan = meta - sum(base.values())
+    # La unidad sobrante va a quien más parte decimal perdió al truncar.
+    for t in sorted(exactos, key=lambda k: exactos[k] - base[k], reverse=True)[:max(0, faltan)]:
+        base[t] += 1
+    return {t: v / 10000 for t, v in base.items()}
+
+
 def _optimizar_markowitz(
     df_rets: pd.DataFrame,
     vol_objetivo_anual: float,
@@ -204,8 +256,36 @@ def _optimizar_markowitz(
         return None
 
     n = df_rets.shape[1]
-    mu = df_rets.mean() * 12      # retorno mensual → anual (aproximación lineal OK aquí)
-    cov = df_rets.cov() * 12      # cov mensual → anual
+    mu_bruto = df_rets.mean() * 12   # retorno mensual → anual (aprox. lineal OK aquí)
+    cov = df_rets.cov() * 12         # cov mensual → anual
+
+    # ENCOGIMIENTO DE LOS RETORNOS ESPERADOS HACIA CAPM.
+    #
+    # Markowitz con medias históricas crudas es un maximizador de errores de
+    # estimación: se vuelca sobre lo que MÁS subió en la muestra y proyecta esa
+    # racha hacia adelante. Al pasar de "cartera tangente + efectivo" a "máximo
+    # retorno sujeto a volatilidad", el nivel 10 pasó a prometer 75% anual —dos
+    # años buenos de NVDA extrapolados—, un número que ni es defendible en
+    # pantalla ni sirve para decidir.
+    #
+    # El ancla NO puede ser la media del propio grupo: los candidatos salen de
+    # un set curado de ganadores, así que esa media ya viene inflada y encoger
+    # hacia ella apenas corrige. Se encoge hacia la expectativa CAPM de cada
+    # activo, rf + beta·premio, con el mercado aproximado por la cartera
+    # equiponderada de los propios candidatos. Eso conserva la señal relativa
+    # —un activo de beta alta sigue esperando más, y por eso los niveles siguen
+    # dando carteras distintas— pero le quita la extrapolación de la racha.
+    _ENCOGIMIENTO = 0.5     # mitad muestra, mitad modelo
+    _PREMIO_MERCADO = 0.055 # premio por riesgo de renta variable, anual
+    mercado = df_rets.mean(axis=1)
+    var_mkt = float(mercado.var())
+    if var_mkt > 0:
+        betas = df_rets.apply(lambda c: float(c.cov(mercado)) / var_mkt)
+        betas = betas.clip(0.0, 2.5)
+        mu_capm = rf_anual + betas * _PREMIO_MERCADO
+    else:
+        mu_capm = pd.Series(rf_anual + _PREMIO_MERCADO, index=df_rets.columns)
+    mu = mu_bruto * _ENCOGIMIENTO + mu_capm * (1 - _ENCOGIMIENTO)
 
     # Búsqueda aleatoria + optimización local con scipy.minimize
     try:
@@ -241,24 +321,68 @@ def _optimizar_markowitz(
     w_maxsharpe = res_sharpe.x
     vol_maxsharpe = vol_p(w_maxsharpe)
 
-    # Segunda pasada: ajustar al vol objetivo
-    # Si vol_maxsharpe > vol_objetivo, mezclar con cash (rf) para reducir vol
-    # Si vol_maxsharpe < vol_objetivo, usar tal cual (no apalancamos)
-    if vol_maxsharpe > vol_objetivo_anual:
-        # Combinación: alpha*risky + (1-alpha)*rf, donde alpha = vol_obj / vol_maxsharpe
-        alpha = vol_objetivo_anual / vol_maxsharpe
-        w_final = w_maxsharpe * alpha
-        peso_cash = 1.0 - alpha
+    # Segunda pasada: MOVERSE POR LA FRONTERA hasta el objetivo de volatilidad.
+    #
+    # Antes esto se resolvía mezclando la cartera tangente con efectivo:
+    #     w_final = w_maxsharpe * (vol_objetivo / vol_maxsharpe)
+    # Teóricamente impecable (es la línea del mercado de capitales) y en la
+    # práctica un desastre para lo que la pantalla promete:
+    #   · Los diez niveles devolvían LAS MISMAS acciones. Un nivel 1 era el
+    #     nivel 7 multiplicado por 0.33, no una selección más defensiva.
+    #   · Los pesos no sumaban 100%: en nivel 1 sumaban 30.7% y el 69.3%
+    #     restante solo aparecía como una rebanada gris en una barra.
+    #   · Por encima de la vol de la cartera tangente (aquí ~19.75%) no había
+    #     nada que hacer —no se apalanca—, así que los niveles 8, 9 y 10
+    #     devolvían un portafolio idéntico entre sí.
+    #
+    # Ahora, para cada objetivo se resuelve el punto de la frontera eficiente:
+    #     max retorno   sujeto a   vol <= objetivo,  suma(w) = 1,  0 <= wi <= max
+    # Eso da una cartera DISTINTA por nivel —más defensiva abajo, más agresiva
+    # arriba— y siempre invertida al 100%.
+    def _en_frontera(vol_obj):
+        restr = [
+            {"type": "eq",   "fun": lambda w: np.sum(w) - 1.0},
+            {"type": "ineq", "fun": lambda w, v=vol_obj: v - vol_p(w)},   # vol <= objetivo
+        ]
+        r = minimize(lambda w: -ret_p(w), w_maxsharpe, method="SLSQP",
+                     bounds=bounds, constraints=restr,
+                     options={"maxiter": 300, "ftol": 1e-8})
+        return r
+
+    peso_cash = 0.0
+    res_front = _en_frontera(vol_objetivo_anual)
+    if res_front.success and vol_p(res_front.x) <= vol_objetivo_anual * 1.02:
+        w_final = res_front.x
     else:
-        w_final = w_maxsharpe
-        peso_cash = 0.0
+        # El objetivo está por DEBAJO de lo que puede dar cualquier combinación
+        # de estos activos: ni la cartera de mínima varianza baja tanto. Ahí sí
+        # hace falta efectivo, y entonces es un dato real que hay que enseñar,
+        # no un residuo. Se busca primero la mínima varianza posible.
+        r_minvar = minimize(vol_p, w_maxsharpe, method="SLSQP",
+                            bounds=bounds,
+                            constraints=[{"type": "eq", "fun": lambda w: np.sum(w) - 1.0}],
+                            options={"maxiter": 300, "ftol": 1e-9})
+        w_riesgo = r_minvar.x if r_minvar.success else w_maxsharpe
+        vol_min = vol_p(w_riesgo)
+        if vol_min > vol_objetivo_anual and vol_min > 0:
+            alpha = max(0.0, min(1.0, vol_objetivo_anual / vol_min))
+            w_final = w_riesgo * alpha
+            peso_cash = 1.0 - alpha
+        else:
+            w_final = w_riesgo
 
     retorno_esp = float(w_final @ mu.values) + peso_cash * rf_anual
     vol_final = float(np.sqrt(w_final @ cov.values @ w_final))
     sharpe = (retorno_esp - rf_anual) / vol_final if vol_final > 0 else 0
 
-    # Pesos como dict, filtrar los <0.5% para limpiar
-    pesos = {t: round(float(w), 4) for t, w in zip(df_rets.columns, w_final) if w > 0.005}
+    # Pesos como dict, filtrando el polvo (<0.5%) que el optimizador deja.
+    #
+    # RENORMALIZAR ES OBLIGATORIO, no cosmético: al tirar las posiciones
+    # diminutas se pierde ese porcentaje, y sin repartirlo la lista que ve el
+    # usuario suma 99.2% en vez de 100%. Se reparte proporcionalmente entre las
+    # que quedan, dentro de la parte invertida (por si hay efectivo).
+    crudos = {t: float(w) for t, w in zip(df_rets.columns, w_final) if w > 0.005}
+    pesos = _repartir_exacto(crudos, 1.0 - peso_cash)
 
     # Diversificación: qué fracción del riesgo se eliminó al combinar los activos.
     #
@@ -435,6 +559,16 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
         params = NIVELES[nivel]
         max_peso = 0.25 if nivel >= 8 else 0.15
         cache_key = f"nivel_{nivel}"
+    # La huella de los datos entra en la clave. El CSV del universo lo reescribe
+    # a diario un timer de systemd; con una clave que solo dependía del nivel, un
+    # cambio de datos no invalidaba nada y el portafolio seguía siendo el de
+    # antes hasta que expiraran las 6 horas. Ahora datos nuevos = clave nueva.
+    try:
+        _fuente = _UNIV_FULL if _UNIV_FULL.exists() else _UNIV_LITE
+        cache_key += "_" + str(int(_fuente.stat().st_mtime))
+    except Exception:
+        pass
+
     cached = _CACHE.get(cache_key)
     if not forzar and cached and (time.time() - cached["ts"]) < _CACHE_TTL:
         return cached["data"]
@@ -502,16 +636,20 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
             "es_mx":   t.upper().endswith(".MX"),
         })
 
-    # 5) Reducir a top N según el nivel
+    # 5) Reducir a top N según el nivel.
+    #    Al recortar hay que repartir lo que se cae entre las que quedan, y con
+    #    el mismo método exacto: aquí estaba la segunda fuente de listas que
+    #    sumaban 99.98%. Y se reparte sobre (1 - efectivo), no sobre 1: si hay
+    #    posición en efectivo, renormalizar a 1 haría que el total pasara de 100%.
     n_max = params["n_acciones"]
     if len(acciones) > n_max:
-        acciones_top = acciones[:n_max]
-        # Re-normalizar pesos
-        suma = sum(a["peso"] for a in acciones_top)
-        for a in acciones_top:
-            a["peso"] = round(a["peso"] / suma, 4)
-            a["peso_pct"] = round(a["peso"] * 100, 2)
-        acciones = acciones_top
+        acciones = acciones[:n_max]
+    reparto = _repartir_exacto({a["ticker"]: a["peso"] for a in acciones},
+                               1.0 - float(resultado["peso_cash"]))
+    for a in acciones:
+        a["peso"] = reparto.get(a["ticker"], 0.0)
+        a["peso_pct"] = round(a["peso"] * 100, 2)
+    acciones = [a for a in acciones if a["peso"] > 0]
 
     data = {
         "ok":                    True,
@@ -535,11 +673,17 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
 
         # Metodología
         "metodologia": (
-            "Optimización mean-variance (Markowitz): se selecciona el portafolio "
-            "de pesos positivos que maximiza Sharpe sujeto a vol_objetivo. La "
-            "diversificación elimina riesgo idiosincrático al combinar activos "
-            "con baja correlación. Si el portafolio de máximo Sharpe excede la "
-            "vol objetivo, se combina con cash (CETES/UST) para bajarla."
+            "Optimización media-varianza (Markowitz). Para cada nivel se busca el "
+            "punto de la frontera eficiente que MAXIMIZA el retorno esperado sin "
+            "pasar de la volatilidad objetivo, con pesos positivos y un tope por "
+            "posición, de modo que cada nivel da una cartera distinta y siempre "
+            "invertida al 100%. El retorno esperado no es el promedio histórico "
+            "crudo: se encoge a medio camino de la expectativa CAPM (rf + β·premio) "
+            "porque extrapolar la racha reciente es lo que hace que este tipo de "
+            "optimizador se vuelque sobre lo que más subió. Solo cuando la "
+            "volatilidad objetivo queda por debajo de lo que puede dar cualquier "
+            "combinación de estos activos aparece una posición en efectivo "
+            "(CETES/UST), y entonces se muestra como una posición más."
         ),
         "disclaimer": (
             "Backtesting sobre historia pasada. No garantiza rendimientos futuros. "
