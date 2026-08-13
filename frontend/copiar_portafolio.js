@@ -166,23 +166,36 @@
 
     const minimo = cands.reduce((a, c) => (c.costo < a.costo - 0.5 ? c
                                          : c.costo < a.costo + 0.5 && c.desvio < a.desvio ? c : a), cands[0]);
-    // El más barato que baja del umbral de fidelidad. Si ninguno lo logra,
+    // El más barato que baja de un umbral de desvío dado. Si ninguno lo logra,
     // el de menor desvío —y a igualdad, el más barato—.
-    const fieles = cands.filter(c => c.desvio <= FIEL);
-    const fiel = fieles.length
-      ? fieles.reduce((a, c) => (c.costo < a.costo ? c : a), fieles[0])
-      : cands.reduce((a, c) => (c.desvio < a.desvio - 0.01 ? c
-                              : Math.abs(c.desvio - a.desvio) <= 0.01 && c.costo < a.costo ? c : a), cands[0]);
+    const masBarato = (umbral) => {
+      const ok = cands.filter(c => c.desvio <= umbral);
+      if (ok.length) return ok.reduce((a, c) => (c.costo < a.costo ? c : a), ok[0]);
+      return cands.reduce((a, c) => (c.desvio < a.desvio - 0.01 ? c
+                                   : Math.abs(c.desvio - a.desvio) <= 0.01 && c.costo < a.costo ? c : a), cands[0]);
+    };
+    const fiel  = masBarato(FIEL);
+    // El punto intermedio. "Lo mínimo" compra una unidad de cada cosa y deja
+    // los porcentajes donde caigan; "bien balanceado" paga lo que haga falta
+    // para clavarlos. Entre los dos hay un plan que SÍ reparte —ya no es una
+    // acción de cada una— pero se detiene en cuanto los pesos son razonables
+    // en vez de seguir gastando para afinarlos al milímetro.
+    const medio = masBarato(ACEPTABLE);
 
-    // Enseñar dos opciones solo si de verdad son distintas: si lo fiel cuesta
-    // casi lo mismo, la segunda tarjeta es ruido.
-    const distintas = fiel.costo > minimo.costo * 1.08 && minimo.desvio > fiel.desvio + 1;
+    // Cada opción se enseña solo si aporta algo frente a la anterior: si dos
+    // caen casi en el mismo costo o en el mismo desvío, la segunda es ruido.
+    const aporta = (mas, menos) => mas.costo > menos.costo * 1.08 && menos.desvio > mas.desvio + 1;
+    const opciones = [{ clave: 'minimo', titulo: 'Lo mínimo', plan: minimo }];
+    if (aporta(medio, minimo)) opciones.push({ clave: 'medio', titulo: 'Equilibrado', plan: medio });
+    if (aporta(fiel, opciones[opciones.length - 1].plan)) {
+      opciones.push({ clave: 'fiel', titulo: 'Balanceado', plan: fiel });
+    }
     // Cuál es la posición que empuja el piso hacia arriba: es el dato accionable
     // ("si sacas VOO, cabe") y sin él el aviso solo dice que no se puede.
     const cara = suelo.linea.filter(l => !esFraccionable(l.ticker))
                             .reduce((a, l) => (!a || l.importe > a.importe ? l : a), null);
     return {
-      minimo, fiel, distintas, piso, cabe: minimo.costo <= TOPE_OBJETIVO,
+      minimo, medio, fiel, opciones, piso, cabe: minimo.costo <= TOPE_OBJETIVO,
       caro: cara ? cara.ticker : null, caroMonto: cara ? cara.importe : 0,
     };
   }
@@ -228,7 +241,7 @@
   }
 
   function pintarPlan(d) {
-    const { minimo, fiel, distintas, cabe } = d.plan;
+    const { minimo, opciones, cabe } = d.plan;
     let elegido = 'minimo';               // la pregunta era "cuál es el mínimo"
 
     const tabla = (plan) => plan.linea
@@ -260,14 +273,14 @@
         ? `Los porcentajes se desvían hasta ${plan.desvio.toFixed(1)} puntos. Se parece, pero no es idéntico.`
         : `Con este monto la posición más desajustada se va ${plan.desvio.toFixed(1)} puntos de su porcentaje. Sigue siendo tu misma lista de emisoras, pero repartida distinto.`;
 
-    const opciones = () => !distintas ? '' : `
+    const selector = () => opciones.length < 2 ? '' : `
       <div class="mp-opciones" role="group" aria-label="Qué tanto quieres apegarte a los porcentajes">
-        ${[['minimo', 'Lo mínimo', minimo], ['fiel', 'Bien balanceado', fiel]].map(([k, tit, pl]) => `
-          <button type="button" class="mp-opcion${elegido === k ? ' activa' : ''}" data-opcion="${k}"
-                  aria-pressed="${elegido === k}">
-            <span class="mp-opcion-etq">${tit}</span>
-            <span class="mp-opcion-cifra">${money(pl.costo)}</span>
-            <span class="mp-opcion-nota">±${pl.desvio.toFixed(1)} pts</span>
+        ${opciones.map(o => `
+          <button type="button" class="mp-opcion${elegido === o.clave ? ' activa' : ''}" data-opcion="${o.clave}"
+                  aria-pressed="${elegido === o.clave}">
+            <span class="mp-opcion-etq">${o.titulo}</span>
+            <span class="mp-opcion-cifra">${money(o.plan.costo)}</span>
+            <span class="mp-opcion-nota">±${o.plan.desvio.toFixed(1)} pts</span>
           </button>`).join('')}
       </div>`;
 
@@ -287,9 +300,10 @@
          reparte el dinero por igual entre las ${minimo.linea.length} emisoras.</p>` : '';
 
     function render() {
-      const plan = elegido === 'fiel' ? fiel : minimo;
+      const sel = opciones.find(o => o.clave === elegido);
+      const plan = sel ? sel.plan : minimo;
       shell(cabecera(money(plan.costo) + ' MXN') + `
-        ${opciones()}
+        ${selector()}
         <p class="mp-modal-parrafo">${juicio(plan)}</p>
         ${aviso}
         <div class="mp-tabla-envoltura">

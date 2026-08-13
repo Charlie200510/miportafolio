@@ -184,7 +184,17 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 
 /* Selector de dos opciones (mínimo / bien balanceado). Segmentado, no radios:
    son dos respuestas a la misma pregunta y se comparan de un vistazo. */
+/* Hasta tres opciones (mínimo / equilibrado / bien balanceado). A tres, en
+   iPhone no caben en fila sin estrujar la cifra, así que se apilan. */
 .mp-opciones { display: flex; gap: var(--paso-2); margin: 0 0 var(--paso-4); }
+@media (max-width: 479px) {
+  .mp-opciones:has(.mp-opcion:nth-child(3)) { flex-direction: column; }
+  .mp-opciones:has(.mp-opcion:nth-child(3)) .mp-opcion {
+    flex-direction: row; align-items: baseline; gap: var(--paso-3);
+  }
+  .mp-opciones:has(.mp-opcion:nth-child(3)) .mp-opcion-etq { flex: 1 1 auto; white-space: nowrap; }
+  .mp-opciones:has(.mp-opcion:nth-child(3)) .mp-opcion-nota { white-space: nowrap; }
+}
 .mp-opcion {
   flex: 1; display: flex; flex-direction: column; gap: 2px;
   padding: var(--paso-3); min-height: 44px;
