@@ -793,7 +793,7 @@ tbody tr:last-child td { border-bottom: 0 !important; }
   border-bottom: 0 !important;
   padding-bottom: var(--paso-2);
 }
-#mp-topbar .nav-tab {
+#mp-topbar .nav-tab:not(#btn-premium-header):not(#btn-cuenta-header) {
   font-family: var(--ff-sans) !important;
   font-size: var(--txt-meta) !important;
   font-weight: 600;
@@ -806,7 +806,7 @@ tbody tr:last-child td { border-bottom: 0 !important; }
   transition: background-color var(--t-rapida) var(--easing),
               color var(--t-rapida) var(--easing);
 }
-#mp-topbar .nav-tab:hover { color: var(--tinta-1); }
+#mp-topbar .nav-tab:not(#btn-premium-header):not(#btn-cuenta-header):hover { color: var(--tinta-1); }
 /* El activo se marca con relleno, no con un filete que a esta escala se
    pierde. El .nav-indicator del markup se apaga: sobra. */
 #mp-topbar .nav-tab.activa,
@@ -844,11 +844,12 @@ tbody tr:last-child td { border-bottom: 0 !important; }
   #btn-premium-header, #btn-cuenta-header { font-size: var(--txt-meta) !important; }
 }
 @media (min-width: 640px) {
+  /* Antes aquí se reducía a 10.5px con letter-spacing de versalita: era el
+     remate del tratamiento monoespaciado que ya no existe. En pantalla ancha
+     hay sitio de sobra, así que los botones se quedan en la escala normal. */
   #btn-premium-header, #btn-cuenta-header {
-    font-size: 10.5px !important;
-    letter-spacing: 0.05em;
-    padding-left: 11px !important;
-    padding-right: 11px !important;
+    padding-left: var(--paso-4) !important;
+    padding-right: var(--paso-4) !important;
   }
 }
 #btn-premium-header {
