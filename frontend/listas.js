@@ -95,13 +95,17 @@
     const a = leerWatch();
     if (a.includes(t)) { toast(`${t} ya está en tu watchlist.`); return; }
     if (a.length >= MAX_WATCH) { toast(`Tu watchlist llegó a ${MAX_WATCH}. Quita alguna antes.`); return; }
-    a.push(t); guardar(LS_WATCH, a); pintarWatch();
+    a.push(t); guardar(LS_WATCH, a); pintarWatch(); avisar();
     toast(`${t} agregada. Ya tiene tarjeta en el Periódico.`, 'success');
   }
   function quitarWatch(t) {
     guardar(LS_WATCH, leerWatch().filter(x => x !== t));
     pintarWatch();
+    avisar();
   }
+  /* El ☆ del análisis lee la misma llave y está en esta misma pantalla: si no
+     se le avisa, se queda pintado como si la emisora siguiera en la lista. */
+  const avisar = () => { if (window.avisarWatchlist) window.avisarWatchlist(); };
 
   // ── Widget ────────────────────────────────────────────────────────────
   function pintarWidget() {
@@ -178,6 +182,7 @@
     empujarAlWidget(leerWidget());
   }
 
+  document.addEventListener('mp:watchlist', pintarWatch);
   document.addEventListener('DOMContentLoaded', iniciar);
   if (document.readyState !== 'loading') iniciar();
   // La vista Analizar puede montarse después; se reintenta al cambiar de tab.

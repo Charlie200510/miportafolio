@@ -3010,13 +3010,35 @@ function leerWatchlist() {
   catch { return []; }
 }
 function enWatchlist(t) { return leerWatchlist().includes((t || '').toUpperCase()); }
+/* La watchlist se edita desde DOS sitios que ahora conviven en la misma
+   pantalla: el ☆ del resultado del análisis y las fichas de "Tus listas". Sin
+   avisar del cambio, quitar una emisora en un sitio dejaba al otro pintado como
+   si siguiera ahí. El evento es el punto de encuentro; quien pinte watchlist
+   debe escucharlo. */
+function _avisarWatchlist() {
+  try { document.dispatchEvent(new CustomEvent('mp:watchlist')); } catch (_) {}
+}
 function toggleWatchlist(t) {
   t = (t || '').toUpperCase(); if (!t) return false;
   const a = leerWatchlist(); const i = a.indexOf(t);
   if (i >= 0) a.splice(i, 1); else a.push(t);
   try { localStorage.setItem(WATCH_KEY, JSON.stringify(a)); } catch {}
+  _avisarWatchlist();
   return a.includes(t);
 }
+window.avisarWatchlist = _avisarWatchlist;
+
+/* El ☆ se repinta solo cuando la lista cambia desde otro sitio. */
+document.addEventListener('mp:watchlist', () => {
+  const b = document.getElementById('an-watch-btn');
+  if (!b) return;
+  const tk = b.dataset.ticker;
+  if (!tk) return;
+  const activo = enWatchlist(tk);
+  b.textContent = activo ? '★' : '☆';
+  b.classList.toggle('text-accent-amber', activo);
+  b.classList.toggle('text-zinc-600', !activo);
+});
 function _sparklineSVG(vals, w = 70, h = 22) {
   if (!Array.isArray(vals) || vals.length < 2) return '';
   const min = Math.min(...vals), max = Math.max(...vals), rng = (max - min) || 1;
@@ -3446,7 +3468,10 @@ const Periodico = (() => {
   async function mazoWatchlist() {
     const tickers = leerWatchlist();
     if (!tickers.length) {
-      return { tarjetas: [], vacio: 'Aún no sigues ninguna acción. En <b>Analizar</b>, toca el ☆ junto al ticker para verla aquí.' };
+      // El texto mandaba al ☆ del resultado de un análisis, que obliga a analizar
+      // algo ANTES de poder seguirlo. Desde que existe el buscador de
+      // "Tus listas" hay una vía directa, y es la que hay que enseñar.
+      return { tarjetas: [], vacio: 'Aún no sigues ninguna acción. Búscalas en <b>Analizar → Tus listas</b> y aparecerán aquí con su precio y su gráfica.' };
     }
     const d = await safeJson(s => fetch('/api/watchlist', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -9283,7 +9308,7 @@ const Analizador = (() => {
             <p class="text-xs uppercase tracking-wider text-zinc-500">${escapeHtml(_encabezadoTipo(d))}</p>
             <h3 class="text-2xl font-semibold text-zinc-100 mt-1">${escapeHtml(d.nombre || d.ticker)}</h3>
             <p class="text-sm text-zinc-500 font-mono mt-0.5">${escapeHtml(d.ticker)} · ${escapeHtml(moneda)}
-              <button id="an-watch-btn" title="Seguir en tu lista" class="ml-2 text-2xl align-middle leading-none ${enWatchlist(d.ticker) ? 'text-accent-amber' : 'text-zinc-600'} hover:text-accent-amber">${enWatchlist(d.ticker) ? '★' : '☆'}</button>
+              <button id="an-watch-btn" data-ticker="${escapeHtml(d.ticker)}" title="Seguir en tu lista" class="ml-2 text-2xl align-middle leading-none ${enWatchlist(d.ticker) ? 'text-accent-amber' : 'text-zinc-600'} hover:text-accent-amber">${enWatchlist(d.ticker) ? '★' : '☆'}</button>
             </p>
             ${d.precio_actual != null ? `<p class="text-base text-zinc-200 tabular mt-2">Último precio: <span class="font-semibold">${fmtMoney(d.precio_actual, moneda)} ${escapeHtml(moneda)}</span></p>` : ''}
           </div>

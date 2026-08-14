@@ -297,9 +297,17 @@ struct VistaMercados: View {
             Spacer(minLength: 0)
 
             if let a = entry.actualizado {
-                Text(a, format: .dateTime.hour().minute())
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundStyle(Tinta.tinta3.opacity(0.7))
+                // Con la hora sola no se sabe si es la del dato o la del reloj.
+                // WidgetKit refresca cada ~30 min y iOS puede espaciarlo más, así
+                // que la etiqueta es lo que evita leer un precio viejo como si
+                // fuera de ahora mismo.
+                HStack(spacing: 4) {
+                    Text("Actualizado")
+                    Text(a, format: .dateTime.hour().minute())
+                        .monospacedDigit()
+                }
+                .font(.system(size: 9))
+                .foregroundStyle(Tinta.tinta3.opacity(0.8))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
