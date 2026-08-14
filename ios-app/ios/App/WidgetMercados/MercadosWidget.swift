@@ -1,8 +1,8 @@
 //
 //  MercadosWidget.swift — Widget de pantalla de inicio (Mi Portafolio)
 //
-//  Muestra la cintilla mexicana —IPC, USD/MXN y CETES 28 días— sin abrir la
-//  app. Los datos salen de los mismos endpoints que alimentan el Periódico.
+//  Muestra la cintilla de mercados sin abrir la app. Los datos salen de los
+//  mismos endpoints que alimentan el Periódico.
 //
 //  POR QUÉ EXISTE
 //  --------------
@@ -12,10 +12,17 @@
 //  frecuente del usuario mexicano (ver el peso y CETES de un vistazo) sin
 //  entrar a la app.
 //
-//  DATOS: se piden directo a la API pública. A propósito NO se usa un App
-//  Group: eso obligaría a registrar el grupo en el portal de Apple y añade un
-//  modo de fallo de firma justo antes de un reenvío. Si más adelante se quiere
-//  el valor de la cartera del usuario, ese es el camino (ver README).
+//  QUÉ ENSEÑA
+//  ----------
+//  La lista la elige el usuario desde Analizar → Tus listas. Viaja por el App
+//  Group (ver MPWidgetConfig). Si el App Group no está habilitado todavía, o si
+//  el usuario nunca la tocó, se usan los cuatro de siempre: IPC, USD/MXN,
+//  S&P 500 y CETES 28 días.
+//
+//  PALETA
+//  ------
+//  Espejo de mp-tokens.css. La app dejó de ser oscura, y un widget con fondo
+//  #0B0B0A junto a un ícono claro se lee como de otra aplicación.
 //
 
 import WidgetKit
@@ -39,9 +46,10 @@ struct EntradaMercados: TimelineEntry {
     static let muestra = EntradaMercados(
         date: Date(),
         cotizaciones: [
-            Cotizacion(nombre: "IPC",       valor: "66.45",  variacion: 0.23),
+            Cotizacion(nombre: "IPC",       valor: "66.45",   variacion: 0.23),
             Cotizacion(nombre: "USD/MXN",   valor: "17.2400", variacion: -0.47),
-            Cotizacion(nombre: "CETES 28d", valor: "9.50%",  variacion: nil),
+            Cotizacion(nombre: "S&P 500",   valor: "776.88",  variacion: 0.31),
+            Cotizacion(nombre: "CETES 28d", valor: "9.50%",   variacion: nil),
         ],
         actualizado: Date(),
         error: false
@@ -56,11 +64,14 @@ enum APIMercados {
     /// Trae índices/divisas y la tasa de CETES en paralelo. Nunca lanza: si algo
     /// falla, devuelve lo que sí llegó para que el widget no quede en blanco.
     static func cargar() async -> EntradaMercados {
-        async let mercados = pedirMercados()
-        async let cetes = pedirCetes()
+        let deseados = MPWidgetConfigWidget.tickers
+        let quiereCetes = deseados.contains("CETES28")
+
+        async let mercados = pedirMercados(deseados.filter { $0 != "CETES28" })
+        async let cetes = quiereCetes ? pedirCetes() : nil
 
         var filas: [Cotizacion] = await mercados
-        if let c = await cetes {
+        if quiereCetes, let c = await cetes {
             filas.append(Cotizacion(nombre: "CETES 28d",
                                     valor: String(format: "%.2f%%", c),
                                     variacion: nil))
@@ -71,34 +82,54 @@ enum APIMercados {
                                error: filas.isEmpty)
     }
 
-    private static func pedirMercados() async -> [Cotizacion] {
-        guard let url = URL(string: "\(base)/api/periodico/mercados") else { return [] }
+    /// Nombre corto para los instrumentos que la app nombra distinto que Yahoo.
+    /// Para cualquier otro ticker se usa el ticker tal cual, que es lo que el
+    /// usuario tecleó y por tanto lo que reconoce.
+    private static let etiquetas: [String: String] = [
+        "^MXX": "IPC", "NAFTRAC.MX": "IPC",
+        "USDMXN=X": "USD/MXN", "MXN=X": "USD/MXN",
+        "^GSPC": "S&P 500", "SPY": "S&P 500",
+        "^IXIC": "Nasdaq", "QQQ": "Nasdaq-100",
+        "^DJI": "Dow Jones", "EURMXN=X": "EUR/MXN",
+    ]
+
+    /// Cuántos decimales pide cada cosa: una divisa a dos decimales pierde
+    /// información y un índice a cuatro se ve como un error.
+    private static func decimales(_ ticker: String) -> Int {
+        ticker.hasSuffix("=X") ? 4 : 2
+    }
+
+    private static func pedirMercados(_ tickers: [String]) async -> [Cotizacion] {
+        guard !tickers.isEmpty,
+              let url = URL(string: "\(base)/api/periodico/mercados") else { return [] }
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             guard let raiz = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
 
-            // El backend cotiza los índices vía ETF (NAFTRAC para el IPC, SPY
-            // para el S&P), así que se busca por ticker Y por nombre.
-            let grupos = ["indices_us", "indices_mundo", "divisas"]
+            // El backend agrupa por bloques y cotiza algunos índices vía ETF
+            // (NAFTRAC para el IPC, SPY para el S&P), así que se busca en todos
+            // los grupos y por ticker Y por nombre.
+            let grupos = ["indices_us", "indices_mundo", "divisas", "commodities", "tasas", "crypto"]
             let todos: [[String: Any]] = grupos.flatMap { raiz[$0] as? [[String: Any]] ?? [] }
 
-            func buscar(_ tickers: [String], _ nombres: [String]) -> [String: Any]? {
-                todos.first { fila in
-                    let t = fila["ticker"] as? String ?? ""
-                    let n = fila["nombre"] as? String ?? ""
-                    return tickers.contains(t) || nombres.contains(n)
-                }
-            }
+            /// Equivalencias: si el usuario pide ^MXX y el backend lo sirve como
+            /// NAFTRAC.MX, tiene que encontrarlo igual.
+            let alias: [String: [String]] = [
+                "^MXX": ["^MXX", "NAFTRAC.MX"], "NAFTRAC.MX": ["NAFTRAC.MX", "^MXX"],
+                "USDMXN=X": ["USDMXN=X", "MXN=X"], "MXN=X": ["MXN=X", "USDMXN=X"],
+                "^GSPC": ["^GSPC", "SPY"], "SPY": ["SPY", "^GSPC"],
+            ]
 
             var filas: [Cotizacion] = []
-            if let ipc = buscar(["NAFTRAC.MX", "^MXX"], ["IPC México"]) {
-                filas.append(fila(ipc, etiqueta: "IPC", decimales: 2))
-            }
-            if let fx = buscar(["MXN=X", "USDMXN=X"], ["USD/MXN"]) {
-                filas.append(fila(fx, etiqueta: "USD/MXN", decimales: 4))
-            }
-            if let spy = buscar(["SPY", "^GSPC"], ["S&P 500"]) {
-                filas.append(fila(spy, etiqueta: "S&P 500", decimales: 2))
+            for t in tickers.prefix(MPWidgetConfigWidget.tope) {
+                let claves = alias[t] ?? [t]
+                let etiqueta = etiquetas[t] ?? t
+                guard let d = todos.first(where: { fila in
+                    let ft = fila["ticker"] as? String ?? ""
+                    let fn = fila["nombre"] as? String ?? ""
+                    return claves.contains(ft) || fn == etiqueta
+                }) else { continue }
+                filas.append(fila(d, etiqueta: etiqueta, decimales: decimales(t)))
             }
             return filas
         } catch {
@@ -133,6 +164,29 @@ enum APIMercados {
     }
 }
 
+// MARK: - Config compartida (copia para el target del widget)
+
+/// El target del widget compila sus propios archivos: MPWidgetConfig.swift vive
+/// en el target App. Esta copia mínima evita tener que añadir aquel archivo a
+/// los dos targets, que es un cambio en el project.pbxproj fácil de perder en
+/// un `cap sync`. Los valores tienen que coincidir con los de allá.
+enum MPWidgetConfigWidget {
+    static let appGroup = "group.app.miportafolio"
+    static let porDefecto = ["^MXX", "USDMXN=X", "SPY", "CETES28"]
+    static let tope = 4
+
+    static var tickers: [String] {
+        guard let g = UserDefaults(suiteName: appGroup),
+              let guardados = g.array(forKey: "mp.widget.tickers") as? [String] else {
+            return porDefecto
+        }
+        let limpios = guardados
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+            .filter { !$0.isEmpty }
+        return limpios.isEmpty ? porDefecto : Array(limpios.prefix(tope))
+    }
+}
+
 // MARK: - Timeline
 
 struct ProveedorMercados: TimelineProvider {
@@ -157,28 +211,27 @@ struct ProveedorMercados: TimelineProvider {
 // MARK: - Paleta (espejo de los tokens de mp-tokens.css)
 
 enum Tinta {
-    static let fondo   = Color(red: 0.043, green: 0.043, blue: 0.039)  // #0B0B0A
-    static let panel   = Color(red: 0.075, green: 0.071, blue: 0.063)  // #131210
-    static let regla   = Color(red: 0.165, green: 0.153, blue: 0.129)  // #2A2721
-    static let papel   = Color(red: 0.949, green: 0.933, blue: 0.894)  // #F2EEE4
-    static let papel3  = Color(red: 0.604, green: 0.573, blue: 0.518)  // #9A9284
-    static let sello   = Color(red: 0.843, green: 0.604, blue: 0.235)  // #D79A3C
-    static let alza    = Color(red: 0.435, green: 0.682, blue: 0.494)  // #6FAE7E
-    static let baja    = Color(red: 0.859, green: 0.482, blue: 0.408)  // #DB7B68
+    static let papel   = Color(red: 0.937, green: 0.945, blue: 0.961)  // #EFF1F5
+    static let panel   = Color(red: 1.000, green: 1.000, blue: 1.000)  // #FFFFFF
+    static let regla   = Color(red: 0.882, green: 0.894, blue: 0.918)  // #E1E4EB
+    static let tinta1  = Color(red: 0.078, green: 0.086, blue: 0.106)  // #14161B
+    static let tinta3  = Color(red: 0.345, green: 0.369, blue: 0.420)  // #585E6B
+    static let sello   = Color(red: 0.549, green: 0.322, blue: 0.047)  // #8C520C
+    static let alza    = Color(red: 0.059, green: 0.361, blue: 0.200)  // #0F5C33
+    static let baja    = Color(red: 0.588, green: 0.141, blue: 0.094)  // #962418
 }
 
 // MARK: - Vistas
 
-/// Cabecera con la regla doble del masthead: es la firma visual de la app.
+/// Cabecera: nombre de la app y filete. Sin la regla doble del masthead viejo —
+/// esa venía del lenguaje "periódico impreso" que la app ya no usa.
 struct Cabecera: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("MI PORTAFOLIO")
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .kerning(0.8)
-                .foregroundStyle(Tinta.papel3)
-            Rectangle().fill(Tinta.papel).frame(height: 1.5)
-            Rectangle().fill(Tinta.regla).frame(height: 0.5)
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Mi Portafolio")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Tinta.sello)
+            Rectangle().fill(Tinta.regla).frame(height: 1)
         }
     }
 }
@@ -188,26 +241,33 @@ struct FilaCotizacion: View {
     var compacta: Bool = false
 
     private var colorVar: Color {
-        guard let v = c.variacion else { return Tinta.papel3 }
-        return v > 0 ? Tinta.alza : (v < 0 ? Tinta.baja : Tinta.papel3)
+        guard let v = c.variacion else { return Tinta.tinta3 }
+        return v > 0 ? Tinta.alza : (v < 0 ? Tinta.baja : Tinta.tinta3)
     }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
+            // El NOMBRE en sans y la CIFRA en monoespaciada: la misma regla que
+            // sigue la app desde que se limpió la tipografía. La mono es para
+            // números y claves, nunca para etiquetas.
             Text(c.nombre)
-                .font(.system(size: compacta ? 9 : 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(Tinta.papel3)
+                .font(.system(size: compacta ? 10 : 11, weight: .semibold))
+                .foregroundStyle(Tinta.tinta3)
                 .lineLimit(1)
+                .minimumScaleFactor(0.85)
             Spacer(minLength: 4)
             Text(c.valor)
-                .font(.system(size: compacta ? 12 : 14, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Tinta.papel)
+                .font(.system(size: compacta ? 13 : 15, weight: .semibold, design: .monospaced))
+                .foregroundStyle(Tinta.tinta1)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             if let v = c.variacion {
                 Text(String(format: "%@%.2f%%", v >= 0 ? "▲" : "▼", abs(v)))
                     .font(.system(size: compacta ? 9 : 10, weight: .semibold, design: .monospaced))
                     .foregroundStyle(colorVar)
                     .monospacedDigit()
+                    .lineLimit(1)
             }
         }
     }
@@ -220,13 +280,13 @@ struct VistaMercados: View {
     private var compacta: Bool { familia == .systemSmall }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: compacta ? 7 : 9) {
+        VStack(alignment: .leading, spacing: compacta ? 8 : 10) {
             Cabecera()
 
             if entry.error {
                 Text("Sin conexión")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(Tinta.papel3)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Tinta.tinta3)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 ForEach(Array(entry.cotizaciones.prefix(compacta ? 3 : 4).enumerated()), id: \.offset) { _, c in
@@ -238,8 +298,8 @@ struct VistaMercados: View {
 
             if let a = entry.actualizado {
                 Text(a, format: .dateTime.hour().minute())
-                    .font(.system(size: 8, design: .monospaced))
-                    .foregroundStyle(Tinta.papel3.opacity(0.8))
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(Tinta.tinta3.opacity(0.7))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -255,16 +315,16 @@ struct MercadosWidget: Widget {
         StaticConfiguration(kind: kind, provider: ProveedorMercados()) { entry in
             if #available(iOS 17.0, *) {
                 VistaMercados(entry: entry)
-                    .padding(12)
-                    .containerBackground(Tinta.fondo, for: .widget)
+                    .padding(14)
+                    .containerBackground(Tinta.panel, for: .widget)
             } else {
                 VistaMercados(entry: entry)
-                    .padding(12)
-                    .background(Tinta.fondo)
+                    .padding(14)
+                    .background(Tinta.panel)
             }
         }
         .configurationDisplayName("Mercados MX")
-        .description("IPC, dólar y CETES 28 días de un vistazo.")
+        .description("IPC, dólar, S&P y CETES de un vistazo. Elige qué ver desde la app.")
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }

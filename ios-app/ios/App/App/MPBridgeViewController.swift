@@ -23,6 +23,9 @@
 
 import UIKit
 import WebKit
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 import Capacitor
 
 final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, WKScriptMessageHandler {
@@ -123,7 +126,7 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
     private func registrarCanalBloqueo() {
         guard let wv = webView else { return }
         let cc = wv.configuration.userContentController
-        for canal in ["mpBloqueo", "mpUI"] {
+        for canal in ["mpBloqueo", "mpUI", "mpWidget"] {
             cc.removeScriptMessageHandler(forName: canal)
             cc.add(self, name: canal)
         }
@@ -144,6 +147,14 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
                 let tipo = MPBloqueoBiometrico.shared.tipoDisponible
                 evaluar("window.mpBloqueoEstado && window.mpBloqueoEstado({activo: \(activo), tipo: '\(tipo)'});")
             default: break
+            }
+
+        case "mpWidget":
+            // La web manda la lista que el usuario editó en Analizar. Se copia
+            // al App Group, que es lo único que el widget —proceso aparte— sabe
+            // leer, y se le pide a WidgetKit que recargue en el acto.
+            if accion == "guardar", let t = cuerpo["tickers"] as? [String] {
+                MPWidgetConfig.guardar(t)
             }
 
         case "mpUI":
@@ -221,5 +232,76 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
         evaluar("window.mpIrA && window.mpIrA('\(vista)');")
         // Retroalimentación táctil: detalle nativo que un WebView no da solo.
         UISelectionFeedbackGenerator().selectionChanged()
+    }
+}
+
+
+// MARK: - Config del widget
+
+//  MPWidgetConfig.swift — la lista de tickers que enseña el widget.
+//
+//  POR QUÉ HACE FALTA UN APP GROUP
+//  -------------------------------
+//  El widget es un proceso APARTE del contenedor web: no ve localStorage ni el
+//  UserDefaults de la app. Un App Group es el único almacén que los dos pueden
+//  leer, así que es el camino obligado para que la lista sea editable desde la
+//  app. El comentario original de MercadosWidget.swift decía que se evitaba a
+//  propósito para no añadir un modo de fallo de firma antes de un reenvío; ese
+//  riesgo se acota así:
+//
+//    · Si el App Group NO está habilitado, `defaults` es nil y todo el mundo
+//      cae a `porDefecto`, que son EXACTAMENTE los cuatro de siempre. El widget
+//      sigue funcionando igual que antes de este archivo.
+//    · Habilitarlo es un paso manual en el portal de Apple + la capability en
+//      los DOS targets (App y WidgetMercados). Hasta que se haga, la edición
+//      desde la app se guarda pero el widget no la ve.
+//
+//  PASO MANUAL PENDIENTE: en developer.apple.com → Identifiers → App Groups,
+//  crear `group.app.miportafolio`; luego en Xcode, Signing & Capabilities →
+//  + Capability → App Groups, marcarlo en el target App y en WidgetMercados.
+//
+
+enum MPWidgetConfig {
+    /// Tiene que coincidir con el que se marque en las dos capabilities.
+    static let appGroup = "group.app.miportafolio"
+    private static let clave = "mp.widget.tickers"
+
+    /// Los de fábrica. Mismo orden y mismos instrumentos que el widget traía
+    /// escritos a mano, para que un widget sin configurar no cambie de aspecto.
+    static let porDefecto = ["^MXX", "USDMXN=X", "SPY", "CETES28"]
+
+    /// Máximo que caben en un widget mediano sin encoger la tipografía.
+    static let tope = 4
+
+    private static var defaults: UserDefaults? {
+        UserDefaults(suiteName: appGroup)
+    }
+
+    /// Lo que debe pintar el widget. Nunca vacío: si no hay nada guardado, o el
+    /// App Group no está disponible, devuelve los de fábrica.
+    static var tickers: [String] {
+        guard let guardados = defaults?.array(forKey: clave) as? [String] else {
+            return porDefecto
+        }
+        let limpios = guardados
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+            .filter { !$0.isEmpty }
+        return limpios.isEmpty ? porDefecto : Array(limpios.prefix(tope))
+    }
+
+    /// Guarda lo que manda el JS y pide a WidgetKit que se recargue. Sin la
+    /// recarga el widget seguiría con su última línea de tiempo hasta que el
+    /// sistema decidiera refrescarlo, que puede tardar media hora.
+    static func guardar(_ tickers: [String]) {
+        let limpios = tickers
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+            .filter { !$0.isEmpty }
+        guard let d = defaults else { return }   // sin App Group no hay dónde
+        d.set(Array(limpios.prefix(tope)), forKey: clave)
+        #if canImport(WidgetKit)
+        if #available(iOS 14.0, *) {
+            WidgetCenter.shared.reloadTimelines(ofKind: "MercadosWidget")
+        }
+        #endif
     }
 }

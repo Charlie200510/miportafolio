@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Mismo App Group que la app: sin esto MPWidgetConfigWidget.tickers cae
+	     siempre a los valores de fábrica y la edición desde la app no se ve.
+	     Hay que marcar la capability en Xcode para este target además de
+	     apuntar CODE_SIGN_ENTITLEMENTS aquí. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.app.miportafolio</string>
+	</array>
+</dict>
+</plist>

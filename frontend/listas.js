@@ -49,7 +49,8 @@
   function empujarAlWidget(tickers) {
     try {
       const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mpWidget;
-      if (h && h.postMessage) { h.postMessage({ tickers }); return true; }
+      // El puente exige `accion` (mismo protocolo que mpBloqueo y mpUI).
+      if (h && h.postMessage) { h.postMessage({ accion: 'guardar', tickers }); return true; }
     } catch (_) {}
     return false;
   }

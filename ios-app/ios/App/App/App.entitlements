@@ -9,5 +9,16 @@
 	     no dispara — la app funciona normal. -->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- App Group compartido con el widget. Es el ÚNICO almacén que el
+	     contenedor web y el proceso del widget pueden leer los dos, así que sin
+	     esto los tickers que el usuario elige en Analizar no llegan al widget.
+	     PASO MANUAL PENDIENTE: crear `group.app.miportafolio` en
+	     developer.apple.com → Identifiers → App Groups y marcar la capability
+	     en los DOS targets (App y WidgetMercados). Mientras no esté, el widget
+	     cae a sus cuatro valores de fábrica y todo lo demás funciona igual. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.app.miportafolio</string>
+	</array>
 </dict>
 </plist>
