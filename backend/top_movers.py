@@ -55,6 +55,25 @@ _MAX_SESIONES_DIA = 5
 # sucio, y el ticker queda fuera del período afectado.
 _SALTO_MAX_SESION = 4.0
 
+# Banda de plausibilidad del retorno TOTAL de la ventana, por periodo.
+#
+# El guard de _con_salto_anomalo mira saltos entre sesiones consecutivas y
+# atrapa el split limpio, pero no el que se reparte en varios días ni el que cae
+# en un hueco de la serie. Lo que se colaba llegaba a la pantalla como
+# "MÁS SUBIÓ ESTE AÑO · AXTI +1794.35%" junto a un "-100.00%", que además de ser
+# falso es aritméticamente imposible: una acción que vale cero está deslistada,
+# no encabezando el ranking del año.
+#
+# Los topes son deliberadamente GENEROSOS —una biotecnológica sí duplica en un
+# día y un valor pequeño sí hace 5x en un año—: no opinan sobre qué es un
+# movimiento razonable, solo descartan lo que en un universo de precios sin
+# ajustar por splits casi siempre es un artefacto.
+_TOPE_RETORNO = {1: 1.00, 5: 1.80, 21: 3.00, 252: 6.00}
+
+# Por debajo de esto el precio se fue prácticamente a cero: deslistada o dato
+# roto. En ningún caso es un "movimiento" que reportar.
+_PISO_RETORNO = -0.95
+
 
 def _cargar_precios() -> Optional[pd.DataFrame]:
     """Carga el universo local de precios. Devuelve (df, es_full)."""
@@ -164,6 +183,14 @@ def _calcular_retornos(df: pd.DataFrame, dias: int) -> pd.Series:
     sospechosos = _con_salto_anomalo(df, max(int(dias), 1), ret.index)
     if sospechosos:
         ret = ret.drop(index=[t for t in sospechosos if t in ret.index])
+
+    # Segundo filtro: la banda de plausibilidad sobre el retorno acumulado.
+    tope = _TOPE_RETORNO.get(int(dias))
+    if tope is None:
+        # Ventana no estándar: se interpola por raíz del tiempo, que es como
+        # escala la volatilidad, en vez de linealmente.
+        tope = 1.00 * (max(int(dias), 1) ** 0.5)
+    ret = ret[(ret <= tope) & (ret >= _PISO_RETORNO)]
 
     return ret.sort_values(ascending=False)
 

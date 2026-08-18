@@ -128,6 +128,44 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 [data-borde="medio"] { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%);
                                mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%); }
 
+/* ─────────────── SELECTOR DE PERIODO DEL PERIÓDICO ─────────────────────── */
+.mp-periodos {
+  display: inline-flex;
+  gap: 2px;
+  margin-top: var(--paso-3);
+  padding: 3px;
+  background: var(--sup-hondo);
+  border-radius: 999px;
+}
+.mp-periodo {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--tinta-3);
+  font-family: var(--ff-sans);
+  font-size: var(--txt-meta);
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  padding: var(--paso-2) var(--paso-4);
+  min-height: 36px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color var(--t-rapida) var(--easing),
+              color var(--t-rapida) var(--easing);
+}
+.mp-periodo:hover { color: var(--tinta-1); }
+.mp-periodo.activa {
+  background: var(--sup-panel);
+  color: var(--tinta-1);
+  box-shadow: var(--elev-1);
+}
+.mp-periodo:focus-visible { outline: 2px solid var(--sello); outline-offset: 2px; }
+
+/* Mientras se rehace un mazo tras cambiar de ventana. Sin esto el botón parece
+   no haber hecho nada durante el segundo que tarda la petición. */
+.mp-mazo-pane.cargando { opacity: .45; transition: opacity 120ms var(--easing); }
+.mp-mazo-pane.cargando .mp-tarjeta { pointer-events: none; }
+
 /* ────────────────── PANELES DE LISTAS (watchlist / widget) ─────────────── */
 .mp-listas { margin-top: var(--paso-7); }
 .mp-panel {
@@ -1588,11 +1626,104 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
 
 /* ── Horizontal y tabletas: dos mazos a la vez ─────────────────────────── */
 @media (min-width: 820px) {
-  .mp-mazo-pane { flex-basis: 50%; padding: 0 10px; }
+  .mp-mazo-pane { flex-basis: 50%; padding: 10px 10px 0; }
   .mp-mazos { --tj-cara: 140px; }
 }
+
+/* ══════════════ ESCRITORIO: la pila se deshace en lista ══════════════════
+   El mazo apilado resuelve un problema del móvil —enseñar diez cosas en una
+   columna de 390px sin obligar a recorrer— que en un monitor no existe: hay
+   tres columnas a la vista y espacio vertical de sobra. Mantener el apilado
+   ahí producía tres torres de franjas encimadas, cada una enseñando media
+   tarjeta, que se leen como una lista rota.
+   Arriba de 1024px las tarjetas vuelven al flujo normal. _posicionar() en
+   app.js detecta el mismo umbral y se aparta, borrando los transform y el
+   alto en línea que pone el modo apilado. Si se cambia este 1024, hay que
+   cambiar _modoLista() también. */
+@media (min-width: 1024px) {
+  /* La pista deja de ser carrusel: no hay nada que deslizar cuando cabe todo.
+     Los mazos pasan a ser secciones de ancho completo, una debajo de otra, y
+     sus tarjetas se reparten en una rejilla que se adapta al ancho. Probé
+     antes dejarlos como cinco columnas y a 1440px salían de 246px: demasiado
+     estrecho para un titular de dos líneas, que es justo lo que hay que poder
+     leer de un vistazo. */
+  .mp-mazos-pista {
+    display: block;
+    overflow: visible;
+    scroll-snap-type: none;
+    height: auto !important;   /* el JS lo fija para el modo carrusel */
+  }
+  .mp-mazo-pane {
+    width: 100%;
+    scroll-snap-align: none;
+    padding: 0;
+    margin-bottom: var(--paso-7);
+  }
+  .mp-mazo-pane:last-child { margin-bottom: 0; }
+  .mp-mazo {
+    height: auto !important;   /* el alto lo pone el contenido */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--paso-4);
+    align-items: start;
+  }
+  /* La abierta se lleva toda la fila para que quepa su gráfica sin estrujar. */
+  .mp-tarjeta.abierta { grid-column: 1 / -1; }
+
+  .mp-tarjeta {
+    position: static;
+    height: auto;
+    transform: none !important;
+    margin-bottom: 0;          /* el hueco lo pone el gap de la rejilla */
+    /* Sin apilado no hay costura que separar: la sombra deja de apuntar hacia
+       arriba y pasa a ser la de una tarjeta apoyada en el papel. */
+    box-shadow:
+      inset 0 0 0 1px var(--cat-borde, var(--regla)),
+      0 1px 2px rgba(20, 22, 27, .06),
+      0 10px 20px -14px rgba(20, 22, 27, .28);
+  }
+  .mp-mazo .mp-tarjeta:first-of-type { box-shadow: inherit; }
+  .mp-tarjeta:hover {
+    box-shadow:
+      inset 0 0 0 1px var(--cat-borde, var(--regla)),
+      0 2px 4px rgba(20, 22, 27, .07),
+      0 14px 28px -14px rgba(20, 22, 27, .34);
+  }
+  /* La cara ya no se recorta a una franja: se ve entera. */
+  .mp-tarjeta-cara { height: auto !important; min-height: 116px; }
+  /* Y el detalle se colapsa DE VERDAD mientras está cerrado. En el modo
+     apilado bastaba con opacity:0 porque la tarjeta tenía alto fijo y lo
+     recortaba; aquí el alto lo pone el contenido, así que un detalle invisible
+     pero presente hinchaba cada tarjeta con cientos de píxeles vacíos. */
+  .mp-tarjeta:not(.abierta) .mp-tarjeta-detalle { display: none; }
+
+  /* El rótulo del mazo SÍ se enseña: es la única forma de saber qué columna es
+     cuando hay tres a la vista. En móvil lo dice la píldora activa. */
+  .mp-mazo-titulo {
+    position: static;
+    width: auto; height: auto;
+    clip-path: none;
+    overflow: visible;
+    font-family: var(--ff-serif) !important;
+    font-size: var(--txt-seccion);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-transform: none;
+    color: var(--tinta-1);
+    margin: 0 0 var(--paso-4);
+    padding-bottom: var(--paso-3);
+    border-bottom: var(--hairline) solid var(--regla);
+  }
+  /* Las píldoras y el desvanecido de los bordes son de la vista deslizable. */
+  .mp-mazos-ind { display: none; }
+  .mp-mazos-pista[data-borde] {
+    -webkit-mask-image: none !important;
+            mask-image: none !important;
+  }
+}
+
 @media (min-width: 1180px) {
-  .mp-mazo-pane { flex-basis: 33.3333%; }
+  .mp-mazo { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 }
 
 /* Sin animación cuando el usuario la desactivó (además del barrido global). */

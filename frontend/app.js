@@ -3272,6 +3272,19 @@ const Periodico = (() => {
 
   // El orden del swipe lo fija esta lista y nada más: el indicador, los paneles
   // y la carga se generan a partir de ella.
+  /* Ventana de tiempo de los mazos de datos. El backend ya la aceptaba en
+     /api/periodico/top-movers y /api/periodico/sectores; lo que faltaba era
+     poder cambiarla. "Lo que más subió hoy" y "lo que más subió en el año" son
+     preguntas distintas, y con solo el día un lunes tranquilo deja la sección
+     entera diciendo ±0.2%. */
+  const PERIODOS = [
+    { clave: 'dia',    etq: 'Hoy',    frase: 'hoy' },
+    { clave: 'semana', etq: 'Semana', frase: 'esta semana' },
+    { clave: 'mes',    etq: 'Mes',    frase: 'este mes' },
+    { clave: 'anio',   etq: 'Año',    frase: 'este año' },
+  ];
+  const _frasePeriodo = (c) => (PERIODOS.find(p => p.clave === c) || PERIODOS[0]).frase;
+
   const MAZOS = [
     { clave: 'noticias',  titulo: 'Noticias' },
     { clave: 'accion',    titulo: 'Acción del día' },
@@ -3280,12 +3293,21 @@ const Periodico = (() => {
     { clave: 'watchlist', titulo: 'Tu watchlist' },
   ];
 
+  const LS_PERIODO = 'miPortafolio.periodicoPeriodo.v1';
   const state = {
     cargadoUnaVez: false,
     activo: 0,
     abierta: {},    // clave de mazo -> índice de tarjeta abierta (o null)
     charts: {},     // id de tarjeta -> instancia de Chart
     datos: {},      // clave de mazo -> array de tarjetas
+    // La ventana elegida sobrevive a la sesión: quien mira el año rara vez
+    // quiere volver al día en cada visita.
+    periodo: (() => {
+      try {
+        const v = localStorage.getItem(LS_PERIODO);
+        return ['dia', 'semana', 'mes', 'anio'].includes(v) ? v : 'dia';
+      } catch (_) { return 'dia'; }
+    })(),
   };
 
   // ─────────────────────────────────────────────────────────
@@ -3527,9 +3549,10 @@ const Periodico = (() => {
   }
 
   async function mazoAccion() {
+    const per = state.periodo || 'dia';
     const [ad, mov] = await Promise.all([
       safeJson(s => fetch('/api/periodico/accion-del-dia', { signal: s })),
-      safeJson(s => fetch('/api/periodico/top-movers?periodo=dia&n=3', { signal: s })),
+      safeJson(s => fetch('/api/periodico/top-movers?periodo=' + per + '&n=3', { signal: s })),
     ]);
     const tarjetas = [];
 
@@ -3561,24 +3584,36 @@ const Periodico = (() => {
 
     const grupo = (lista, etq) => (lista || []).slice(0, 3).map(m => {
       const cat = _catDeTicker(m.ticker);
+      // El backend llama a este campo `retorno_pct` (top_movers.py, _enriquecer);
+      // aquí se leía `cambio_pct`, que no existe en ese payload. Efecto: en el
+      // mazo "Acción del día" TODAS las tarjetas de mayores subidas y bajadas
+      // salían sin su porcentaje —una lista de "lo que más subió" sin el
+      // número—, y como esas tarjetas tampoco traen nombre, quedaban con un
+      // rótulo y un ticker flotando en un rectángulo vacío. Se acepta el otro
+      // nombre por si algún endpoint viejo lo usa.
+      const pct = m.retorno_pct != null ? m.retorno_pct : m.cambio_pct;
+      const sym = m.moneda === 'MXN' ? '$' : 'US$';
       return {
         cat,
         etq,
         nombre: m.ticker,
-        variacion: fmtPct(m.cambio_pct),
-        dir: (m.cambio_pct || 0) >= 0 ? 1 : -1,
-        meta: m.nombre || '',
+        variacion: fmtPct(pct),
+        dir: (pct || 0) >= 0 ? 1 : -1,
+        // Sin nombre (el universo no lo trae para los small caps) la tarjeta se
+        // quedaba en blanco: el precio es el dato que sí existe siempre.
+        meta: m.nombre || (m.precio != null ? `${sym}${fmtNum(m.precio)}` : ''),
         tickers: [m.ticker],
         grafica: m.ticker,
         metricas: [
-          { k: 'Precio', v: fmtNum(m.precio) ?? '—' },
-          { k: 'Cambio', v: fmtPct(m.cambio_pct) ?? '—', dir: m.cambio_pct },
+          { k: 'Precio', v: m.precio != null ? `${sym}${fmtNum(m.precio)}` : '—' },
+          { k: 'Cambio', v: fmtPct(pct) ?? '—', dir: pct },
         ].filter(x => x.v !== '—'),
       };
     });
     if (mov && mov.ok) {
-      tarjetas.push(...grupo(mov.ganadores, 'Más subió hoy'));
-      tarjetas.push(...grupo(mov.perdedores, 'Más cayó hoy'));
+      const cuando = _frasePeriodo(per);
+      tarjetas.push(...grupo(mov.ganadores, 'Más subió ' + cuando));
+      tarjetas.push(...grupo(mov.perdedores, 'Más cayó ' + cuando));
     }
 
     if (!tarjetas.length) return { error: 'La selección del día no está disponible ahora mismo.', tarjetas: [] };
@@ -3586,9 +3621,12 @@ const Periodico = (() => {
   }
 
   async function mazoSector(mercados) {
-    let sectores = (mercados && mercados.sectores) || [];
+    const per = state.periodo || 'dia';
+    // El atajo por `mercados` solo sirve para el día: ese payload trae los
+    // sectores de la jornada. Para cualquier otra ventana hay que pedirlos.
+    let sectores = (per === 'dia' && mercados && mercados.sectores) || [];
     if (!sectores.length) {
-      const d = await safeJson(s => fetch('/api/periodico/sectores?periodo=dia', { signal: s }));
+      const d = await safeJson(s => fetch('/api/periodico/sectores?periodo=' + per, { signal: s }));
       sectores = (d && d.ok && d.sectores) || [];
     }
     if (!sectores.length) return { error: 'Los sectores no están disponibles ahora mismo.', tarjetas: [] };
@@ -3603,7 +3641,9 @@ const Periodico = (() => {
     return {
       tarjetas: [dia, ...resto].slice(0, MAX_TARJETAS).map((s, i) => {
         const t = _tarjetaDeCotizacion(s, 'global');
-        t.etq = i === 0 ? 'Sector del día' : 'Sector · ' + s.ticker;
+        // El rótulo sigue la ventana elegida: decir "sector del día" mientras
+        // el número es el del año es contradecirse en la misma tarjeta.
+        t.etq = i === 0 ? 'Sector destacado ' + _frasePeriodo(per) : 'Sector · ' + s.ticker;
         return t;
       }),
       recorte: sectores.length > MAX_TARJETAS ? sectores.length - MAX_TARJETAS : 0,
@@ -3750,9 +3790,29 @@ const Periodico = (() => {
   }
 
   /* Coloca cada tarjeta y devuelve el alto total de la pila. Puro translateY. */
+  /* En pantalla ancha las tarjetas NO se apilan.
+     El mazo de Wallet resuelve un problema del móvil: enseñar diez cosas en una
+     columna de 390px sin obligar a recorrer. En un monitor hay tres columnas a
+     la vista y espacio vertical de sobra, así que apilar solo produce tres
+     torres de franjas encimadas que se leen como una lista rota. Arriba de
+     1024px cada mazo pasa a ser una lista normal de tarjetas separadas: el CSS
+     las devuelve al flujo y esta función se aparta, borrando los estilos en
+     línea que había puesto el modo apilado. */
+  const _modoLista = () => window.matchMedia('(min-width: 1024px)').matches;
+
   function _posicionar(mazo, animar) {
     const tarjetas = [...mazo.querySelectorAll('.mp-tarjeta')];
     if (!tarjetas.length) return 0;
+
+    if (_modoLista()) {
+      tarjetas.forEach((el, i) => {
+        el.style.transform = '';
+        el.style.zIndex = String(10 + i);   // el orden sigue importando al abrir
+      });
+      mazo.style.height = '';               // manda el flujo, no una altura fija
+      return mazo.getBoundingClientRect().height;
+    }
+
     const { paso, cara, mini } = _medidas(mazo);
     const k = state.abierta[mazo.dataset.mazo];
     let y = 0, alto = 0;
@@ -3786,9 +3846,30 @@ const Periodico = (() => {
     return alto;
   }
 
+  /* Cruzar el umbral de 1024px cambia el modelo entero (apilado <-> lista), y
+     eso no puede esperar a la siguiente carga: al girar un iPad o redimensionar
+     la ventana hay que recolocar.
+     Se escucha el CAMBIO DE LA MEDIA QUERY, no 'resize'. Con resize el
+     manejador puede correr antes de que la consulta haya cambiado de estado,
+     así que _modoLista() devuelve el valor viejo, la comparación no detecta
+     nada y las tarjetas se quedan sin transform: las diez apiladas en el mismo
+     punto. matchMedia dispara justo cuando el umbral ya cambió. */
+  (function _vigilarAncho() {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const recolocar = () => {
+      document.querySelectorAll('.mp-mazo').forEach(m => _posicionar(m, false));
+      _reajustarPista();
+    };
+    if (mq.addEventListener) mq.addEventListener('change', recolocar);
+    else if (mq.addListener) mq.addListener(recolocar);   // Safari viejo
+  })();
+
   function _reajustarPista() {
     const pista = $('mazos-pista');
     if (!pista) return;
+    // En modo lista la pista no recorta nada: el alto lo pone el contenido y
+    // fijarlo a mano dejaría los mazos de abajo cortados.
+    if (_modoLista()) { pista.style.height = ''; return; }
     let max = 0;
     pista.querySelectorAll('.mp-mazo-pane').forEach(pane => {
       // Se SUMAN los hijos en vez de leer pane.scrollHeight: los panes son
@@ -4003,6 +4084,30 @@ const Periodico = (() => {
   }
   window.MP_bordesDeScroll = _bordesDeScroll;
 
+  /* Selector de ventana. Va en la cabecera, no dentro de cada mazo: es UNA
+     pregunta ("¿de qué periodo hablamos?") y repetir el control en tres sitios
+     invita a que digan cosas distintas a la vez. */
+  function _periodoHTML() {
+    return PERIODOS.map(p => `
+      <button type="button" class="mp-periodo${state.periodo === p.clave ? ' activa' : ''}"
+              data-periodo="${p.clave}" aria-pressed="${state.periodo === p.clave}">${p.etq}</button>`).join('');
+  }
+
+  function _bindPeriodo() {
+    const cont = $('periodico-periodo');
+    if (!cont || cont.dataset.listo === '1') return;
+    cont.dataset.listo = '1';
+    cont.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('[data-periodo]');
+      if (!b || b.dataset.periodo === state.periodo) return;
+      state.periodo = b.dataset.periodo;
+      try { localStorage.setItem(LS_PERIODO, state.periodo); } catch (_) {}
+      cont.innerHTML = _periodoHTML();
+      // Solo los mazos que dependen de la ventana: noticias y watchlist no.
+      await Promise.all([recargarMazo('accion'), recargarMazo('sector')]);
+    });
+  }
+
   function _bindPista() {
     const pista = $('mazos-pista');
     const ind = $('mazos-ind');
@@ -4102,6 +4207,9 @@ const Periodico = (() => {
     if (ley && !ley.children.length) ley.innerHTML = _leyendaHTML();
     _esqueleto();
     _bindPista();
+    const cp = $('periodico-periodo');
+    if (cp && !cp.children.length) cp.innerHTML = _periodoHTML();
+    _bindPeriodo();
 
     if (forzar) {
       // Refresco manual: pide al servidor rearmar la edición del día.
@@ -4176,8 +4284,18 @@ const Periodico = (() => {
     const viejo = pista.children[i];
     if (!viejo) return;
 
-    const constructor = { watchlist: mazoWatchlist }[clave];
+    const constructores = {
+      watchlist: mazoWatchlist,
+      accion:    mazoAccion,
+      // El sector necesita el payload de mercados; al recargar se pide de nuevo
+      // porque el de la carga inicial puede tener minutos encima.
+      sector:    async () => mazoSector(await safeJson(s => fetch('/api/periodico/mercados', { signal: s }))),
+    };
+    const constructor = constructores[clave];
     if (!constructor) return;
+    // Mientras llega, el mazo se marca como ocupado: cambiar de ventana y ver
+    // los números viejos sin ninguna señal parece que el botón no hizo nada.
+    viejo.classList.add('cargando');
     const res = await constructor().catch(e => ({ error: String(e && e.message || e), tarjetas: [] }));
 
     // Las gráficas del pane viejo se sueltan ANTES de tirar su DOM: si no,
