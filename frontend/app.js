@@ -126,7 +126,7 @@ window.attachTickerAutocomplete = function (input, onPick) {
   const box = document.createElement('div');
   box.className = 'hidden absolute z-30 left-0 right-0 mt-1 bg-surface-card border border-surface-border rounded-md shadow-lg max-h-56 overflow-y-auto text-sm';
   wrap.appendChild(box);
-  let items = [], sel = -1, timer = null, seq = 0;
+  let items = [], sel = -1, timer = null, seq = 0, ignorarProximo = false;
   const hide = () => { box.classList.add('hidden'); box.innerHTML = ''; sel = -1; };
   function render() {
     if (!items.length) { hide(); return; }
@@ -142,8 +142,16 @@ window.attachTickerAutocomplete = function (input, onPick) {
     const r = items[i]; if (!r) return;
     input.value = r.ticker;
     hide();
+    /* El evento `input` que sigue es NUESTRO, no del usuario: sirve para que
+       el resto de la app se entere del valor nuevo. Sin esta marca, el
+       manejador de abajo lo tomaba por tecleo, programaba una búsqueda a 220ms
+       y el desplegable volvía a abrirse solo —encima de un campo que el onPick
+       pudo haber vaciado ya, como hace el buscador de "Tus listas"—. */
+    clearTimeout(timer);
+    ignorarProximo = true;
     try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
     try { input.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+    ignorarProximo = false;
     if (typeof onPick === 'function') onPick(r.ticker, r);
   }
   async function buscar(q) {
@@ -157,6 +165,7 @@ window.attachTickerAutocomplete = function (input, onPick) {
     } catch (_) { hide(); }
   }
   input.addEventListener('input', () => {
+    if (ignorarProximo) return;              // lo disparó pick(), no el usuario
     const q = input.value.trim();
     if (q.length < 2) { hide(); return; }
     clearTimeout(timer);
@@ -4153,6 +4162,50 @@ const Periodico = (() => {
     iniciarPollingLive();
   }
 
+  /* Vuelve a armar UN mazo sin recargar el Periódico entero.
+     Hace falta porque cargar() sale temprano cuando ya cargó una vez: al
+     agregar una emisora desde "Tus listas" el toast prometía tarjeta en el
+     Periódico y la tarjeta no aparecía hasta recargar la página. Rehacer los
+     cinco mazos por esto sería tirar diez peticiones —y una de refresco de
+     edición— para repintar una sola columna. */
+  async function recargarMazo(clave) {
+    if (!state.cargadoUnaVez) return;          // la carga inicial ya lo traerá
+    const i = MAZOS.findIndex(m => m.clave === clave);
+    const pista = $('mazos-pista');
+    if (i < 0 || !pista) return;
+    const viejo = pista.children[i];
+    if (!viejo) return;
+
+    const constructor = { watchlist: mazoWatchlist }[clave];
+    if (!constructor) return;
+    const res = await constructor().catch(e => ({ error: String(e && e.message || e), tarjetas: [] }));
+
+    // Las gráficas del pane viejo se sueltan ANTES de tirar su DOM: si no,
+    // quedan instancias de Chart.js apuntando a canvas que ya no existen.
+    viejo.querySelectorAll('canvas[id]').forEach(c => {
+      const ch = state.charts[c.id];
+      try { ch && ch.destroy && ch.destroy(); } catch (_) {}
+      delete state.charts[c.id];
+    });
+    delete state.abierta[clave];
+    state.datos[clave] = res.tarjetas || [];
+
+    viejo.outerHTML = _paneHTML(MAZOS[i], res);
+    const nuevo = pista.children[i];
+    nuevo.querySelectorAll('.mp-mazo').forEach(mazo => {
+      _posicionar(mazo, false);
+      _bindMazo(mazo);
+      _reajustarAlAsentar(mazo);
+    });
+    nuevo.querySelectorAll('.mazo-reintentar').forEach(b =>
+      b.addEventListener('click', () => cargar(true)));
+    _reajustarPista();
+  }
+
+  /* La watchlist se edita desde Analizar, en otra pantalla. Cuando cambia, su
+     mazo se rehace para que al volver al Periódico ya esté. */
+  document.addEventListener('mp:watchlist', () => { recargarMazo('watchlist'); });
+
   /* Publica el alto real de la barra superior para que el indicador de mazos
      pueda quedarse pegado justo debajo. Se recalcula ante cualquier cosa que
      cambie ese alto: rotación, banner de demo, o el modo nativo que esconde la
@@ -4234,7 +4287,7 @@ const Periodico = (() => {
     if (inmediato) tick(); else _pollingInterval = setTimeout(tick, 60_000);
   }
 
-  return { cargar, bind, irAMazo };
+  return { cargar, bind, irAMazo, recargarMazo };
 })();
 
 

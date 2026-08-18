@@ -121,6 +121,12 @@
      portafolio completo, pase lo que pase con los porcentajes. */
   function planPiso(tickers, w, q) {
     const enteros = tickers.filter(t => !esFraccionable(t));
+    // Si TODO se compra en fracciones (un portafolio solo de cripto), no existe
+    // un suelo: cualquier monto reproduce los porcentajes exactos, incluido uno
+    // de $50. Devolver un plan aquí daba "LO MÍNIMO $0" con ±100 pts, porque la
+    // parte fraccionable se dimensiona contra lo que cuesta la parte entera y
+    // esa base valía cero. Sin suelo, manda el barrido.
+    if (!enteros.length) return null;
     const base = enteros.reduce((a, t) => a + q[t].mxn, 0);
     const pesoEnteros = enteros.reduce((a, t) => a + w[t], 0) || 1;
     const linea = [];
@@ -146,7 +152,9 @@
 
   function planear(tickers, w, q) {
     const suelo = planPiso(tickers, w, q);
-    const piso = suelo.costo;   // el mismo número que se le enseña al usuario
+    const todoFraccionable = suelo === null;
+    const piso = suelo ? suelo.costo
+                       : tickers.reduce((a, t) => a + q[t].mxn * 0.0002, 0);
     // El techo del barrido: el presupuesto al que la posición más apretada (la
     // más cara en relación a su peso) alcanza su porcentaje exacto. Más allá
     // de ahí el ajuste ya no mejora, solo cuesta más.
@@ -162,7 +170,7 @@
     // a partes iguales, WALMEX se lleva 93), así que el costo del barrido
     // arranca por encima del suelo. Y ese suelo es literalmente la respuesta a
     // "cuál es el mínimo para tener este portafolio".
-    cands.push(suelo);
+    if (suelo) cands.push(suelo);
 
     const minimo = cands.reduce((a, c) => (c.costo < a.costo - 0.5 ? c
                                          : c.costo < a.costo + 0.5 && c.desvio < a.desvio ? c : a), cands[0]);
@@ -192,10 +200,13 @@
     }
     // Cuál es la posición que empuja el piso hacia arriba: es el dato accionable
     // ("si sacas VOO, cabe") y sin él el aviso solo dice que no se puede.
-    const cara = suelo.linea.filter(l => !esFraccionable(l.ticker))
-                            .reduce((a, l) => (!a || l.importe > a.importe ? l : a), null);
+    const cara = suelo
+      ? suelo.linea.filter(l => !esFraccionable(l.ticker))
+                   .reduce((a, l) => (!a || l.importe > a.importe ? l : a), null)
+      : null;
     return {
-      minimo, medio, fiel, opciones, piso, cabe: minimo.costo <= TOPE_OBJETIVO,
+      minimo, medio, fiel, opciones, piso, todoFraccionable,
+      cabe: minimo.costo <= TOPE_OBJETIVO,
       caro: cara ? cara.ticker : null, caroMonto: cara ? cara.importe : 0,
     };
   }
@@ -241,7 +252,7 @@
   }
 
   function pintarPlan(d) {
-    const { minimo, opciones, cabe } = d.plan;
+    const { minimo, opciones, cabe, todoFraccionable } = d.plan;
     let elegido = 'minimo';               // la pregunta era "cuál es el mínimo"
 
     const tabla = (plan) => plan.linea
@@ -284,7 +295,12 @@
           </button>`).join('')}
       </div>`;
 
-    const aviso = cabe ? '' : `
+    // Con todo fraccionable no hay suelo que anunciar: cualquier monto reproduce
+    // los porcentajes exactos, y decir "no se puede bajar de X" seria falso.
+    const aviso = todoFraccionable ? `
+      <p class="mp-modal-nota">Todas tus posiciones se compran en fracciones, así que
+      puedes replicar estos porcentajes con el monto que quieras: el de abajo es solo
+      un ejemplo.</p>` : cabe ? '' : `
       <p class="mp-modal-aviso">
         No se puede bajar de ${money(TOPE_OBJETIVO)}: lo mínimo para tener las
         ${minimo.linea.length} posiciones ya cuesta ${money(d.plan.piso)}${
