@@ -32,6 +32,17 @@ try:
 except Exception:  # pragma: no cover
     import alertas as _alertas  # type: ignore
 
+# Envío de SMS para verificar el teléfono al crear cuenta. Import guardado: si
+# el módulo o su proveedor no están, el registro por teléfono lo reporta y el
+# resto del auth sigue funcionando.
+try:
+    from . import sms as _sms  # type: ignore
+except Exception:  # pragma: no cover
+    try:
+        import sms as _sms  # type: ignore
+    except Exception:
+        _sms = None  # type: ignore
+
 # bcrypt para el hash de contraseñas. Import guardado: si no está instalado,
 # el magic-link sigue funcionando y solo el auth por contraseña lo reporta.
 try:
@@ -89,6 +100,16 @@ def _limpiar_expirados(data: dict[str, Any]) -> None:
             info["solicitudes"] = sols
             otps_vivos[e] = info
     data["otp"] = otps_vivos
+    # Registros a medias (teléfono sin confirmar). Se conserva el historial de
+    # solicitudes de la última hora para que el límite por número siga contando
+    # aunque el código haya caducado.
+    pend_vivos: dict[str, Any] = {}
+    for tel, info in (data.get("registros_pendientes") or {}).items():
+        sols = [t for t in info.get("solicitudes", []) if t > ahora - 3600]
+        if info.get("expira_en", 0) > ahora or sols:
+            info["solicitudes"] = sols
+            pend_vivos[tel] = info
+    data["registros_pendientes"] = pend_vivos
     _limpiar_tombstones(data)
 
 
@@ -374,9 +395,16 @@ def _verificar_password(password: str, hashed: str) -> bool:
         return False
 
 
-def registrar_con_password(email: str, password: str) -> dict[str, Any]:
+def registrar_con_password(email: str, password: str,
+                           telefono: Optional[str] = None) -> dict[str, Any]:
     """Crea una cuenta nueva con contraseña. Inicia el trial (creado_en = ahora).
-    Falla si el correo ya tiene cuenta (evita apropiación de cuentas existentes)."""
+    Falla si el correo ya tiene cuenta (evita apropiación de cuentas existentes).
+
+    `telefono` se guarda SIN verificar. Esta ruta es el respaldo para cuando el
+    servidor no tiene proveedor de SMS: el camino normal es
+    solicitar_registro_telefono + confirmar_registro_telefono, donde el número
+    queda verificado. Guardarlo igual permite pedir la confirmación después, en
+    cuanto haya credenciales, sin volver a preguntárselo al usuario."""
     if _bcrypt is None:
         raise RuntimeError("auth por contraseña no disponible (falta bcrypt en el servidor)")
     email = _validar_credenciales(email, password)
@@ -395,6 +423,12 @@ def registrar_con_password(email: str, password: str) -> dict[str, Any]:
             "password_hash": _hash_password(password),
             "auth": "password",
         }
+        if telefono and _sms is not None:
+            try:
+                usuarios[email]["telefono"] = _sms.normalizar(telefono)
+                usuarios[email]["telefono_verificado"] = False
+            except Exception:
+                pass          # un teléfono mal escrito no debe tumbar el alta
         # Alta explicita: si esa cuenta se habia eliminado, el usuario tiene
         # derecho a volver a registrarse — se levanta el tombstone.
         (data.get("eliminados") or {}).pop(_hash_email(email), None)
@@ -532,6 +566,269 @@ def verificar_otp(email: str, codigo: str) -> dict[str, Any]:
         u = _registrar_usuario(data, email)
         u["ultima_sesion"] = ahora
         u.setdefault("auth", "otp")
+        _guardar(data)
+        return dict(u)
+
+
+# ─────────────────────────────────────────────────────────────────
+# Verificación de teléfono por SMS al crear cuenta
+# ─────────────────────────────────────────────────────────────────
+# POR QUÉ EL REGISTRO QUEDA "PENDIENTE"
+# La cuenta NO se crea al pedir el código: se guarda un registro a medias
+# (correo + hash de contraseña + teléfono) y solo al confirmar el código nace el
+# usuario. Si se creara antes, cualquiera podría ocupar un correo ajeno con solo
+# empezar el registro, y el correo quedaría bloqueado para su dueño real.
+#
+# UN TELÉFONO = UNA CUENTA. Es lo único que hace que verificar sirva de algo: si
+# el mismo número puede registrar cuentas sin límite, el SMS solo añade costo y
+# fricción sin frenar nada.
+_TEL_TTL = int(os.environ.get("AUTH_TEL_TTL", "600"))    # 10 minutos
+_TEL_MAX_SOLICITUDES_HORA = 4      # por número (por IP lo limita Flask-Limiter)
+_TEL_MAX_INTENTOS = 5              # códigos fallidos antes de invalidar
+
+
+def _hash_codigo_tel(codigo: str) -> str:
+    return hashlib.sha256(("tel:" + codigo).encode("utf-8")).hexdigest()
+
+
+def sms_disponible() -> bool:
+    """False si no hay proveedor configurado. El endpoint lo usa para decir la
+    verdad en vez de dejar al usuario esperando un SMS que no va a llegar."""
+    return bool(_sms is not None and _sms.configurado())
+
+
+def telefono_de(email: str) -> Optional[str]:
+    u = obtener_usuario(email) or {}
+    return u.get("telefono")
+
+
+def _duenio_de_telefono(data: dict[str, Any], telefono: str) -> Optional[str]:
+    for correo, u in (data.get("usuarios") or {}).items():
+        if u.get("telefono") == telefono:
+            return correo
+    return None
+
+
+def solicitar_registro_telefono(email: str, password: str, telefono: str) -> dict[str, Any]:
+    """Paso 1 del registro: valida todo, guarda el registro pendiente y manda el
+    código por SMS. La cuenta todavía NO existe.
+
+    Lanza ValueError (dato malo), PermissionError (límite) o RuntimeError (el
+    SMS no salió). Nunca deja un pendiente guardado si el envío falló: eso haría
+    creer al usuario que el código va en camino.
+    """
+    if _sms is None:
+        raise RuntimeError("El envío de SMS no está disponible en el servidor")
+    email = _validar_credenciales(email, password)    # valida formato y largo
+    tel = _sms.normalizar(telefono)
+    codigo = f"{secrets.randbelow(1_000_000):06d}"
+    ahora = time.time()
+
+    with _LOCK:
+        data = _cargar()
+        _limpiar_expirados(data)
+        if email in (data.get("usuarios") or {}):
+            raise ValueError("Ese correo ya tiene una cuenta. Inicia sesión.")
+        otro = _duenio_de_telefono(data, tel)
+        if otro:
+            # No se dice de QUIÉN es: eso convertiría el registro en un buscador
+            # de "¿este número tiene cuenta?".
+            raise ValueError("Ese teléfono ya está en uso por otra cuenta.")
+
+        pend = data.setdefault("registros_pendientes", {})
+        previo = pend.get(tel) or {}
+        solicitudes = [t for t in previo.get("solicitudes", []) if t > ahora - 3600]
+        if len(solicitudes) >= _TEL_MAX_SOLICITUDES_HORA:
+            raise PermissionError("Demasiados códigos para ese número. Inténtalo en una hora.")
+        solicitudes.append(ahora)
+        pend[tel] = {
+            "email": email,
+            "password_hash": _hash_password(password),
+            "codigo_hash": _hash_codigo_tel(codigo),
+            "creado_en": ahora,
+            "expira_en": ahora + _TEL_TTL,
+            "intentos": 0,
+            "solicitudes": solicitudes,
+        }
+        _guardar(data)
+
+    texto = (f"Mi Portafolio: tu codigo es {codigo}. "
+             f"Vence en {_TEL_TTL // 60} minutos. No lo compartas.")
+    try:
+        _sms.enviar(tel, texto)
+    except Exception as exc:
+        # El pendiente se deja EN PIE (con su código) para que "Reenviar" no
+        # tenga que rehacer la validación, pero el error sube tal cual: la
+        # pantalla tiene que decir que no se pudo enviar.
+        print(f"[auth] FALLO al enviar SMS a {_sms.enmascarar(tel)}: {exc}", flush=True)
+        raise
+
+    return {
+        "ok": True,
+        "telefono_enmascarado": _sms.enmascarar(tel),
+        "expira_en": ahora + _TEL_TTL,
+        # Solo en mock mode, para poder probar el flujo completo sin proveedor.
+        "codigo_debug": codigo if getattr(_sms, "_MOCK", False) else None,
+    }
+
+
+def confirmar_registro_telefono(telefono: str, codigo: str) -> dict[str, Any]:
+    """Paso 2: valida el código y CREA la cuenta con el teléfono ya verificado.
+    Mensaje genérico: no revela si ese número tiene un registro pendiente."""
+    if _sms is None:
+        raise RuntimeError("El envío de SMS no está disponible en el servidor")
+    tel = _sms.normalizar(telefono)
+    codigo = (codigo or "").strip()
+    generico = ValueError("Código inválido o expirado")
+    if len(codigo) != 6 or not codigo.isdigit():
+        raise generico
+
+    ahora = time.time()
+    with _LOCK:
+        data = _cargar()
+        _limpiar_expirados(data)
+        pend = data.setdefault("registros_pendientes", {})
+        info = pend.get(tel)
+        if not info or not info.get("codigo_hash") or info.get("expira_en", 0) <= ahora:
+            raise generico
+        if not secrets.compare_digest(_hash_codigo_tel(codigo), info["codigo_hash"]):
+            info["intentos"] = info.get("intentos", 0) + 1
+            if info["intentos"] >= _TEL_MAX_INTENTOS:
+                info.pop("codigo_hash", None)
+                info["expira_en"] = 0
+            _guardar(data)
+            raise generico
+
+        email = info["email"]
+        usuarios = data.setdefault("usuarios", {})
+        # Se vuelve a comprobar aquí: entre el paso 1 y el 2 alguien pudo
+        # registrar ese correo o ese teléfono por otra vía.
+        if email in usuarios:
+            pend.pop(tel, None)
+            _guardar(data)
+            raise ValueError("Ese correo ya tiene una cuenta. Inicia sesión.")
+        if _duenio_de_telefono(data, tel):
+            pend.pop(tel, None)
+            _guardar(data)
+            raise ValueError("Ese teléfono ya está en uso por otra cuenta.")
+
+        usuarios[email] = {
+            "email": email,
+            "creado_en": ahora,          # ← el trial arranca aquí, no en el paso 1
+            "ultima_sesion": ahora,
+            "plan": "trial",
+            "estado_pago": "inactivo",
+            "password_hash": info["password_hash"],
+            "auth": "password",
+            "telefono": tel,
+            "telefono_verificado": True,
+            "telefono_verificado_en": ahora,
+        }
+        # Alta explícita: si esa cuenta se había eliminado, se levanta el tombstone.
+        (data.get("eliminados") or {}).pop(_hash_email(email), None)
+        pend.pop(tel, None)              # un solo uso
+        _guardar(data)
+
+    return {"email": email, "creado_en": ahora, "plan": "trial", "nueva": True,
+            "telefono": tel}
+
+
+def solicitar_codigo_telefono(email: str, telefono: str) -> dict[str, Any]:
+    """Verificación de teléfono para una cuenta que YA existe.
+
+    Hace falta porque el registro con contraseña no es la única puerta: el magic
+    link y el OTP por correo también crean cuentas. Esas quedan sin teléfono, y
+    esto es lo que les permite completarlo desde la app.
+    """
+    if _sms is None:
+        raise RuntimeError("El envío de SMS no está disponible en el servidor")
+    email = (email or "").strip().lower()
+    tel = _sms.normalizar(telefono)
+    codigo = f"{secrets.randbelow(1_000_000):06d}"
+    ahora = time.time()
+
+    with _LOCK:
+        data = _cargar()
+        _limpiar_expirados(data)
+        u = (data.get("usuarios") or {}).get(email)
+        if not u:
+            raise ValueError("Esa cuenta no existe")
+        otro = _duenio_de_telefono(data, tel)
+        if otro and otro != email:
+            raise ValueError("Ese teléfono ya está en uso por otra cuenta.")
+
+        pend = data.setdefault("registros_pendientes", {})
+        previo = pend.get(tel) or {}
+        solicitudes = [t for t in previo.get("solicitudes", []) if t > ahora - 3600]
+        if len(solicitudes) >= _TEL_MAX_SOLICITUDES_HORA:
+            raise PermissionError("Demasiados códigos para ese número. Inténtalo en una hora.")
+        solicitudes.append(ahora)
+        # Mismo almacén que el registro nuevo, pero sin password_hash: la marca
+        # `solo_verificar` distingue los dos casos al confirmar.
+        pend[tel] = {
+            "email": email,
+            "solo_verificar": True,
+            "codigo_hash": _hash_codigo_tel(codigo),
+            "creado_en": ahora,
+            "expira_en": ahora + _TEL_TTL,
+            "intentos": 0,
+            "solicitudes": solicitudes,
+        }
+        _guardar(data)
+
+    texto = (f"Mi Portafolio: tu codigo es {codigo}. "
+             f"Vence en {_TEL_TTL // 60} minutos. No lo compartas.")
+    try:
+        _sms.enviar(tel, texto)
+    except Exception as exc:
+        print(f"[auth] FALLO al enviar SMS a {_sms.enmascarar(tel)}: {exc}", flush=True)
+        raise
+
+    return {"ok": True, "telefono_enmascarado": _sms.enmascarar(tel),
+            "expira_en": ahora + _TEL_TTL,
+            "codigo_debug": codigo if getattr(_sms, "_MOCK", False) else None}
+
+
+def confirmar_codigo_telefono(telefono: str, codigo: str) -> dict[str, Any]:
+    """Confirma el teléfono de una cuenta existente (contraparte de
+    solicitar_codigo_telefono)."""
+    if _sms is None:
+        raise RuntimeError("El envío de SMS no está disponible en el servidor")
+    tel = _sms.normalizar(telefono)
+    codigo = (codigo or "").strip()
+    generico = ValueError("Código inválido o expirado")
+    if len(codigo) != 6 or not codigo.isdigit():
+        raise generico
+
+    ahora = time.time()
+    with _LOCK:
+        data = _cargar()
+        _limpiar_expirados(data)
+        pend = data.setdefault("registros_pendientes", {})
+        info = pend.get(tel)
+        if not info or not info.get("solo_verificar") or not info.get("codigo_hash") \
+                or info.get("expira_en", 0) <= ahora:
+            raise generico
+        if not secrets.compare_digest(_hash_codigo_tel(codigo), info["codigo_hash"]):
+            info["intentos"] = info.get("intentos", 0) + 1
+            if info["intentos"] >= _TEL_MAX_INTENTOS:
+                info.pop("codigo_hash", None)
+                info["expira_en"] = 0
+            _guardar(data)
+            raise generico
+
+        email = info["email"]
+        u = (data.get("usuarios") or {}).get(email)
+        if not u:
+            raise generico
+        if _duenio_de_telefono(data, tel) not in (None, email):
+            pend.pop(tel, None)
+            _guardar(data)
+            raise ValueError("Ese teléfono ya está en uso por otra cuenta.")
+        u["telefono"] = tel
+        u["telefono_verificado"] = True
+        u["telefono_verificado_en"] = ahora
+        pend.pop(tel, None)
         _guardar(data)
         return dict(u)
 

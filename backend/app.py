@@ -2777,7 +2777,26 @@ def _cookie_sesion(resp: Response, session_id: str, max_age: int) -> Response:
     return resp
 
 
-_CAMPOS_USUARIO_SENSIBLES = ("password_hash",)
+# El teléfono completo tampoco sale: el dueño de la sesión ya sabe cuál es, y
+# el estado devuelve una versión enmascarada aparte. Un número de teléfono en el
+# payload de cada petición es un dato personal circulando sin necesidad.
+try:
+    import sms as _sms_mod
+except Exception:
+    _sms_mod = None
+
+_CAMPOS_USUARIO_SENSIBLES = ("password_hash", "telefono")
+
+
+def _telefono_enmascarado(email: str) -> Optional[str]:
+    """•••• 5678 del teléfono guardado, o None si no hay."""
+    if _auth is None or _sms_mod is None:
+        return None
+    try:
+        t = _auth.telefono_de(email)
+        return _sms_mod.enmascarar(t) if t else None
+    except Exception:
+        return None
 
 
 def _usuario_publico(u: Optional[dict]) -> dict:
@@ -2921,11 +2940,23 @@ def api_auth_estado():
     if not ses:
         return jsonify({"autenticado": False}), 200
     gate = _estado_plan(ses.get("usuario", {}))
+    u = ses.get("usuario", {}) or {}
+    # El teléfono verificado viaja en el estado para que el frontend sepa si
+    # tiene que pedirlo. Hace falta porque el registro con contraseña no es la
+    # única puerta: el magic link y el OTP por correo también crean cuentas, y
+    # esas nacen sin teléfono. `sms_activo` evita que la app pida un código
+    # cuando el servidor no puede enviarlo.
     return jsonify({
         "autenticado": True,
         "email": ses["email"],
-        "usuario": ses.get("usuario", {}),
+        "usuario": u,
         "expira_en": ses["expira_en"],
+        "telefono_verificado": bool(u.get("telefono_verificado")),
+        # El teléfono se pide al STORE, no al usuario de la sesión: ese ya pasó
+        # por _usuario_publico, que lo filtra como campo sensible. Leyéndolo de
+        # ahí la máscara salía siempre vacía.
+        "telefono_enmascarado": _telefono_enmascarado(ses["email"]),
+        "sms_activo": _auth.sms_disponible(),
         **gate,
     })
 
@@ -3014,19 +3045,135 @@ def _respuesta_auth(email: str, usuario: dict) -> Response:
 @app.route("/api/auth/registro", methods=["POST"])
 @_rate_limit("10 per minute; 40 per hour")
 def api_auth_registro():
+    """Paso 1 del registro: pide el código al teléfono. NO crea la cuenta.
+
+    Antes esta ruta creaba la cuenta de un golpe. Ahora exige teléfono y solo
+    guarda un registro pendiente: la cuenta nace en /registro/confirmar, cuando
+    el código del SMS llega de vuelta. Si se creara antes, cualquiera podría
+    ocupar el correo de otra persona con solo empezar el registro.
+    """
     if _auth is None:
         return jsonify({"error": "auth no disponible"}), 500
     body = request.get_json(silent=True) or {}
     email = (body.get("email") or "").strip().lower()
     password = body.get("password") or ""
+    telefono = (body.get("telefono") or "").strip()
+
+    if not telefono:
+        return jsonify({"error": "Escribe tu teléfono para recibir el código.",
+                        "requiere_telefono": True}), 400
+    if not _auth.sms_disponible():
+        # SIN PROVEEDOR DE SMS NO SE BLOQUEA EL REGISTRO.
+        #
+        # Devolver 503 aquí seria correcto en abstracto y un desastre en la
+        # practica: nadie podria crear cuenta hasta que existan credenciales, o
+        # cada vez que el proveedor se caiga o se quede sin saldo. Se crea la
+        # cuenta por el camino de siempre y el telefono queda GUARDADO SIN
+        # VERIFICAR, para poder pedir la confirmacion despues sin volver a
+        # preguntarlo.
+        #
+        # El operador tiene que verlo: journalctl -u miportafolio | grep SMS.
+        print("[auth] SMS NO CONFIGURADO: se crea la cuenta sin verificar el "
+              "telefono. Configura TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN y "
+              "TWILIO_FROM (o TWILIO_MESSAGING_SERVICE_SID).", flush=True)
+        try:
+            _auth.registrar_con_password(email, password, telefono)
+            usuario = _auth.obtener_usuario(email) or {"email": email, "plan": "trial"}
+            resp = _respuesta_auth(email, usuario)
+            return resp
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except RuntimeError as e:
+            return jsonify({"error": str(e)}), 503
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
     try:
-        _auth.registrar_con_password(email, password)
+        r = _auth.solicitar_registro_telefono(email, password, telefono)
+        return jsonify({"ok": True, "paso": "codigo", **r})
+    except PermissionError as e:
+        return jsonify({"error": str(e)}), 429
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except RuntimeError as e:
+        # bcrypt ausente, o el SMS no salió (credenciales, saldo, número).
+        return jsonify({"error": f"No se pudo enviar el código: {e}"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/auth/registro/confirmar", methods=["POST"])
+@_rate_limit("12 per minute; 60 per hour")
+def api_auth_registro_confirmar():
+    """Paso 2: el código del SMS crea la cuenta y devuelve la sesión."""
+    if _auth is None:
+        return jsonify({"error": "auth no disponible"}), 500
+    body = request.get_json(silent=True) or {}
+    telefono = (body.get("telefono") or "").strip()
+    codigo = (body.get("codigo") or "").strip()
+    try:
+        r = _auth.confirmar_registro_telefono(telefono, codigo)
+        email = r["email"]
         usuario = _auth.obtener_usuario(email) or {"email": email, "plan": "trial"}
         return _respuesta_auth(email, usuario)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except RuntimeError as e:
-        return jsonify({"error": str(e)}), 503     # bcrypt no instalado
+        return jsonify({"error": str(e)}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/auth/telefono/solicitar", methods=["POST"])
+@_rate_limit("8 per minute; 30 per hour")
+def api_auth_telefono_solicitar():
+    """Verificar el teléfono de una cuenta que YA existe.
+
+    Hace falta porque el registro con contraseña no es la única puerta: el magic
+    link y el OTP por correo también crean cuentas, y esas quedan sin teléfono.
+    """
+    if _auth is None:
+        return jsonify({"error": "auth no disponible"}), 500
+    sesion = _sesion_actual()
+    if not sesion:
+        return jsonify({"error": "Inicia sesión primero"}), 401
+    body = request.get_json(silent=True) or {}
+    telefono = (body.get("telefono") or "").strip()
+    if not _auth.sms_disponible():
+        return jsonify({"error": "El envío de SMS no está configurado en el servidor.",
+                        "sms_no_configurado": True}), 503
+    try:
+        r = _auth.solicitar_codigo_telefono(sesion["email"], telefono)
+        return jsonify({"ok": True, **r})
+    except PermissionError as e:
+        return jsonify({"error": str(e)}), 429
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except RuntimeError as e:
+        return jsonify({"error": f"No se pudo enviar el código: {e}"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/auth/telefono/confirmar", methods=["POST"])
+@_rate_limit("12 per minute; 60 per hour")
+def api_auth_telefono_confirmar():
+    if _auth is None:
+        return jsonify({"error": "auth no disponible"}), 500
+    sesion = _sesion_actual()
+    if not sesion:
+        return jsonify({"error": "Inicia sesión primero"}), 401
+    body = request.get_json(silent=True) or {}
+    try:
+        u = _auth.confirmar_codigo_telefono((body.get("telefono") or "").strip(),
+                                            (body.get("codigo") or "").strip())
+        if u.get("email") != sesion["email"]:
+            # El código pertenece a otra cuenta: no se confirma nada.
+            return jsonify({"error": "Código inválido o expirado"}), 400
+        return jsonify({"ok": True, "telefono_verificado": True})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

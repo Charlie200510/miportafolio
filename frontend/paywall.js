@@ -954,6 +954,12 @@
           placeholder="tu@correo.com" style="${INP}">
         <input data-x="auth-pass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}"
           placeholder="Contraseña (mín. 8)" style="${INP}">
+        ${reg ? `
+        <input data-x="auth-tel" type="tel" inputmode="tel" autocomplete="tel"
+          placeholder="Teléfono (10 dígitos)" style="${INP}">
+        <p style="color:var(--tinta-4);font-size:11px;margin:-2px 0 2px;line-height:1.5">
+          Te enviamos un código por SMS para confirmar que es tuyo. Solo lo usamos
+          para verificar tu cuenta.</p>` : ''}
         <button data-x="auth-submit" style="${BTN_PRI}">${reg ? 'Crear cuenta' : 'Entrar'}</button>
         <button data-x="auth-toggle" style="${BTN_LINK}">${reg ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Crea una gratis'}</button>
         <!-- Los planes y precios se pueden consultar SIN cuenta: esta pantalla
@@ -967,6 +973,30 @@
       <p style="color:var(--tinta-4);font-size:11px;margin:12px 0 0;text-align:center;line-height:1.5">
         ¿Ya compraste una suscripción? Entra o crea tu cuenta y la recuperamos
         automáticamente.</p>
+      ${_legalHTML()}`;
+  }
+
+  /* Pantalla del código. Es su propio cuerpo, no un campo más del formulario:
+     al llegar aquí la cuenta TODAVÍA no existe —el servidor solo guardó un
+     registro pendiente— y hay que dejar claro que el paso que falta es el SMS,
+     con la vía de salida por si el número estaba mal. */
+  let _telPend = null;         // { telefono, mascara }
+  function _codigoCuerpo(err, aviso) {
+    const errHTML = err ? `<p style="color:var(--baja);font-size:13px;margin:0 0 10px">${err}</p>` : '';
+    const avHTML = aviso ? `<p style="color:var(--sello);font-size:13px;margin:0 0 10px">${aviso}</p>` : '';
+    return `
+      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Confirma tu teléfono</h2>
+      <p style="color:var(--tinta-3);margin:0 0 14px;font-size:14px">
+        Te mandamos un código de 6 dígitos a ${(_telPend && _telPend.mascara) || 'tu teléfono'}.</p>
+      ${errHTML}${avHTML}
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input data-x="tel-codigo" type="text" inputmode="numeric" autocomplete="one-time-code"
+          maxlength="6" placeholder="000000"
+          style="${INP};text-align:center;letter-spacing:.35em;font-size:22px;font-family:'IBM Plex Mono',ui-monospace,monospace">
+        <button data-x="tel-confirmar" style="${BTN_PRI}">Confirmar y crear cuenta</button>
+        <button data-x="tel-reenviar" style="${BTN_LINK}">Reenviar el código</button>
+        <button data-x="tel-otro" style="${BTN_LINK}">Usar otro número</button>
+      </div>
       ${_legalHTML()}`;
   }
 
@@ -999,20 +1029,78 @@
         abrir();
         return;
       }
+      const setCod = (m, av) => { const b = _authOverlay && _authOverlay.querySelector('[data-x="auth-body"]'); if (b) b.innerHTML = _codigoCuerpo(m, av); };
+
+      /* Éxito: guarda el JWT, cierra y re-vincula la compra si la hay. Lo usan
+         el login normal y la confirmación del código, así que vive aparte. */
+      const entrar = (j, email) => {
+        if (j.token) { try { localStorage.setItem('mp.jwt.v1', j.token); } catch (_) {} }
+        cerrarAuth();
+        notificarSesion();
+        if (esNativo()) _revincularCompra(email).finally(() => verificarAcceso());
+        else verificarAcceso();
+      };
+
+      if (act === 'tel-otro') { _telPend = null; setErr(''); return; }
+
+      if (act === 'tel-reenviar' || act === 'tel-confirmar') {
+        if (!_telPend) { setErr(''); return; }
+        el.disabled = true;
+        const textoOriginal = el.textContent;
+        el.textContent = 'Un momento…';
+        try {
+          if (act === 'tel-reenviar') {
+            const r = await fetch('/api/auth/registro', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+              body: JSON.stringify({ email: _telPend.email, password: _telPend.pass, telefono: _telPend.telefono })
+            });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) return setCod(j.error || 'No se pudo reenviar el código.');
+            return setCod('', 'Te mandamos otro código.');
+          }
+          const codigo = ((_authOverlay.querySelector('[data-x="tel-codigo"]') || {}).value || '').replace(/\D/g, '');
+          if (codigo.length !== 6) return setCod('El código son 6 dígitos.');
+          const r = await fetch('/api/auth/registro/confirmar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+            body: JSON.stringify({ telefono: _telPend.telefono, codigo })
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) return setCod(j.error || 'No se pudo confirmar. Intenta de nuevo.');
+          const correo = _telPend.email;
+          _telPend = null;
+          return entrar(j, correo);
+        } catch (_) {
+          return setCod('Sin conexión. Intenta de nuevo.');
+        } finally {
+          if (el) { el.disabled = false; el.textContent = textoOriginal; }
+        }
+      }
+
       if (act === 'auth-submit') {
         const email = ((_authOverlay.querySelector('[data-x="auth-email"]') || {}).value || '').trim().toLowerCase();
         const pass  =  (_authOverlay.querySelector('[data-x="auth-pass"]')  || {}).value || '';
+        const tel   = ((_authOverlay.querySelector('[data-x="auth-tel"]')   || {}).value || '').trim();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setErr('Escribe un correo válido.');
         if (pass.length < 8) return setErr('La contraseña debe tener al menos 8 caracteres.');
+        if (_authModo === 'registro' && tel.replace(/\D/g, '').length < 10) {
+          return setErr('Escribe tu teléfono a 10 dígitos para recibir el código.');
+        }
         el.disabled = true; el.textContent = 'Un momento…';
         try {
-          const ruta = (_authModo === 'registro') ? '/api/auth/registro' : '/api/auth/ingresar';
+          const reg = _authModo === 'registro';
+          const ruta = reg ? '/api/auth/registro' : '/api/auth/ingresar';
           const r = await fetch(ruta, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-            body: JSON.stringify({ email: email, password: pass })
+            body: JSON.stringify(reg ? { email, password: pass, telefono: tel }
+                                     : { email, password: pass })
           });
           const j = await r.json().catch(() => ({}));
           if (!r.ok) return setErr(j.error || 'No se pudo completar. Intenta de nuevo.');
+          // Registro: la cuenta AÚN no existe; el siguiente paso es el código.
+          if (reg && j.paso === 'codigo') {
+            _telPend = { email, pass, telefono: tel, mascara: j.telefono_enmascarado };
+            return setCod('');
+          }
           if (j.token) { try { localStorage.setItem('mp.jwt.v1', j.token); } catch (_) {} }
           cerrarAuth();
           notificarSesion();     // re-render de "Mi cuenta" sin recargar
