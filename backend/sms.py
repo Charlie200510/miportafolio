@@ -175,3 +175,54 @@ def _enviar_twilio(numero: str, texto: str) -> dict:
         raise RuntimeError(f"Twilio {e.code}: {detalle or e.reason}") from e
     except Exception as e:
         raise RuntimeError(f"No se pudo contactar al proveedor de SMS: {e}") from e
+
+
+# ─────────────────────────────────────────────────────────────────
+# Autoprueba desde la línea de comandos
+# ─────────────────────────────────────────────────────────────────
+# La pregunta "¿ya manda el SMS?" no debería obligar a crear una cuenta de
+# prueba en la app para averiguarlo. Esto la responde en un comando y dice
+# exactamente qué falta cuando falla:
+#
+#   cd ~/portafolio-app/backend
+#   set -a; . ../deploy/.env; set +a       # carga las credenciales del servicio
+#   python3 sms.py +525574918332
+#
+if __name__ == "__main__":
+    import sys
+
+    destino = sys.argv[1] if len(sys.argv) > 1 else None
+    print("proveedor :", _PROVEEDOR)
+    print("mock mode :", _MOCK)
+    faltan = [v for v in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN") if not os.environ.get(v)]
+    if not (os.environ.get("TWILIO_FROM") or os.environ.get("TWILIO_MESSAGING_SERVICE_SID")):
+        faltan.append("TWILIO_FROM o TWILIO_MESSAGING_SERVICE_SID")
+    print("configurado:", configurado(), ("— falta: " + ", ".join(faltan)) if faltan else "")
+
+    if not destino:
+        print("\nUso: python3 sms.py +525512345678")
+        raise SystemExit(0)
+
+    try:
+        numero = normalizar(destino)
+    except TelefonoInvalido as e:
+        print("\nNúmero inválido:", e)
+        raise SystemExit(1)
+    print("destino   :", numero, "(" + enmascarar(numero) + ")")
+
+    if not configurado():
+        print("\nNo se envía nada: falta configurar el proveedor.")
+        raise SystemExit(1)
+
+    try:
+        r = enviar(numero, "Mi Portafolio: prueba de envio. Si lees esto, el SMS funciona.")
+        print("\nENVIADO ✓", r)
+    except SMSNoConfigurado as e:
+        print("\nFALTA CONFIGURACIÓN:", e)
+        raise SystemExit(1)
+    except Exception as e:
+        # Los códigos de Twilio que más salen: 20003 credenciales mal, 21608
+        # número no verificado (cuenta de prueba), 21211 número mal formado,
+        # 21606 el remitente no puede enviar a ese país.
+        print("\nFALLÓ:", e)
+        raise SystemExit(1)
