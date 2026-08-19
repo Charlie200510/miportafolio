@@ -108,18 +108,25 @@
   const avisar = () => { if (window.avisarWatchlist) window.avisarWatchlist(); };
 
   // ── Widget ────────────────────────────────────────────────────────────
+  /* Los widgets de pantalla de inicio son de iOS: en un navegador el panel
+     entero ofrece configurar algo que no existe. Misma detección que
+     native-config.js —el objeto Capacitor puede no estar inyectado todavía al
+     parsear, pero el esquema capacitor: solo se da dentro de la app—. */
+  function esNativo() {
+    try {
+      return !!(window.Capacitor && window.Capacitor.isNativePlatform
+                && window.Capacitor.isNativePlatform())
+             || window.location.protocol === 'capacitor:';
+    } catch (_) { return false; }
+  }
+
   function pintarWidget() {
+    const panel = document.getElementById('wg-panel');
+    if (panel && !esNativo()) { panel.remove(); return; }
     chips(document.getElementById('wg-chips'), leerWidget(), quitarWidget,
           'Sin tickers: el widget usará los de fábrica.');
     const est = document.getElementById('wg-estado');
-    if (est) {
-      const n = leerWidget().length;
-      const nativo = !!(window.Capacitor && window.Capacitor.isNativePlatform
-                        && window.Capacitor.isNativePlatform());
-      est.textContent = nativo
-        ? `${n} de ${MAX_WIDGET} · se aplica al salir de esta pantalla`
-        : `${n} de ${MAX_WIDGET} · el widget solo existe en la app de iPhone`;
-    }
+    if (est) est.textContent = `${leerWidget().length} de ${MAX_WIDGET} · se aplica al salir de esta pantalla`;
   }
   function sincronizarWidget() {
     const t = leerWidget();
@@ -158,13 +165,13 @@
     // acciones, ETFs y cripto) y mismo manejo de teclado que el resto de lupas.
     if (window.attachTickerAutocomplete) {
       window.attachTickerAutocomplete(wl, (ticker) => { agregarWatch(ticker); wl.value = ''; });
-      if (wg) window.attachTickerAutocomplete(wg, (ticker) => { agregarWidget(ticker); wg.value = ''; });
+      if (wg && esNativo()) window.attachTickerAutocomplete(wg, (ticker) => { agregarWidget(ticker); wg.value = ''; });
     }
     // Enter sin elegir del dropdown: se toma lo tecleado tal cual.
     wl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && wl.value.trim()) { agregarWatch(wl.value); wl.value = ''; }
     });
-    if (wg) wg.addEventListener('keydown', (e) => {
+    if (wg && esNativo()) wg.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && wg.value.trim()) { agregarWidget(wg.value); wg.value = ''; }
     });
 
