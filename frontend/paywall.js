@@ -1119,6 +1119,128 @@
     });
   }
 
+  /* ── Teléfono pendiente en cuentas que entraron por otra puerta ──────────
+     El registro con contraseña ya exige teléfono, pero el magic link y el OTP
+     por correo también crean cuentas y esas nacen sin él. Esto lo pide ahí.
+
+     PIDE, NO BLOQUEA. Un muro duro dejaría fuera de su propia cuenta a todos
+     los que se registraron antes de este cambio, y —más grave— al revisor de
+     Apple, que entra por una puerta que no pregunta el teléfono y no
+     necesariamente puede recibir un SMS en su número de prueba: quedarse
+     atorado ahí es un rechazo. Se pregunta una vez por sesión y la app sigue
+     funcionando si lo deja para después.
+     Si el servidor no puede enviar SMS (sms_activo false) no se pregunta nada:
+     ofrecer un código que no va a llegar es peor que no ofrecer nada. */
+  const _LS_TEL_POSPUESTO = 'mp.telPospuesto.v1';
+  let _telAvisoAbierto = false;
+
+  function _pedirTelefonoSiFalta(e) {
+    if (!e || !e.autenticado || e.telefono_verificado) return;
+    if (!e.sms_activo) return;
+    if (_telAvisoAbierto || _authOverlay || _bloqueante) return;
+    // Una vez por sesión: preguntarlo en cada visitar-pestaña sería acoso.
+    try { if (sessionStorage.getItem(_LS_TEL_POSPUESTO) === '1') return; } catch (_) {}
+    _abrirAvisoTelefono(e.email || '');
+  }
+
+  function _abrirAvisoTelefono(email) {
+    _telAvisoAbierto = true;
+    let pend = null;                 // { telefono, mascara }
+    const ov = document.createElement('div');
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:99997;background:rgba(20,22,27,.45);'
+      + 'display:flex;align-items:center;justify-content:center;padding:16px;'
+      + '-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)';
+
+    const cerrarAviso = (pospuesto) => {
+      if (pospuesto) { try { sessionStorage.setItem(_LS_TEL_POSPUESTO, '1'); } catch (_) {} }
+      ov.remove();
+      _telAvisoAbierto = false;
+    };
+
+    const cuerpoPedir = (err) => `
+      <p class="mp-modal-etq">Tu cuenta</p>
+      <h2 class="mp-modal-titulo">Confirma tu teléfono</h2>
+      <p class="mp-modal-parrafo">Lo usamos solo para verificar que la cuenta es
+      tuya y poder recuperarla si pierdes el acceso al correo.</p>
+      ${err ? `<p class="mp-modal-aviso">${err}</p>` : ''}
+      <input data-y="tel" type="tel" inputmode="tel" autocomplete="tel"
+             class="mp-campo" placeholder="Teléfono (10 dígitos)">
+      <div class="mp-modal-acciones">
+        <button type="button" class="mp-btn mp-btn-primario" data-y="enviar">Enviarme el código</button>
+        <button type="button" class="mp-btn mp-btn-secundario" data-y="luego">Después</button>
+      </div>`;
+
+    const cuerpoCodigo = (err, aviso) => `
+      <p class="mp-modal-etq">Tu cuenta</p>
+      <h2 class="mp-modal-titulo">Escribe el código</h2>
+      <p class="mp-modal-parrafo">Te mandamos 6 dígitos a ${(pend && pend.mascara) || 'tu teléfono'}.</p>
+      ${err ? `<p class="mp-modal-aviso">${err}</p>` : ''}
+      ${aviso ? `<p class="mp-modal-nota" style="color:var(--sello-vivo)">${aviso}</p>` : ''}
+      <input data-y="codigo" type="text" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="6" class="mp-campo" placeholder="000000"
+             style="text-align:center;letter-spacing:.35em;font-family:'IBM Plex Mono',ui-monospace,monospace">
+      <div class="mp-modal-acciones">
+        <button type="button" class="mp-btn mp-btn-primario" data-y="confirmar">Confirmar</button>
+        <button type="button" class="mp-btn mp-btn-secundario" data-y="otro">Otro número</button>
+      </div>`;
+
+    const pintar = (html) => {
+      ov.innerHTML = `<div class="mp-modal-caja" style="max-width:420px">
+                        <div class="mp-modal-cuerpo">${html}</div>
+                      </div>`;
+    };
+    pintar(cuerpoPedir(''));
+    document.body.appendChild(ov);
+    ov.addEventListener('click', (ev) => { if (ev.target === ov) cerrarAviso(true); });
+
+    ov.addEventListener('click', async (ev) => {
+      const el = ev.target.closest('[data-y]'); if (!el) return;
+      const act = el.getAttribute('data-y');
+      if (act === 'luego') return cerrarAviso(true);
+      if (act === 'otro') { pend = null; return pintar(cuerpoPedir('')); }
+
+      if (act === 'enviar') {
+        const tel = (ov.querySelector('[data-y="tel"]') || {}).value || '';
+        if (tel.replace(/\D/g, '').length < 10) return pintar(cuerpoPedir('Escribe tu teléfono a 10 dígitos.'));
+        el.disabled = true; el.textContent = 'Un momento…';
+        try {
+          const r = await fetch('/api/auth/telefono/solicitar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+            body: JSON.stringify({ telefono: tel })
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) return pintar(cuerpoPedir(j.error || 'No se pudo enviar el código.'));
+          pend = { telefono: tel, mascara: j.telefono_enmascarado };
+          return pintar(cuerpoCodigo('', ''));
+        } catch (_) {
+          return pintar(cuerpoPedir('Sin conexión. Intenta de nuevo.'));
+        }
+      }
+
+      if (act === 'confirmar') {
+        if (!pend) return pintar(cuerpoPedir(''));
+        const cod = ((ov.querySelector('[data-y="codigo"]') || {}).value || '').replace(/\D/g, '');
+        if (cod.length !== 6) return pintar(cuerpoCodigo('El código son 6 dígitos.', ''));
+        el.disabled = true; el.textContent = 'Un momento…';
+        try {
+          const r = await fetch('/api/auth/telefono/confirmar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+            body: JSON.stringify({ telefono: pend.telefono, codigo: cod })
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) return pintar(cuerpoCodigo(j.error || 'No se pudo confirmar.', ''));
+          cerrarAviso(false);
+          if (window.toast) window.toast('Teléfono confirmado.', 'success');
+          notificarSesion();
+        } catch (_) {
+          return pintar(cuerpoCodigo('Sin conexión. Intenta de nuevo.', ''));
+        }
+      }
+    });
+  }
+
   // ------------------------------------------------ GATE (hard paywall)
   // premium o trial vigente -> acceso normal. Prueba vencida sin premium ->
   // overlay bloqueante. Sin sesión (demo / revisores de Apple) -> acceso
@@ -1201,6 +1323,7 @@
     cerrarAuth();                                        // autenticado: fuera pantalla de acceso
     _renderTrialStrip(e);
     _refrescarBotonHeader(e);
+    _pedirTelefonoSiFalta(e);
     if (_premiumEfectivo(e) || e.plan !== 'expirado') {
       if (_bloqueante) cerrar(true);                     // trial vigente / suscrito: liberar candado
       return;
