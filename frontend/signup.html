@@ -177,6 +177,16 @@
           body: JSON.stringify({ email })
         });
         const data = await r.json().catch(() => ({}));
+        // Esta página manda un magic link, y el enlace ENTRA a una cuenta que ya
+        // existe: crearla exige confirmar un teléfono por SMS, y eso se hace
+        // dentro de la app. Sin este caso, el mensaje decía "crea tu cuenta con
+        // tu teléfono" en una pantalla que no tiene dónde escribirlo.
+        if (!r.ok && data.requiere_registro) {
+          estado.innerHTML = '<span class="text-zinc-200 font-semibold">Todavía no tienes cuenta con ese correo.</span> '
+            + '<span class="text-zinc-400 text-[13px]">Para crearla confirmamos tu teléfono con un código por SMS. '
+            + '<a href="/" class="text-brand-400 underline">Créala en la app</a> y vuelve cuando quieras entrar con un link.</span>';
+          return;
+        }
         if (!r.ok) throw new Error(data.error || 'Error al enviar.');
         // Modo debug (sin email configurado): el backend devuelve el link directo
         if (data.enlace_debug) {

@@ -1095,7 +1095,16 @@
                                      : { email, password: pass })
           });
           const j = await r.json().catch(() => ({}));
-          if (!r.ok) return setErr(j.error || 'No se pudo completar. Intenta de nuevo.');
+          if (!r.ok) {
+            // El correo no tiene cuenta: se pasa a la pantalla de registro con
+            // el aviso, en vez de dejar al usuario reintentando su contraseña.
+            if (j.requiere_registro && !reg) {
+              _authModo = 'registro';
+              return setErr('Todavía no tienes cuenta con ese correo. Créala aquí: '
+                          + 'confirmamos tu teléfono con un código por SMS.');
+            }
+            return setErr(j.error || 'No se pudo completar. Intenta de nuevo.');
+          }
           // Registro: la cuenta AÚN no existe; el siguiente paso es el código.
           if (reg && j.paso === 'codigo') {
             _telPend = { email, pass, telefono: tel, mascara: j.telefono_enmascarado };

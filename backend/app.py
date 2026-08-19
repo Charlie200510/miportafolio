@@ -2989,6 +2989,12 @@ def api_auth_login():
     try:
         res = _auth.solicitar_magic_link(email)
         return jsonify(res)
+    except _auth.AltaRequiereTelefono as e:
+        # El enlace ENTRA a una cuenta, no la crea: sin esto bastaba pedir un
+        # magic link para tener cuenta sin pasar nunca por el SMS.
+        return jsonify({"error": str(e), "requiere_registro": True}), 400
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -3009,6 +3015,8 @@ def api_auth_otp_solicitar():
         return jsonify(_auth.solicitar_otp(email))
     except PermissionError as e:      # 5 solicitudes/hora por email
         return jsonify({"error": str(e)}), 429
+    except _auth.AltaRequiereTelefono as e:
+        return jsonify({"error": str(e), "requiere_registro": True}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
@@ -3026,6 +3034,8 @@ def api_auth_otp_verificar():
     try:
         usuario = _auth.verificar_otp(email, codigo)
         return _respuesta_auth(email, usuario)   # JWT + cookie + estado del trial
+    except _auth.AltaRequiereTelefono as e:
+        return jsonify({"error": str(e), "requiere_registro": True}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 401
     except Exception as e:
@@ -3078,30 +3088,21 @@ def api_auth_registro():
         return jsonify({"error": "Escribe tu teléfono para recibir el código.",
                         "requiere_telefono": True}), 400
     if not _auth.sms_disponible():
-        # SIN PROVEEDOR DE SMS NO SE BLOQUEA EL REGISTRO.
+        # SIN SMS NO HAY ALTA. Es una decision explicita del producto: nadie
+        # tiene cuenta sin confirmar su telefono, asi que si el proveedor no
+        # esta configurado —o se queda sin saldo— el registro queda CERRADO en
+        # vez de dejar pasar cuentas sin verificar.
         #
-        # Devolver 503 aquí seria correcto en abstracto y un desastre en la
-        # practica: nadie podria crear cuenta hasta que existan credenciales, o
-        # cada vez que el proveedor se caiga o se quede sin saldo. Se crea la
-        # cuenta por el camino de siempre y el telefono queda GUARDADO SIN
-        # VERIFICAR, para poder pedir la confirmacion despues sin volver a
-        # preguntarlo.
-        #
-        # El operador tiene que verlo: journalctl -u miportafolio | grep SMS.
-        print("[auth] SMS NO CONFIGURADO: se crea la cuenta sin verificar el "
-              "telefono. Configura TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN y "
-              "TWILIO_FROM (o TWILIO_MESSAGING_SERVICE_SID).", flush=True)
-        try:
-            _auth.registrar_con_password(email, password, telefono)
-            usuario = _auth.obtener_usuario(email) or {"email": email, "plan": "trial"}
-            resp = _respuesta_auth(email, usuario)
-            return resp
-        except ValueError as e:
-            return jsonify({"error": str(e)}), 400
-        except RuntimeError as e:
-            return jsonify({"error": str(e)}), 503
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        # Consecuencia que hay que tener presente: mientras no existan
+        # credenciales, NADIE puede crear cuenta. Las que ya existen siguen
+        # entrando con normalidad.
+        print("[auth] REGISTRO CERRADO: falta el proveedor de SMS. Configura "
+              "TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN y TWILIO_FROM (o "
+              "TWILIO_MESSAGING_SERVICE_SID) en deploy/.env.", flush=True)
+        return jsonify({"error": "No podemos enviar el código de confirmación en este "
+                                 "momento, así que el registro está cerrado. Vuelve a "
+                                 "intentarlo más tarde.",
+                        "sms_no_configurado": True}), 503
     try:
         r = _auth.solicitar_registro_telefono(email, password, telefono)
         return jsonify({"ok": True, "paso": "codigo", **r})

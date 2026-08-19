@@ -154,9 +154,23 @@ def cuenta_eliminada(email: str) -> bool:
         return _esta_eliminado(_cargar(), email)
 
 
-def _registrar_usuario(data: dict[str, Any], email: str) -> dict[str, Any]:
+class AltaRequiereTelefono(ValueError):
+    """La cuenta no existe y esta vía no puede crearla.
+
+    El alta solo ocurre por el registro con teléfono verificado. El magic link y
+    el OTP por correo sirven para ENTRAR a una cuenta que ya existe, no para
+    crearla: si pudieran, bastaría pedir un enlace para tener cuenta sin pasar
+    nunca por el SMS y la verificación no serviría de nada."""
+
+
+def _registrar_usuario(data: dict[str, Any], email: str,
+                       permitir_alta: bool = True) -> dict[str, Any]:
     email = email.strip().lower()
     usuarios = data.setdefault("usuarios", {})
+    if email not in usuarios and not permitir_alta:
+        raise AltaRequiereTelefono(
+            "No hay ninguna cuenta con ese correo. Crea tu cuenta con tu "
+            "teléfono para confirmarlo por SMS.")
     if email not in usuarios:
         usuarios[email] = {
             "email": email,
@@ -183,7 +197,9 @@ def solicitar_magic_link(email: str) -> dict[str, Any]:
     with _LOCK:
         data = _cargar()
         _limpiar_expirados(data)
-        _registrar_usuario(data, email)
+        # permitir_alta=False: el enlace ENTRA a una cuenta, no la crea. Antes
+        # bastaba pedir un magic link para tener cuenta sin ver un SMS.
+        _registrar_usuario(data, email, permitir_alta=False)
         data.setdefault("tokens", {})[token] = {
             "email": email,
             "creado_en": ahora,
@@ -490,6 +506,15 @@ def solicitar_otp(email: str) -> dict[str, Any]:
     with _LOCK:
         data = _cargar()
         _limpiar_expirados(data)
+        # Se falla AQUÍ y no al verificar: mandar un código a un correo sin
+        # cuenta gasta un envío y deja al usuario esperando para luego decirle
+        # que de todas formas no puede entrar. Que esto revele si el correo
+        # tiene cuenta no añade nada: el registro ya lo dice ("ese correo ya
+        # tiene una cuenta") y por ahí se puede averiguar igual.
+        if email not in (data.get("usuarios") or {}):
+            raise AltaRequiereTelefono(
+                "No hay ninguna cuenta con ese correo. Crea tu cuenta con tu "
+                "teléfono para confirmarlo por SMS.")
         otps = data.setdefault("otp", {})
         previo = otps.get(email) or {}
         solicitudes = [t for t in previo.get("solicitudes", []) if t > ahora - 3600]
@@ -563,7 +588,7 @@ def verificar_otp(email: str, codigo: str) -> dict[str, Any]:
             raise generico
         # Éxito: un solo uso — se borra el código, queda el historial de solicitudes.
         otps[email] = {"solicitudes": info.get("solicitudes", [])}
-        u = _registrar_usuario(data, email)
+        u = _registrar_usuario(data, email, permitir_alta=False)
         u["ultima_sesion"] = ahora
         u.setdefault("auth", "otp")
         _guardar(data)
