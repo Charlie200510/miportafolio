@@ -3284,10 +3284,9 @@ const Periodico = (() => {
     { clave: 'anio',   etq: 'Año',    frase: 'este año' },
   ];
   const _frasePeriodo = (c) => (PERIODOS.find(p => p.clave === c) || PERIODOS[0]).frase;
-  /* Los únicos dos mazos cuyo contenido cambia con la ventana. Noticias es la
-     edición del día y la watchlist es una lista fija: ahí el control no tendría
-     nada que hacer. */
-  const MAZOS_CON_PERIODO = ['accion', 'sector'];
+  /* Los mazos cuyo contenido cambia con la ventana. Noticias queda fuera: es la
+     edición del día, no una serie de precios que se pueda mirar a un año. */
+  const MAZOS_CON_PERIODO = ['accion', 'indices', 'sector', 'watchlist'];
 
   const MAZOS = [
     { clave: 'noticias',  titulo: 'Noticias' },
@@ -3415,6 +3414,9 @@ const Periodico = (() => {
      { cat, etq, titular|nombre, variacion, meta, resumen, url, tickers[],
        metricas:[{k,v,dir}], grafica: <ticker|null> }                        */
 
+  const _etqCambio = (per) => (!per || per === 'dia') ? 'Cambio hoy'
+                                                       : 'Cambio ' + _frasePeriodo(per);
+
   function _tarjetaDeCotizacion(it, catForzada) {
     const cat = catForzada || _catDeTicker(it.ticker);
     const pct = it.cambio_pct;
@@ -3431,7 +3433,10 @@ const Periodico = (() => {
       grafica: it.ticker,
       metricas: [
         { k: esPct ? 'Nivel' : 'Precio', v: `${sym}${fmtNum(it.precio) ?? '—'}` },
-        { k: 'Cambio', v: fmtPct(pct) ?? '—', dir: pct },
+        // La ventana viene en el propio dato (`periodo`, que pone el backend) y
+        // no del estado: si la tarjeta se pintó con datos de otra ventana —por
+        // ejemplo mientras llega la nueva—, el rótulo sigue diciendo la verdad.
+        { k: _etqCambio(it.periodo), v: fmtPct(pct) ?? '—', dir: pct },
         { k: 'Abs.', v: fmtNum(it.cambio_abs) ?? '—', dir: it.cambio_abs },
       ].filter(m => m.v !== '—'),
     };
@@ -3508,9 +3513,10 @@ const Periodico = (() => {
       // "Tus listas" hay una vía directa, y es la que hay que enseñar.
       return { tarjetas: [], vacio: 'Aún no sigues ninguna acción. Búscalas en <b>Analizar → Tus listas</b> y aparecerán aquí con su precio y su gráfica.' };
     }
+    const per = state.periodo || 'dia';
     const d = await safeJson(s => fetch('/api/watchlist', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tickers }), signal: s,
+      body: JSON.stringify({ tickers, periodo: per }), signal: s,
     }));
     const items = (d && d.ok && d.items) || [];
     const faltantes = (d && d.faltantes) || [];
@@ -3545,7 +3551,10 @@ const Periodico = (() => {
           grafica: it.ticker,
           metricas: [
             { k: 'Precio', v: `${sym}${fmtNum(it.precio) ?? '—'}` },
-            { k: 'Cambio', v: fmtPct(it.cambio_pct) ?? '—', dir: it.cambio_pct },
+            // El rótulo dice de qué ventana habla el número: "Cambio" a secas
+            // con un porcentaje anual al lado se lee como si fuera del día.
+            { k: per === 'dia' ? 'Cambio hoy' : 'Cambio ' + _frasePeriodo(per),
+              v: fmtPct(it.cambio_pct) ?? '—', dir: it.cambio_pct },
           ].filter(m => m.v !== '—'),
         };
       }).concat(sinDatos).slice(0, MAX_TARJETAS),
@@ -3610,7 +3619,7 @@ const Periodico = (() => {
         grafica: m.ticker,
         metricas: [
           { k: 'Precio', v: m.precio != null ? `${sym}${fmtNum(m.precio)}` : '—' },
-          { k: 'Cambio', v: fmtPct(pct) ?? '—', dir: pct },
+          { k: _etqCambio(per), v: fmtPct(pct) ?? '—', dir: pct },
         ].filter(x => x.v !== '—'),
       };
     });
@@ -3644,7 +3653,9 @@ const Periodico = (() => {
       .sort((a, b) => (b.cambio_pct || 0) - (a.cambio_pct || 0));
     return {
       tarjetas: [dia, ...resto].slice(0, MAX_TARJETAS).map((s, i) => {
-        const t = _tarjetaDeCotizacion(s, 'global');
+        // El endpoint de sectores no devuelve `periodo` en cada fila, y sin él
+        // _etqCambio cae a "Cambio hoy" junto a un porcentaje anual.
+        const t = _tarjetaDeCotizacion({ ...s, periodo: per }, 'global');
         // El rótulo sigue la ventana elegida: decir "sector del día" mientras
         // el número es el del año es contradecirse en la misma tarjeta.
         t.etq = i === 0 ? 'Sector destacado ' + _frasePeriodo(per) : 'Sector · ' + s.ticker;
@@ -3656,6 +3667,8 @@ const Periodico = (() => {
 
   async function mazoIndices(mercados) {
     if (!mercados) return { error: 'Los índices no están disponibles ahora mismo.', tarjetas: [] };
+    // El payload ya viene calculado sobre la ventana elegida: quien lo pide
+    // (cargar / recargarMazo) le pasa ?periodo= al endpoint.
     const us = mercados.indices_us || [];
     const mundo = mercados.indices_mundo || [];
     const div = mercados.divisas || [];
@@ -4231,7 +4244,8 @@ const Periodico = (() => {
       if (r && r.throttled && r.error && window.toast) window.toast(r.error, 'info');
     }
 
-    const mercados = await safeJson(s => fetch('/api/periodico/mercados', { signal: s }));
+    const mercados = await safeJson(s => fetch(
+      '/api/periodico/mercados?periodo=' + (state.periodo || 'dia'), { signal: s }));
     // MISMO ORDEN que MAZOS: los resultados se asignan por índice más abajo.
     const resultados = await Promise.all([
       mazoNoticias().catch(e => ({ error: String(e && e.message || e), tarjetas: [] })),
@@ -4290,6 +4304,12 @@ const Periodico = (() => {
      Periódico y la tarjeta no aparecía hasta recargar la página. Rehacer los
      cinco mazos por esto sería tirar diez peticiones —y una de refresco de
      edición— para repintar una sola columna. */
+  /* El dashboard de mercados, ya calculado sobre la ventana activa. Lo piden
+     tres mazos (índices, sector y la carga inicial) y el backend lo cachea por
+     ventana, así que pedirlo por separado no cuesta una descarga extra. */
+  const _mercados = () => safeJson(s => fetch(
+    '/api/periodico/mercados?periodo=' + (state.periodo || 'dia'), { signal: s }));
+
   async function recargarMazo(clave) {
     if (!state.cargadoUnaVez) return;          // la carga inicial ya lo traerá
     const i = MAZOS.findIndex(m => m.clave === clave);
@@ -4303,7 +4323,8 @@ const Periodico = (() => {
       accion:    mazoAccion,
       // El sector necesita el payload de mercados; al recargar se pide de nuevo
       // porque el de la carga inicial puede tener minutos encima.
-      sector:    async () => mazoSector(await safeJson(s => fetch('/api/periodico/mercados', { signal: s }))),
+      sector:    async () => mazoSector(await _mercados()),
+      indices:   async () => mazoIndices(await _mercados()),
     };
     const constructor = constructores[clave];
     if (!constructor) return;

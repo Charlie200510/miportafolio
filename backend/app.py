@@ -1290,7 +1290,8 @@ def api_periodico_mercados():
     if _periodico is None:
         return jsonify({"error": "periodico no cargado"}), 500
     try:
-        return jsonify(_periodico.mercados_dashboard())
+        periodo = (request.args.get("periodo") or "dia").lower()
+        return jsonify(_periodico.mercados_dashboard(periodo))
     except Exception as e:
         return jsonify({"error": f"fallo mercados: {e}"}), 500
 
@@ -2418,6 +2419,9 @@ def api_watchlist():
         import accion_del_dia as _ad
         body = request.get_json(silent=True) or {}
         tickers = [str(t).strip().upper() for t in (body.get("tickers") or []) if t][:50]
+        # Ventana del cambio. Un "mes" son ~21 sesiones hábiles, no 30 días.
+        periodo = (body.get("periodo") or "dia").lower()
+        dias_ventana = {"dia": 1, "semana": 5, "mes": 21, "anio": 252}.get(periodo, 1)
         df = _ad._cargar_precios()
         info = _ad._cargar_info()
         out = []
@@ -2437,16 +2441,26 @@ def api_watchlist():
                     faltantes.append(t)
                     continue
                 precio = float(s.iloc[-1])
-                # Cambio del día vs el último cierre DISTINTO: salta fines de
-                # semana/feriados que arrastran el mismo precio (evita el 0% falso).
-                prev = None
-                for v in s.iloc[:-1].values[::-1]:
-                    fv = float(v)
-                    if fv != precio:
-                        prev = fv
-                        break
+                if dias_ventana <= 1:
+                    # Cambio del día vs el último cierre DISTINTO: salta fines de
+                    # semana/feriados que arrastran el mismo precio (evita el 0% falso).
+                    prev = None
+                    for v in s.iloc[:-1].values[::-1]:
+                        fv = float(v)
+                        if fv != precio:
+                            prev = fv
+                            break
+                else:
+                    # Ventanas largas: el cierre de hace N sesiones. Si no hay
+                    # tanta historia se usa el primer cierre disponible, que para
+                    # una emisora recién listada es todo lo que existe.
+                    pos = max(0, len(s) - 1 - dias_ventana)
+                    prev = float(s.iloc[pos]) if pos < len(s) - 1 else None
                 cambio = (precio / prev - 1) * 100 if prev else 0.0
-                sp = s.iloc[-30:]
+                # La chispa cubre la MISMA ventana que el porcentaje: con 30
+                # puntos fijos, una gráfica de un mes acompañaba a un número
+                # anual y no tenían nada que ver.
+                sp = s.iloc[-30:] if dias_ventana <= 1 else s.iloc[max(0, len(s) - 1 - dias_ventana):]
                 paso = max(1, len(sp) // 20)
                 meta = info.get(t, {})
                 out.append({
@@ -2457,7 +2471,8 @@ def api_watchlist():
                     "moneda":     meta.get("moneda") or ("MXN" if t.endswith(".MX") else "USD"),
                     "spark":      [round(float(v), 4) for v in sp.iloc[::paso].values],
                 })
-        return jsonify({"ok": True, "items": out, "faltantes": faltantes})
+        return jsonify({"ok": True, "items": out, "faltantes": faltantes,
+                        "periodo": periodo})
     except Exception as e:
         return jsonify({"ok": False, "error": f"watchlist falló: {e}"}), 500
 

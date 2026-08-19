@@ -157,22 +157,47 @@ def _cache_set(key, data):
 # ------------------------------------------------------------
 # Cierres de índices
 # ------------------------------------------------------------
-def _cierre_de(idx: dict) -> dict | None:
-    """Baja 10 días de historia y calcula el cambio del último día."""
+# Sesiones que abarca cada ventana, y cuánta historia hay que bajar para
+# cubrirla con holgura. Un "mes" son ~21 sesiones hábiles, no 30 días.
+_DIAS_PERIODO = {"dia": 1, "semana": 5, "mes": 21, "anio": 252}
+_HISTORIA_PERIODO = {"dia": "10d", "semana": "1mo", "mes": "3mo", "anio": "2y"}
+
+
+def _cierre_de(idx: dict, periodo: str = "dia") -> dict | None:
+    """Cambio del instrumento sobre la ventana pedida (día/semana/mes/año).
+
+    Antes solo calculaba el cambio del último día. La ventana la elige el
+    usuario en el Periódico, y "el S&P bajó 0.3%" contra "subió 22% en el año"
+    son dos lecturas distintas del mismo instrumento; con solo el día, un lunes
+    tranquilo dejaba la sección entera en ±0.2%.
+    """
     t = idx["ticker"]
+    dias = _DIAS_PERIODO.get(periodo, 1)
     try:
-        hist = yf.Ticker(t).history(period="10d", interval="1d", auto_adjust=True)
+        hist = yf.Ticker(t).history(period=_HISTORIA_PERIODO.get(periodo, "10d"),
+                                    interval="1d", auto_adjust=True)
         if hist.empty or len(hist) < 2:
             return None
         closes = hist["Close"].dropna()
         if len(closes) < 2:
             return None
         ultimo  = float(closes.iloc[-1])
-        anterior = float(closes.iloc[-2])
+        # Si no hay tanta historia como pide la ventana se usa el primer cierre
+        # disponible: para un instrumento que lleva 4 meses cotizando, "en el
+        # año" es todo lo que existe, y eso es más útil que no decir nada.
+        idx_atras = max(0, len(closes) - 1 - dias)
+        anterior = float(closes.iloc[idx_atras])
         cambio_pct = ((ultimo - anterior) / anterior) * 100 if anterior > 0 else 0.0
 
-        # Sparkline: últimos 5 puntos (closes), normalizados al primer valor.
-        sparkline = closes.tail(5).tolist()
+        # Sparkline: para el día siguen siendo 5 puntos; en ventanas largas se
+        # muestrea la ventana completa, o la línea no tendría nada que ver con
+        # el porcentaje de al lado.
+        if dias <= 1:
+            sparkline = closes.tail(5).tolist()
+        else:
+            ventana = closes.iloc[idx_atras:]
+            paso = max(1, len(ventana) // 24)
+            sparkline = ventana.iloc[::paso].tolist()[-24:]
 
         fecha_ultimo = closes.index[-1].date().isoformat() if hasattr(closes.index[-1], "date") else str(closes.index[-1])
 
@@ -186,6 +211,7 @@ def _cierre_de(idx: dict) -> dict | None:
             "cambio_abs":   round(ultimo - anterior, 2),
             "sparkline":    [round(x, 2) for x in sparkline],
             "fecha":        fecha_ultimo,
+            "periodo":      periodo,
         }
     except Exception:
         return None
@@ -215,10 +241,17 @@ def cierres_indices() -> dict:
 # ------------------------------------------------------------
 # Mercados extendidos: índices mundiales, FX, commodities, crypto, yields, sectores
 # ------------------------------------------------------------
-def mercados_dashboard() -> dict:
+def mercados_dashboard(periodo: str = "dia") -> dict:
     """Dashboard completo estilo Yahoo Finance Markets Overview.
-    Devuelve TODOS los grupos en una sola request para minimizar llamadas."""
-    cached = _cache_get("mercados_dashboard", TTL_CIERRES)
+    Devuelve TODOS los grupos en una sola request para minimizar llamadas.
+
+    `periodo` (dia|semana|mes|anio) cambia la ventana del porcentaje. Cada una
+    tiene su propia entrada de caché: son ~50 instrumentos por llamada y
+    recalcularlos en cada cambio de pestaña sería castigar a Yahoo sin motivo.
+    """
+    periodo = periodo if periodo in _DIAS_PERIODO else "dia"
+    clave = "mercados_dashboard" if periodo == "dia" else f"mercados_dashboard_{periodo}"
+    cached = _cache_get(clave, TTL_CIERRES)
     if cached:
         return cached
 
@@ -227,7 +260,7 @@ def mercados_dashboard() -> dict:
     def _descargar_grupo(lista):
         results = []
         with ThreadPoolExecutor(max_workers=6) as ex:
-            for r in ex.map(_cierre_de, lista):
+            for r in ex.map(lambda i: _cierre_de(i, periodo), lista):
                 if r is not None:
                     results.append(r)
         return results
@@ -263,7 +296,7 @@ def mercados_dashboard() -> dict:
         "sectores":      sectores,
         "timestamp":     time.time(),
     }
-    _cache_set("mercados_dashboard", data)
+    _cache_set(clave, data)
     return data
 
 
