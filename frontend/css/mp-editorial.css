@@ -128,11 +128,92 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 [data-borde="medio"] { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%);
                                mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%); }
 
+/* ─────────────────── PANEL DE PORTAFOLIOS (perfiles) ───────────────────── */
+.mp-perfiles { display: flex; flex-direction: column; gap: var(--paso-2); }
+.mp-perfil {
+  display: flex; align-items: center; gap: var(--paso-2);
+  border: var(--hairline) solid var(--regla);
+  border-radius: var(--radio);
+  background: var(--sup);
+  overflow: hidden;
+}
+.mp-perfil.activo { border-color: var(--tinta-1); box-shadow: inset 0 0 0 1px var(--tinta-1); }
+.mp-perfil-elegir {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; gap: var(--paso-3);
+  background: transparent; border: 0; cursor: pointer;
+  padding: var(--paso-3); min-height: 56px;
+  text-align: left;
+}
+.mp-perfil-elegir:hover { background: var(--sup-hondo); }
+/* El avatar es la identidad del portafolio: a 20px no se distinguía un zorro
+   de un panda, que es justo lo que hace útil tener avatares. */
+.mp-perfil-avatar {
+  flex: 0 0 auto; width: 40px; height: 40px;
+  border-radius: var(--radio-chico); overflow: hidden;
+  display: inline-flex;
+}
+.mp-perfil-nom {
+  flex: 1 1 auto; min-width: 0;
+  font-size: var(--txt-cuerpo); font-weight: 600; color: var(--tinta-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mp-perfil-marca {
+  flex: 0 0 auto;
+  font-size: var(--txt-etq); font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--sello);
+}
+/* Editar y borrar SIEMPRE visibles. Estaban tras :hover, que en una pantalla
+   táctil significa que no existen. */
+.mp-perfil-accion {
+  flex: 0 0 auto;
+  width: 44px; height: 44px; margin-right: 2px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--tinta-3); border-radius: var(--radio-chico);
+}
+.mp-perfil-accion svg { width: 17px; height: 17px; }
+.mp-perfil-accion:hover { background: var(--sup-hondo); color: var(--tinta-1); }
+.mp-perfil-accion.borrar:hover { color: var(--baja); }
+
+/* Formulario de crear/editar */
+.mp-campo-etq {
+  display: block;
+  font-size: var(--txt-etq); font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--tinta-3);
+  margin: var(--paso-4) 0 var(--paso-2);
+}
+.mp-campo {
+  width: 100%; box-sizing: border-box;
+  padding: var(--paso-3) var(--paso-4) !important;
+  min-height: 44px !important;
+  font-size: 16px !important;          /* 16px o iOS hace zoom al enfocar */
+  border-radius: var(--radio) !important;
+}
+.mp-avatares {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: var(--paso-2);
+}
+.mp-avatar {
+  aspect-ratio: 1; padding: 0;
+  background: transparent; cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: var(--radio-chico);
+  overflow: hidden; opacity: .55;
+  transition: opacity var(--t-rapida) var(--easing),
+              border-color var(--t-rapida) var(--easing);
+}
+.mp-avatar:hover { opacity: .85; }
+.mp-avatar.activo { opacity: 1; border-color: var(--tinta-1); }
+.mp-avatar:focus-visible { outline: 2px solid var(--sello); outline-offset: 2px; }
+
 /* ─────────────── SELECTOR DE PERIODO DEL PERIÓDICO ─────────────────────── */
 .mp-periodos {
   display: inline-flex;
   gap: 2px;
-  margin-top: var(--paso-3);
+  /* Va dentro del mazo, sobre sus tarjetas. */
+  margin: 0 0 var(--paso-4);
   padding: 3px;
   background: var(--sup-hondo);
   border-radius: 999px;
@@ -1699,6 +1780,19 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
 
   /* El rótulo del mazo SÍ se enseña: es la única forma de saber qué columna es
      cuando hay tres a la vista. En móvil lo dice la píldora activa. */
+  /* El título y el selector comparten la línea de la sección. Son HERMANOS
+     dentro del pane, así que la rejilla va en el pane: poner flex en el título
+     no los junta, solo reparte sus hijos. */
+  .mp-mazo-pane:has(.mp-periodos) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    column-gap: var(--paso-4);
+  }
+  .mp-mazo-pane:has(.mp-periodos) > .mp-mazo,
+  .mp-mazo-pane:has(.mp-periodos) > .mp-vacio,
+  .mp-mazo-pane:has(.mp-periodos) > p { grid-column: 1 / -1; }
+  .mp-mazo-pane:has(.mp-periodos) > .mp-periodos { margin-bottom: var(--paso-4); }
   .mp-mazo-titulo {
     position: static;
     width: auto; height: auto;

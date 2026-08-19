@@ -3284,6 +3284,10 @@ const Periodico = (() => {
     { clave: 'anio',   etq: 'Año',    frase: 'este año' },
   ];
   const _frasePeriodo = (c) => (PERIODOS.find(p => p.clave === c) || PERIODOS[0]).frase;
+  /* Los únicos dos mazos cuyo contenido cambia con la ventana. Noticias es la
+     edición del día y la watchlist es una lista fija: ahí el control no tendría
+     nada que hacer. */
+  const MAZOS_CON_PERIODO = ['accion', 'sector'];
 
   const MAZOS = [
     { clave: 'noticias',  titulo: 'Noticias' },
@@ -3769,11 +3773,20 @@ const Periodico = (() => {
       ? `<p class="mp-firma" style="margin-top:10px">Se muestran ${MAX_TARJETAS} de ${MAX_TARJETAS + res.recorte}.</p>` : '';
     const aviso = (res && res.degradado && res.error)
       ? `<p class="mp-firma" style="margin-top:var(--paso-3);color:var(--baja)">${escapeHtml(res.error)} Estás viendo la edición anterior.</p>` : '';
+    // El selector de ventana vive DENTRO de los mazos que dependen de él, no en
+    // la cabecera. En la cabecera salía siempre, también sobre Noticias y
+    // Watchlist, que no tienen periodo: un control que no hace nada en tres de
+    // los cinco mazos. Aquí aparece exactamente donde aplica —al deslizar hasta
+    // Acción del día o Sector en móvil, y junto a su título en escritorio—.
+    const selector = MAZOS_CON_PERIODO.includes(m.clave)
+      ? `<div class="mp-periodos" role="group" data-periodos
+              aria-label="Periodo de ${escapeHtml(m.titulo)}">${_periodoHTML()}</div>`
+      : '';
     return `
       <section class="mp-mazo-pane" id="mazo-pane-${m.clave}" role="tabpanel"
                aria-labelledby="mazo-tab-${m.clave}" tabindex="0">
         <h3 class="mp-mazo-titulo">${escapeHtml(m.titulo)}</h3>
-        ${cuerpo}${nota}${aviso}
+        ${selector}${cuerpo}${nota}${aviso}
       </section>`;
   }
 
@@ -4093,18 +4106,21 @@ const Periodico = (() => {
               data-periodo="${p.clave}" aria-pressed="${state.periodo === p.clave}">${p.etq}</button>`).join('');
   }
 
+  /* Un solo manejador delegado en la pista: los selectores se destruyen y se
+     vuelven a crear con cada recarga de mazo, así que enganchar cada botón
+     dejaría oyentes muertos y botones sin oyente. */
   function _bindPeriodo() {
-    const cont = $('periodico-periodo');
-    if (!cont || cont.dataset.listo === '1') return;
-    cont.dataset.listo = '1';
-    cont.addEventListener('click', async (ev) => {
+    const pista = $('mazos-pista');
+    if (!pista || pista.dataset.periodoListo === '1') return;
+    pista.dataset.periodoListo = '1';
+    pista.addEventListener('click', async (ev) => {
       const b = ev.target.closest('[data-periodo]');
       if (!b || b.dataset.periodo === state.periodo) return;
       state.periodo = b.dataset.periodo;
       try { localStorage.setItem(LS_PERIODO, state.periodo); } catch (_) {}
-      cont.innerHTML = _periodoHTML();
-      // Solo los mazos que dependen de la ventana: noticias y watchlist no.
-      await Promise.all([recargarMazo('accion'), recargarMazo('sector')]);
+      // Los dos selectores tienen que decir lo mismo: es un solo estado.
+      pista.querySelectorAll('[data-periodos]').forEach(c => { c.innerHTML = _periodoHTML(); });
+      await Promise.all(MAZOS_CON_PERIODO.map(recargarMazo));
     });
   }
 
@@ -4207,8 +4223,6 @@ const Periodico = (() => {
     if (ley && !ley.children.length) ley.innerHTML = _leyendaHTML();
     _esqueleto();
     _bindPista();
-    const cp = $('periodico-periodo');
-    if (cp && !cp.children.length) cp.innerHTML = _periodoHTML();
     _bindPeriodo();
 
     if (forzar) {
@@ -7464,6 +7478,21 @@ const PortfolioManager = (() => {
     _aplicarSnapshot({ tickers: '[]', pesos: '{}', txs: '[]' });
     location.reload();
   }
+  /* Renombrar y cambiar el avatar de uno que ya existe. Faltaba: se podía
+     crear, cambiar y borrar, pero un nombre mal escrito solo se arreglaba
+     borrando el portafolio entero —con sus tickers y transacciones dentro—. */
+  function editar(id, nombre, animalId) {
+    const m = leerMeta();
+    const p = m.portfolios[id];
+    if (!p) return false;
+    const n = (nombre || '').trim().slice(0, 30);
+    if (n) p.nombre = n;
+    if (animalId) p.animal = animalId;
+    guardarMeta(m);
+    renderHeader();
+    return true;
+  }
+
   function eliminar(id) {
     const m = leerMeta();
     if (id === 'principal' || !m.portfolios[id]) return;
@@ -7489,6 +7518,162 @@ const PortfolioManager = (() => {
     }
     if ($('port-active-nombre')) $('port-active-nombre').textContent = a.nombre || 'Principal';
   }
+  /* Panel de portafolios. Antes esto era un desplegable de 256px pegado bajo el
+     botón, con filas de 12px y la papelera escondida tras :hover —invisible en
+     una pantalla táctil—. Ahora es un panel del sistema: se ve el avatar
+     grande, se cambia de portafolio con un toque y cada uno se puede editar.
+     La edición y la creación comparten formulario: son el mismo acto salvo por
+     qué se hace al aceptar. */
+  function _cerrarPanel() {
+    const m = document.getElementById('port-panel');
+    if (m) m.remove();
+    document.removeEventListener('keydown', _escPanel);
+  }
+  function _escPanel(e) { if (e.key === 'Escape') _cerrarPanel(); }
+
+  function _filaHTML(id, p, activo) {
+    return `
+      <div class="mp-perfil${activo ? ' activo' : ''}">
+        <button type="button" class="mp-perfil-elegir" data-cambiar="${id}"
+                ${activo ? 'aria-current="true"' : ''}>
+          <span class="mp-perfil-avatar">${_animalFromId(_animalParaPortafolio(p)).svg}</span>
+          <span class="mp-perfil-nom">${escapeHtml(p.nombre)}</span>
+          ${activo ? '<span class="mp-perfil-marca">En uso</span>' : ''}
+        </button>
+        <button type="button" class="mp-perfil-accion" data-editar="${id}"
+                aria-label="Editar ${escapeHtml(p.nombre)}" title="Editar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+          </svg>
+        </button>
+        ${id !== 'principal' ? `
+        <button type="button" class="mp-perfil-accion borrar" data-borrar="${id}"
+                aria-label="Eliminar ${escapeHtml(p.nombre)}" title="Eliminar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
+          </svg>
+        </button>` : ''}
+      </div>`;
+  }
+
+  function abrirPanel() {
+    _cerrarPanel();
+    const m = leerMeta();
+    const filas = Object.entries(m.portfolios)
+      .map(([id, p]) => _filaHTML(id, p, id === m.activo)).join('');
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="port-panel" class="mp-modal" role="dialog" aria-modal="true" aria-label="Tus portafolios">
+        <div class="mp-modal-caja">
+          <div class="mp-modal-cuerpo">
+            <div class="mp-modal-cabecera">
+              <div>
+                <p class="mp-modal-etq">Tus portafolios</p>
+                <h2 class="mp-modal-titulo">Cambia o edita</h2>
+              </div>
+              <button type="button" class="mp-modal-cerrar" data-cerrar aria-label="Cerrar">&times;</button>
+            </div>
+            <p class="mp-modal-parrafo">Cada portafolio guarda sus propias emisoras,
+            pesos y transacciones. Cambiar de uno a otro no mezcla nada.</p>
+            <div id="port-panel-lista" class="mp-perfiles">${filas}</div>
+            <div class="mp-modal-acciones">
+              <button type="button" class="mp-btn mp-btn-primario" data-nuevo>Crear portafolio</button>
+              <button type="button" class="mp-btn mp-btn-secundario" data-sandbox
+                      title="Duplica el actual para experimentar sin tocarlo">Duplicar para probar</button>
+            </div>
+          </div>
+        </div>
+      </div>`);
+    const panel = document.getElementById('port-panel');
+    panel.addEventListener('click', (e) => { if (e.target === panel) _cerrarPanel(); });
+    document.addEventListener('keydown', _escPanel);
+    panel.querySelector('[data-cerrar]').addEventListener('click', _cerrarPanel);
+    panel.querySelector('[data-nuevo]').addEventListener('click', () => abrirFormulario(null));
+    panel.querySelector('[data-sandbox]').addEventListener('click', () => {
+      _cerrarPanel();
+      if (window.crearSandbox) window.crearSandbox();
+    });
+    panel.querySelectorAll('[data-cambiar]').forEach(b =>
+      b.addEventListener('click', () => cambiar(b.dataset.cambiar)));
+    panel.querySelectorAll('[data-editar]').forEach(b =>
+      b.addEventListener('click', () => abrirFormulario(b.dataset.editar)));
+    panel.querySelectorAll('[data-borrar]').forEach(b =>
+      b.addEventListener('click', () => {
+        const p = leerMeta().portfolios[b.dataset.borrar];
+        if (confirm(`¿Eliminar "${p ? p.nombre : 'este portafolio'}"? Se borran sus emisoras, pesos y transacciones para siempre.`)) {
+          eliminar(b.dataset.borrar);
+        }
+      }));
+  }
+
+  /* id null = crear; id con valor = editar ese. */
+  function abrirFormulario(id) {
+    const m = leerMeta();
+    const p = id ? m.portfolios[id] : null;
+    let animalSel = p ? _animalParaPortafolio(p) : ANIMALS[0].id;
+    const viejo = document.getElementById('port-form');
+    if (viejo) viejo.remove();
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="port-form" class="mp-modal" role="dialog" aria-modal="true"
+           aria-label="${p ? 'Editar portafolio' : 'Nuevo portafolio'}">
+        <div class="mp-modal-caja">
+          <div class="mp-modal-cuerpo">
+            <div class="mp-modal-cabecera">
+              <div>
+                <p class="mp-modal-etq">${p ? 'Editar' : 'Nuevo'}</p>
+                <h2 class="mp-modal-titulo">${p ? escapeHtml(p.nombre) : 'Crear portafolio'}</h2>
+              </div>
+              <button type="button" class="mp-modal-cerrar" data-x aria-label="Cerrar">&times;</button>
+            </div>
+            <p class="mp-modal-parrafo">Sepáralos por objetivo: Retiro, Trading, Hijos.</p>
+            <label class="mp-campo-etq" for="port-nombre-input">Nombre</label>
+            <input id="port-nombre-input" type="text" maxlength="30" placeholder="Ej. Retiro"
+                   value="${p ? escapeHtml(p.nombre) : ''}" class="mp-campo" />
+            <p class="mp-campo-etq" id="port-avatar-etq">Avatar</p>
+            <div class="mp-avatares" role="group" aria-labelledby="port-avatar-etq">
+              ${ANIMALS.map(a => `
+                <button type="button" data-animal="${a.id}" title="${a.name}"
+                        aria-label="${a.name}" aria-pressed="${a.id === animalSel}"
+                        class="mp-avatar${a.id === animalSel ? ' activo' : ''}">${a.svg}</button>`).join('')}
+            </div>
+            <div class="mp-modal-acciones">
+              <button type="button" class="mp-btn mp-btn-primario" data-ok>${p ? 'Guardar' : 'Crear'}</button>
+              <button type="button" class="mp-btn mp-btn-secundario" data-x>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>`);
+    const f = document.getElementById('port-form');
+    const cerrar = () => f.remove();
+    f.addEventListener('click', (e) => { if (e.target === f) cerrar(); });
+    f.querySelectorAll('[data-x]').forEach(b => b.addEventListener('click', cerrar));
+    f.querySelectorAll('[data-animal]').forEach(b => b.addEventListener('click', () => {
+      f.querySelectorAll('[data-animal]').forEach(x => {
+        x.classList.remove('activo'); x.setAttribute('aria-pressed', 'false');
+      });
+      b.classList.add('activo'); b.setAttribute('aria-pressed', 'true');
+      animalSel = b.dataset.animal;
+    }));
+    const aceptar = () => {
+      const n = f.querySelector('#port-nombre-input').value;
+      if (!n.trim()) { f.querySelector('#port-nombre-input').focus(); return; }
+      if (id) {
+        editar(id, n, animalSel);
+        cerrar();
+        // El panel se rehace para que el cambio se vea sin recargar.
+        abrirPanel();
+      } else {
+        crear(n, animalSel);   // recarga la página
+      }
+    };
+    f.querySelector('[data-ok]').addEventListener('click', aceptar);
+    f.querySelector('#port-nombre-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') aceptar();
+    });
+    setTimeout(() => f.querySelector('#port-nombre-input').focus(), 60);
+  }
+
   function renderMenu() {
     const m = leerMeta();
     const items = Object.entries(m.portfolios).map(([id, p]) => {
@@ -7554,24 +7739,14 @@ const PortfolioManager = (() => {
   function bind() {
     leerMeta();
     renderHeader();
+    // El botón del masthead abre el PANEL, no el desplegable viejo.
     $('port-selector-btn')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      const m = $('port-selector-menu');
-      if (m.classList.contains('hidden')) {
-        renderMenu();
-        m.classList.remove('hidden');
-      } else {
-        m.classList.add('hidden');
-      }
+      abrirPanel();
     });
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#port-selector-menu') && !e.target.closest('#port-selector-btn')) {
-        $('port-selector-menu')?.classList.add('hidden');
-      }
-    });
-    $('port-crear-btn')?.addEventListener('click', abrirCrear);
+    $('port-crear-btn')?.addEventListener('click', () => abrirFormulario(null));
   }
-  return { bind, activoData, activoId };
+  return { bind, activoData, activoId, abrirPanel, editar };
 })();
 
 
