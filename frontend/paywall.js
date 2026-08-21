@@ -962,12 +962,11 @@
           placeholder="tu@correo.com" style="${INP}">
         <input data-x="auth-pass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}"
           placeholder="Contraseña (mín. 8)" style="${INP}">
+        <!-- SOLO correo y contraseña. El teléfono se pidió un tiempo para
+             verificar por SMS, pero eso costaba dinero por cada registro y las
+             cuotas por IP y por dispositivo hacen el mismo trabajo gratis: un
+             campo más que no defiende nada solo estorba al que se registra. -->
         ${reg ? `
-        <input data-x="auth-tel" type="tel" inputmode="tel" autocomplete="tel"
-          placeholder="Teléfono (opcional)" style="${INP}">
-        <p style="color:var(--tinta-4);font-size:11px;margin:-2px 0 2px;line-height:1.5">
-          Opcional. Sirve para recuperar tu cuenta si pierdes el acceso al
-          correo. No lo compartimos con nadie.</p>
         <!-- Turnstile se pinta aquí (solo web). El hueco existe siempre para no
              mover el layout cuando aparece. -->
         <div data-x="turnstile" style="min-height:0"></div>` : ''}
@@ -991,25 +990,12 @@
      al llegar aquí la cuenta TODAVÍA no existe —el servidor solo guardó un
      registro pendiente— y hay que dejar claro que el paso que falta es el SMS,
      con la vía de salida por si el número estaba mal. */
-  let _telPend = null;         // { telefono, mascara }
-  function _codigoCuerpo(err, aviso) {
-    const errHTML = err ? `<p style="color:var(--baja);font-size:13px;margin:0 0 10px">${err}</p>` : '';
-    const avHTML = aviso ? `<p style="color:var(--sello);font-size:13px;margin:0 0 10px">${aviso}</p>` : '';
-    return `
-      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Confirma tu teléfono</h2>
-      <p style="color:var(--tinta-3);margin:0 0 14px;font-size:14px">
-        Te mandamos un código de 6 dígitos a ${(_telPend && _telPend.mascara) || 'tu teléfono'}.</p>
-      ${errHTML}${avHTML}
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <input data-x="tel-codigo" type="text" inputmode="numeric" autocomplete="one-time-code"
-          maxlength="6" placeholder="000000"
-          style="${INP};text-align:center;letter-spacing:.35em;font-size:22px;font-family:'IBM Plex Mono',ui-monospace,monospace">
-        <button data-x="tel-confirmar" style="${BTN_PRI}">Confirmar y crear cuenta</button>
-        <button data-x="tel-reenviar" style="${BTN_LINK}">Reenviar el código</button>
-        <button data-x="tel-otro" style="${BTN_LINK}">Usar otro número</button>
-      </div>
-      ${_legalHTML()}`;
-  }
+  /* La pantalla de "escribe el código" del registro por SMS vivía aquí. Se
+     retira junto con el campo de teléfono: sin nada que la invoque, era código
+     muerto en la ruta más sensible de la app. La verificación por SMS sigue en
+     el backend (auth.solicitar_registro_telefono) por si algún día se retoma.
+
+     El registro es ahora correo + contraseña, y punto. */
 
   function abrirAuth() {
     if (_authOverlay) return;
@@ -1046,7 +1032,6 @@
         abrir();
         return;
       }
-      const setCod = (m, av) => { const b = _authOverlay && _authOverlay.querySelector('[data-x="auth-body"]'); if (b) b.innerHTML = _codigoCuerpo(m, av); };
 
       /* Éxito: guarda el JWT, cierra y re-vincula la compra si la hay. Lo usan
          el login normal y la confirmación del código, así que vive aparte. */
@@ -1058,59 +1043,18 @@
         else verificarAcceso();
       };
 
-      if (act === 'tel-otro') { _telPend = null; setErr(''); return; }
-
-      if (act === 'tel-reenviar' || act === 'tel-confirmar') {
-        if (!_telPend) { setErr(''); return; }
-        el.disabled = true;
-        const textoOriginal = el.textContent;
-        el.textContent = 'Un momento…';
-        try {
-          if (act === 'tel-reenviar') {
-            const r = await fetch('/api/auth/registro', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-              body: JSON.stringify({ email: _telPend.email, password: _telPend.pass, telefono: _telPend.telefono })
-            });
-            const j = await r.json().catch(() => ({}));
-            if (!r.ok) return setCod(j.error || 'No se pudo reenviar el código.');
-            return setCod('', 'Te mandamos otro código.');
-          }
-          const codigo = ((_authOverlay.querySelector('[data-x="tel-codigo"]') || {}).value || '').replace(/\D/g, '');
-          if (codigo.length !== 6) return setCod('El código son 6 dígitos.');
-          const r = await fetch('/api/auth/registro/confirmar', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-            body: JSON.stringify({ telefono: _telPend.telefono, codigo })
-          });
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok) return setCod(j.error || 'No se pudo confirmar. Intenta de nuevo.');
-          const correo = _telPend.email;
-          _telPend = null;
-          return entrar(j, correo);
-        } catch (_) {
-          return setCod('Sin conexión. Intenta de nuevo.');
-        } finally {
-          if (el) { el.disabled = false; el.textContent = textoOriginal; }
-        }
-      }
-
-      if (act === 'auth-submit') {
+            if (act === 'auth-submit') {
         const email = ((_authOverlay.querySelector('[data-x="auth-email"]') || {}).value || '').trim().toLowerCase();
         const pass  =  (_authOverlay.querySelector('[data-x="auth-pass"]')  || {}).value || '';
-        const tel   = ((_authOverlay.querySelector('[data-x="auth-tel"]')   || {}).value || '').trim();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setErr('Escribe un correo válido.');
         if (pass.length < 8) return setErr('La contraseña debe tener al menos 8 caracteres.');
-        // El teléfono es OPCIONAL: si lo escribe, se valida el formato para no
-        // guardar basura; si lo deja vacío, la cuenta se crea igual.
-        if (_authModo === 'registro' && tel && tel.replace(/\D/g, '').length < 10) {
-          return setErr('Si escribes tu teléfono, que sea a 10 dígitos. También puedes dejarlo vacío.');
-        }
         el.disabled = true; el.textContent = 'Un momento…';
         try {
           const reg = _authModo === 'registro';
           const ruta = reg ? '/api/auth/registro' : '/api/auth/ingresar';
           const r = await fetch(ruta, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-            body: JSON.stringify(reg ? { email, password: pass, telefono: tel, turnstile: _tsToken() }
+            body: JSON.stringify(reg ? { email, password: pass, turnstile: _tsToken() }
                                      : { email, password: pass })
           });
           const j = await r.json().catch(() => ({}));
@@ -1126,11 +1070,6 @@
             // cuando el problema era otro.
             if (reg) _tsReiniciar();
             return setErr(j.error || 'No se pudo completar. Intenta de nuevo.');
-          }
-          // Registro: la cuenta AÚN no existe; el siguiente paso es el código.
-          if (reg && j.paso === 'codigo') {
-            _telPend = { email, pass, telefono: tel, mascara: j.telefono_enmascarado };
-            return setCod('');
           }
           if (j.token) { try { localStorage.setItem('mp.jwt.v1', j.token); } catch (_) {} }
           cerrarAuth();
@@ -1162,186 +1101,9 @@
      funcionando si lo deja para después.
      Si el servidor no puede enviar SMS (sms_activo false) no se pregunta nada:
      ofrecer un código que no va a llegar es peor que no ofrecer nada. */
-  const _LS_TEL_POSPUESTO = 'mp.telPospuesto.v1';
-  let _telAvisoAbierto = false;
-
-  function _pedirTelefonoSiFalta(e) {
-    if (!e || !e.autenticado || e.telefono_verificado) return;
-    if (!e.sms_activo) return;
-    if (_telAvisoAbierto || _authOverlay || _bloqueante) return;
-    // Una vez por sesión: preguntarlo en cada visitar-pestaña sería acoso.
-    try { if (sessionStorage.getItem(_LS_TEL_POSPUESTO) === '1') return; } catch (_) {}
-    _abrirAvisoTelefono(e.email || '');
-  }
-
-  function _abrirAvisoTelefono(email) {
-    _telAvisoAbierto = true;
-    let pend = null;                 // { telefono, mascara }
-    const ov = document.createElement('div');
-    ov.setAttribute('role', 'dialog');
-    ov.setAttribute('aria-modal', 'true');
-    ov.style.cssText = 'position:fixed;inset:0;z-index:99997;background:rgba(20,22,27,.45);'
-      + 'display:flex;align-items:center;justify-content:center;padding:16px;'
-      + '-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)';
-
-    const cerrarAviso = (pospuesto) => {
-      if (pospuesto) { try { sessionStorage.setItem(_LS_TEL_POSPUESTO, '1'); } catch (_) {} }
-      ov.remove();
-      _telAvisoAbierto = false;
-    };
-
-    const cuerpoPedir = (err) => `
-      <p class="mp-modal-etq">Tu cuenta</p>
-      <h2 class="mp-modal-titulo">Confirma tu teléfono</h2>
-      <p class="mp-modal-parrafo">Lo usamos solo para verificar que la cuenta es
-      tuya y poder recuperarla si pierdes el acceso al correo.</p>
-      ${err ? `<p class="mp-modal-aviso">${err}</p>` : ''}
-      <input data-y="tel" type="tel" inputmode="tel" autocomplete="tel"
-             class="mp-campo" placeholder="Teléfono (10 dígitos)">
-      <div class="mp-modal-acciones">
-        <button type="button" class="mp-btn mp-btn-primario" data-y="enviar">Enviarme el código</button>
-        <button type="button" class="mp-btn mp-btn-secundario" data-y="luego">Después</button>
-      </div>`;
-
-    const cuerpoCodigo = (err, aviso) => `
-      <p class="mp-modal-etq">Tu cuenta</p>
-      <h2 class="mp-modal-titulo">Escribe el código</h2>
-      <p class="mp-modal-parrafo">Te mandamos 6 dígitos a ${(pend && pend.mascara) || 'tu teléfono'}.</p>
-      ${err ? `<p class="mp-modal-aviso">${err}</p>` : ''}
-      ${aviso ? `<p class="mp-modal-nota" style="color:var(--sello-vivo)">${aviso}</p>` : ''}
-      <input data-y="codigo" type="text" inputmode="numeric" autocomplete="one-time-code"
-             maxlength="6" class="mp-campo" placeholder="000000"
-             style="text-align:center;letter-spacing:.35em;font-family:'IBM Plex Mono',ui-monospace,monospace">
-      <div class="mp-modal-acciones">
-        <button type="button" class="mp-btn mp-btn-primario" data-y="confirmar">Confirmar</button>
-        <button type="button" class="mp-btn mp-btn-secundario" data-y="otro">Otro número</button>
-      </div>`;
-
-    const pintar = (html) => {
-      ov.innerHTML = `<div class="mp-modal-caja" style="max-width:420px">
-                        <div class="mp-modal-cuerpo">${html}</div>
-                      </div>`;
-    };
-    pintar(cuerpoPedir(''));
-    document.body.appendChild(ov);
-    ov.addEventListener('click', (ev) => { if (ev.target === ov) cerrarAviso(true); });
-
-    ov.addEventListener('click', async (ev) => {
-      const el = ev.target.closest('[data-y]'); if (!el) return;
-      const act = el.getAttribute('data-y');
-      if (act === 'luego') return cerrarAviso(true);
-      if (act === 'otro') { pend = null; return pintar(cuerpoPedir('')); }
-
-      if (act === 'enviar') {
-        const tel = (ov.querySelector('[data-y="tel"]') || {}).value || '';
-        if (tel.replace(/\D/g, '').length < 10) return pintar(cuerpoPedir('Escribe tu teléfono a 10 dígitos.'));
-        el.disabled = true; el.textContent = 'Un momento…';
-        try {
-          const r = await fetch('/api/auth/telefono/solicitar', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-            body: JSON.stringify({ telefono: tel })
-          });
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok) return pintar(cuerpoPedir(j.error || 'No se pudo enviar el código.'));
-          pend = { telefono: tel, mascara: j.telefono_enmascarado };
-          return pintar(cuerpoCodigo('', ''));
-        } catch (_) {
-          return pintar(cuerpoPedir('Sin conexión. Intenta de nuevo.'));
-        }
-      }
-
-      if (act === 'confirmar') {
-        if (!pend) return pintar(cuerpoPedir(''));
-        const cod = ((ov.querySelector('[data-y="codigo"]') || {}).value || '').replace(/\D/g, '');
-        if (cod.length !== 6) return pintar(cuerpoCodigo('El código son 6 dígitos.', ''));
-        el.disabled = true; el.textContent = 'Un momento…';
-        try {
-          const r = await fetch('/api/auth/telefono/confirmar', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-            body: JSON.stringify({ telefono: pend.telefono, codigo: cod })
-          });
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok) return pintar(cuerpoCodigo(j.error || 'No se pudo confirmar.', ''));
-          cerrarAviso(false);
-          if (window.toast) window.toast('Teléfono confirmado.', 'success');
-          notificarSesion();
-        } catch (_) {
-          return pintar(cuerpoCodigo('Sin conexión. Intenta de nuevo.', ''));
-        }
-      }
-    });
-  }
-
-  /* ── Turnstile: antibots del registro WEB ────────────────────────────────
-     Solo en web y solo al registrarse. En la app nativa el eje de defensa es
-     el dispositivo, que es más fuerte que un captcha y no se esquiva
-     reinstalando; y cargar un script de Cloudflare dentro del WKWebView
-     metería una dependencia de red en la primera pantalla que ve el usuario
-     —y el revisor de Apple— sin ganar nada.
-
-     La sitekey llega del backend (/api/auth/estado) en vez de estar escrita
-     aquí, para poder rotar el widget sin desplegar el frontend. */
-  let _tsSitekey = null;
-  let _tsCargando = null;
-  let _tsWidgetId = null;
-
-  function _tsDisponible() { return !esNativo() && !!_tsSitekey; }
-
-  function _tsCargarScript() {
-    if (window.turnstile) return Promise.resolve();
-    if (_tsCargando) return _tsCargando;
-    _tsCargando = new Promise((ok, mal) => {
-      const sc = document.createElement('script');
-      sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-      sc.async = true; sc.defer = true;
-      sc.onload = ok;
-      // Si Cloudflare no carga, NO se bloquea el registro: el backend deja
-      // pasar cuando no hay token y avisa en el log. Cerrar el alta porque un
-      // script de terceros no llegó es el error que ya cometimos con el SMS.
-      sc.onerror = () => { _tsCargando = null; mal(new Error('turnstile no cargó')); };
-      document.head.appendChild(sc);
-    });
-    return _tsCargando;
-  }
-
-  /* Pinta el widget en el hueco del formulario. Devuelve sin hacer nada si no
-     aplica, así el registro sigue funcionando igual. */
-  async function _tsMontar() {
-    if (!_tsDisponible()) return;
-    const hueco = _authOverlay && _authOverlay.querySelector('[data-x="turnstile"]');
-    if (!hueco) return;
-    try { await _tsCargarScript(); } catch (_) { return; }
-    if (!window.turnstile) return;
-    try {
-      if (_tsWidgetId !== null) { window.turnstile.remove(_tsWidgetId); _tsWidgetId = null; }
-      hueco.innerHTML = '';
-      _tsWidgetId = window.turnstile.render(hueco, {
-        sitekey: _tsSitekey,
-        action: 'turnstile-spin-v1',
-        theme: 'light',
-        size: 'flexible',
-      });
-    } catch (_) { /* si falla, el backend decide */ }
-  }
-
-  function _tsToken() {
-    try {
-      if (!_tsDisponible() || !window.turnstile) return '';
-      return window.turnstile.getResponse(_tsWidgetId) || '';
-    } catch (_) { return ''; }
-  }
-
-  /* Un token de Turnstile es de UN SOLO USO: si el registro falla por otra
-     razón (correo repetido, contraseña corta) y el usuario reintenta, el
-     segundo intento llegaría con un token ya gastado y el backend lo
-     rechazaría con un mensaje que no explica nada. Se pide uno nuevo. */
-  function _tsReiniciar() {
-    try {
-      if (_tsDisponible() && window.turnstile && _tsWidgetId !== null) {
-        window.turnstile.reset(_tsWidgetId);
-      }
-    } catch (_) {}
-  }
+  /* Aquí vivía el aviso que pedía el teléfono a las cuentas creadas por magic
+     link u OTP. Se retira con el resto: si el registro ya no pide teléfono,
+     perseguir a quien no lo tiene es pedir un dato que la app decidió no usar. */
 
   // ------------------------------------------------ GATE (hard paywall)
   // premium o trial vigente -> acceso normal. Prueba vencida sin premium ->
@@ -1425,7 +1187,6 @@
     cerrarAuth();                                        // autenticado: fuera pantalla de acceso
     _renderTrialStrip(e);
     _refrescarBotonHeader(e);
-    _pedirTelefonoSiFalta(e);
     if (_premiumEfectivo(e) || e.plan !== 'expirado') {
       if (_bloqueante) cerrar(true);                     // trial vigente / suscrito: liberar candado
       return;

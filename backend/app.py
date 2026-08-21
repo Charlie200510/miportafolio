@@ -3004,11 +3004,8 @@ def api_auth_estado():
                         "turnstile_sitekey": _turnstile.sitekey() if _turnstile else ""}), 200
     gate = _estado_plan(ses.get("usuario", {}))
     u = ses.get("usuario", {}) or {}
-    # El teléfono verificado viaja en el estado para que el frontend sepa si
-    # tiene que pedirlo. Hace falta porque el registro con contraseña no es la
-    # única puerta: el magic link y el OTP por correo también crean cuentas, y
-    # esas nacen sin teléfono. `sms_activo` evita que la app pida un código
-    # cuando el servidor no puede enviarlo.
+    # `telefono_verificado` y `sms_activo` se conservan en la respuesta porque
+    # account.js los lee para la pantalla de cuenta; el registro ya no los usa.
     return jsonify({
         "autenticado": True,
         "email": ses["email"],
@@ -3145,38 +3142,21 @@ def api_auth_registro():
     body = request.get_json(silent=True) or {}
     email = (body.get("email") or "").strip().lower()
     password = body.get("password") or ""
-    telefono = (body.get("telefono") or "").strip()
-
-    # Antibots del registro web, antes de cualquier rama: si el token no vale,
-    # no hay que decidir nada más.
+    # Antibots del registro web. Va primero: si el token no vale, no hay nada
+    # más que decidir.
     try:
         _exigir_turnstile()
     except _turnstile.TurnstileInvalido as e:
         return jsonify({"error": str(e), "turnstile": True}), 400
 
-    # EL TELÉFONO ES OPCIONAL. Exigirlo obligaba a pagar un proveedor de SMS por
-    # cada registro, y contra el abuso de trials las cuotas por IP y dispositivo
-    # hacen el mismo trabajo sin costo por usuario. Si algún día hay proveedor y
-    # el usuario escribe su número, se verifica; si no, la cuenta se crea igual.
-    if telefono and _auth.sms_disponible():
-        try:
-            r = _auth.solicitar_registro_telefono(email, password, telefono)
-            return jsonify({"ok": True, "paso": "codigo", **r})
-        except _auth.CuotaDeAltas as e:
-            return jsonify({"error": str(e), "cuota_altas": True}), 429
-        except PermissionError as e:
-            return jsonify({"error": str(e)}), 429
-        except _auth.CorreoDesechable as e:
-            return jsonify({"error": str(e), "correo_desechable": True}), 400
-        except ValueError as e:
-            return jsonify({"error": str(e)}), 400
-        except RuntimeError as e:
-            return jsonify({"error": f"No se pudo enviar el código: {e}"}), 503
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
+    # SOLO CORREO Y CONTRASEÑA. El teléfono se pidió un tiempo para verificar
+    # por SMS; se retiró porque costaba dinero en cada registro y las cuotas por
+    # IP y por dispositivo defienden lo mismo gratis. El `telefono` del body se
+    # IGNORA a propósito: así el camino del SMS queda inalcanzable por
+    # construcción, en vez de depender de que nadie lo invoque. La maquinaria
+    # sigue en auth.solicitar_registro_telefono por si algún día se retoma.
     try:
-        _auth.registrar_con_password(email, password, telefono or None,
+        _auth.registrar_con_password(email, password, None,
                                      ip=_ip_cliente(), dispositivo=_dispositivo_cliente())
         usuario = _auth.obtener_usuario(email) or {"email": email, "plan": "trial"}
         return _respuesta_auth(email, usuario)
