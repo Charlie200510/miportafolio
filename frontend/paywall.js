@@ -902,7 +902,13 @@
   }
 
   function abrirAuth() {
-    if (_authOverlay) return;
+    /* `isConnected`, no solo "existe": si el nodo se sacó del DOM sin pasar por
+       cerrarAuth(), la referencia sigue viva apuntando a un nodo desconectado y
+       este return dejaba el candado imposible de volver a pintar —la pantalla
+       que impide usar la app sin cuenta, inutilizada por una variable obsoleta.
+       Con isConnected se vuelve a montar en cuanto no está puesto de verdad. */
+    if (_authOverlay && _authOverlay.isConnected) return;
+    _authOverlay = null;
     cerrar(true);                     // no dejar el paywall abierto detrás
     _authOverlay = document.createElement('div');
     _authOverlay.setAttribute('role', 'dialog');
@@ -1010,9 +1016,13 @@
      perseguir a quien no lo tiene es pedir un dato que la app decidió no usar. */
 
   // ------------------------------------------------ GATE (hard paywall)
-  // premium o trial vigente -> acceso normal. Prueba vencida sin premium ->
-  // overlay bloqueante. Sin sesión (demo / revisores de Apple) -> acceso
-  // completo: el candado solo aplica a cuentas con la prueba vencida.
+  // Sin sesión              -> pantalla de acceso. No se usa la app sin cuenta.
+  // Premium o trial vigente -> acceso normal.
+  // Prueba vencida          -> overlay bloqueante (hard paywall).
+  //
+  // La primera línea decía lo contrario ("sin sesión -> acceso completo") de
+  // cuando la web se usaba entera sin cuenta y el candado solo cazaba trials
+  // vencidos.
 
   let _btnHTMLOriginal = null;
   function _refrescarBotonHeader(e) {
@@ -1062,6 +1072,34 @@
     _reintento = setTimeout(() => { _reintento = null; verificarAcceso(); }, 4000);
   }
 
+  /* ¿Hay un JWT nuestro guardado y todavía vigente? Prueba de que ESTE
+     navegador tuvo sesión, y solo se usa para un caso: abrir la app SIN RED.
+
+     Sin esto, quien ya entró y abre la app en el metro o en un avión se queda
+     mirando la pantalla de acceso —sin poder pasarla, porque iniciar sesión
+     también necesita red— con sus datos en caché ahí detrás. El service worker
+     precachea la app justo para que eso funcione.
+
+     No es un permiso, y no reabre el agujero: quien nunca entró no tiene JWT, y
+     un visitante nuevo sigue topándose con el candado. Cuando el servidor dice
+     explícitamente que no hay sesión, esto NO se consulta: ese caso ya cierra
+     más abajo. Solo cubre "no contestó".
+
+     Se lee `exp` sin verificar la firma, que el cliente no puede comprobar. Da
+     igual: los datos los sirve el servidor, que sí valida la firma en cada
+     petición, así que un JWT inventado no destapa nada — deja ver el armazón
+     vacío de la app, y para eso basta con borrar un nodo del DOM. */
+  function _jwtLocalVigente() {
+    try {
+      const t = localStorage.getItem('mp.jwt.v1');
+      if (!t) return false;
+      const partes = t.split('.');
+      if (partes.length !== 3) return false;
+      const cuerpo = JSON.parse(atob(partes[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return !!cuerpo && typeof cuerpo.exp === 'number' && cuerpo.exp * 1000 > Date.now();
+    } catch (_) { return false; }
+  }
+
   async function verificarAcceso() {
     let e = null;
     try { e = await estadoUsuario(); } catch (_) {}
@@ -1098,8 +1136,17 @@
          sesión en esta carga:
 
            · nunca confirmada  → no se ha ganado el acceso: candado y reintento.
-           · ya confirmada     → es un bache de red: no se toca la pantalla. */
-      if (!_sesionConfirmada) { abrirAuth(); _reintentarPronto(); }
+           · ya confirmada     → es un bache de red: no se toca la pantalla.
+
+         Y una excepción para el arranque sin red: si este navegador guarda un
+         JWT vigente, ya tuvo sesión antes, así que se le deja ver la app en
+         caché en vez de una pantalla de acceso que sin red no puede pasar. */
+      if (!_sesionConfirmada && !_jwtLocalVigente()) abrirAuth();
+      // Se reintenta SIEMPRE mientras no haya confirmación: es lo que hace que
+      // el candado aparezca solo en cuanto el servidor conteste que no hay
+      // sesión (token revocado, cuenta borrada) y que se cierre en cuanto
+      // conteste que sí.
+      if (!_sesionConfirmada) _reintentarPronto();
       return;
     }
 
