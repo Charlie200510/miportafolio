@@ -163,6 +163,29 @@ class AltaRequiereTelefono(ValueError):
     nunca por el SMS y la verificación no serviría de nada."""
 
 
+class PuertaRetirada(RuntimeError):
+    """Se llamó a una vía de acceso que la app ya no ofrece.
+
+    El magic link y el OTP por correo se retiraron: todas las cuentas son de
+    correo + contraseña. Sus rutas HTTP ya no existen (ver app.py, "UNA SOLA
+    PUERTA"), así que esto no debería poder dispararse nunca. Está para que, si
+    alguna vez vuelve a haber un camino hasta aquí, el resultado sea un error
+    ruidoso y NO una cuenta creada o una sesión abierta sin contraseña.
+
+    Fallar cerrado en la ruta de acceso, y hacer ruido: el fallo que dejó entrar
+    a la app sin cuenta fue justamente una excepción que alguien tragó en
+    silencio y se interpretó como permiso."""
+
+
+def _puerta_retirada(nombre: str) -> None:
+    print(f"[auth] SE LLAMÓ A UNA PUERTA RETIRADA: {nombre}. No se creó cuenta "
+          f"ni sesión. Revisa quién la llamó: no debería existir ese camino.",
+          flush=True)
+    raise PuertaRetirada(
+        "Esa forma de entrar ya no está disponible. Entra con tu correo y "
+        "contraseña.")
+
+
 def _registrar_usuario(data: dict[str, Any], email: str,
                        permitir_alta: bool = True) -> dict[str, Any]:
     email = email.strip().lower()
@@ -188,6 +211,7 @@ def _registrar_usuario(data: dict[str, Any], email: str,
 def solicitar_magic_link(email: str, ip: Optional[str] = None,
                          dispositivo: Optional[str] = None) -> dict[str, Any]:
     """Genera un token y lo envia por correo. Regresa metadata util para el cliente."""
+    _puerta_retirada("solicitar_magic_link")
     if not email or "@" not in email:
         raise ValueError("Email invalido")
 
@@ -252,6 +276,7 @@ def solicitar_magic_link(email: str, ip: Optional[str] = None,
 
 def verificar_token(token: str) -> dict[str, Any]:
     """Canjea un token por una sesion. Devuelve {session_id, email, expira_en}."""
+    _puerta_retirada("verificar_token")
     if not token:
         raise ValueError("Token vacio")
 
@@ -682,6 +707,7 @@ def solicitar_otp(email: str, ip: Optional[str] = None,
     """Genera un código de 6 dígitos (un solo uso, expira en 10 min) y lo envía
     por correo. Máximo 5 solicitudes por hora por email; pedir un código nuevo
     invalida el anterior. Lanza PermissionError al exceder el límite."""
+    _puerta_retirada("solicitar_otp")
     if not email or "@" not in email or len(email) > 254:
         raise ValueError("Email invalido")
 
@@ -745,6 +771,7 @@ def verificar_otp(email: str, codigo: str) -> dict[str, Any]:
     """Valida el código (un solo uso). Devuelve el usuario, creándolo si es
     nuevo (el trial arranca en el primer login, igual que registro_con_password).
     Mensaje de error genérico: no revela si el correo tiene código pendiente."""
+    _puerta_retirada("verificar_otp")
     email = (email or "").strip().lower()
     codigo = (codigo or "").strip()
     generico = ValueError("Código inválido o expirado")

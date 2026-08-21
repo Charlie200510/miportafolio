@@ -79,10 +79,26 @@
   }
 
   // -------------------------------------------------- estado del usuario
+  /* La sitekey de Turnstile la sirve el backend en /api/auth/estado, así que se
+     puede rotar el widget sin volver a desplegar el frontend. Las funciones que
+     la usan para pintar están en la sección AUTH; la variable vive aquí, junto a
+     lo único que la escribe.
+
+     ESTA DECLARACIÓN NO ES DECORATIVA: sin ella la asignación de abajo es a una
+     variable inexistente, y bajo 'use strict' eso LANZA. Como la sitekey solo
+     viene en la respuesta cuando NO hay sesión, el error salía exactamente en el
+     caso en que el candado tiene que funcionar: estadoUsuario() lo tragaba, lo
+     reportaba como "el servidor no contestó" y el gate dejaba pasar sin cuenta. */
+  let _tsSitekey = '';
+
   function _guardarSitekey(e) {
-    if (e && typeof e.turnstile_sitekey === 'string' && e.turnstile_sitekey) {
-      _tsSitekey = e.turnstile_sitekey;
-    }
+    // Nada de lo que pase aquí puede tumbar la comprobación de acceso: esta
+    // función solo cachea un dato opcional del antibot.
+    try {
+      if (e && typeof e.turnstile_sitekey === 'string' && e.turnstile_sitekey) {
+        _tsSitekey = e.turnstile_sitekey;
+      }
+    } catch (_) {}
   }
 
   async function estadoUsuario() {
@@ -359,15 +375,20 @@
            (cada mes o cada año, según el plan) hasta que canceles. Cancela en un
            click, sin permanencia. Pago seguro con MercadoPago.</p>`;
 
-    // Captura de correo — SOLO en web (MercadoPago necesita el correo del pagador).
+    /* Web SIN sesión. Antes aquí se capturaba el correo para mandar un magic
+       link; ahora se manda a la pantalla de acceso, que es la única que crea
+       cuentas (correo + contraseña) y la que lleva el antibot.
+
+       No es un paso de más: MercadoPago necesita el correo del pagador y la
+       suscripción se liga a la cuenta, así que en algún momento hay que tenerla.
+       Pedirla aquí con un segundo formulario solo servía para tener dos sitios
+       donde escribir el correo y uno de ellos sin contraseña. */
     const captura = `
       <div style="display:flex;flex-direction:column;gap:8px">
-        <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
-          placeholder="tu@correo.com"
-          style="width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:var(--radio-tarjeta);padding:13px 14px;font-size:15px;color:var(--tinta-1);outline:none;box-sizing:border-box">
-        <button data-x="email-continuar" style="${BTN_PRI}">Continuar</button>
-        <p style="color:var(--tinta-4);font-size:11px;margin:2px 0 0;text-align:center">
-          Te enviamos un enlace de acceso a este correo.</p>
+        <button data-x="login-opcional" style="${BTN_PRI}">Crear cuenta o iniciar sesión</button>
+        <p style="color:var(--tinta-4);font-size:11px;margin:2px 0 0;text-align:center;line-height:1.5">
+          Tu suscripción queda ligada a tu cuenta, así que la puedes usar
+          en cualquier dispositivo.</p>
       </div>`;
 
     // Link de login OPCIONAL en nativo: sincroniza Premium entre dispositivos.
@@ -600,74 +621,17 @@
     if (esNativo()) _cargarPlanesEnOverlay(); else _cargarPlanesWeb();
   }
 
-  // ---------------------------------------------- OTP (login nativo — LANZAMIENTO §8)
-  // El magic link abre Safari y la sesión no llega al WKWebView. En la app el
-  // usuario teclea un código de 6 dígitos y el JWT se guarda en 'mp.jwt.v1'
-  // (el wrapper de fetch de app.js lo manda como Authorization: Bearer).
-  async function _pedirOTP(correo) {
-    const r = await fetch('/api/auth/otp/solicitar', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-      body: JSON.stringify({ email: correo }),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || 'No se pudo enviar el código.');
-    // El endpoint responde 200 {ok:true, enviado:false} cuando el código se
-    // generó pero el correo NO salió (proveedor caído, credencial inválida).
-    // Antes se avanzaba a "Revisa tu correo" de todos modos y el usuario se
-    // quedaba esperando para siempre un código que nunca iba a llegar, sin
-    // ninguna salida visible. Lo tratamos como error con bandera propia para
-    // poder ofrecer la contraseña como alternativa.
-    //
-    // OJO con el orden: en AUTH_MOCK_MODE (desarrollo) el backend también manda
-    // enviado:false, pero incluye codigo_debug porque el código va a la consola
-    // en lugar del correo. Eso NO es un fallo. Mismo criterio y mismo orden que
-    // signup.html con enlace_debug.
-    if (j && j.codigo_debug) return j;
-    if (j && j.enviado === false) {
-      const err = new Error('No pudimos enviarte el código por correo.');
-      err.noEnviado = true;
-      throw err;
-    }
-    return j;
-  }
+  /* Aquí vivía el login por código OTP de 6 dígitos: _pedirOTP(), la pantalla
+     del código, la de "no pudimos enviarte el código" y sus tres botones.
 
-  // Pantalla de fallo de envío. NUNCA dejar al usuario en "Revisa tu correo"
-  // cuando sabemos que el correo no salió: aquí se le dice la verdad y se le
-  // da la ruta que sí funciona (correo + contraseña, el flujo principal de la
-  // app nativa, que no depende de que salga ningún correo).
-  function _otpFalloCuerpo(correo) {
-    return `
-      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">No pudimos enviarte el código</h2>
-      <p style="color:var(--tinta-3);margin:0 0 12px;font-size:14px;line-height:1.55">
-        Generamos tu código, pero el correo a
-        <span style="color:var(--tinta-2)">${_esc(correo)}</span> no salió: el servicio de
-        envíos no está respondiendo. No es tu culpa y no tiene que ver con tu cuenta.</p>
-      <p style="color:var(--tinta-3);margin:0 0 14px;font-size:14px;line-height:1.55">
-        Puedes entrar ahora mismo con tu <strong style="color:var(--tinta-2)">contraseña</strong>,
-        que no depende del correo. Si aún no tienes una, puedes crear tu cuenta ahí mismo.</p>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <button data-x="otp-usar-password" style="${BTN_PRI}">Entrar con contraseña</button>
-        <button data-x="otp-reintentar-envio" style="${BTN_SEC}">Reintentar el envío</button>
-        <button data-x="volver" style="${BTN_LINK}">Volver a los planes</button>
-      </div>`;
-  }
+     Se retira con el magic link. Las dos eran vías de entrar SIN CONTRASEÑA
+     —quien leyera el correo entraba— y además creaban la cuenta si el correo no
+     existía, o sea que cada una era otro trial de 14 días por regalar y otra
+     puerta que mantener a la par de las defensas del registro.
 
-  function _otpCuerpo(correo, err) {
-    const errHTML = err ? `<p style="color:var(--baja);font-size:13px;margin:0 0 10px">${err}</p>` : '';
-    return `
-      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Revisa tu correo</h2>
-      <p style="color:var(--tinta-3);margin:0 0 14px;font-size:14px">Enviamos un código de 6 dígitos a
-        <span style="color:var(--tinta-2)">${_esc(correo)}</span>. Expira en 10 minutos.</p>
-      ${errHTML}
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <input data-x="otp-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6"
-          autocomplete="one-time-code" placeholder="000000"
-          style="${INP};text-align:center;letter-spacing:8px;font-weight:700">
-        <button data-x="otp-verificar" style="${BTN_PRI}">Verificar</button>
-        <button data-x="otp-reenviar" style="${BTN_LINK}">Reenviar código</button>
-        <button data-x="volver" style="${BTN_SEC}">Volver a los planes</button>
-      </div>`;
-  }
+     Ahora hay una sola: correo + contraseña, la que pinta abrirAuth(). Sus
+     rutas en el backend ya no existen (app.py, "UNA SOLA PUERTA"), así que
+     dejar estas pantallas habría sido ofrecer un flujo que responde 404. */
 
   // El overlay se monta SIN esperar a la red. Antes `abrir()` hacía dos awaits
   // (estado de sesión + entitlement del SDK) ANTES de crear el nodo: si el
@@ -717,8 +681,7 @@
     _overlay.addEventListener('keydown', (ev) => {
       if (ev.key !== 'Enter' || !ev.target || !ev.target.getAttribute) return;
       const dx = ev.target.getAttribute('data-x');
-      const destino = dx === 'email-input' ? 'email-continuar'
-                    : dx === 'otp-input'   ? 'otp-verificar' : null;
+      const destino = dx === 'email-input' ? 'email-continuar' : null;
       if (!destino) return;
       ev.preventDefault();
       const b = _overlay.querySelector(`[data-x="${destino}"]`);
@@ -739,149 +702,25 @@
         return;
       }
       if (act === 'login-opcional') {
-        // Mostrar captura de correo (login OPCIONAL para sincronizar). En la
-        // app el acceso es con código OTP (dentro de la app); en web, enlace.
-        const body = _overlay.querySelector('[data-x="body"]');
-        if (body) body.innerHTML = `
-          <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Inicia sesión</h2>
-          <p style="color:var(--tinta-3);margin:0 0 14px;font-size:14px">Opcional. Sincroniza tu suscripción entre tus dispositivos. No es necesario para comprar ni para usar la prueba.</p>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <input data-x="email-input" type="email" inputmode="email" autocapitalize="none" autocomplete="email"
-              placeholder="tu@correo.com"
-              style="width:100%;background:var(--sup-panel);border:1px solid var(--regla-fuerte);border-radius:var(--radio-tarjeta);padding:13px 14px;font-size:15px;color:var(--tinta-1);outline:none;box-sizing:border-box">
-            <button data-x="email-continuar" style="${BTN_PRI}">${esNativo() ? 'Enviarme un código' : 'Enviarme el enlace'}</button>
-            <button data-x="volver" style="${BTN_SEC}">Volver a los planes</button>
-          </div>`;
-        return;
-      }
-      if (act === 'otp-verificar') {
-        const inp = _overlay.querySelector('[data-x="otp-input"]');
-        const cod = ((inp && inp.value) || '').trim();
-        const body = _overlay.querySelector('[data-x="body"]');
-        if (!/^\d{6}$/.test(cod)) {
-          if (body) body.innerHTML = _otpCuerpo(_email, 'Escribe el código de 6 dígitos que te enviamos.');
-          return;
-        }
-        el.disabled = true; el.textContent = 'Verificando…';
-        try {
-          const r = await fetch('/api/auth/otp/verificar', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-            body: JSON.stringify({ email: _email, codigo: cod }),
-          });
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok) {
-            if (body) body.innerHTML = _otpCuerpo(_email, j.error || 'Código inválido o expirado.');
-            return;
-          }
-          // Sesión dentro de la app: el wrapper de fetch manda este JWT como Bearer.
-          if (j.token) { try { localStorage.setItem('mp.jwt.v1', j.token); } catch (_) {} }
-          // Identifica la cuenta en RevenueCat (aliasa una compra anónima previa).
-          if (esNativo()) { try { await rcInit(_email); } catch (_) {} }
-          // La sesión cambió: "Mi cuenta" (y quien escuche) se re-renderiza sin
-          // recargar. Bug del build 4: el widget de cuenta solo se pintaba en
-          // DOMContentLoaded, así que tras el login por OTP no aparecía.
-          notificarSesion();
-          toast('Sesión iniciada como ' + _email + '.', 'success');
-          if (body) { body.innerHTML = vista(_email, false, _bloqueante); _cargarPlanes(); }
-          try { verificarAcceso(); } catch (_) {}
-        } catch (_) {
-          if (body) body.innerHTML = _otpCuerpo(_email, 'Sin conexión. Intenta de nuevo.');
-        }
-        return;
-      }
-      if (act === 'otp-reenviar' || act === 'otp-reintentar-envio') {
-        const etiqueta = el.textContent;
-        el.disabled = true; el.textContent = 'Enviando…';
-        try {
-          await _pedirOTP(_email);
-          // Volvemos (o regresamos) a la pantalla del código: si veníamos del
-          // fallo y el reintento funcionó, hay que dejar el input a la vista.
-          const body = _overlay.querySelector('[data-x="body"]');
-          if (body) {
-            body.innerHTML = _otpCuerpo(_email, '');
-            const oi = _overlay.querySelector('[data-x="otp-input"]');
-            if (oi) oi.focus();
-          }
-          toast('Te enviamos un código nuevo a ' + _email + '.');
-        } catch (e) {
-          if (e && e.noEnviado) {
-            // El correo sigue sin salir: pantalla honesta con la alternativa,
-            // no un toast que se desvanece y deja la misma pantalla mintiendo.
-            const body = _overlay.querySelector('[data-x="body"]');
-            if (body) body.innerHTML = _otpFalloCuerpo(_email);
-            return;
-          }
-          el.disabled = false; el.textContent = etiqueta;
-          toast(e.message || 'No se pudo enviar el código.');
-        }
-        return;
-      }
-      if (act === 'otp-usar-password') {
-        // El gate de correo+contraseña es el flujo principal de la app nativa y
-        // no depende de que salga ningún correo. Lo abrimos en modo "ingresar";
-        // si la persona no tiene contraseña, ahí mismo puede crear la cuenta.
+        /* Antes esto pintaba su propia captura de correo y mandaba un código o
+           un enlace. Ya no: iniciar sesión es UNA pantalla en toda la app, la de
+           correo + contraseña, y tener una segunda versión aquí era mantener dos
+           formularios de acceso que podían divergir.
+
+           Tampoco es "opcional" desde que el candado exige cuenta para usar la
+           app: entrar es el camino, no un extra para sincronizar. */
         _authModo = 'ingresar';
+        cerrar(true);
         abrirAuth();
         return;
       }
-      if (act === 'volver') {
-        const body = _overlay.querySelector('[data-x="body"]');
-        if (body) { body.innerHTML = vista(_email, false, _bloqueante); _cargarPlanes(); }
-        return;
-      }
-      if (act === 'email-continuar') {
-        const inp = _overlay.querySelector('[data-x="email-input"]');
-        const v = ((inp && inp.value) || '').trim().toLowerCase();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { toast('Escribe un correo válido.'); return; }
-        _email = v;
-        const body = _overlay.querySelector('[data-x="body"]');
-        if (esNativo()) {
-          // App nativa: login con código OTP DENTRO de la app. El magic link
-          // abriría Safari y la sesión nunca llegaría al WKWebView (§8).
-          const prev = el.textContent;
-          el.disabled = true; el.textContent = 'Enviando…';
-          try {
-            await _pedirOTP(v);
-            if (body) body.innerHTML = _otpCuerpo(v, '');
-            const oi = _overlay.querySelector('[data-x="otp-input"]');
-            if (oi) oi.focus();
-          } catch (e) {
-            if (e && e.noEnviado) {
-              // No mandar a "Revisa tu correo" cuando el correo no salió.
-              if (body) body.innerHTML = _otpFalloCuerpo(v);
-              return;
-            }
-            el.disabled = false; el.textContent = prev;
-            toast(e.message || 'No se pudo enviar el código.');
-          }
-          return;
-        }
-        // Web: magic link para acceso multi-dispositivo. El pago con
-        // MercadoPago no depende de abrir el correo, así que no bloqueamos el
-        // flujo — pero tampoco afirmamos que se envió sin saberlo: antes era
-        // fire-and-forget con un toast de éxito incondicional.
-        if (body) { body.innerHTML = vista(_email, false, _bloqueante); _cargarPlanes(); }
-        (async () => {
-          try {
-            const r = await fetch('/api/auth/login', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: v })
-            });
-            const j = await r.json().catch(() => ({}));
-            if (!r.ok) throw new Error(j.error || 'falló la solicitud');
-            if (j && j.enlace_debug) { toast('Modo prueba: el enlace salió en la consola del servidor.'); return; }
-            if (j && j.enviado === false) {
-              toast('No pudimos enviarte el enlace a ' + v + '. Puedes seguir aquí y suscribirte; '
-                  + 'para entrar desde otro dispositivo intenta más tarde.', 'error', 7000);
-              return;
-            }
-            toast('Te enviamos un enlace de acceso a ' + v + '.');
-          } catch (_) {
-            toast('No pudimos enviarte el enlace a ' + v + '. Revisa tu conexión e intenta de nuevo.', 'error', 6000);
-          }
-        })();
-        return;
-      }
+      // 'volver' ("Volver a los planes") existía para las pantallas del código
+      // OTP, que ya no están. Sin ningún botón que lo emita, se retira.
+      /* 'email-continuar' pedía el correo aquí y mandaba un código (nativo) o un
+         magic link (web). Las dos vías se retiraron: hay una sola pantalla de
+         acceso y es la de correo + contraseña. El botón que llevaba aquí ahora
+         abre esa pantalla directamente. */
+
       if (act === 'buy') {
         // La compra en nativo SIEMPRE va ligada a la cuenta (sin ruta anónima):
         // si no hay sesión, se envía a crear cuenta / iniciar sesión primero.
@@ -996,6 +835,71 @@
      el backend (auth.solicitar_registro_telefono) por si algún día se retoma.
 
      El registro es ahora correo + contraseña, y punto. */
+
+  /* ── Turnstile: el antibot del registro (SOLO web) ───────────────────────
+     El backend verifica el token contra siteverify; aquí solo se pinta el
+     widget y se lee lo que emite.
+
+     TODO ESTE BLOQUE ES A PRUEBA DE FALLOS A PROPÓSITO. Es una defensa
+     opcional montada sobre la pantalla que impide usar la app sin cuenta, y ya
+     pasó una vez que un error aquí tumbara esa pantalla y dejara entrar a
+     cualquiera. Un antibot que no carga debe degradar a "sin antibot" —el
+     servidor sigue teniendo las cuotas por IP y por dispositivo—, nunca a "sin
+     candado". De ahí que ninguna de estas funciones pueda lanzar.
+
+     En nativo no aplica: no hay navegador que resolver el reto y las cuotas por
+     dispositivo (IDFV) cubren esa puerta. */
+  let _tsWidgetId = null;
+  let _tsScriptPedido = false;
+
+  const _tsAplica = () => !!_tsSitekey && !esNativo();
+
+  function _tsCargarScript() {
+    if (_tsScriptPedido || window.turnstile) return;
+    _tsScriptPedido = true;
+    try {
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      s.async = true; s.defer = true;
+      // Al llegar el script el hueco ya está pintado: hay que montar de nuevo.
+      s.onload = () => _tsMontar();
+      s.onerror = () => { _tsScriptPedido = false; };   // sin widget, no sin registro
+      document.head.appendChild(s);
+    } catch (_) { _tsScriptPedido = false; }
+  }
+
+  function _tsMontar() {
+    try {
+      if (!_tsAplica()) return;
+      // Solo el modo registro tiene hueco; "ingresar" no lleva antibot.
+      const hueco = _authOverlay && _authOverlay.querySelector('[data-x="turnstile"]');
+      if (!hueco) return;
+      if (!window.turnstile) { _tsCargarScript(); return; }
+      hueco.innerHTML = '';
+      _tsWidgetId = window.turnstile.render(hueco, {
+        sitekey: _tsSitekey,
+        action: 'turnstile-spin-v1',
+        theme: 'auto',
+        size: 'flexible',
+      });
+    } catch (_) { _tsWidgetId = null; }
+  }
+
+  /* Cadena vacía si no hay widget. El backend distingue "no configurado" de
+     "token inválido", así que un vacío no cierra el registro por su cuenta. */
+  function _tsToken() {
+    try {
+      if (!_tsAplica() || !window.turnstile || _tsWidgetId == null) return '';
+      return window.turnstile.getResponse(_tsWidgetId) || '';
+    } catch (_) { return ''; }
+  }
+
+  // Los tokens son de un solo uso: tras un error hay que pedir otro.
+  function _tsReiniciar() {
+    try {
+      if (window.turnstile && _tsWidgetId != null) window.turnstile.reset(_tsWidgetId);
+    } catch (_) {}
+  }
 
   function abrirAuth() {
     if (_authOverlay) return;
@@ -1144,10 +1048,25 @@
       : 'Tu prueba termina hoy · Suscríbete →';
   }
 
+  /* ¿El servidor confirmó una sesión en ALGÚN momento de esta carga? Es lo que
+     permite tratar distinto "todavía no has entrado" y "entraste y la red tuvo
+     un bache", sin tener que elegir entre dejar pasar a cualquiera o echar al
+     que sí pagó. No se guarda en localStorage a propósito: al recargar la
+     página hay que volver a demostrar la sesión, y un valor persistido sería un
+     "estoy dentro" que el cliente puede escribirse a sí mismo. */
+  let _sesionConfirmada = false;
+
+  let _reintento = null;
+  function _reintentarPronto() {
+    if (_reintento) return;                  // uno a la vez, no una avalancha
+    _reintento = setTimeout(() => { _reintento = null; verificarAcceso(); }, 4000);
+  }
+
   async function verificarAcceso() {
     let e = null;
     try { e = await estadoUsuario(); } catch (_) {}
     const authed = !!(e && e.autenticado);
+    if (authed) _sesionConfirmada = true;
 
     // NATIVO sin cuenta: SIEMPRE exige registro/login (el trial se cuenta
     // por-cuenta), incluso si hay una compra activa en el Apple ID.
@@ -1168,16 +1087,31 @@
     //
     // Solo se monta donde vive la app (index.html carga este script; landing,
     // signup, legales y blog no), así que las páginas públicas no se tocan.
-    // Si el servidor no contestó no sabemos nada: dejar la pantalla como está y
-    // reintentar en el próximo ciclo (visibilitychange). Cerrar el candado aquí
-    // expulsaría a quien sí tiene sesión por una red lenta.
-    if (!e || e._sinRespuesta) return;
+    if (!e || e._sinRespuesta) {
+      /* El servidor no contestó. Antes esto era un `return` seco y ahí estaba el
+         agujero: cualquier fallo al pedir el estado —incluida una excepción en
+         nuestro propio código— se leía como "no sé" y la app quedaba abierta sin
+         cuenta. "No sé" no puede significar "pasa".
+
+         Pero cerrar siempre tampoco vale: expulsaría por una red lenta a quien
+         sí tiene sesión. Los dos casos se distinguen por si ya se confirmó una
+         sesión en esta carga:
+
+           · nunca confirmada  → no se ha ganado el acceso: candado y reintento.
+           · ya confirmada     → es un bache de red: no se toca la pantalla. */
+      if (!_sesionConfirmada) { abrirAuth(); _reintentarPronto(); }
+      return;
+    }
 
     if (!authed) {
       // Sin sesión no se afirma premium, y se olvida lo que el SDK dijo de la
       // cuenta anterior (si no, quedaba en memoria durante toda la sesión).
       _sdkPremium = false;
       _rcUser = null;
+      // El servidor es explícito: no hay sesión. Se olvida la que hubiera para
+      // que un cierre de sesión o un borrado de cuenta no deje al siguiente
+      // fallo de red heredando el permiso del inquilino anterior.
+      _sesionConfirmada = false;
       _refrescarBotonHeader(null);
       _renderTrialStrip(null);
       abrirAuth();

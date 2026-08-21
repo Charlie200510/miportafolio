@@ -111,7 +111,7 @@
           <span class="text-grad-brand italic font-light">en 30 segundos.</span>
         </h1>
         <p class="mt-5 text-zinc-400 text-[15px] leading-relaxed">
-          Te mandamos un link de acceso a tu correo. Sin tarjeta, sin contraseñas que recordar.
+          Con tu correo y una contraseña. Sin tarjeta, 14 días completos.
         </p>
       </div>
 
@@ -120,13 +120,25 @@
         <form id="signup-form" class="space-y-5">
           <label class="block">
             <span class="text-[12px] font-semibold tracking-wider uppercase text-zinc-500">Correo electrónico</span>
-            <input id="signup-email" type="email" required autocomplete="email"
+            <input id="signup-email" type="email" required autocomplete="username"
                    placeholder="tu@correo.com"
                    class="input-line mt-2 w-full px-4 py-3.5 rounded-xl text-zinc-100 text-[15px] placeholder:text-zinc-600" />
           </label>
+          <label class="block">
+            <span class="text-[12px] font-semibold tracking-wider uppercase text-zinc-500">Contraseña</span>
+            <input id="signup-pass" type="password" required minlength="8" autocomplete="new-password"
+                   placeholder="Mínimo 8 caracteres"
+                   class="input-line mt-2 w-full px-4 py-3.5 rounded-xl text-zinc-100 text-[15px] placeholder:text-zinc-600" />
+          </label>
+          <!-- Turnstile. Esta página es una puerta de ALTA abierta a internet, así
+               que lleva el mismo antibot que la pantalla de acceso de la app: sin
+               él sería el sitio más fácil desde donde fabricar trials en serie.
+               La sitekey la sirve el backend para poder rotar el widget sin
+               volver a desplegar el frontend. -->
+          <div id="signup-turnstile"></div>
           <button type="submit"
                   class="btn-primary w-full py-4 rounded-xl font-semibold text-[15px]">
-            Mandarme el link de acceso →
+            Crear mi cuenta →
           </button>
         </form>
 
@@ -164,47 +176,83 @@
   </footer>
 
   <script>
+    /* Alta con correo + contraseña contra /api/auth/registro, el MISMO endpoint
+       que usa la pantalla de acceso de la app. Antes esta página mandaba un
+       magic link por /api/auth/login, que ya no existe: era una vía de crear
+       cuenta sin contraseña, y por tanto un trial de 14 días a cambio de un
+       correo cualquiera. */
+    const estado = document.getElementById('signup-estado');
+    let tsId = null;
+
+    /* El antibot se monta cuando el backend dice qué sitekey usar. Si algo de
+       esto falla —Cloudflare caído, script bloqueado— NO se bloquea el registro:
+       el servidor distingue "no configurado" de "token inválido" y sigue
+       teniendo las cuotas por IP. Un antibot que no carga no puede convertirse
+       en una página de alta que no funciona. */
+    (async () => {
+      try {
+        const r = await fetch('/api/auth/estado', { cache: 'no-store' });
+        const j = await r.json();
+        if (!j || !j.turnstile_sitekey) return;
+        await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+          s.async = true; s.defer = true;
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+        tsId = window.turnstile.render('#signup-turnstile', {
+          sitekey: j.turnstile_sitekey,
+          action: 'turnstile-spin-v1',
+          theme: 'dark',
+          size: 'flexible',
+        });
+      } catch (_) { /* sin widget; el alta sigue disponible */ }
+    })();
+
+    const tsToken = () => {
+      try { return (tsId != null && window.turnstile) ? (window.turnstile.getResponse(tsId) || '') : ''; }
+      catch (_) { return ''; }
+    };
+
     document.getElementById('signup-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('signup-email').value.trim();
-      const estado = document.getElementById('signup-estado');
+      const email = document.getElementById('signup-email').value.trim().toLowerCase();
+      const pass  = document.getElementById('signup-pass').value;
       if (!email) return;
-      estado.innerHTML = '<span class="text-zinc-400">Enviando link…</span>';
+      if (pass.length < 8) {
+        estado.innerHTML = '<span class="text-red-400">La contraseña debe tener al menos 8 caracteres.</span>';
+        return;
+      }
+      estado.innerHTML = '<span class="text-zinc-400">Creando tu cuenta…</span>';
       try {
-        const r = await fetch('/api/auth/login', {
+        const r = await fetch('/api/auth/registro', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
+          body: JSON.stringify({ email, password: pass, turnstile: tsToken() })
         });
         const data = await r.json().catch(() => ({}));
-        // Esta página manda un magic link, y el enlace ENTRA a una cuenta que ya
-        // existe: crearla exige confirmar un teléfono por SMS, y eso se hace
-        // dentro de la app. Sin este caso, el mensaje decía "crea tu cuenta con
-        // tu teléfono" en una pantalla que no tiene dónde escribirlo.
-        if (!r.ok && data.requiere_registro) {
-          estado.innerHTML = '<span class="text-zinc-200 font-semibold">Todavía no tienes cuenta con ese correo.</span> '
-            + '<span class="text-zinc-400 text-[13px]">Para crearla confirmamos tu teléfono con un código por SMS. '
-            + '<a href="/" class="text-brand-400 underline">Créala en la app</a> y vuelve cuando quieras entrar con un link.</span>';
-          return;
+        if (!r.ok) {
+          // El token de Turnstile es de un solo uso: sin reiniciarlo, el
+          // reintento llega con uno gastado y el error hablaría de bots cuando
+          // el problema era otro (contraseña corta, correo ya registrado…).
+          try { if (tsId != null && window.turnstile) window.turnstile.reset(tsId); } catch (_) {}
+          // Ese correo ya tiene cuenta: no es un error del que haya que
+          // recuperarse escribiendo otra cosa, es que ya puede entrar.
+          if (data.error && /ya tiene una cuenta|ya existe|ya está registrad/i.test(data.error)) {
+            estado.innerHTML = '<span class="text-zinc-200 font-semibold">Ese correo ya tiene cuenta.</span> '
+              + '<a href="/static/index.html" class="text-brand-400 underline">Inicia sesión</a>.';
+            return;
+          }
+          throw new Error(data.error || 'No se pudo crear la cuenta.');
         }
-        if (!r.ok) throw new Error(data.error || 'Error al enviar.');
-        // Modo debug (sin email configurado): el backend devuelve el link directo
-        if (data.enlace_debug) {
-          estado.innerHTML = `<span class="text-amber-400 font-semibold">Modo prueba:</span> <a href="${data.enlace_debug}" class="text-brand-400 underline break-all">entra con este link</a>`;
-          return;
-        }
-        // Si el correo NO se pudo enviar, decirlo y dar una salida. NO se
-        // imprime data.detalle: trae el error crudo del proveedor de envíos
-        // ("Resend HTTP 401 ...") que no le sirve a quien se está registrando y
-        // expone infraestructura. El detalle queda en el log del servidor.
-        if (data.enviado === false) {
-          estado.innerHTML = '<span class="text-red-400">No pudimos enviarte el correo.</span> '
-            + '<span class="text-zinc-400 text-[13px]">El servicio de envíos no está respondiendo; no es problema de tu cuenta. '
-            + 'Puedes <a href="/" class="text-brand-400 underline">entrar a la app</a> y crear tu cuenta con contraseña, '
-            + 'o intentar de nuevo en unos minutos.</span>';
-          return;
-        }
-        estado.innerHTML = `<span class="text-brand-400 font-semibold">✓ Listo.</span> <span class="text-zinc-400">Revisa tu correo (${email}). El link es válido por 15 minutos.</span>`;
+        /* La cuenta quedó creada y la sesión abierta (el registro devuelve la
+           cookie). Se entra directo: mandar a "revisa tu correo" era la mecánica
+           del magic link, y aquí ya no hay nada que revisar. */
+        if (data.token) { try { localStorage.setItem('mp.jwt.v1', data.token); } catch (_) {} }
+        estado.innerHTML = '<span class="text-brand-400 font-semibold">✓ Listo.</span> '
+          + '<span class="text-zinc-400">Entrando a tu portafolio…</span>';
+        location.href = '/static/index.html?bienvenido=1';
       } catch (err) {
         estado.innerHTML = `<span class="text-red-400">${err.message || err}</span>`;
       }

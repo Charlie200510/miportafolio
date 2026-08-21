@@ -3021,82 +3021,34 @@ def api_auth_estado():
     })
 
 
-@app.route("/api/auth/login", methods=["POST"])
-@app.route("/api/auth/magiclink", methods=["POST"])  # alias (lo usa signup.html)
-@_rate_limit("5 per minute; 30 per hour")
-def api_auth_login():
-    if _auth is None:
-        return jsonify({"error": "auth no disponible"}), 500
-    body = request.get_json(silent=True) or {}
-    email = (body.get("email") or "").strip()
-    if not email or "@" not in email:
-        return jsonify({"error": "email invalido"}), 400
-    try:
-        _exigir_turnstile()
-    except _turnstile.TurnstileInvalido as e:
-        return jsonify({"error": str(e), "turnstile": True}), 400
-
-    try:
-        res = _auth.solicitar_magic_link(email, ip=_ip_cliente(),
-                                         dispositivo=_dispositivo_cliente())
-        return jsonify(res)
-    except _auth.CuotaDeAltas as e:
-        return jsonify({"error": str(e), "cuota_altas": True}), 429
-    except _auth.CorreoDesechable as e:
-        return jsonify({"error": str(e), "correo_desechable": True}), 400
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ── Login por código OTP (app nativa — LANZAMIENTO §8) ───────────────────────
-# El magic link abre Safari y no crea sesión dentro del WKWebView. El OTP se
-# teclea dentro de la app y verificar devuelve un JWT (localStorage 'mp.jwt.v1').
-@app.route("/api/auth/otp/solicitar", methods=["POST"])
-@_rate_limit("5 per hour")
-def api_auth_otp_solicitar():
-    if _auth is None:
-        return jsonify({"error": "auth no disponible"}), 500
-    body = request.get_json(silent=True) or {}
-    email = (body.get("email") or "").strip().lower()
-    if not email or "@" not in email:
-        return jsonify({"error": "email invalido"}), 400
-    try:
-        _exigir_turnstile()
-    except _turnstile.TurnstileInvalido as e:
-        return jsonify({"error": str(e), "turnstile": True}), 400
-
-    try:
-        return jsonify(_auth.solicitar_otp(email, ip=_ip_cliente(),
-                                           dispositivo=_dispositivo_cliente()))
-    except _auth.CuotaDeAltas as e:
-        return jsonify({"error": str(e), "cuota_altas": True}), 429
-    except PermissionError as e:      # 5 solicitudes/hora por email
-        return jsonify({"error": str(e)}), 429
-    except _auth.CorreoDesechable as e:
-        return jsonify({"error": str(e), "correo_desechable": True}), 400
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/auth/otp/verificar", methods=["POST"])
-@_rate_limit("10 per minute; 30 per hour")
-def api_auth_otp_verificar():
-    if _auth is None:
-        return jsonify({"error": "auth no disponible"}), 500
-    body = request.get_json(silent=True) or {}
-    email = (body.get("email") or "").strip().lower()
-    codigo = str(body.get("codigo") or "").strip()
-    try:
-        usuario = _auth.verificar_otp(email, codigo)
-        return _respuesta_auth(email, usuario)   # JWT + cookie + estado del trial
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 401
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# ── UNA SOLA PUERTA: correo + contraseña ─────────────────────────────────────
+# Aquí vivían tres formas más de entrar, y las tres se retiran:
+#
+#   POST /api/auth/login  (+ alias /api/auth/magiclink)  → magic link por correo
+#   POST /api/auth/otp/solicitar  y  /api/auth/otp/verificar → código de 6 dígitos
+#   GET  /api/auth/verify                                → aterrizaje del enlace
+#
+# POR QUÉ SE VAN, y no solo se dejan de usar desde el frontend:
+#
+#   · Eran puertas de ALTA. Las tres creaban la cuenta si el correo no existía,
+#     y cada cuenta nueva es un trial de 14 días nuevo. Toda la defensa contra
+#     el abuso de trials (cuotas por IP y dispositivo, correos desechables,
+#     duplicados canónicos, Turnstile) se diseñó pensando en el registro; tener
+#     tres entradas más multiplica la superficie que hay que mantener a la par.
+#
+#   · Eran puertas SIN CONTRASEÑA. Quien leyera un correo entraba, y eso
+#     convierte la seguridad de la cuenta en la del buzón. Con una sola vía
+#     —contraseña, hash bcrypt— hay un único sitio donde razonar sobre el acceso.
+#
+#   · Una ruta viva que nadie llama es peor que una ruta borrada: no se prueba,
+#     no se mira, y sigue aceptando peticiones de quien las mande a mano.
+#
+# Se borran las RUTAS (la única forma de llegar desde fuera). Las funciones de
+# auth.py que las servían quedan además con un cierre propio que lanza si algo
+# las invoca, para que ninguna cree cuentas por accidente.
+#
+# Quien tenga un enlace de acceso viejo sin usar recibe 404 y entra con su
+# contraseña, que es la vía que la app ofrece en todas sus pantallas.
 
 
 # ── Auth con correo + CONTRASEÑA (flujo principal de la app nativa) ──────────
@@ -3130,12 +3082,15 @@ def _respuesta_auth(email: str, usuario: dict) -> Response:
 # quiere veinte pruebas gratis.
 @_rate_limit("3 per minute; 6 per hour; 15 per day")
 def api_auth_registro():
-    """Paso 1 del registro: pide el código al teléfono. NO crea la cuenta.
+    """Crea la cuenta con correo + contraseña. LA ÚNICA PUERTA DE ALTA.
 
-    Antes esta ruta creaba la cuenta de un golpe. Ahora exige teléfono y solo
-    guarda un registro pendiente: la cuenta nace en /registro/confirmar, cuando
-    el código del SMS llega de vuelta. Si se creara antes, cualquiera podría
-    ocupar el correo de otra persona con solo empezar el registro.
+    Es también el único sitio donde nace un trial de 14 días, y por eso aquí se
+    concentran todas las defensas: Turnstile en web, cuotas por IP y por
+    dispositivo, correos desechables y duplicados canónicos (auth.verificar_alta).
+    Tener una sola puerta es lo que hace que esa lista sea suficiente.
+
+    Fue un flujo de dos pasos mientras el registro pedía teléfono (el segundo
+    paso confirmaba el SMS). Ya no: se crea la cuenta y se devuelve la sesión.
     """
     if _auth is None:
         return jsonify({"error": "auth no disponible"}), 500
@@ -3169,87 +3124,28 @@ def api_auth_registro():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except RuntimeError as e:
-        # bcrypt ausente, o el SMS no salió (credenciales, saldo, número).
-        return jsonify({"error": f"No se pudo enviar el código: {e}"}), 503
+        # Hoy esto solo puede ser bcrypt ausente en el servidor. El mensaje decía
+        # "No se pudo enviar el código", de cuando el registro mandaba un SMS:
+        # ya no se envía ningún código, así que hablaba de algo que no existe.
+        print(f"[auth] registro imposible por fallo del servidor: {e}", flush=True)
+        return jsonify({"error": "No pudimos crear tu cuenta por un problema "
+                                 "del servidor. Inténtalo en unos minutos."}), 503
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/auth/registro/confirmar", methods=["POST"])
-@_rate_limit("12 per minute; 60 per hour")
-def api_auth_registro_confirmar():
-    """Paso 2: el código del SMS crea la cuenta y devuelve la sesión."""
-    if _auth is None:
-        return jsonify({"error": "auth no disponible"}), 500
-    body = request.get_json(silent=True) or {}
-    telefono = (body.get("telefono") or "").strip()
-    codigo = (body.get("codigo") or "").strip()
-    try:
-        r = _auth.confirmar_registro_telefono(telefono, codigo)
-        email = r["email"]
-        usuario = _auth.obtener_usuario(email) or {"email": email, "plan": "trial"}
-        return _respuesta_auth(email, usuario)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except RuntimeError as e:
-        return jsonify({"error": str(e)}), 503
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/auth/telefono/solicitar", methods=["POST"])
-@_rate_limit("8 per minute; 30 per hour")
-def api_auth_telefono_solicitar():
-    """Verificar el teléfono de una cuenta que YA existe.
-
-    Hace falta porque el registro con contraseña no es la única puerta: el magic
-    link y el OTP por correo también crean cuentas, y esas quedan sin teléfono.
-    """
-    if _auth is None:
-        return jsonify({"error": "auth no disponible"}), 500
-    sesion = _sesion_actual()
-    if not sesion:
-        return jsonify({"error": "Inicia sesión primero"}), 401
-    body = request.get_json(silent=True) or {}
-    telefono = (body.get("telefono") or "").strip()
-    if not _auth.sms_disponible():
-        return jsonify({"error": "El envío de SMS no está configurado en el servidor.",
-                        "sms_no_configurado": True}), 503
-    try:
-        r = _auth.solicitar_codigo_telefono(sesion["email"], telefono)
-        return jsonify({"ok": True, **r})
-    except PermissionError as e:
-        return jsonify({"error": str(e)}), 429
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except RuntimeError as e:
-        return jsonify({"error": f"No se pudo enviar el código: {e}"}), 503
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/auth/telefono/confirmar", methods=["POST"])
-@_rate_limit("12 per minute; 60 per hour")
-def api_auth_telefono_confirmar():
-    if _auth is None:
-        return jsonify({"error": "auth no disponible"}), 500
-    sesion = _sesion_actual()
-    if not sesion:
-        return jsonify({"error": "Inicia sesión primero"}), 401
-    body = request.get_json(silent=True) or {}
-    try:
-        u = _auth.confirmar_codigo_telefono((body.get("telefono") or "").strip(),
-                                            (body.get("codigo") or "").strip())
-        if u.get("email") != sesion["email"]:
-            # El código pertenece a otra cuenta: no se confirma nada.
-            return jsonify({"error": "Código inválido o expirado"}), 400
-        return jsonify({"ok": True, "telefono_verificado": True})
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except RuntimeError as e:
-        return jsonify({"error": str(e)}), 503
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# Aquí estaban las tres rutas del teléfono: el paso 2 del registro por SMS
+# (/api/auth/registro/confirmar) y las dos de verificar el número de una cuenta
+# ya creada (/api/auth/telefono/solicitar y /confirmar).
+#
+# El registro dejó de pedir teléfono —el SMS costaba dinero por alta y las
+# cuotas por IP y por dispositivo hacen el mismo trabajo gratis—, así que ya no
+# había pantalla que llamara a ninguna de las tres. Se borran en vez de dejarlas
+# colgando: sin un cliente que las ejercite no se prueban, y una ruta de auth
+# que nadie mira es donde se esconden los fallos.
+#
+# El módulo sms.py se queda tal cual (dormido, sin credenciales) por si algún
+# día se retoma la verificación por SMS. Sin rutas, no es alcanzable.
 
 
 @app.route("/api/auth/ingresar", methods=["POST"])
@@ -3271,28 +3167,10 @@ def api_auth_ingresar():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/auth/verify")
-def api_auth_verify():
-    if _auth is None:
-        return jsonify({"error": "auth no disponible"}), 500
-    token = request.args.get("token", "").strip()
-    if not token:
-        return jsonify({"error": "token requerido"}), 400
-    try:
-        res = _auth.verificar_token(token)
-        # Redirige al front con la sesion ya puesta.
-        redirect_url = "/static/index.html?bienvenido=1"
-        resp = Response(
-            f"<html><head><meta http-equiv='refresh' content='0;url={redirect_url}'></head>"
-            f"<body>Sesion iniciada. Redirigiendo a <a href='{redirect_url}'>tu portafolio</a>...</body></html>",
-            mimetype="text/html",
-        )
-        max_age = int(res["expira_en"] - __import__("time").time())
-        return _cookie_sesion(resp, res["session_id"], max_age=max(60, max_age))
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# /api/auth/verify —el aterrizaje del magic link— se retira aquí. Era la pieza
+# que convertía un token del correo en una sesión con cookie, o sea la única que
+# de verdad abría la puerta: sin ella, un enlace viejo no vale nada aunque
+# alguien lo tenga guardado. Ver la nota de "UNA SOLA PUERTA" más arriba.
 
 
 @app.route("/api/auth/logout", methods=["POST"])
