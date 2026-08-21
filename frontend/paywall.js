@@ -79,6 +79,12 @@
   }
 
   // -------------------------------------------------- estado del usuario
+  function _guardarSitekey(e) {
+    if (e && typeof e.turnstile_sitekey === 'string' && e.turnstile_sitekey) {
+      _tsSitekey = e.turnstile_sitekey;
+    }
+  }
+
   async function estadoUsuario() {
     // no-store + timestamp: el WKWebView puede cachear el GET y dejar el
     // estado premium desactualizado justo después de una compra.
@@ -90,7 +96,9 @@
     // Mismo criterio que account.js.
     return conTimeout((async () => {
       const r = await fetch('/api/auth/estado?t=' + Date.now(), { cache: 'no-store' });
-      return (await r.json()) || { autenticado: false, _sinRespuesta: true };
+      const e = (await r.json()) || { autenticado: false, _sinRespuesta: true };
+      _guardarSitekey(e);
+      return e;
     })(), TIMEOUT_RED_MS, { autenticado: false, _sinRespuesta: true });
   }
   async function emailActual() {
@@ -959,7 +967,10 @@
           placeholder="Teléfono (opcional)" style="${INP}">
         <p style="color:var(--tinta-4);font-size:11px;margin:-2px 0 2px;line-height:1.5">
           Opcional. Sirve para recuperar tu cuenta si pierdes el acceso al
-          correo. No lo compartimos con nadie.</p>` : ''}
+          correo. No lo compartimos con nadie.</p>
+        <!-- Turnstile se pinta aquí (solo web). El hueco existe siempre para no
+             mover el layout cuando aparece. -->
+        <div data-x="turnstile" style="min-height:0"></div>` : ''}
         <button data-x="auth-submit" style="${BTN_PRI}">${reg ? 'Crear cuenta' : 'Entrar'}</button>
         <button data-x="auth-toggle" style="${BTN_LINK}">${reg ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Crea una gratis'}</button>
         <!-- Los planes y precios se pueden consultar SIN cuenta: esta pantalla
@@ -1008,6 +1019,7 @@
     _authOverlay.style.cssText = 'position:fixed;inset:0;z-index:99998;background:var(--sup);display:flex;align-items:center;justify-content:center;padding:16px';
     _authOverlay.innerHTML = `<div style="max-width:420px;width:100%;background:var(--sup);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:24px;color:var(--tinta-1);font-family:system-ui,-apple-system,sans-serif;max-height:92vh;overflow:auto"><div data-x="auth-body">${_authCuerpo('')}</div></div>`;
     document.body.appendChild(_authOverlay);
+    _tsMontar();
 
     _authOverlay.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter') { const b = _authOverlay.querySelector('[data-x="auth-submit"]'); if (b) { ev.preventDefault(); b.click(); } }
@@ -1017,7 +1029,12 @@
       const el = ev.target.closest('[data-x]'); if (!el) return;
       const act = el.getAttribute('data-x');
       if (act === 'legal') return _abrirLegal(ev, el);
-      const setErr = (m) => { const b = _authOverlay && _authOverlay.querySelector('[data-x="auth-body"]'); if (b) b.innerHTML = _authCuerpo(m); };
+      // Repintar el cuerpo destruye el nodo del widget, así que se vuelve a
+      // montar después de cada repintado (error, cambio de modo…).
+      const setErr = (m) => {
+        const b = _authOverlay && _authOverlay.querySelector('[data-x="auth-body"]');
+        if (b) { b.innerHTML = _authCuerpo(m); _tsMontar(); }
+      };
       if (act === 'auth-toggle') {
         _authModo = (_authModo === 'registro') ? 'ingresar' : 'registro';
         setErr('');
@@ -1093,7 +1110,7 @@
           const ruta = reg ? '/api/auth/registro' : '/api/auth/ingresar';
           const r = await fetch(ruta, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-            body: JSON.stringify(reg ? { email, password: pass, telefono: tel }
+            body: JSON.stringify(reg ? { email, password: pass, telefono: tel, turnstile: _tsToken() }
                                      : { email, password: pass })
           });
           const j = await r.json().catch(() => ({}));
@@ -1104,6 +1121,10 @@
               _authModo = 'registro';
               return setErr('Todavía no tienes cuenta con ese correo. Créala aquí.');
             }
+            // El token de Turnstile es de UN SOLO USO: sin reiniciarlo, el
+            // reintento llegaría con uno gastado y el error hablaría de bots
+            // cuando el problema era otro.
+            if (reg) _tsReiniciar();
             return setErr(j.error || 'No se pudo completar. Intenta de nuevo.');
           }
           // Registro: la cuenta AÚN no existe; el siguiente paso es el código.
@@ -1249,6 +1270,77 @@
         }
       }
     });
+  }
+
+  /* ── Turnstile: antibots del registro WEB ────────────────────────────────
+     Solo en web y solo al registrarse. En la app nativa el eje de defensa es
+     el dispositivo, que es más fuerte que un captcha y no se esquiva
+     reinstalando; y cargar un script de Cloudflare dentro del WKWebView
+     metería una dependencia de red en la primera pantalla que ve el usuario
+     —y el revisor de Apple— sin ganar nada.
+
+     La sitekey llega del backend (/api/auth/estado) en vez de estar escrita
+     aquí, para poder rotar el widget sin desplegar el frontend. */
+  let _tsSitekey = null;
+  let _tsCargando = null;
+  let _tsWidgetId = null;
+
+  function _tsDisponible() { return !esNativo() && !!_tsSitekey; }
+
+  function _tsCargarScript() {
+    if (window.turnstile) return Promise.resolve();
+    if (_tsCargando) return _tsCargando;
+    _tsCargando = new Promise((ok, mal) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      sc.async = true; sc.defer = true;
+      sc.onload = ok;
+      // Si Cloudflare no carga, NO se bloquea el registro: el backend deja
+      // pasar cuando no hay token y avisa en el log. Cerrar el alta porque un
+      // script de terceros no llegó es el error que ya cometimos con el SMS.
+      sc.onerror = () => { _tsCargando = null; mal(new Error('turnstile no cargó')); };
+      document.head.appendChild(sc);
+    });
+    return _tsCargando;
+  }
+
+  /* Pinta el widget en el hueco del formulario. Devuelve sin hacer nada si no
+     aplica, así el registro sigue funcionando igual. */
+  async function _tsMontar() {
+    if (!_tsDisponible()) return;
+    const hueco = _authOverlay && _authOverlay.querySelector('[data-x="turnstile"]');
+    if (!hueco) return;
+    try { await _tsCargarScript(); } catch (_) { return; }
+    if (!window.turnstile) return;
+    try {
+      if (_tsWidgetId !== null) { window.turnstile.remove(_tsWidgetId); _tsWidgetId = null; }
+      hueco.innerHTML = '';
+      _tsWidgetId = window.turnstile.render(hueco, {
+        sitekey: _tsSitekey,
+        action: 'turnstile-spin-v1',
+        theme: 'light',
+        size: 'flexible',
+      });
+    } catch (_) { /* si falla, el backend decide */ }
+  }
+
+  function _tsToken() {
+    try {
+      if (!_tsDisponible() || !window.turnstile) return '';
+      return window.turnstile.getResponse(_tsWidgetId) || '';
+    } catch (_) { return ''; }
+  }
+
+  /* Un token de Turnstile es de UN SOLO USO: si el registro falla por otra
+     razón (correo repetido, contraseña corta) y el usuario reintenta, el
+     segundo intento llegaría con un token ya gastado y el backend lo
+     rechazaría con un mensaje que no explica nada. Se pide uno nuevo. */
+  function _tsReiniciar() {
+    try {
+      if (_tsDisponible() && window.turnstile && _tsWidgetId !== null) {
+        window.turnstile.reset(_tsWidgetId);
+      }
+    } catch (_) {}
   }
 
   // ------------------------------------------------ GATE (hard paywall)

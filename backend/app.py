@@ -218,6 +218,15 @@ except Exception as _e:
     _auth = None
     _auth_error = str(_e)
 
+# Turnstile: verificación antibots del registro WEB. Si el módulo no carga, el
+# registro sigue funcionando (las cuotas por IP y dispositivo son la defensa de
+# base); solo se pierde esta capa.
+try:
+    import turnstile as _turnstile
+except Exception as _e:
+    _turnstile = None
+    _turnstile_error = str(_e)
+
 try:
     import payments as _payments
 except Exception as _e:
@@ -359,6 +368,24 @@ try:
 except Exception as _e:
     limiter = None
     print(f"warn: Flask-Limiter no disponible: {_e}")
+
+def _exigir_turnstile() -> None:
+    """Verifica el token antibots en las altas WEB. Lanza TurnstileInvalido.
+
+    SOLO EN WEB, a propósito:
+      · En la app nativa el eje de defensa es el DISPOSITIVO, que es más fuerte
+        que un captcha y no se puede reinstalar para esquivar.
+      · Cargar el script de Cloudflare dentro del WKWebView añade una
+        dependencia de red en la primera pantalla que ve el usuario —y el
+        revisor de Apple—, para no ganar nada sobre la cuota de dispositivo.
+    """
+    if _turnstile is None or not _turnstile.configurado():
+        return
+    if _es_cliente_nativo():
+        return
+    body = request.get_json(silent=True) or {}
+    _turnstile.verificar(body.get("turnstile"), ip=_ip_cliente())
+
 
 def _ip_cliente() -> str:
     """IP real del cliente. Detrás de Cloudflare, request.remote_addr es la IP
@@ -2970,7 +2997,11 @@ def api_auth_estado():
         return jsonify({"autenticado": False, "error": "auth no disponible"}), 200
     ses = _sesion_actual()
     if not ses:
-        return jsonify({"autenticado": False}), 200
+        # La sitekey viaja aquí porque la pantalla de registro la necesita ANTES
+        # de tener sesión. Es pública (va en el HTML); servirla desde el backend
+        # permite rotar el widget sin volver a desplegar el frontend.
+        return jsonify({"autenticado": False,
+                        "turnstile_sitekey": _turnstile.sitekey() if _turnstile else ""}), 200
     gate = _estado_plan(ses.get("usuario", {}))
     u = ses.get("usuario", {}) or {}
     # El teléfono verificado viaja en el estado para que el frontend sepa si
@@ -3004,6 +3035,11 @@ def api_auth_login():
     if not email or "@" not in email:
         return jsonify({"error": "email invalido"}), 400
     try:
+        _exigir_turnstile()
+    except _turnstile.TurnstileInvalido as e:
+        return jsonify({"error": str(e), "turnstile": True}), 400
+
+    try:
         res = _auth.solicitar_magic_link(email, ip=_ip_cliente(),
                                          dispositivo=_dispositivo_cliente())
         return jsonify(res)
@@ -3029,6 +3065,11 @@ def api_auth_otp_solicitar():
     email = (body.get("email") or "").strip().lower()
     if not email or "@" not in email:
         return jsonify({"error": "email invalido"}), 400
+    try:
+        _exigir_turnstile()
+    except _turnstile.TurnstileInvalido as e:
+        return jsonify({"error": str(e), "turnstile": True}), 400
+
     try:
         return jsonify(_auth.solicitar_otp(email, ip=_ip_cliente(),
                                            dispositivo=_dispositivo_cliente()))
@@ -3105,6 +3146,13 @@ def api_auth_registro():
     email = (body.get("email") or "").strip().lower()
     password = body.get("password") or ""
     telefono = (body.get("telefono") or "").strip()
+
+    # Antibots del registro web, antes de cualquier rama: si el token no vale,
+    # no hay que decidir nada más.
+    try:
+        _exigir_turnstile()
+    except _turnstile.TurnstileInvalido as e:
+        return jsonify({"error": str(e), "turnstile": True}), 400
 
     # EL TELÉFONO ES OPCIONAL. Exigirlo obligaba a pagar un proveedor de SMS por
     # cada registro, y contra el abuso de trials las cuotas por IP y dispositivo
