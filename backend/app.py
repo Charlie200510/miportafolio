@@ -470,6 +470,55 @@ def requiere_acceso(fn):
         }), 401
     return wrapper
 
+_TURNSTILE_ORIGEN = "https://challenges.cloudflare.com"
+
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net "
+    f"https://cdn.tailwindcss.com {_TURNSTILE_ORIGEN}; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+    "font-src 'self' data: https://fonts.gstatic.com; "
+    "img-src 'self' data: blob: https:; "
+    "connect-src 'self' https:; "
+    f"frame-src {_TURNSTILE_ORIGEN}; "
+    "frame-ancestors 'self'; base-uri 'self'; object-src 'none'"
+)
+
+
+def _revisar_csp_vs_turnstile() -> None:
+    """Grita al arrancar si el CSP no deja cargar el antibot que el registro exige.
+
+    Esta comprobación existe porque la combinación exacta ya rompió producción:
+    el CSP no permitía challenges.cloudflare.com, el widget no cargaba, el
+    navegador mandaba un token vacío y el backend —que sí exige el token en las
+    altas web— rechazaba TODOS los registros. Nada fallaba de forma visible: la
+    página se veía bien y el error solo aparecía al intentar crear la cuenta.
+
+    Son dos ficheros que tienen que estar de acuerdo (la cabecera aquí y la
+    verificación en turnstile.py) sin que nada los ate, o sea el tipo de
+    desacuerdo que solo se nota cuando un usuario real se queda fuera. Al menos
+    que se note al arrancar.
+    """
+    if _turnstile is None or not _turnstile.configurado():
+        return
+    faltan = [d for d in ("script-src", "frame-src")
+              if _TURNSTILE_ORIGEN not in _CSP.split(d, 1)[-1].split(";", 1)[0]]
+    if faltan:
+        print(f"[csp] ATENCIÓN: Turnstile está activo pero el CSP no lo permite "
+              f"en {', '.join(faltan)}. El widget NO cargará y el registro web "
+              f"quedará BLOQUEADO (token vacío = rechazo). Añade "
+              f"{_TURNSTILE_ORIGEN} a esas directivas.", flush=True)
+    else:
+        print("[csp] Turnstile activo y permitido por el CSP (script-src y "
+              "frame-src). ✓", flush=True)
+
+
+# A nivel de módulo, NO dentro de __main__: en producción sirve gunicorn, que
+# nunca llama a app.run(). Una comprobación que solo corre en local avisaría
+# justo donde el problema no importa.
+_revisar_csp_vs_turnstile()
+
+
 # 3) Security headers en TODAS las respuestas.
 @app.after_request
 def _security_headers(resp):
@@ -485,16 +534,14 @@ def _security_headers(resp):
     # Play, jsDelivr para chart.js/html2canvas) e inline styles/handlers que el
     # frontend emplea. object-src/base-uri/frame-ancestors cerrados. Afecta solo
     # a la web servida por Flask (la app nativa carga archivos locales).
-    resp.headers.setdefault(
-        "Content-Security-Policy",
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.tailwindcss.com; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
-        "font-src 'self' data: https://fonts.gstatic.com; "
-        "img-src 'self' data: blob: https:; "
-        "connect-src 'self' https:; "
-        "frame-ancestors 'self'; base-uri 'self'; object-src 'none'"
-    )
+    #
+    # challenges.cloudflare.com es Turnstile, y necesita DOS permisos: cargar su
+    # script y pintar su iframe. Faltaban los dos, así que el widget nunca llegó
+    # a cargar en producción; como el backend SÍ exige el token en las altas web,
+    # el resultado era que nadie podía registrarse. Sin `frame-src` explícito la
+    # directiva cae a `default-src 'self'` y el iframe también queda bloqueado:
+    # de ahí que haga falta nombrarla aparte aunque el script ya esté permitido.
+    resp.headers.setdefault("Content-Security-Policy", _CSP)
     return resp
 
 
