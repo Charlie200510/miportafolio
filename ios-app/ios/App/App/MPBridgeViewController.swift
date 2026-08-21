@@ -126,7 +126,7 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
     private func registrarCanalBloqueo() {
         guard let wv = webView else { return }
         let cc = wv.configuration.userContentController
-        for canal in ["mpBloqueo", "mpUI", "mpWidget"] {
+        for canal in ["mpBloqueo", "mpUI", "mpWidget", "mpDispositivo"] {
             cc.removeScriptMessageHandler(forName: canal)
             cc.add(self, name: canal)
         }
@@ -147,6 +147,24 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
                 let tipo = MPBloqueoBiometrico.shared.tipoDisponible
                 evaluar("window.mpBloqueoEstado && window.mpBloqueoEstado({activo: \(activo), tipo: '\(tipo)'});")
             default: break
+            }
+
+        case "mpDispositivo":
+            // identifierForVendor: identifica el APARATO sin pedir permisos y
+            // sin dato personal alguno. El servidor solo guarda su hash y lo
+            // usa para contar altas: en iOS es una señal mucho mejor que la IP,
+            // porque un operador móvil comparte una IP entre miles de clientes
+            // y limitar por ahí castiga a desconocidos.
+            //
+            // LÍMITE CONOCIDO: se renueva si el usuario borra TODAS las apps de
+            // este equipo de desarrollo. Lo que sobrevive a eso es DeviceCheck,
+            // que necesita una llave del portal de Apple; este canal es el
+            // punto donde se enchufaría.
+            if accion == "pedir" {
+                let id = UIDevice.current.identifierForVendor?.uuidString ?? ""
+                if !id.isEmpty {
+                    evaluar("window.mpDispositivoId && window.mpDispositivoId('\(id)');")
+                }
             }
 
         case "mpWidget":

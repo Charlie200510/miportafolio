@@ -360,6 +360,23 @@ except Exception as _e:
     limiter = None
     print(f"warn: Flask-Limiter no disponible: {_e}")
 
+def _ip_cliente() -> str:
+    """IP real del cliente. Detrás de Cloudflare, request.remote_addr es la IP
+    del proxy y sería la MISMA para todo el mundo: usar eso como eje de cuotas
+    bloquearía a todos los usuarios a la vez. CF-Connecting-IP es el header que
+    pone Cloudflare y no puede falsificarlo el cliente porque lo sobreescribe."""
+    return (request.headers.get("CF-Connecting-IP")
+            or (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+            or request.remote_addr or "")
+
+
+def _dispositivo_cliente() -> str:
+    """Identificador del aparato, solo en la app nativa. Lo manda el contenedor
+    (identifierForVendor). En web no existe y queda vacío: ahí el eje es la IP."""
+    d = (request.headers.get("X-MP-Dispositivo") or "").strip()
+    return d[:128]
+
+
 def _rate_limit(reglas):
     """Aplica el límite solo si limiter existe (no rompe el server si falta)."""
     def _wrap(fn):
@@ -2987,12 +3004,13 @@ def api_auth_login():
     if not email or "@" not in email:
         return jsonify({"error": "email invalido"}), 400
     try:
-        res = _auth.solicitar_magic_link(email)
+        res = _auth.solicitar_magic_link(email, ip=_ip_cliente(),
+                                         dispositivo=_dispositivo_cliente())
         return jsonify(res)
-    except _auth.AltaRequiereTelefono as e:
-        # El enlace ENTRA a una cuenta, no la crea: sin esto bastaba pedir un
-        # magic link para tener cuenta sin pasar nunca por el SMS.
-        return jsonify({"error": str(e), "requiere_registro": True}), 400
+    except _auth.CuotaDeAltas as e:
+        return jsonify({"error": str(e), "cuota_altas": True}), 429
+    except _auth.CorreoDesechable as e:
+        return jsonify({"error": str(e), "correo_desechable": True}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
@@ -3012,11 +3030,14 @@ def api_auth_otp_solicitar():
     if not email or "@" not in email:
         return jsonify({"error": "email invalido"}), 400
     try:
-        return jsonify(_auth.solicitar_otp(email))
+        return jsonify(_auth.solicitar_otp(email, ip=_ip_cliente(),
+                                           dispositivo=_dispositivo_cliente()))
+    except _auth.CuotaDeAltas as e:
+        return jsonify({"error": str(e), "cuota_altas": True}), 429
     except PermissionError as e:      # 5 solicitudes/hora por email
         return jsonify({"error": str(e)}), 429
-    except _auth.AltaRequiereTelefono as e:
-        return jsonify({"error": str(e), "requiere_registro": True}), 400
+    except _auth.CorreoDesechable as e:
+        return jsonify({"error": str(e), "correo_desechable": True}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
@@ -3034,8 +3055,6 @@ def api_auth_otp_verificar():
     try:
         usuario = _auth.verificar_otp(email, codigo)
         return _respuesta_auth(email, usuario)   # JWT + cookie + estado del trial
-    except _auth.AltaRequiereTelefono as e:
-        return jsonify({"error": str(e), "requiere_registro": True}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 401
     except Exception as e:
@@ -3087,28 +3106,34 @@ def api_auth_registro():
     password = body.get("password") or ""
     telefono = (body.get("telefono") or "").strip()
 
-    if not telefono:
-        return jsonify({"error": "Escribe tu teléfono para recibir el código.",
-                        "requiere_telefono": True}), 400
-    if not _auth.sms_disponible():
-        # SIN SMS NO HAY ALTA. Es una decision explicita del producto: nadie
-        # tiene cuenta sin confirmar su telefono, asi que si el proveedor no
-        # esta configurado —o se queda sin saldo— el registro queda CERRADO en
-        # vez de dejar pasar cuentas sin verificar.
-        #
-        # Consecuencia que hay que tener presente: mientras no existan
-        # credenciales, NADIE puede crear cuenta. Las que ya existen siguen
-        # entrando con normalidad.
-        print("[auth] REGISTRO CERRADO: falta el proveedor de SMS. Configura "
-              "TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN y TWILIO_FROM (o "
-              "TWILIO_MESSAGING_SERVICE_SID) en deploy/.env.", flush=True)
-        return jsonify({"error": "No podemos enviar el código de confirmación en este "
-                                 "momento, así que el registro está cerrado. Vuelve a "
-                                 "intentarlo más tarde.",
-                        "sms_no_configurado": True}), 503
+    # EL TELÉFONO ES OPCIONAL. Exigirlo obligaba a pagar un proveedor de SMS por
+    # cada registro, y contra el abuso de trials las cuotas por IP y dispositivo
+    # hacen el mismo trabajo sin costo por usuario. Si algún día hay proveedor y
+    # el usuario escribe su número, se verifica; si no, la cuenta se crea igual.
+    if telefono and _auth.sms_disponible():
+        try:
+            r = _auth.solicitar_registro_telefono(email, password, telefono)
+            return jsonify({"ok": True, "paso": "codigo", **r})
+        except _auth.CuotaDeAltas as e:
+            return jsonify({"error": str(e), "cuota_altas": True}), 429
+        except PermissionError as e:
+            return jsonify({"error": str(e)}), 429
+        except _auth.CorreoDesechable as e:
+            return jsonify({"error": str(e), "correo_desechable": True}), 400
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except RuntimeError as e:
+            return jsonify({"error": f"No se pudo enviar el código: {e}"}), 503
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     try:
-        r = _auth.solicitar_registro_telefono(email, password, telefono)
-        return jsonify({"ok": True, "paso": "codigo", **r})
+        _auth.registrar_con_password(email, password, telefono or None,
+                                     ip=_ip_cliente(), dispositivo=_dispositivo_cliente())
+        usuario = _auth.obtener_usuario(email) or {"email": email, "plan": "trial"}
+        return _respuesta_auth(email, usuario)
+    except _auth.CuotaDeAltas as e:
+        return jsonify({"error": str(e), "cuota_altas": True}), 429
     except PermissionError as e:
         return jsonify({"error": str(e)}), 429
     except _auth.CorreoDesechable as e:

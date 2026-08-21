@@ -24,6 +24,25 @@
     // URL del backend en producción (ajústala si cambias de hosting/dominio)
     window.MP_API_BASE = 'https://miportafolio.uk';
 
+    /* IDENTIFICADOR DEL APARATO PARA LAS CUOTAS DE ALTA.
+       El trial se cuenta por cuenta, así que la defensa está en el alta, y en
+       iOS el eje fuerte es el DISPOSITIVO, no la IP: los operadores móviles
+       comparten una IP entre miles de clientes, así que limitar por IP en un
+       celular castiga a desconocidos y no frena al que quiere diez trials.
+       identifierForVendor identifica el aparato sin permisos ni datos
+       personales, y el servidor solo guarda su hash. Lo pide el contenedor y se
+       manda en una cabecera; si no está, el backend cae a la IP. */
+    try {
+      var h = window.webkit && window.webkit.messageHandlers
+              && window.webkit.messageHandlers.mpDispositivo;
+      if (h && h.postMessage) h.postMessage({ accion: 'pedir' });
+    } catch (_) {}
+    window.mpDispositivoId = function (id) {
+      try {
+        if (id) window.MP_DISPOSITIVO = String(id).slice(0, 128);
+      } catch (_) {}
+    };
+
     // API keys PÚBLICAS de RevenueCat (Dashboard → Project → API keys → Public)
     // Key de PRODUCCIÓN de iOS (app-specific, conectada a App Store Connect).
     // Es una SDK key pública: es seguro que viva en el cliente. Tras cambiarla,

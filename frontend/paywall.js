@@ -956,10 +956,10 @@
           placeholder="Contraseña (mín. 8)" style="${INP}">
         ${reg ? `
         <input data-x="auth-tel" type="tel" inputmode="tel" autocomplete="tel"
-          placeholder="Teléfono (10 dígitos)" style="${INP}">
+          placeholder="Teléfono (opcional)" style="${INP}">
         <p style="color:var(--tinta-4);font-size:11px;margin:-2px 0 2px;line-height:1.5">
-          Te enviamos un código por SMS para confirmar que es tuyo. Solo lo usamos
-          para verificar tu cuenta.</p>` : ''}
+          Opcional. Sirve para recuperar tu cuenta si pierdes el acceso al
+          correo. No lo compartimos con nadie.</p>` : ''}
         <button data-x="auth-submit" style="${BTN_PRI}">${reg ? 'Crear cuenta' : 'Entrar'}</button>
         <button data-x="auth-toggle" style="${BTN_LINK}">${reg ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Crea una gratis'}</button>
         <!-- Los planes y precios se pueden consultar SIN cuenta: esta pantalla
@@ -1082,8 +1082,10 @@
         const tel   = ((_authOverlay.querySelector('[data-x="auth-tel"]')   || {}).value || '').trim();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setErr('Escribe un correo válido.');
         if (pass.length < 8) return setErr('La contraseña debe tener al menos 8 caracteres.');
-        if (_authModo === 'registro' && tel.replace(/\D/g, '').length < 10) {
-          return setErr('Escribe tu teléfono a 10 dígitos para recibir el código.');
+        // El teléfono es OPCIONAL: si lo escribe, se valida el formato para no
+        // guardar basura; si lo deja vacío, la cuenta se crea igual.
+        if (_authModo === 'registro' && tel && tel.replace(/\D/g, '').length < 10) {
+          return setErr('Si escribes tu teléfono, que sea a 10 dígitos. También puedes dejarlo vacío.');
         }
         el.disabled = true; el.textContent = 'Un momento…';
         try {
@@ -1100,8 +1102,7 @@
             // el aviso, en vez de dejar al usuario reintentando su contraseña.
             if (j.requiere_registro && !reg) {
               _authModo = 'registro';
-              return setErr('Todavía no tienes cuenta con ese correo. Créala aquí: '
-                          + 'confirmamos tu teléfono con un código por SMS.');
+              return setErr('Todavía no tienes cuenta con ese correo. Créala aquí.');
             }
             return setErr(j.error || 'No se pudo completar. Intenta de nuevo.');
           }

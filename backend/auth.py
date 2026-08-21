@@ -185,7 +185,8 @@ def _registrar_usuario(data: dict[str, Any], email: str,
     return usuarios[email]
 
 
-def solicitar_magic_link(email: str) -> dict[str, Any]:
+def solicitar_magic_link(email: str, ip: Optional[str] = None,
+                         dispositivo: Optional[str] = None) -> dict[str, Any]:
     """Genera un token y lo envia por correo. Regresa metadata util para el cliente."""
     if not email or "@" not in email:
         raise ValueError("Email invalido")
@@ -197,9 +198,15 @@ def solicitar_magic_link(email: str) -> dict[str, Any]:
     with _LOCK:
         data = _cargar()
         _limpiar_expirados(data)
-        # permitir_alta=False: el enlace ENTRA a una cuenta, no la crea. Antes
-        # bastaba pedir un magic link para tener cuenta sin ver un SMS.
-        _registrar_usuario(data, email, permitir_alta=False)
+        # El enlace SÍ puede dar de alta (es la puerta de signup.html), pero
+        # pasando por el mismo guardián que el registro con contraseña: sin eso,
+        # las defensas cubrirían una puerta y dejarían dos abiertas.
+        if email not in (data.get("usuarios") or {}):
+            verificar_alta(data, email, ip=ip, dispositivo=dispositivo)
+            nuevo = True
+        else:
+            nuevo = False
+        _registrar_usuario(data, email)
         data.setdefault("tokens", {})[token] = {
             "email": email,
             "creado_en": ahora,
@@ -207,6 +214,9 @@ def solicitar_magic_link(email: str) -> dict[str, Any]:
             "usado": False,
         }
         _guardar(data)
+
+    if nuevo:
+        _apuntar_origen_seguro(ip, dispositivo)
 
     enlace = f"{_BASE_URL}/api/auth/verify?token={token}"
     enviado = False
@@ -428,6 +438,101 @@ class CorreoDesechable(ValueError):
     """Dominio de un solo uso: no sirve para sostener una cuenta."""
 
 
+# ── Cuotas de alta por origen ────────────────────────────────────────────────
+# El trial se cuenta por cuenta, así que la defensa tiene que estar en el ALTA.
+# Se cuentan las altas por dos ejes y se guardan HASHEADAS: no hace falta saber
+# la IP ni el dispositivo de nadie, solo si ese mismo origen ya abrió varias.
+#
+#   IP        → sirve en web y en iOS, pero es un eje FLOJO: los operadores
+#               móviles comparten una IP entre miles de clientes (CGNAT) y una
+#               oficina o un café salen todos por la misma. El tope es alto a
+#               propósito: frena al que abre diez cuentas en una tarde, no al
+#               que comparte red con un vecino.
+#   DISPOSITIVO → solo iOS, y es el eje FUERTE: identifica el aparato, no la
+#               red. Lo manda el contenedor nativo (identifierForVendor).
+#
+# Ventana móvil de 30 días: un tope "de por vida" castigaría para siempre a una
+# IP de operador, y uno diario no frena a quien espera al día siguiente.
+_ALTAS_VENTANA = 30 * 24 * 3600
+_ALTAS_MAX_IP = 6            # una red compartida cabe; diez trials seguidos no
+_ALTAS_MAX_DISPOSITIVO = 2   # el mismo iPhone: la propia y una más
+
+
+class CuotaDeAltas(PermissionError):
+    """Ese origen ya abrió demasiadas cuentas en la ventana."""
+
+
+def _hash_origen(valor: str) -> str:
+    """Hash con la sal del proceso. Guardar IPs en claro sería recolectar datos
+    personales que no necesitamos: solo hace falta poder CONTAR."""
+    # Sal fija del despliegue. Si no se define, una constante: el objetivo del
+    # hash es no guardar IPs en claro, no resistir a quien ya tiene el archivo.
+    sal = os.environ.get("AUTH_SAL_ORIGEN") or "mp-origen-altas"
+    return hashlib.sha256((sal + "|" + (valor or "")).encode()).hexdigest()[:32]
+
+
+def _contar_altas(data: dict[str, Any], eje: str, valor: str) -> int:
+    if not valor:
+        return 0
+    ahora = time.time()
+    reg = ((data.get("altas") or {}).get(eje) or {}).get(_hash_origen(valor)) or []
+    return sum(1 for t in reg if (ahora - t) < _ALTAS_VENTANA)
+
+
+def _apuntar_alta(data: dict[str, Any], eje: str, valor: str) -> None:
+    if not valor:
+        return
+    ahora = time.time()
+    altas = data.setdefault("altas", {}).setdefault(eje, {})
+    clave = _hash_origen(valor)
+    reg = [t for t in (altas.get(clave) or []) if (ahora - t) < _ALTAS_VENTANA]
+    reg.append(ahora)
+    altas[clave] = reg[-20:]           # no crece sin límite
+
+
+def verificar_alta(data: dict[str, Any], email: str,
+                   ip: Optional[str] = None,
+                   dispositivo: Optional[str] = None) -> None:
+    """Todo lo que tiene que ser cierto para poder crear una cuenta.
+
+    Vive en UN sitio porque hay varias puertas —contraseña, magic link, OTP— y
+    una defensa que solo cubre una puerta no defiende nada.
+    """
+    _rechazar_desechable(email)
+    gemelo = _duplicado_canonico(data, email)
+    if gemelo:
+        raise ValueError("Ese correo ya tiene una cuenta (la creaste como "
+                         f"{gemelo}). Inicia sesión.")
+    if dispositivo and _contar_altas(data, "dispositivo", dispositivo) >= _ALTAS_MAX_DISPOSITIVO:
+        raise CuotaDeAltas(
+            "Este dispositivo ya creó varias cuentas. Inicia sesión con la que "
+            "ya tienes, o escríbenos si necesitas otra.")
+    if ip and _contar_altas(data, "ip", ip) >= _ALTAS_MAX_IP:
+        raise CuotaDeAltas(
+            "Se crearon demasiadas cuentas desde esta conexión. Inténtalo más "
+            "tarde o inicia sesión con la que ya tienes.")
+
+
+def _apuntar_origen_seguro(ip: Optional[str], dispositivo: Optional[str]) -> None:
+    """El alta ya ocurrió: si apuntar el origen falla, no se puede deshacer la
+    cuenta ni tiene sentido reventar la respuesta. Se registra y se sigue."""
+    try:
+        registrar_origen(ip=ip, dispositivo=dispositivo)
+    except Exception as exc:
+        print(f"[auth] no se pudo apuntar el origen del alta: {exc}", flush=True)
+
+
+def registrar_origen(ip: Optional[str] = None,
+                     dispositivo: Optional[str] = None) -> None:
+    """Apunta el alta consumada. Se llama DESPUÉS de crear, no antes: si se
+    contara al intentar, un error de tecleo gastaría cuota."""
+    with _LOCK:
+        data = _cargar()
+        _apuntar_alta(data, "ip", ip or "")
+        _apuntar_alta(data, "dispositivo", dispositivo or "")
+        _guardar(data)
+
+
 def clave_email(email: str) -> str:
     """Forma canónica de un correo, SOLO para detectar duplicados."""
     email = (email or "").strip().lower()
@@ -484,7 +589,9 @@ def _verificar_password(password: str, hashed: str) -> bool:
 
 
 def registrar_con_password(email: str, password: str,
-                           telefono: Optional[str] = None) -> dict[str, Any]:
+                           telefono: Optional[str] = None,
+                           ip: Optional[str] = None,
+                           dispositivo: Optional[str] = None) -> dict[str, Any]:
     """Crea una cuenta nueva con contraseña. Inicia el trial (creado_en = ahora).
     Falla si el correo ya tiene cuenta (evita apropiación de cuentas existentes).
 
@@ -496,19 +603,15 @@ def registrar_con_password(email: str, password: str,
     if _bcrypt is None:
         raise RuntimeError("auth por contraseña no disponible (falta bcrypt en el servidor)")
     email = _validar_credenciales(email, password)
-    _rechazar_desechable(email)
     ahora = time.time()
     with _LOCK:
         data = _cargar()
         usuarios = data.setdefault("usuarios", {})
         if email in usuarios:
             raise ValueError("Ese correo ya tiene una cuenta. Inicia sesión.")
-        # Mismo buzón escrito distinto: no es una cuenta nueva, es un trial
-        # nuevo para la misma persona.
-        gemelo = _duplicado_canonico(data, email)
-        if gemelo:
-            raise ValueError("Ese correo ya tiene una cuenta (la creaste como "
-                             f"{gemelo}). Inicia sesión.")
+        # Un solo guardián para las tres puertas: desechables, alias del mismo
+        # buzón y cuotas por IP y por dispositivo.
+        verificar_alta(data, email, ip=ip, dispositivo=dispositivo)
         usuarios[email] = {
             "email": email,
             "creado_en": ahora,          # ← inicio del trial POR CUENTA (server-side)
@@ -528,6 +631,9 @@ def registrar_con_password(email: str, password: str,
         # derecho a volver a registrarse — se levanta el tombstone.
         (data.get("eliminados") or {}).pop(_hash_email(email), None)
         _guardar(data)
+    # Se apunta DESPUÉS de crear: si se contara al intentar, un error de
+    # tecleo gastaría cuota.
+    _apuntar_origen_seguro(ip, dispositivo)
     return {"email": email, "creado_en": ahora, "plan": "trial", "nueva": True}
 
 
@@ -571,7 +677,8 @@ def _hash_otp(codigo: str) -> str:
     return hashlib.sha256(("otp:" + codigo).encode("utf-8")).hexdigest()
 
 
-def solicitar_otp(email: str) -> dict[str, Any]:
+def solicitar_otp(email: str, ip: Optional[str] = None,
+                  dispositivo: Optional[str] = None) -> dict[str, Any]:
     """Genera un código de 6 dígitos (un solo uso, expira en 10 min) y lo envía
     por correo. Máximo 5 solicitudes por hora por email; pedir un código nuevo
     invalida el anterior. Lanza PermissionError al exceder el límite."""
@@ -585,15 +692,11 @@ def solicitar_otp(email: str) -> dict[str, Any]:
     with _LOCK:
         data = _cargar()
         _limpiar_expirados(data)
-        # Se falla AQUÍ y no al verificar: mandar un código a un correo sin
-        # cuenta gasta un envío y deja al usuario esperando para luego decirle
-        # que de todas formas no puede entrar. Que esto revele si el correo
-        # tiene cuenta no añade nada: el registro ya lo dice ("ese correo ya
-        # tiene una cuenta") y por ahí se puede averiguar igual.
+        # El OTP también puede dar de alta (es la puerta de la app nativa). Se
+        # comprueba AQUÍ y no al verificar: si el alta no va a poder ocurrir,
+        # mandar el correo gasta un envío y deja al usuario esperando.
         if email not in (data.get("usuarios") or {}):
-            raise AltaRequiereTelefono(
-                "No hay ninguna cuenta con ese correo. Crea tu cuenta con tu "
-                "teléfono para confirmarlo por SMS.")
+            verificar_alta(data, email, ip=ip, dispositivo=dispositivo)
         otps = data.setdefault("otp", {})
         previo = otps.get(email) or {}
         solicitudes = [t for t in previo.get("solicitudes", []) if t > ahora - 3600]
@@ -667,7 +770,8 @@ def verificar_otp(email: str, codigo: str) -> dict[str, Any]:
             raise generico
         # Éxito: un solo uso — se borra el código, queda el historial de solicitudes.
         otps[email] = {"solicitudes": info.get("solicitudes", [])}
-        u = _registrar_usuario(data, email, permitir_alta=False)
+        nuevo = email not in (data.get("usuarios") or {})
+        u = _registrar_usuario(data, email)
         u["ultima_sesion"] = ahora
         u.setdefault("auth", "otp")
         _guardar(data)

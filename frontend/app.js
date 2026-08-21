@@ -74,6 +74,15 @@ window.fetch = function(url, init) {
         init.headers = Object.assign({}, init.headers || {}, { 'Authorization': 'Bearer ' + tk });
       }
     } catch (_) {}
+    // Identificador del aparato (solo app nativa). El backend lo usa como eje
+    // de las cuotas de alta: en iOS es una señal MUCHO mejor que la IP, porque
+    // los operadores móviles comparten una IP entre miles de clientes.
+    try {
+      if (window.MP_DISPOSITIVO) {
+        init.headers = Object.assign({}, init.headers || {},
+                                     { 'X-MP-Dispositivo': window.MP_DISPOSITIVO });
+      }
+    } catch (_) {}
   }
   return _origFetch(url, init);
 };
