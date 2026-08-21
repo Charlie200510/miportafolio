@@ -1185,6 +1185,7 @@ def api_explorar():
 # ------------------------------------------------------------
 @app.route("/api/analizar", methods=["POST"])
 @_rate_limit("60 per minute; 600 per hour")
+@requiere_acceso
 def api_analizar():
     """
     Analiza un portafolio definido por el usuario.
@@ -1219,6 +1220,7 @@ def api_analizar():
 
 
 @app.route("/api/buscar-ticker")
+@requiere_acceso
 def api_buscar_ticker():
     """
     Busca tickers por nombre o símbolo usando Yahoo Finance.
@@ -2048,6 +2050,7 @@ def api_fundamentals_portafolio():
 # ANALIZADOR INDIVIDUAL (score 1-100 + Peer + Deep Dive + Short Report)
 # ------------------------------------------------------------
 @app.route("/api/analizar/<path:ticker>", methods=["GET"])
+@requiere_acceso
 def api_analizar_ticker(ticker):
     if _analizador is None:
         return jsonify({"error": "analizador no cargado", "detalle": _analizador_error}), 500
