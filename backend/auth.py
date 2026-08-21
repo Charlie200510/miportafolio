@@ -479,8 +479,33 @@ class CorreoDesechable(ValueError):
 # Ventana móvil de 30 días: un tope "de por vida" castigaría para siempre a una
 # IP de operador, y uno diario no frena a quien espera al día siguiente.
 _ALTAS_VENTANA = 30 * 24 * 3600
-_ALTAS_MAX_IP = 6            # una red compartida cabe; diez trials seguidos no
+_ALTAS_MAX_IP = 2            # decisión de producto: dos por conexión. Ver abajo.
 _ALTAS_MAX_DISPOSITIVO = 2   # el mismo iPhone: la propia y una más
+
+# EL TOPE POR IP ES DELIBERADAMENTE ESTRICTO, Y TIENE UN COSTE CONOCIDO.
+#
+# Estaba en 6 para que "una red compartida cabe". Se baja a 2 a propósito, pero
+# hay que saber qué se acepta al hacerlo: una IP NO es una persona. Detrás de
+# una sola pueden estar una familia, una oficina, un café —y sobre todo, los
+# operadores móviles mexicanos usan CGNAT, así que miles de clientes de Telcel
+# pueden salir por la misma IP pública. Con el tope en 2, las dos primeras altas
+# de esa IP dejan fuera al resto durante 30 días.
+#
+# El eje que sí identifica a alguien es el DISPOSITIVO, y solo existe en iOS. En
+# web no hay equivalente sin fingerprinting, así que la IP carga con un trabajo
+# para el que no sirve del todo.
+#
+# Por eso, dos cosas van atadas a este número y no se deben quitar sin bajarlo:
+#   · el rechazo se REGISTRA en el log (ver más abajo). Si esto empieza a
+#     dispararse seguido son altas legítimas perdidas, no abuso frenado, y no
+#     hay forma de enterarse si no se apunta.
+#   · el mensaje de rechazo ofrece una SALIDA (escribir). Con el tope alto, un
+#     falso positivo era raro; con el tope en 2 es esperable, y quien lo sufra
+#     necesita saber que no es un error suyo ni un muro definitivo.
+#
+# Alternativa si el log muestra que estorba: dos ventanas en vez de una —pocas
+# por día (frena al que se sienta a fabricar diez trials) y más por mes (no
+# castiga un mes entero a una IP de operador)—.
 
 
 class CuotaDeAltas(PermissionError):
@@ -533,9 +558,23 @@ def verificar_alta(data: dict[str, Any], email: str,
             "Este dispositivo ya creó varias cuentas. Inicia sesión con la que "
             "ya tienes, o escríbenos si necesitas otra.")
     if ip and _contar_altas(data, "ip", ip) >= _ALTAS_MAX_IP:
+        # SE APUNTA EN EL LOG a propósito. Con el tope en 2 y una IP compartida
+        # detrás (CGNAT de operador, oficina, café), este rechazo puede caerle a
+        # gente que solo quiere su primera cuenta. Si aparece seguido en el log,
+        # son altas legítimas perdidas y hay que subir el tope o pasar a dos
+        # ventanas; sin esta línea, esas pérdidas no se ven por ningún lado.
+        print(f"[auth] alta rechazada por cuota de IP (tope {_ALTAS_MAX_IP} en "
+              f"{_ALTAS_VENTANA // 86400} días). Si esto sale a menudo, revisa "
+              f"_ALTAS_MAX_IP en auth.py: puede estar frenando a usuarios "
+              f"reales tras una IP compartida.", flush=True)
+        # "Inténtalo más tarde" era engañoso: la ventana es de 30 días, no de un
+        # rato. Y hace falta una salida real, porque con este tope el falso
+        # positivo deja de ser raro.
         raise CuotaDeAltas(
-            "Se crearon demasiadas cuentas desde esta conexión. Inténtalo más "
-            "tarde o inicia sesión con la que ya tienes.")
+            "Ya se crearon varias cuentas desde esta conexión. Si tienes una, "
+            "inicia sesión. Si es tu primera cuenta y estás en una red "
+            "compartida (oficina, escuela o datos móviles), escríbenos y te la "
+            "abrimos a mano.")
 
 
 def _apuntar_origen_seguro(ip: Optional[str], dispositivo: Optional[str]) -> None:
