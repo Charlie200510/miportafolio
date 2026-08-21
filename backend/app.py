@@ -3068,7 +3068,10 @@ def _respuesta_auth(email: str, usuario: dict) -> Response:
 
 
 @app.route("/api/auth/registro", methods=["POST"])
-@_rate_limit("10 per minute; 40 per hour")
+# 40/hora permitía montar 40 trials desde una sola conexión. Una persona crea
+# UNA cuenta; el margen es para el que se equivoca al teclear, no para el que
+# quiere veinte pruebas gratis.
+@_rate_limit("3 per minute; 6 per hour; 15 per day")
 def api_auth_registro():
     """Paso 1 del registro: pide el código al teléfono. NO crea la cuenta.
 
@@ -3108,6 +3111,8 @@ def api_auth_registro():
         return jsonify({"ok": True, "paso": "codigo", **r})
     except PermissionError as e:
         return jsonify({"error": str(e)}), 429
+    except _auth.CorreoDesechable as e:
+        return jsonify({"error": str(e), "correo_desechable": True}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except RuntimeError as e:

@@ -386,6 +386,78 @@ def obtener_usuario(email: str) -> Optional[dict[str, Any]]:
 PASSWORD_DISPONIBLE = _bcrypt is not None
 
 
+# ─────────────────────────────────────────────────────────────────
+#  Antiabuso de trials
+# ─────────────────────────────────────────────────────────────────
+# El trial se cuenta desde `creado_en` de la CUENTA, así que una cuenta nueva es
+# un trial nuevo. Sin esto, la forma más barata de no pagar nunca es escribir
+# otro correo, y las dos variantes más fáciles no requieren ni un buzón nuevo:
+#
+#   carlos+1@gmail.com   →  el "+algo" lo ignora el proveedor
+#   car.los@gmail.com    →  Gmail (y solo Gmail) ignora los puntos
+#
+# La clave canónica NO sustituye al correo: la cuenta se guarda tal como se
+# escribió, para que el usuario entre con lo que él recuerda. Solo sirve para
+# detectar que un alta nueva es la misma dirección de una cuenta que ya existe.
+_DOMINIOS_MAS = {
+    "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com",
+    "yahoo.com", "yahoo.com.mx", "icloud.com", "me.com", "proton.me",
+    "protonmail.com", "fastmail.com",
+}
+# Solo Gmail ignora los puntos. Aplicarlo a otros dominios fusionaría cuentas
+# legítimamente distintas (en Outlook, car.los@ y carlos@ son dos personas).
+_DOMINIOS_PUNTO = {"gmail.com", "googlemail.com"}
+
+# Correos de un solo uso. Lista corta a propósito: son los que aparecen primero
+# al buscar "temp mail", que es lo que hace quien quiere otro trial, no un
+# atacante dedicado. Contra alguien decidido no hay lista que alcance; esto
+# frena al que solo busca lo fácil.
+_DOMINIOS_DESECHABLES = {
+    "mailinator.com", "guerrillamail.com", "guerrillamail.info", "sharklasers.com",
+    "10minutemail.com", "10minutemail.net", "tempmail.com", "temp-mail.org",
+    "throwawaymail.com", "yopmail.com", "getnada.com", "nada.email",
+    "dispostable.com", "trashmail.com", "maildrop.cc", "mailnesia.com",
+    "fakeinbox.com", "tempinbox.com", "mohmal.com", "emailondeck.com",
+    "moakt.com", "tmpmail.org", "inboxkitten.com", "mailsac.com",
+    "spamgourmet.com", "grr.la", "spam4.me", "byom.de", "harakirimail.com",
+    "email-temp.com", "tmail.ws", "burnermail.io", "anonaddy.me",
+}
+
+
+class CorreoDesechable(ValueError):
+    """Dominio de un solo uso: no sirve para sostener una cuenta."""
+
+
+def clave_email(email: str) -> str:
+    """Forma canónica de un correo, SOLO para detectar duplicados."""
+    email = (email or "").strip().lower()
+    if "@" not in email:
+        return email
+    usuario, _, dominio = email.rpartition("@")
+    if dominio in _DOMINIOS_MAS:
+        usuario = usuario.split("+", 1)[0]
+    if dominio in _DOMINIOS_PUNTO:
+        usuario = usuario.replace(".", "")
+    return f"{usuario}@{dominio}" if usuario else email
+
+
+def _rechazar_desechable(email: str) -> None:
+    dominio = (email or "").strip().lower().rpartition("@")[2]
+    if dominio in _DOMINIOS_DESECHABLES:
+        raise CorreoDesechable(
+            "Ese proveedor de correo es temporal. Usa un correo tuyo de verdad "
+            "para poder recuperar tu cuenta.")
+
+
+def _duplicado_canonico(data: dict[str, Any], email: str) -> Optional[str]:
+    """Devuelve el correo de la cuenta existente que es LA MISMA dirección."""
+    clave = clave_email(email)
+    for otro in (data.get("usuarios") or {}):
+        if otro != email and clave_email(otro) == clave:
+            return otro
+    return None
+
+
 def _validar_credenciales(email: str, password: str) -> str:
     email = (email or "").strip().lower()
     if not email or "@" not in email or len(email) > 254:
@@ -424,12 +496,19 @@ def registrar_con_password(email: str, password: str,
     if _bcrypt is None:
         raise RuntimeError("auth por contraseña no disponible (falta bcrypt en el servidor)")
     email = _validar_credenciales(email, password)
+    _rechazar_desechable(email)
     ahora = time.time()
     with _LOCK:
         data = _cargar()
         usuarios = data.setdefault("usuarios", {})
         if email in usuarios:
             raise ValueError("Ese correo ya tiene una cuenta. Inicia sesión.")
+        # Mismo buzón escrito distinto: no es una cuenta nueva, es un trial
+        # nuevo para la misma persona.
+        gemelo = _duplicado_canonico(data, email)
+        if gemelo:
+            raise ValueError("Ese correo ya tiene una cuenta (la creaste como "
+                             f"{gemelo}). Inicia sesión.")
         usuarios[email] = {
             "email": email,
             "creado_en": ahora,          # ← inicio del trial POR CUENTA (server-side)
@@ -645,6 +724,7 @@ def solicitar_registro_telefono(email: str, password: str, telefono: str) -> dic
     if _sms is None:
         raise RuntimeError("El envío de SMS no está disponible en el servidor")
     email = _validar_credenciales(email, password)    # valida formato y largo
+    _rechazar_desechable(email)
     tel = _sms.normalizar(telefono)
     codigo = f"{secrets.randbelow(1_000_000):06d}"
     ahora = time.time()
@@ -654,6 +734,12 @@ def solicitar_registro_telefono(email: str, password: str, telefono: str) -> dic
         _limpiar_expirados(data)
         if email in (data.get("usuarios") or {}):
             raise ValueError("Ese correo ya tiene una cuenta. Inicia sesión.")
+        gemelo = _duplicado_canonico(data, email)
+        if gemelo:
+            # Se comprueba aquí y no al confirmar: mandar un SMS para una cuenta
+            # que de todas formas no se va a crear es gastar un envío de balde.
+            raise ValueError("Ese correo ya tiene una cuenta (la creaste como "
+                             f"{gemelo}). Inicia sesión.")
         otro = _duenio_de_telefono(data, tel)
         if otro:
             # No se dice de QUIÉN es: eso convertiría el registro en un buscador
