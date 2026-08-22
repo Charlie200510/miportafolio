@@ -1176,10 +1176,23 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // En nativo, consulta el entitlement del SDK al arrancar: reconoce a un
-    // comprador ANÓNIMO que vuelve a abrir la app (el servidor no lo conoce).
+    /* EL CANDADO NO ESPERA A LA TIENDA. Antes esto era
+           refrescarSDKPremium().then(verificarAcceso, verificarAcceso)
+       y el resultado, medido en el simulador, era que la app se quedaba entre
+       15 y 25 segundos ABIERTA y usable sin cuenta antes de aparecer el candado:
+       RevenueCat tiene 10 s de timeout y por dentro consulta el estado de sesión
+       con otros 6 s. Nadie lo había visto porque en web esa rama no corre.
+
+       Es lo mismo que el candado dejando pasar por un error de red: la app queda
+       accesible mientras se resuelve algo que no debería mandar. Y si hay sesión
+       o no lo dice el SERVIDOR, no la tienda, así que la espera no aportaba nada
+       a esa decisión.
+
+       Ahora se decide de inmediato con lo que dice el servidor, y el entitlement
+       del SDK —que solo sirve para reconocer a un comprador ANÓNIMO que vuelve—
+       se consulta EN PARALELO; cuando llega, se vuelve a evaluar. */
+    verificarAcceso();
     if (esNativo()) refrescarSDKPremium().then(verificarAcceso, verificarAcceso);
-    else verificarAcceso();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') verificarAcceso();
