@@ -325,7 +325,21 @@ CORS(app,
     ],
     supports_credentials=True,
     expose_headers=["Authorization"],
-    allow_headers=["Content-Type", "Authorization"],
+    # X-MP-Dispositivo NO es opcional en esta lista. La app nativa la manda en
+    # cada llamada a /api/ (identifierForVendor, el eje de las cuotas de alta), y
+    # en nativo esas llamadas son CROSS-ORIGIN: la página vive en
+    # capacitor://localhost y el API en https://miportafolio.uk. Una cabecera
+    # personalizada que no esté aquí provoca un preflight que el navegador
+    # rechaza, y WebKit cancela la petición con un escueto "Load failed".
+    #
+    # Cuando faltaba, la app nativa se rompía a medias y de forma desconcertante:
+    # el puente nativo tarda un instante en entregar el IDFV, así que las
+    # primeras peticiones salían SIN la cabecera y funcionaban (la barra de
+    # precios cargaba), y todas las posteriores morían (el Periódico, y sobre
+    # todo /api/auth/estado). En la web nunca se reproduce, porque ahí API_BASE
+    # está vacío, la llamada es del mismo origen y no hay preflight: es un fallo
+    # que solo aparece corriendo la app de verdad.
+    allow_headers=["Content-Type", "Authorization", "X-MP-Dispositivo"],
 )
 
 # Límite de tamaño del body: frena DoS por payloads gigantes. 2 MB cubre de
