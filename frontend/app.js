@@ -3719,9 +3719,16 @@ const Periodico = (() => {
     // (y porque la dirección no debe depender de distinguir verde de rojo).
     // Ambos tonos pasan AA sobre las cinco superficies de MP_CATEGORIAS.
     const dirCls = t.dir > 0 ? 'mp-dir mp-alza' : (t.dir < 0 ? 'mp-dir mp-baja' : '');
+    /* En el feed la tarjeta ocupa casi toda la pantalla, así que el sumario va
+       en la CARA: sin él quedaba un titular flotando en medio de un vacío. En la
+       pila y en el modo lista el CSS lo oculta, porque ahí sí compite por el
+       espacio de la franja visible. */
+    const sumario = (clave === 'noticias' && t.resumen)
+      ? `<span class="mp-tarjeta-sumario">${escapeHtml(t.resumen)}</span>` : '';
     const cara = t.titular
       ? `<span class="mp-tarjeta-etq">${escapeHtml(t.etq || '')}</span>
          <span class="mp-tarjeta-titular">${escapeHtml(t.titular)}</span>
+         ${sumario}
          ${t.meta ? `<span class="mp-tarjeta-meta">${escapeHtml(t.meta)}</span>` : ''}`
       : `<span class="mp-tarjeta-etq">${escapeHtml(t.etq || '')}</span>
          <span class="mp-tarjeta-fila">
@@ -3776,7 +3783,13 @@ const Periodico = (() => {
     const tarjetas = (res && res.tarjetas) || [];
     let cuerpo;
     if (tarjetas.length) {
-      cuerpo = `<div class="mp-mazo" data-mazo="${m.clave}">
+      /* Noticias va en FEED, no en pila. En los otros cuatro mazos la tarjeta
+         lleva nombre + variación + gráfica y cabe en una franja, así que apilar
+         deja ver diez de un vistazo. Un titular no cabe: se partía en dos líneas
+         con puntos suspensivos y había que abrir la tarjeta para saber de qué
+         hablaba, que es lo contrario de hojear. */
+      const feed = m.clave === 'noticias' ? ' mp-mazo--feed' : '';
+      cuerpo = `<div class="mp-mazo${feed}" data-mazo="${m.clave}">
                   ${tarjetas.map((t, i) => _tarjetaHTML(t, m.clave, i)).join('')}
                 </div>`;
     } else {
@@ -3835,11 +3848,36 @@ const Periodico = (() => {
      línea que había puesto el modo apilado. */
   const _modoLista = () => window.matchMedia('(min-width: 1024px)').matches;
 
+  /* Alto del feed = lo que queda de pantalla bajo la cabecera.
+     No se puede fijar en CSS: encima del mazo hay logo, franja de prueba,
+     cintilla de precios, pestañas, titular y píldoras —unos 395px que además
+     cambian de alto según el dispositivo y según si hay franja de prueba—. Con
+     un valor fijo la tarjeta se salía por abajo y había que hacer scroll de
+     página para leerla entera, que es justo lo que este feed venía a evitar.
+
+     Se mide solo con la página arriba del todo: si el usuario ya bajó, el
+     `top` es más pequeño y saldría un alto inflado. */
+  function _ajustarFeed() {
+    const anchas = window.matchMedia('(min-width: 1024px)').matches;
+    document.querySelectorAll('.mp-mazo--feed').forEach(m => {
+      if (anchas) { m.style.removeProperty('--feed-alto'); return; }
+      if (window.scrollY > 40) return;
+      const top = m.getBoundingClientRect().top;
+      if (top <= 0) return;
+      const alto = Math.max(300, Math.min(620, Math.round(window.innerHeight - top - 12)));
+      m.style.setProperty('--feed-alto', alto + 'px');
+    });
+  }
+
   function _posicionar(mazo, animar) {
     const tarjetas = [...mazo.querySelectorAll('.mp-tarjeta')];
     if (!tarjetas.length) return 0;
 
-    if (_modoLista()) {
+    /* Modo lista (pantalla ancha) y modo FEED (el mazo de noticias) comparten
+       la misma salida: las tarjetas vuelven al flujo normal y de colocarlas se
+       encarga el CSS. Esta función solo manda cuando hay pila que apilar; si
+       dejara aquí sus translateY, pelearían contra el scroll con anclaje. */
+    if (_modoLista() || mazo.classList.contains('mp-mazo--feed')) {
       tarjetas.forEach((el, i) => {
         el.style.transform = '';
         el.style.zIndex = String(10 + i);   // el orden sigue importando al abrir
@@ -3892,6 +3930,7 @@ const Periodico = (() => {
   (function _vigilarAncho() {
     const mq = window.matchMedia('(min-width: 1024px)');
     const recolocar = () => {
+      _ajustarFeed();
       document.querySelectorAll('.mp-mazo').forEach(m => _posicionar(m, false));
       _reajustarPista();
     };
@@ -3948,6 +3987,10 @@ const Periodico = (() => {
     const clave = mazo.dataset.mazo;
     const tarjetas = [...mazo.querySelectorAll('.mp-tarjeta')];
     state.abierta[clave] = idx;
+    /* En el feed, el anclaje del scroll estorba mientras hay una tarjeta
+       abierta: el contenido crece y el scroll forcejea por volver al punto de
+       anclaje justo cuando se está leyendo. Se suelta hasta que se cierre. */
+    mazo.classList.toggle('hay-abierta', idx != null);
 
     tarjetas.forEach((el, i) => {
       const abierta = (i === idx);
@@ -4271,6 +4314,7 @@ const Periodico = (() => {
     MAZOS.forEach((m, i) => { state.datos[m.clave] = resultados[i].tarjetas || []; });
 
     pista.innerHTML = MAZOS.map((m, i) => _paneHTML(m, resultados[i])).join('');
+    _ajustarFeed();   // antes de colocar: el feed necesita su alto ya puesto
     pista.querySelectorAll('.mp-mazo').forEach(mazo => {
       _posicionar(mazo, false);
       _bindMazo(mazo);
@@ -4396,12 +4440,14 @@ const Periodico = (() => {
     setTimeout(_medirTopbar, 600);
     setTimeout(_medirTopbar, 2000);
     window.addEventListener('resize', () => {
+      _ajustarFeed();
       document.querySelectorAll('.mp-mazo').forEach(m => _posicionar(m, false));
       _reajustarPista();
     });
     window.addEventListener('orientationchange', () => {
       setTimeout(() => {
-        document.querySelectorAll('.mp-mazo').forEach(m => _posicionar(m, false));
+        _ajustarFeed();
+      document.querySelectorAll('.mp-mazo').forEach(m => _posicionar(m, false));
         _reajustarPista();
       }, 260);
     });

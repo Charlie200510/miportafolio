@@ -253,6 +253,50 @@
   // Mi Portafolio NO ejecuta trades (no es casa de bolsa CNBV).
   // Este modal muestra brokers MX/US compatibles con el ticker,
   // sus comisiones y un botón "Abrir broker" con la URL.
+
+  /* SELLO DE CADA CASA DE BOLSA — monograma, no logotipo.
+     Aquí había un emoji de círculo de color (🟢🔵🟡…) por broker, que es lo que
+     se veía como una fila de puntos de colores en vez de una comparativa seria.
+
+     Y NO se ponen los logotipos reales, a propósito. Dos motivos distintos, y
+     ninguno vale el riesgo por un icono de 38 píxeles:
+       · el logotipo es obra con derechos de autor de cada casa, y meterlo en el
+         binario es copiarlo, no citarlo;
+       · colocarlo junto a una tabla que las ordena de más barata a más cara se
+         puede leer como patrocinio o afiliación, que es justo lo que no somos.
+
+     El monograma resuelve las dos cosas: identifica de un vistazo, no reproduce
+     ninguna marca y —al usar la tipografía y la paleta de la propia app— se ve
+     diseñado por la misma mano que el resto, en vez de pegado de fuera.
+
+     Los tonos salen del mismo sistema que MP_CATEGORIAS del Periódico: fondo
+     cromático, tinta del mismo family de color y borde un punto más oscuro.
+     Cada casa tiene el suyo FIJO, para que se reconozca por color entre visitas. */
+  const _TONO_BROKER = {
+    gbm:      { sup: '#A8DCB8', tinta: '#0E4526', borde: '#8BCB9F' },
+    kuspit:   { sup: '#AECDF2', tinta: '#123457', borde: '#8FB8E8' },
+    hapi:     { sup: '#F6D28C', tinta: '#573305', borde: '#E8BE6B' },
+    bursanet: { sup: '#F3B6B0', tinta: '#5C1A14', borde: '#E39A93' },
+    actinver: { sup: '#C9C2EC', tinta: '#2E2557', borde: '#ADA4DC' },
+    vector:   { sup: '#9FD5D8', tinta: '#0C4145', borde: '#82C3C7' },
+    schwab:   { sup: '#BFD0E8', tinta: '#1B3556', borde: '#A3B9D9' },
+    ibkr:     { sup: '#D9D3C4', tinta: '#3D3626', borde: '#C4BCA8' },
+  };
+  const _TONO_NEUTRO = { sup: '#E4E6EB', tinta: '#3A3F49', borde: '#CFD3DA' };
+
+  function _selloBroker(b) {
+    const t = _TONO_BROKER[b.id] || _TONO_NEUTRO;
+    // Si el backend no mandó monograma (versión vieja en caché), se deriva del
+    // nombre en vez de dejar un hueco.
+    const m = (b.monograma
+               || String(b.broker || '').replace(/[^A-Za-zÁÉÍÓÚÑ]/g, '').slice(0, 2)
+               || '·').toUpperCase();
+    return `<span aria-hidden="true" style="flex-shrink:0;width:38px;height:38px;
+              display:inline-flex;align-items:center;justify-content:center;
+              background:${t.sup};color:${t.tinta};border:1px solid ${t.borde};
+              border-radius:10px;font-family:var(--ff-sans);font-weight:700;
+              font-size:${m.length > 2 ? '11px' : '13px'};letter-spacing:.02em;">${m}</span>`;
+  }
   // Wire-up del card "Comprar acciones" en vista Transacciones
   function _wireUpCompraSection() {
     const inp = document.getElementById('comprar-ticker-input');
@@ -361,7 +405,7 @@
                        minAp > 0        ? `$${minAp} MXN` : 'Sin mínimo';
       return `
         <div style="display:flex;gap:12px;align-items:center;padding:14px;background:${esTop ? 'rgba(156,93,18,0.06)' : MP_COLOR.supPanel};border:1px solid ${esTop ? 'rgba(156,93,18,0.3)' : MP_COLOR.regla};border-radius:var(--radio-tarjeta);margin-bottom:8px;">
-          <span style="font-size:22px;flex-shrink:0;">${b.emoji || '<span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9.5 12 4l9 5.5"/><path d="M5 9.5V19M9.5 9.5V19M14.5 9.5V19M19 9.5V19"/><path d="M2.5 19h19"/></svg></span>'}</span>
+            ${_selloBroker(b)}
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;">
               <p style="margin:0;font-weight:600;color:var(--tinta-1);font-size:14px;">${b.broker}</p>
@@ -396,6 +440,11 @@
       <div style="padding:12px;background:rgba(156,93,18,0.08);border:1px solid rgba(156,93,18,0.25);border-radius:var(--radio-tarjeta);">
         <p style="margin:0;font-size:11px;color:var(--sello);line-height:1.55;">
           <span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M8 21h8"/><path d="M5 7 2 14h6z"/><path d="M19 7l-3 7h6z"/></svg></span> <strong>Mi Portafolio no ejecuta trades</strong> ni custodia tu dinero. Al picar "Abrir" vas al sitio/app de tu broker — ahí inicias sesión y ejecutas la compra tú mismo. No somos casa de bolsa registrada ante CNBV.
+        </p>
+        <p style="margin:8px 0 0;font-size:10px;color:var(--tinta-4);line-height:1.5;">
+          No tenemos relación comercial ni acuerdo de referidos con ninguna de estas
+          casas de bolsa: el orden lo decide la comisión estimada, nada más. Los nombres
+          son marcas de sus respectivos titulares y se usan solo para identificarlas.
         </p>
       </div>
       <details style="margin-top:12px;">

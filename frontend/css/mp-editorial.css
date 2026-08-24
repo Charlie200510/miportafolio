@@ -1825,3 +1825,119 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
   .mp-tarjeta, .mp-mazo, .mp-tarjeta-detalle { transition: none !important; }
   .mp-mazos-pista { scroll-behavior: auto; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FEED DE NOTICIAS — una tarjeta a la vez, con el titular COMPLETO
+   ═══════════════════════════════════════════════════════════════════════════
+   El mazo de noticias dejó de apilarse. La pila funciona para los otros cuatro
+   —nombre, variación y gráfica caben en una franja de 96px— pero un titular no:
+   se recortaba a dos líneas con puntos suspensivos y había que abrir la tarjeta
+   para saber de qué hablaba. Hojear titulares es justo lo que no se podía hacer.
+
+   Ahora es un carrusel vertical con anclaje: cada gesto pasa a la siguiente
+   nota, entera, y se sigue abriendo con un toque como antes.
+
+   La pieza que hace el trabajo es `scroll-snap-stop: always`. Sin ella, un
+   deslizamiento rápido se salta tres o cuatro tarjetas y el usuario pierde el
+   hilo; con ella el scroll SIEMPRE se detiene en la siguiente, que es lo que
+   convierte esto en "pasar notas" en vez de "hacer scroll".
+
+   Solo aplica en móvil: arriba de 1024px `_modoLista()` ya convierte todos los
+   mazos en una lista de tarjetas sueltas, donde no hay nada que recortar.       */
+@media (max-width: 1023.98px) {
+  .mp-mazo--feed {
+    /* --feed-asomo: cuánto se ve de la siguiente. No es decorativo: sin ese
+       borde asomando, nada indica que haya más notas debajo. */
+    --feed-asomo: 34px;
+    --feed-alto: min(68svh, 520px);
+
+    position: static;          /* sale del apilado absoluto de .mp-mazo */
+    height: var(--feed-alto);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+    /* Que el rebote del final no arrastre el scroll de la página detrás. */
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .mp-mazo--feed::-webkit-scrollbar { display: none; }
+
+  .mp-mazo--feed .mp-tarjeta {
+    position: relative;                 /* deja de estar posicionada */
+    transform: none !important;         /* gana a los translateY en línea */
+    height: auto;
+    min-height: calc(var(--feed-alto) - var(--feed-asomo));
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    margin-bottom: var(--paso-3);
+    /* Tarjeta suelta sobre el papel: aquí no hay pila que insinuar, así que la
+       sombra ascendente que separaba una tarjeta de la de encima sobra. */
+    box-shadow:
+      inset 0 0 0 1px var(--cat-borde, var(--regla)),
+      0 1px 2px rgba(20, 22, 27, .08),
+      0 10px 22px -16px rgba(20, 22, 27, .34);
+  }
+  /* La última necesita colchón: sin él no puede llegar a su posición de anclaje
+     y queda imposible de centrar. */
+  .mp-mazo--feed .mp-tarjeta:last-of-type { margin-bottom: var(--feed-asomo); }
+
+  .mp-mazo--feed .mp-tarjeta-cara {
+    /* Los !important no son pereza: ux_helpers.js inyecta en móvil un
+       `min-height: 44px !important` a TODOS los botones (área táctil mínima) y
+       la cara de la tarjeta es un botón. Sin esto la cara medía 44px, el
+       `margin-top:auto` de la meta no tenía contra qué empujar y quedaba un
+       hueco muerto de 270px bajo el texto. Es el mismo motivo por el que la
+       versión apilada usa `height: var(--tj-cara) !important`. */
+    height: auto !important;
+    min-height: calc(var(--feed-alto) - var(--feed-asomo)) !important;
+    justify-content: flex-start;
+    gap: var(--paso-2);
+  }
+
+  /* EL ARREGLO: titular completo. Se anula el recorte a dos líneas. */
+  .mp-mazo--feed .mp-tarjeta-titular {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    font-size: clamp(21px, 5.6vw, 27px);
+    line-height: 1.18;
+  }
+
+  /* Sumario: solo existe en el feed, donde hay sitio de sobra. */
+  .mp-mazo--feed .mp-tarjeta-sumario {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-family: var(--ff-sans) !important;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--cat-suave, var(--tinta-3));
+    margin-top: var(--paso-2);
+  }
+  /* El detalle cerrado tiene que COLAPSAR de verdad. En la pila bastaba con
+     opacity:0 porque la tarjeta tenía alto fijo y lo recortaba; aquí el alto lo
+     pone el contenido, así que un detalle invisible pero presente hinchaba cada
+     tarjeta 200px y dejaba un vacío de color bajo el texto. Es exactamente el
+     mismo fallo que ya se corrigió para el modo lista de escritorio. */
+  .mp-mazo--feed .mp-tarjeta:not(.abierta) .mp-tarjeta-detalle { display: none; }
+
+  /* La meta se va al fondo de la tarjeta, como en la pila. `!important` por
+     la misma razón que arriba: la hoja móvil de ux_helpers.js pisa márgenes. */
+  .mp-mazo--feed .mp-tarjeta-meta { margin-top: auto !important; }
+
+  /* Con una tarjeta abierta el anclaje estorba: el contenido crece y el scroll
+     forcejea por volver al punto de anclaje mientras se lee. Se suelta. */
+  .mp-mazo--feed.hay-abierta { scroll-snap-type: none; }
+
+  /* Fuera del feed el sumario no debe aparecer: en la pila robaría la franja
+     visible al titular, que es lo único que importa ahí. */
+  .mp-mazo:not(.mp-mazo--feed) .mp-tarjeta-sumario { display: none; }
+}
+
+/* En pantalla ancha el sumario tampoco va en la cara: el modo lista ya enseña
+   las tarjetas completas y el detalle trae su propio resumen. */
+@media (min-width: 1024px) {
+  .mp-tarjeta-sumario { display: none; }
+}

@@ -12,7 +12,7 @@ BROKERS = [
     {
         "id": "gbm",
         "nombre": "GBM Plus",
-        "logo_emoji": "🟢",
+        "monograma": "GBM",
         "tipo": ["Acciones MX", "Acciones US", "ETFs", "FIBRAS", "Bonos", "Crypto"],
         "minimo_apertura_mxn": 100,
         "comision_mx_pct":   0.25,    # % por trade en BMV
@@ -29,7 +29,7 @@ BROKERS = [
     {
         "id": "kuspit",
         "nombre": "Kuspit",
-        "logo_emoji": "🔵",
+        "monograma": "KS",
         "tipo": ["Acciones MX", "Acciones US", "ETFs", "FIBRAS", "Bonos"],
         "minimo_apertura_mxn": 100,
         "comision_mx_pct":   0.25,
@@ -45,7 +45,7 @@ BROKERS = [
     {
         "id": "hapi",
         "nombre": "Hapi",
-        "logo_emoji": "🟡",
+        "monograma": "HA",
         "tipo": ["Acciones US", "ETFs US", "Crypto"],
         "minimo_apertura_mxn": 0,
         "comision_mx_pct":   None,   # no acceso BMV
@@ -63,7 +63,7 @@ BROKERS = [
     {
         "id": "bursanet",
         "nombre": "Bursanet (Banorte Casa de Bolsa)",
-        "logo_emoji": "🔴",
+        "monograma": "BN",
         "tipo": ["Acciones MX", "Acciones US", "ETFs", "FIBRAS", "Bonos"],
         "minimo_apertura_mxn": 0,
         "comision_mx_pct":   0.25,
@@ -79,7 +79,7 @@ BROKERS = [
     {
         "id": "actinver",
         "nombre": "Actinver",
-        "logo_emoji": "🟠",
+        "monograma": "AC",
         "tipo": ["Acciones MX", "Acciones US", "ETFs", "FIBRAS", "Bonos", "CETES", "Fondos"],
         "minimo_apertura_mxn": 100000,
         "comision_mx_pct":   0.30,
@@ -96,7 +96,7 @@ BROKERS = [
     {
         "id": "vector",
         "nombre": "Vector Casa de Bolsa",
-        "logo_emoji": "🟣",
+        "monograma": "VC",
         "tipo": ["Acciones MX", "Acciones US", "ETFs", "FIBRAS", "Bonos", "Fondos", "Derivados"],
         "minimo_apertura_mxn": 50000,
         "comision_mx_pct":   0.30,
@@ -113,7 +113,7 @@ BROKERS = [
     {
         "id": "schwab",
         "nombre": "Charles Schwab International",
-        "logo_emoji": "🇺🇸",
+        "monograma": "CS",
         "tipo": ["Acciones US", "ETFs US", "Bonos US", "Opciones", "Mutual Funds"],
         "minimo_apertura_mxn": 25000 * 17,  # 25K USD ≈ 425k MXN
         "comision_mx_pct":   None,
@@ -132,7 +132,7 @@ BROKERS = [
     {
         "id": "ibkr",
         "nombre": "Interactive Brokers (IBKR)",
-        "logo_emoji": "⚡",
+        "monograma": "IB",
         "tipo": ["Acciones globales", "ETFs", "Bonos", "Opciones", "Futuros", "Forex", "Crypto"],
         "minimo_apertura_mxn": 0,
         "comision_mx_pct":   None,
@@ -219,7 +219,7 @@ def comparar_para_ticker(ticker: str, monto_mxn: float = 10000.0) -> list[dict]:
             out.append({
                 "broker": b["nombre"],
                 "id":     b["id"],
-                "emoji":  b["logo_emoji"],
+                "monograma": b["monograma"],
                 "comision_estimada_mxn": round(comision_mxn, 2),
                 "monto_neto_mxn":        round(monto_mxn - comision_mxn, 2),
                 "nota":                  nota,
