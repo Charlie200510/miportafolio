@@ -278,31 +278,74 @@ def _calcular(ticker: str) -> Dict[str, Any]:
         return _faltan_datos("un costo de capital plausible (salió demasiado bajo)")
 
     nopat = ebit * (1.0 - tc)
-    valor_sin_deuda = nopat / r0
     escudo = tc * deuda
+    equity_mercado = acciones * precio
+
+    def _precio(g: float, r: float) -> Optional[float]:
+        """Precio por acción bajo un par de supuestos (crecimiento, costo de capital).
+
+        Es el mismo puente de MM, pero con la perpetuidad de Gordon en vez de la
+        plana: V_U = NOPAT·(1+g)/(r − g).
+        """
+        if r - g < 0.005:
+            # La perpetuidad diverge cuando el crecimiento alcanza al costo de
+            # capital. No es un número grande: es que la fórmula deja de tener
+            # sentido, y enseñar "$18,400" ahí sería mentir con precisión.
+            return None
+        vu = nopat * (1.0 + g) / (r - g)
+        eq = vu + escudo - deuda + caja
+        return (eq / acciones) if eq > 0 else None
+
+    # ── Puente Modigliani-Miller (caso base, SIN crecimiento) ──────────────
+    # Es el modelo tal cual: V_L = V_U + Tc·D, y de ahí al accionista. Se enseña
+    # completo porque el puente ES el argumento; el precio suelto sería un
+    # número sin razonamiento detrás.
+    valor_sin_deuda = nopat / r0
     valor_empresa = valor_sin_deuda + escudo
-    equity = valor_empresa - deuda + caja
-    if equity <= 0:
+    equity_mm = valor_empresa - deuda + caja
+    if equity_mm <= 0:
         return _no_aplica(
             "Con estos supuestos la deuda se come el valor de la empresa: el "
             "modelo no deja valor para el accionista y el precio implícito no "
             "sería interpretable."
         )
-    precio_mm = equity / acciones
+    precio_mm = equity_mm / acciones
 
-    # Crecimiento perpetuo que justificaría el precio de hoy.
-    #   E = NOPAT(1+g)/(r0-g) + Tc·D − D + Caja   →   despejar g
+    # ── Supuestos implícitos en el precio de HOY ───────────────────────────
+    # Dos formas de leer el mismo precio, cada una fijando una variable:
+    #   · ¿qué crecimiento hay que suponer, si el costo de capital es el del CAPM?
+    #   · ¿qué retorno está exigiendo el mercado, si la empresa no creciera nada?
     objetivo = equity_mercado - caja + deuda - escudo
     g_implicita = None
     if (objetivo + nopat) != 0:
         g = (objetivo * r0 - nopat) / (objetivo + nopat)
-        # Solo tiene sentido por debajo del costo de capital: si g ≥ r0 la
-        # perpetuidad diverge y el número deja de significar nada.
         if g < r0:
             g_implicita = g
+    r0_implicito = (nopat / objetivo) if objetivo > 0 else None
 
-    # Valor en libros, como REFERENCIA y bien calculado: activos menos TODOS los
-    # pasivos, no solo la deuda. Es el piso contable, no un precio objetivo.
+    # ── Tabla de sensibilidad ──────────────────────────────────────────────
+    # Centrada en el par que reproduce el precio de mercado, para que la celda
+    # del medio SEA el precio de hoy. Así la tabla no discute con el mercado:
+    # enseña qué tan frágil es ese precio ante un punto de más o de menos.
+    g_centro = g_implicita if g_implicita is not None else 0.0
+    PASO = 0.01                      # un punto porcentual por escalón
+    eje_g  = [g_centro + k * PASO for k in (-2, -1, 0, 1, 2)]
+    eje_r0 = [r0 + k * PASO for k in (-2, -1, 0, 1, 2)]
+    celdas = [[_precio(gg, rr) for rr in eje_r0] for gg in eje_g]
+
+    # Cuánto se mueve el precio con UN punto de cambio, para poder decirlo en
+    # palabras en vez de obligar a leer la tabla.
+    centro = celdas[2][2]
+    sens_g  = None
+    sens_r0 = None
+    if centro:
+        if celdas[3][2]:
+            sens_g = celdas[3][2] / centro - 1.0
+        if celdas[2][3]:
+            sens_r0 = celdas[2][3] / centro - 1.0
+
+    # Valor en libros como referencia: activos menos TODOS los pasivos, no solo
+    # la deuda. Es el piso contable, no un precio objetivo.
     activos = _fila(bal, _FILAS_ACTIVOS)
     pasivos = _fila(bal, _FILAS_PASIVOS)
     libros_por_accion = None
@@ -310,25 +353,25 @@ def _calcular(ticker: str) -> Dict[str, Any]:
         libros_por_accion = (activos - pasivos) / acciones
 
     moneda = info.get("currency") or ("MXN" if t.endswith(".MX") else "USD")
-    dif = (precio_mm / precio - 1.0) if precio else None
 
     return {
         "ok": True,
         "aplica": True,
         "ticker": t,
         "moneda": moneda,
-        "entradas": {
+        "precio_mercado": precio,
+        # Lo que NO es supuesto: sale de los estados financieros.
+        "observado": {
             "ebit": ebit,
+            "nopat": nopat,
             "tasa_impuestos": tc,
             "deuda": deuda,
             "caja": caja,
             "acciones": acciones,
-            "beta_apalancada": round(beta_l, 3),
-            "beta_desapalancada": round(beta_u, 3),
-            "tasa_libre_riesgo": rf,
-            "prima_mercado": prima,
-            "costo_capital_r0": r0,
+            "escudo_fiscal": escudo,
+            "capitalizacion": equity_mercado,
         },
+        # El modelo tal cual: el puente completo hasta el precio MM.
         "puente": {
             "nopat": nopat,
             "valor_sin_deuda": valor_sin_deuda,
@@ -336,48 +379,81 @@ def _calcular(ticker: str) -> Dict[str, Any]:
             "valor_empresa": valor_empresa,
             "menos_deuda": deuda,
             "mas_caja": caja,
-            "equity": equity,
+            "equity": equity_mm,
             "precio_mm": precio_mm,
         },
         "mercado": {
             "precio": precio,
-            "diferencia_pct": dif,
+            "diferencia_pct": (precio_mm / precio - 1.0) if precio else None,
             "equity_mercado": equity_mercado,
         },
-        "crecimiento_implicito": g_implicita,
+        # Lo que SÍ es supuesto, y qué valor implica el precio de hoy.
+        "supuestos": {
+            "costo_capital_base": r0,
+            "beta_apalancada": round(beta_l, 3),
+            "beta_desapalancada": round(beta_u, 3),
+            "tasa_libre_riesgo": rf,
+            "prima_mercado": prima,
+            "crecimiento_implicito": g_implicita,
+            "costo_capital_implicito_sin_crecimiento": r0_implicito,
+        },
+        "sensibilidad": {
+            "eje_crecimiento": eje_g,
+            "eje_costo_capital": eje_r0,
+            "celdas": celdas,
+            "centro": {"fila": 2, "columna": 2},
+            "precio_centro": centro,
+            "cambio_por_punto_de_crecimiento": sens_g,
+            "cambio_por_punto_de_costo_capital": sens_r0,
+        },
         "valor_libros_por_accion": libros_por_accion,
-        "lectura": _lectura(precio_mm, precio, g_implicita, r0),
-        "supuestos": [
-            "Perpetuidad SIN crecimiento: supone que la empresa gana lo mismo "
-            "para siempre. Por eso el precio MM es un piso, no un precio justo.",
-            f"Costo de capital desapalancado {r0:.1%} = tasa libre de riesgo "
-            f"{rf:.1%} + beta desapalancada {beta_u:.2f} × prima {prima:.1%}.",
-            f"Tasa de impuestos efectiva {tc:.1%}, tomada del último ejercicio "
-            f"reportado y acotada entre {_TC_MIN:.0%} y {_TC_MAX:.0%}.",
-            "El escudo fiscal supone que la deuda se mantiene indefinidamente.",
+        "lectura": _lectura(precio, g_implicita, r0_implicito, r0, sens_g),
+        "notas": [
+            "El precio de mercado no se discute: se toma como dato y se despeja "
+            "qué supuestos lo justifican.",
+            f"Costo de capital base {r0:.1%} = tasa libre de riesgo {rf:.1%} + "
+            f"beta desapalancada {beta_u:.2f} × prima de mercado {prima:.1%}.",
+            f"Tasa efectiva de impuestos {tc:.1%}, del último ejercicio reportado "
+            f"y acotada entre {_TC_MIN:.0%} y {_TC_MAX:.0%}.",
+            "El escudo fiscal supone que la deuda se mantiene indefinidamente "
+            "(Modigliani-Miller con impuestos: V_L = V_U + Tc·D).",
+            "Las celdas vacías son combinaciones donde el crecimiento alcanza al "
+            "costo de capital y la fórmula deja de tener sentido.",
         ],
     }
 
 
-def _lectura(precio_mm: float, precio: float, g: Optional[float], r0: float) -> str:
-    """Una frase que diga qué significa, no que repita los números."""
-    if not precio:
-        return ""
-    if g is None:
-        return ("El precio de mercado no se puede explicar con un crecimiento "
-                "perpetuo razonable dentro de este modelo.")
-    if precio_mm >= precio:
-        return (f"Sin suponer ningún crecimiento, el modelo ya justifica un precio "
-                f"por encima del de mercado. El mercado le está pidiendo un "
-                f"crecimiento perpetuo de apenas {g:.1%}.")
-    if g <= 0.02:
-        return (f"El mercado descuenta un crecimiento perpetuo de {g:.1%}, muy bajo: "
-                f"basta con que la empresa apenas siga el paso de la inflación para "
-                f"justificar el precio de hoy.")
-    if g <= 0.05:
-        return (f"El precio de hoy implica un crecimiento perpetuo de {g:.1%}. Es una "
-                f"expectativa moderada: exigente para una empresa madura, cómoda "
-                f"para una que aún crece.")
-    return (f"El precio de hoy implica un crecimiento perpetuo de {g:.1%}, sostenido "
-            f"para siempre. Es una expectativa alta: la pregunta no es si la acción "
-            f"está cara, sino si es creíble crecer eso indefinidamente.")
+def _lectura(precio: float, g: Optional[float], r0_impl: Optional[float],
+             r0: float, sens_g: Optional[float]) -> str:
+    """Una frase sobre QUÉ hay que creer para pagar el precio de hoy."""
+    partes = []
+    if g is not None:
+        if g <= 0:
+            partes.append(
+                f"Para justificar el precio de hoy no hace falta suponer ningún "
+                f"crecimiento: al precio actual el mercado descuenta {g:.1%}, es "
+                f"decir que la empresa se encoja.")
+        elif g <= 0.02:
+            partes.append(
+                f"Basta con suponer que la empresa crece {g:.1%} para siempre —poco "
+                f"más que seguirle el paso a la inflación— para justificar el precio "
+                f"de hoy.")
+        elif g <= 0.05:
+            partes.append(
+                f"El precio de hoy exige creer en un crecimiento perpetuo de {g:.1%}: "
+                f"exigente para una empresa madura, razonable para una que aún crece.")
+        else:
+            partes.append(
+                f"El precio de hoy exige creer en un crecimiento perpetuo de {g:.1%}, "
+                f"sostenido para siempre. La pregunta no es si la acción está cara, "
+                f"sino si ese ritmo es creíble sin fecha de caducidad.")
+    if r0_impl is not None:
+        partes.append(
+            f"Visto al revés: si la empresa no creciera nada, pagar este precio "
+            f"equivale a exigirle un retorno de {r0_impl:.1%} anual "
+            f"(el CAPM le pide {r0:.1%}).")
+    if sens_g:
+        partes.append(
+            f"Es sensible: un punto porcentual más de crecimiento mueve el precio "
+            f"{sens_g:+.0%}.")
+    return " ".join(partes)

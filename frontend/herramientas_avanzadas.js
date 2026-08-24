@@ -1150,61 +1150,125 @@
 
   function _renderMM(d) {
     const mon = d.moneda || 'USD';
-    const p = d.puente, e = d.entradas, m = d.mercado;
-    const fila = (etq, val, nota, fuerte) => `
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;${fuerte ? 'border-top:1px solid var(--regla);margin-top:4px;padding-top:10px;' : ''}">
-        <span style="font-size:${fuerte ? '13px' : '12px'};color:var(--tinta-${fuerte ? '1' : '3'});${fuerte ? 'font-weight:600;' : ''}">${etq}${nota ? `<span style="color:var(--tinta-4);font-weight:400;"> · ${nota}</span>` : ''}</span>
-        <span class="tabular" style="font-size:${fuerte ? '14px' : '12.5px'};font-weight:${fuerte ? '700' : '600'};color:var(--tinta-1);white-space:nowrap;">${val}</span>
+    const p = d.puente, o = d.observado, sup = d.supuestos, sen = d.sensibilidad, m = d.mercado;
+
+    /* ── 1. QUÉ HAY QUE CREER PARA PAGAR EL PRECIO DE HOY ──────────────────
+       Va primero a propósito. El precio MM solo (abajo) invita a compararlo con
+       el mercado y concluir "está cara", cuando la diferencia no mide carestía:
+       mide el crecimiento que el modelo base no supone. Leer primero el supuesto
+       implícito cambia la pregunta a una que sí se puede juzgar. */
+    const g = sup.crecimiento_implicito;
+    const r0i = sup.costo_capital_implicito_sin_crecimiento;
+    const dosCajas = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        ${g == null ? '' : `
+        <div style="flex:1;min-width:150px;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:13px;">
+          <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--sello);">Crecimiento implícito</p>
+          <p class="tabular" style="margin:5px 0 0;font-size:24px;font-weight:800;color:var(--tinta-1);letter-spacing:-.02em;">${_mmPct(g, 1)}</p>
+          <p style="margin:2px 0 0;font-size:11px;color:var(--tinta-3);line-height:1.45;">perpetuo, con el costo de capital del CAPM (${_mmPct(sup.costo_capital_base)})</p>
+        </div>`}
+        ${r0i == null ? '' : `
+        <div style="flex:1;min-width:150px;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:13px;">
+          <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--sello);">Retorno implícito</p>
+          <p class="tabular" style="margin:5px 0 0;font-size:24px;font-weight:800;color:var(--tinta-1);letter-spacing:-.02em;">${_mmPct(r0i, 1)}</p>
+          <p style="margin:2px 0 0;font-size:11px;color:var(--tinta-3);line-height:1.45;">anual, si la empresa no creciera nada</p>
+        </div>`}
       </div>`;
 
+    /* ── 2. TABLA DE SENSIBILIDAD ──────────────────────────────────────────
+       Centrada en el par que reproduce el precio de mercado: la celda del medio
+       ES el precio de hoy. Así la tabla no discute con el mercado, enseña qué
+       tan frágil es ese precio ante un punto de más o de menos. */
+    let tabla = '';
+    if (sen && sen.celdas && sen.celdas.length) {
+      const pm = m.precio;
+      const th = (txt) => `<th style="padding:5px 6px;font-size:10.5px;font-weight:600;color:var(--tinta-4);text-align:right;white-space:nowrap;">${txt}</th>`;
+      const filas = sen.celdas.map((fila, i) => {
+        const celdas = fila.map((v, j) => {
+          const centro = (i === sen.centro.fila && j === sen.centro.columna);
+          if (v == null) {
+            return `<td style="padding:5px 6px;text-align:right;font-size:11px;color:var(--tinta-4);">—</td>`;
+          }
+          // Color por distancia contra el precio de mercado: verde si el supuesto
+          // daría MÁS de lo que cuesta hoy, rojo si menos.
+          const rel = pm ? (v / pm - 1) : 0;
+          const col = Math.abs(rel) < 0.05 ? 'var(--tinta-2)' : (rel > 0 ? 'var(--alza)' : 'var(--baja)');
+          return `<td class="tabular" style="padding:5px 6px;text-align:right;font-size:11.5px;font-weight:${centro ? '800' : '600'};color:${centro ? 'var(--tinta-1)' : col};${centro ? 'background:var(--sup-panel);outline:1.5px solid var(--sello);border-radius:6px;' : ''}">${_mmMoneda(v, mon)}</td>`;
+        }).join('');
+        return `<tr>${th(_mmPct(sen.eje_crecimiento[i], 1))}${celdas}</tr>`;
+      }).join('');
+      tabla = `
+        <div style="margin-top:14px;">
+          <p style="margin:0 0 2px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta-4);">Si los supuestos cambiaran</p>
+          <p style="margin:0 0 8px;font-size:11px;color:var(--tinta-3);line-height:1.45;">Precio por acción. La celda marcada es el precio de hoy; las columnas mueven el costo de capital y las filas el crecimiento, de punto en punto.</p>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <table style="border-collapse:separate;border-spacing:2px;width:100%;min-width:330px;">
+              <thead><tr>${th('crec. \\ costo')}${sen.eje_costo_capital.map(c => th(_mmPct(c, 1))).join('')}</tr></thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    /* ── 3. EL PUENTE MM, DEBAJO ───────────────────────────────────────────
+       El modelo tal cual, con crecimiento cero. Es el ancla del que salen los
+       números de arriba, así que se enseña completo y no solo el precio. */
+    const fila = (etq, val, nota, fuerte) => `
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;${fuerte ? 'border-top:1px solid var(--regla);margin-top:3px;padding-top:9px;' : ''}">
+        <span style="font-size:${fuerte ? '12.5px' : '11.5px'};color:var(--tinta-${fuerte ? '1' : '3'});${fuerte ? 'font-weight:600;' : ''}">${etq}${nota ? `<span style="color:var(--tinta-4);font-weight:400;"> · ${nota}</span>` : ''}</span>
+        <span class="tabular" style="font-size:${fuerte ? '13px' : '12px'};font-weight:${fuerte ? '700' : '600'};color:var(--tinta-1);white-space:nowrap;">${val}</span>
+      </div>`;
     const dif = m.diferencia_pct;
     const colorDif = dif == null ? 'var(--tinta-3)' : (dif >= 0 ? 'var(--alza)' : 'var(--baja)');
-
-    const g = d.crecimiento_implicito;
-    const bloqueG = g == null ? '' : `
-      <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:14px;margin-top:12px;">
-        <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--sello);">Lo que el mercado está pagando</p>
-        <p class="tabular" style="margin:6px 0 0;font-size:26px;font-weight:800;color:var(--tinta-1);letter-spacing:-0.02em;">${_mmPct(g, 2)}</p>
-        <p style="margin:2px 0 0;font-size:11px;color:var(--tinta-3);">crecimiento perpetuo implícito en el precio de hoy</p>
-      </div>`;
+    const puente = `
+      <details style="margin-top:16px;border-top:1px solid var(--regla);padding-top:12px;" open>
+        <summary style="cursor:pointer;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta-4);">Precio Modigliani-Miller · sin crecimiento</summary>
+        <div style="margin-top:8px;">
+          ${fila('Utilidad operativa después de impuestos', _mmMoneda(p.nopat, mon), `EBIT ${_mmMoneda(o.ebit, mon)} · impuestos ${_mmPct(o.tasa_impuestos)}`)}
+          ${fila('Valor de la empresa sin deuda', _mmMoneda(p.valor_sin_deuda, mon), `descontado a ${_mmPct(sup.costo_capital_base)}`)}
+          ${fila('+ Escudo fiscal de la deuda', _mmMoneda(p.escudo_fiscal, mon), 'Tc × deuda')}
+          ${fila('= Valor de la empresa', _mmMoneda(p.valor_empresa, mon), null, true)}
+          ${fila('− Deuda', _mmMoneda(-p.menos_deuda, mon))}
+          ${fila('+ Caja', _mmMoneda(p.mas_caja, mon))}
+          ${fila('= Valor del accionista', _mmMoneda(p.equity, mon), null, true)}
+          <div style="display:flex;gap:10px;margin-top:10px;">
+            <div style="flex:1;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:11px;">
+              <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--tinta-4);">Precio MM</p>
+              <p class="tabular" style="margin:3px 0 0;font-size:18px;font-weight:700;color:var(--tinta-1);">${_mmMoneda(p.precio_mm, mon)}</p>
+            </div>
+            <div style="flex:1;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:11px;">
+              <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--tinta-4);">Mercado</p>
+              <p class="tabular" style="margin:3px 0 0;font-size:18px;font-weight:700;color:var(--tinta-1);">${_mmMoneda(m.precio, mon)}
+                <span style="font-size:11px;font-weight:600;color:${colorDif};">${dif == null ? '' : (dif >= 0 ? '+' : '') + _mmPct(dif, 0)}</span></p>
+            </div>
+          </div>
+          <p style="margin:8px 0 0;font-size:11px;color:var(--tinta-4);line-height:1.5;">
+            Esta cifra supone crecimiento CERO para siempre, así que en una empresa sana
+            queda por debajo del mercado. La diferencia no mide carestía: mide justo el
+            crecimiento que este caso base no supone — el de arriba.
+          </p>
+        </div>
+      </details>`;
 
     const libros = d.valor_libros_por_accion == null ? '' : `
       <p style="margin:10px 0 0;font-size:11px;color:var(--tinta-4);line-height:1.5;">
         Valor en libros: <strong class="tabular" style="color:var(--tinta-3);">${_mmMoneda(d.valor_libros_por_accion, mon)}</strong> por acción
-        — activos menos <em>todos</em> los pasivos, no solo la deuda. Es el piso contable, no un precio objetivo.
+        — activos menos <em>todos</em> los pasivos, no solo la deuda. Piso contable, no precio objetivo.
       </p>`;
 
     return `
-      <div>
-        ${fila('Utilidad operativa después de impuestos', _mmMoneda(p.nopat, mon), `EBIT ${_mmMoneda(e.ebit, mon)} · impuestos ${_mmPct(e.tasa_impuestos)}`)}
-        ${fila('Valor de la empresa sin deuda', _mmMoneda(p.valor_sin_deuda, mon), `descontado a ${_mmPct(e.costo_capital_r0)}`)}
-        ${fila('+ Escudo fiscal de la deuda', _mmMoneda(p.escudo_fiscal, mon), 'Tc × deuda')}
-        ${fila('= Valor de la empresa', _mmMoneda(p.valor_empresa, mon), null, true)}
-        ${fila('− Deuda', _mmMoneda(-p.menos_deuda, mon))}
-        ${fila('+ Caja', _mmMoneda(p.mas_caja, mon))}
-        ${fila('= Valor del accionista', _mmMoneda(p.equity, mon), null, true)}
-      </div>
-      <div style="display:flex;gap:10px;margin-top:10px;">
-        <div style="flex:1;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:12px;">
-          <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--tinta-4);">Precio Modigliani-Miller</p>
-          <p class="tabular" style="margin:4px 0 0;font-size:20px;font-weight:700;color:var(--tinta-1);">${_mmMoneda(p.precio_mm, mon)}</p>
-        </div>
-        <div style="flex:1;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:12px;">
-          <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--tinta-4);">Mercado</p>
-          <p class="tabular" style="margin:4px 0 0;font-size:20px;font-weight:700;color:var(--tinta-1);">${_mmMoneda(m.precio, mon)}
-            <span style="font-size:12px;font-weight:600;color:${colorDif};">${dif == null ? '' : (dif >= 0 ? '+' : '') + _mmPct(dif, 0)}</span></p>
-        </div>
-      </div>
-      ${bloqueG}
+      ${dosCajas}
       <p style="margin:12px 0 0;font-size:12px;color:var(--tinta-2);line-height:1.55;">${d.lectura || ''}</p>
+      ${tabla}
+      ${puente}
       ${libros}
       <details style="margin-top:10px;">
-        <summary style="cursor:pointer;font-size:11px;color:var(--tinta-4);">Supuestos del modelo</summary>
+        <summary style="cursor:pointer;font-size:11px;color:var(--tinta-4);">Cómo se calcula</summary>
         <ul style="margin:8px 0 0;padding-left:16px;font-size:11px;color:var(--tinta-3);line-height:1.6;">
-          ${(d.supuestos || []).map(x => `<li>${x}</li>`).join('')}
+          ${(d.notas || []).map(x => `<li>${x}</li>`).join('')}
         </ul>
         <p style="margin:8px 0 0;font-size:10.5px;color:var(--tinta-4);line-height:1.5;">
-          Beta desapalancada ${e.beta_desapalancada} (de ${e.beta_apalancada} apalancada, fórmula de Hamada).
+          Beta desapalancada ${sup.beta_desapalancada} (de ${sup.beta_apalancada} apalancada, fórmula de Hamada).
           Estimación con reglas generales, no una recomendación de inversión.
         </p>
       </details>`;

@@ -1997,7 +1997,7 @@ const Explorador = (() => {
     $('exp-explicacion').textContent = txt;
 
     // Scroll a resultados
-    cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    _irABloqueAnalisis(cont);
   }
 
   // --- event wiring --------------------------------------------------------
@@ -9359,6 +9359,10 @@ const Analizador = (() => {
     $('an-loading').classList.remove('hidden');
     $('an-loading-ticker').textContent = ticker;
     $('an-btn-analizar').disabled = true;
+    // Señal inmediata: se baja al "Analizando…" en cuanto se pulsa. Sin esto
+    // el usuario se queda viendo la lista de sugerencias y no se entera de que
+    // hay algo ocurriendo más abajo.
+    _irABloqueAnalisis($('an-loading'));
 
     try {
       const res = await fetch(`/api/analizar/${encodeURIComponent(ticker)}`);
@@ -9375,6 +9379,26 @@ const Analizador = (() => {
       $('an-loading').classList.add('hidden');
       $('an-btn-analizar').disabled = false;
     }
+  }
+
+  /* Lleva la vista al bloque de análisis.
+     Se repite tras un momento a propósito: el resultado se pinta y DESPUÉS
+     entran la gráfica, el dashboard, el SML y Modigliani-Miller, cada uno
+     empujando el layout. Un solo scroll suave al principio se queda a medias
+     —o lo cancela el reflow— y el usuario acaba mirando todavía la lista de
+     arriba, sin enterarse de que su análisis ya está listo abajo. */
+  function _irABloqueAnalisis(el) {
+    if (!el) return;
+    const altoCabecera = () => {
+      const h = document.querySelector('header');
+      return (h && getComputedStyle(h).position === 'sticky') ? h.getBoundingClientRect().height : 0;
+    };
+    const llevar = (suave) => {
+      const y = el.getBoundingClientRect().top + window.scrollY - altoCabecera() - 10;
+      window.scrollTo({ top: Math.max(0, y), behavior: suave ? 'smooth' : 'auto' });
+    };
+    requestAnimationFrame(() => llevar(true));
+    setTimeout(() => llevar(false), 700);   // reajuste cuando ya entró todo
   }
 
   function fmtPct(v) { return (v == null) ? '—' : (v * 100).toFixed(1) + '%'; }
