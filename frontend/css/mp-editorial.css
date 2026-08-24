@@ -1882,6 +1882,27 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
      y queda imposible de centrar. */
   .mp-mazo--feed .mp-tarjeta:last-of-type { margin-bottom: var(--feed-asomo); }
 
+  /* La tarjeta se reparte en columna: la cara crece hasta llenar y el botón de
+     "Leer la nota" queda anclado abajo, siempre a la vista sin desplegar nada. */
+  .mp-mazo--feed .mp-tarjeta {
+    display: flex;
+    flex-direction: column;
+  }
+  .mp-mazo--feed .mp-tarjeta-ir {
+    display: flex;
+    flex: 0 0 auto;
+    /* `width: auto` a propósito: .mp-tarjeta-accion trae `width: 100%`, que se
+       resuelve contra el ancho de la tarjeta y NO descuenta estos márgenes, así
+       que el botón se salía 16px por la derecha. En una columna flex basta con
+       dejar que el estirado del eje transversal haga el trabajo. */
+    width: auto;
+    align-self: stretch;
+    margin: 0 var(--paso-4) var(--paso-4);
+  }
+  /* Fuera del feed no existe: en la pila robaría la franja visible, y en el modo
+     lista de escritorio ya está el botón del detalle. */
+  .mp-tarjeta-ir { display: none; }
+
   .mp-mazo--feed .mp-tarjeta-cara {
     /* Los !important no son pereza: ux_helpers.js inyecta en móvil un
        `min-height: 44px !important` a TODOS los botones (área táctil mínima) y
@@ -1890,7 +1911,10 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
        hueco muerto de 270px bajo el texto. Es el mismo motivo por el que la
        versión apilada usa `height: var(--tj-cara) !important`. */
     height: auto !important;
-    min-height: calc(var(--feed-alto) - var(--feed-asomo)) !important;
+    /* Ya no impone el alto de la tarjeta: crece dentro de ella. El alto lo pone
+       ahora `min-height` de .mp-tarjeta, para que quepan cara Y botón. */
+    min-height: 0 !important;
+    flex: 1 1 auto;
     justify-content: flex-start;
     gap: var(--paso-2);
   }

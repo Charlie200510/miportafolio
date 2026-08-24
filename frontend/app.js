@@ -3725,6 +3725,21 @@ const Periodico = (() => {
        espacio de la franja visible. */
     const sumario = (clave === 'noticias' && t.resumen)
       ? `<span class="mp-tarjeta-sumario">${escapeHtml(t.resumen)}</span>` : '';
+    /* Atajo a la nota, VISIBLE en cada tarjeta del feed. El botón "Leer nota
+       completa" vive dentro del detalle, y en el feed el detalle cerrado
+       colapsa con display:none — así que al pasar noticias a feed la única
+       forma de abrir una nota era desplegarla primero. Un feed de titulares en
+       el que no puedes entrar a la nota de un toque no sirve de nada.
+
+       Va como HERMANO de la cara, no dentro: la cara ya es un <button> y anidar
+       botones es HTML inválido. Lleva la clase .mp-tarjeta-accion para que lo
+       recoja el mismo manejador delegado que el del detalle, con su data-url;
+       así abre por la misma vía (abrirEnlace) y en nativo respeta el navegador
+       in-app en vez de sacar al usuario de la app. */
+    const irDirecto = (clave === 'noticias' && t.url)
+      ? `<button class="mp-tarjeta-accion mp-tarjeta-ir" type="button"
+                 data-url="${escapeHtml(t.url)}"><span>Leer la nota →</span></button>`
+      : '';
     const cara = t.titular
       ? `<span class="mp-tarjeta-etq">${escapeHtml(t.etq || '')}</span>
          <span class="mp-tarjeta-titular">${escapeHtml(t.titular)}</span>
@@ -3759,6 +3774,7 @@ const Periodico = (() => {
                style="--cat-sup:${c.sup};--cat-tinta:${c.tinta};--cat-suave:${c.suave};--cat-borde:${c.borde}">
         <button class="mp-tarjeta-cara" id="${idBtn}" type="button"
                 aria-expanded="false" aria-controls="${idDet}">${cara}</button>
+        ${irDirecto}
         <div class="mp-tarjeta-detalle" id="${idDet}" role="region"
              aria-labelledby="${idBtn}" inert>
           <div class="mp-tarjeta-asa" aria-hidden="true"></div>
