@@ -188,51 +188,69 @@ Tamaños obligatorios: **6.7"** (1290×2796, iPhone 15/16 Pro Max) y **6.5"**
 Este campo es donde se responde al 4.3(a). El revisor no conoce la estructura
 del mercado mexicano y no va a deducirla: hay que decírsela.
 
+**Van en INGLÉS a propósito.** El equipo de App Review trabaja en inglés; unas
+notas en español se leen por encima o pasan por un traductor automático, y ahí
+se pierde justo el argumento que hay que defender. Cada término mexicano lleva
+su explicación entre paréntesis —el revisor no tiene por qué saber qué es una
+SIEFORE— y los textos de la interfaz van traducidos para que pueda encontrarlos
+en una app que está en español.
+
 ```
-Esta app fue rechazada antes bajo 4.3(a). A continuación, en qué se diferencia
-de otras apps de la categoría.
+This app was previously rejected under Guideline 4.3(a). Below is what
+distinguishes it from other apps in this category.
 
-FUNCIONES QUE NO EXISTEN EN NINGUNA APP COMPARABLE
-· ISR mexicano: cálculo del impuesto sobre enajenación de acciones en bolsa
-  según el art. 129 de la LISR, con costo promedio por emisora, ganancia
-  realizada del ejercicio y pérdidas arrastrables a 10 años.
-· Tax-loss harvesting con reglas mexicanas (compensación dentro del mismo
-  ejercicio fiscal).
-· Comparativa contra las SIEFOREs del sistema de AFOREs, con los rendimientos
-  que publica la CONSAR. Es un sistema de pensiones obligatorio exclusivo de
-  México.
-· CETES de Banxico como tasa libre de riesgo en el cálculo de Sharpe, en lugar
-  de los Treasuries de EE. UU.
-· FIBRAS de la Bolsa Mexicana de Valores.
-· Comparativa de comisiones entre casas de bolsa mexicanas (GBM, Kuspit,
-  Actinver y otras).
-· Stress tests con eventos de México: crisis del peso, elección de 2018 y
-  cancelación del NAIM, aranceles a México.
+Note: the app's interface is in Spanish, as it is built for the Mexican market.
+Spanish UI labels are translated in parentheses throughout these notes.
 
-CAPA NATIVA (no es un envoltorio de sitio web)
-· Widget de WidgetKit en la pantalla de inicio con IPC, USD/MXN y CETES 28 días.
-· Barra de pestañas nativa de UIKit; la navegación no recarga páginas.
-· Bloqueo con Face ID / Touch ID mediante LocalAuthentication, opcional.
-· Notificaciones push, haptics y hoja de compartir del sistema.
+FEATURES NO COMPARABLE APP OFFERS
+Each item below is specific to Mexico and is absent from the portfolio trackers
+this app may have been compared against.
 
-ACCESO Y CÓMO VER LAS PANTALLAS DE ISR
-La app requiere cuenta. Las credenciales de prueba están en este mismo
-formulario; la cuenta está en periodo de prueba, con acceso a todo, para que
-también se pueda revisar el paywall y el flujo de suscripción.
+· Mexican capital gains tax (ISR). Calculates the 10% tax on gains from selling
+  listed shares under Article 129 of Mexico's Income Tax Law (LISR), including
+  average cost basis per issuer, realized gain for the current fiscal year, and
+  losses carried forward for up to 10 years.
+· Tax-loss harvesting under Mexican rules, where losses may only offset gains
+  within the same fiscal year.
+· Benchmarking against SIEFOREs, the investment funds of Mexico's AFORE system
+  (a mandatory national pension scheme that exists only in Mexico), using the
+  official returns published by CONSAR, the federal pension regulator.
+· CETES (short-term Mexican government treasury bills issued by Banxico, the
+  central bank) used as the risk-free rate in Sharpe ratio calculations,
+  instead of U.S. Treasuries.
+· FIBRAS, the Mexican real estate investment trusts listed on the Mexican Stock
+  Exchange (BMV).
+· Commission comparison across Mexican brokerages: GBM, Kuspit, Actinver and
+  others, per ticker.
+· Stress tests built on Mexican events: the peso crisis, the 2018 election and
+  the cancellation of the Mexico City airport (NAIM), COVID-19 in Mexico, the
+  2024 legislative supermajority, and U.S. tariffs on Mexico.
 
-Las carteras se guardan en el dispositivo, no en la cuenta, así que al iniciar
-sesión en un equipo nuevo la app arranca vacía. Para ver las funciones fiscales
-con datos, en la pestaña "Portafolio" toque "Ver un portafolio de ejemplo": carga
-una cartera de la Bolsa Mexicana con diez operaciones reales. Después, la
-pestaña "ISR" muestra el impuesto estimado del ejercicio y las oportunidades de
-tax-loss harvesting ya calculadas.
+NATIVE LAYER (this is not a web wrapper)
+· A WidgetKit home screen widget showing the IPC index, USD/MXN, the S&P 500
+  and the 28-day CETES rate. The tickers are configurable from inside the app.
+· A native UIKit tab bar. Navigation does not reload pages.
+· Optional Face ID / Touch ID lock built on LocalAuthentication.
+· Push notifications, haptics, and the system share sheet.
 
-OTROS
-No ejecuta operaciones ni mueve dinero, y nunca solicita credenciales bancarias
-ni de casa de bolsa. Es una herramienta educativa y de análisis; no es asesoría
-de inversión y así se declara dentro de la app. "Suscribirse" está en el
-encabezado de todas las pestañas y "Mi cuenta" permite eliminar la cuenta en
-dos toques.
+SIGNING IN, AND HOW TO REACH THE TAX SCREENS
+The app requires an account. Test credentials are provided in this same form.
+That account is in its trial period with full access, so the paywall and the
+subscription flow can be reviewed as well.
+
+Portfolios are stored on the device rather than on the account, so signing in on
+a new device starts with an empty app. To see the tax features populated with
+data, open the "Portafolio" (Portfolio) tab and tap "Ver un portafolio de
+ejemplo" (View a sample portfolio). It loads a Mexican Stock Exchange portfolio
+containing ten real transactions. The "ISR" tab then shows the estimated tax for
+the fiscal year and the tax-loss harvesting opportunities, already calculated.
+
+OTHER
+The app does not execute trades and does not move money. It never asks for bank
+or brokerage credentials. It is an educational and analytical tool, not
+investment advice, and states so inside the app. "Suscribirse" (Subscribe)
+appears in the header of every tab, and "Mi cuenta" (My account) lets the user
+delete their account in two taps.
 ```
 
 ---
