@@ -39,6 +39,27 @@ _FUND_TTL = 12 * 3600  # 12 horas
 _FUND_LOCK = threading.Lock()
 
 
+def _mismo_calendario(a, b):
+    """Reindexa dos series de retornos por FECHA pura para poder cruzarlas.
+
+    Sin esto, dos series con zonas horarias distintas no comparten NI UN índice
+    y cualquier intersección sale vacía. Ver la nota en el cálculo de la
+    correlación con el S&P.
+    """
+    def _limpia(s):
+        try:
+            idx = s.index
+            if getattr(idx, "tz", None) is not None:
+                idx = idx.tz_localize(None)
+            s = s.copy()
+            s.index = idx.normalize()
+            # Si un día quedara duplicado tras normalizar, se queda el último.
+            return s[~s.index.duplicated(keep="last")]
+        except Exception:
+            return s
+    return _limpia(a), _limpia(b)
+
+
 def _obtener_retornos_benchmark(symbol: str, periodo: str = "1y"):
     """Descarga cierres del benchmark y devuelve serie de retornos diarios.
     Cacheado 6 horas para no martillar yfinance."""
@@ -163,9 +184,21 @@ def _metricas_comportamiento(ticker: str) -> Dict[str, Any]:
         if ticker.upper() != "SPY":
             spy_ret = _obtener_retornos_benchmark("SPY")
             if spy_ret is not None:
-                comun = retornos.index.intersection(spy_ret.index)
+                # Se cruza por FECHA, sin hora ni zona horaria. Yahoo devuelve la
+                # BMV en America/Mexico_City y a SPY en America/New_York: cruzar
+                # los índices tal cual daba CERO días en común, así que la
+                # correlación desaparecía —en silencio— de TODAS las acciones
+                # mexicanas. Y es justo donde más informa: a un inversionista
+                # mexicano le importa saber qué tan pegada va su emisora al
+                # mercado de EE. UU.
+                #
+                # analisis_activos._por_fecha ya arregla esto para sus propios
+                # consumidores; aquí faltaba. Se normaliza en local en vez de
+                # importarlo para no acoplar los dos módulos.
+                a, b = _mismo_calendario(retornos, spy_ret)
+                comun = a.index.intersection(b.index)
                 if len(comun) >= 30:
-                    corr = float(retornos.loc[comun].corr(spy_ret.loc[comun]))
+                    corr = float(a.loc[comun].corr(b.loc[comun]))
                     out["correlacion_sp500"] = round(corr, 3)
 
         # Retornos en diferentes ventanas
@@ -543,21 +576,30 @@ def _fundamentals_ticker(ticker: str, con_estados: bool = False) -> Dict[str, An
             if td and te and te > 0:
                 deuda_equity = round(td / te * 100, 2)  # yfinance reporta como x100
 
+        # Fecha del próximo reporte trimestral.
+        #
+        # ESTO NUNCA DEVOLVÍA NADA, en ninguna emisora. El guardián era
+        #     if cal is not None and not getattr(cal, "empty", True)
+        # pensado para un DataFrame. yfinance hoy devuelve un DICT, y un dict no
+        # tiene `.empty`: el getattr caía en su valor por defecto True, `not True`
+        # daba False y el bloque entero se saltaba siempre. El dato estaba ahí
+        # —`Earnings Date: [datetime.date(...)]`— y nunca se leía.
+        #
+        # Ahora se distingue el tipo ANTES de decidir si viene vacío.
         proximas_earnings = None
         try:
             cal = t.calendar
-            if cal is not None and not getattr(cal, "empty", True):
-                # yfinance a veces devuelve DataFrame, a veces dict
-                if hasattr(cal, "to_dict"):
-                    d = cal.to_dict()
-                    # Earnings Date puede ser lista o Timestamp
-                    ed = d.get("Earnings Date") or d.get(0, {}).get("Earnings Date")
-                    if ed:
-                        proximas_earnings = str(ed)
-                elif isinstance(cal, dict):
-                    ed = cal.get("Earnings Date")
-                    if ed:
-                        proximas_earnings = str(ed[0]) if isinstance(ed, (list, tuple)) else str(ed)
+            ed = None
+            if isinstance(cal, dict):
+                ed = cal.get("Earnings Date")
+            elif cal is not None and not getattr(cal, "empty", True):
+                d = cal.to_dict() if hasattr(cal, "to_dict") else {}
+                ed = d.get("Earnings Date") or (d.get(0) or {}).get("Earnings Date")
+            if isinstance(ed, (list, tuple)):
+                ed = ed[0] if ed else None
+            if ed is not None:
+                # date/Timestamp → ISO corto (YYYY-MM-DD), que es lo que pinta la UI.
+                proximas_earnings = ed.strftime("%Y-%m-%d") if hasattr(ed, "strftime") else str(ed)
         except Exception:
             proximas_earnings = None
 

@@ -9937,6 +9937,7 @@ const Analizador = (() => {
 
     // ddHTML + srHTML removidos (requieren Claude API)
     const smlHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Valoración SML · CAPM</h4><div id="an-sml-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
+    const mmHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Valuación Modigliani-Miller</h4><p class="text-[11px] text-zinc-500 mb-3">Qué vale la empresa por lo que produce, y qué queda para el accionista después de la deuda.</p><div id="an-mm-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
     const estHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Consenso de analistas</h4><div id="an-estimados-host" class="text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-violet-500/40 border-t-violet-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando consenso…</div></div>`;
     const ddHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Análisis profundo · Deep Dive</h4><p class="text-[11px] text-zinc-500 mb-3">Comparativa contra peers + narrativa. Tarda unos segundos (descarga datos en vivo).</p><div id="an-deepdive-host"><button id="an-dd-load" class="text-[12px] font-semibold text-accent-blue border border-accent-blue/40 hover:bg-accent-blue/10 rounded-lg px-4 py-2 transition">Ver análisis profundo →</button></div></div>`;
     // ── Ensamblado según el TIPO de activo ────────────────────────────────
@@ -9951,7 +9952,7 @@ const Analizador = (() => {
     } else {
       cont.innerHTML = headerHTML + fundHTML + chartHTML + peerHTML
                      + `<div id="an-dashboard-host"><div class="bg-surface border border-surface-border rounded-2xl p-5 text-center text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando dashboard financiero…</div></div>`
-                     + smlHTML + estHostHTML + ddHostHTML;
+                     + smlHTML + mmHTML + estHostHTML + ddHostHTML;
     }
     cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -9972,6 +9973,7 @@ const Analizador = (() => {
 
     if (_tipo === 'accion') {
       if (window.renderSmlEn) window.renderSmlEn(d.ticker, 'an-sml-host');
+        if (window.renderMMEn) window.renderMMEn(d.ticker, 'an-mm-host');
       cargarEstimados(d.ticker);
       const _ddBtn = $('an-dd-load');
       if (_ddBtn) _ddBtn.addEventListener('click', () => {

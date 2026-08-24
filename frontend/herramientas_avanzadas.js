@@ -1120,6 +1120,116 @@
       cont.innerHTML = `<p style="color:var(--baja);font-size:12px;padding:10px;">Error SML: ${e.message}</p>`;
     }
   };
+  /* ── Valuación Modigliani-Miller ─────────────────────────────────────────
+     Enseña el PUENTE completo, no solo el precio final: de lo que produce la
+     empresa al valor de la empresa, y de ahí a lo que queda para el accionista.
+     El puente es el modelo; el precio suelto sería un número sin argumento.
+
+     Y el protagonista NO es el precio MM sino el crecimiento implícito. El
+     precio MM supone crecimiento cero para siempre, así que para casi cualquier
+     empresa sana queda por debajo del mercado: enseñarlo solo se leería como
+     "todo está carísimo". El crecimiento implícito convierte eso en la pregunta
+     que sí se puede juzgar: ¿es creíble crecer eso indefinidamente? */
+  function _mmMoneda(v, mon) {
+    if (v == null || !isFinite(v)) return '—';
+    const abs = Math.abs(v);
+    const sig = v < 0 ? '-' : '';
+    const u = mon === 'MXN' ? '$' : '$';
+    /* MISMA convención que el resto de la vista Analizar (app.js): billones con
+       "B" y miles de millones con "mil M". Antes esto usaba "mm" para 1e9, y
+       junto a un "B" de 1e12 en la misma tarjeta se leía al revés: "$133.1 mm"
+       parecía MÁS que "$1.03 B". */
+    if (abs >= 1e12) return `${sig}${u}${(abs / 1e12).toFixed(2)} B`;
+    if (abs >= 1e9)  return `${sig}${u}${(abs / 1e9).toFixed(2)} mil M`;
+    if (abs >= 1e6)  return `${sig}${u}${(abs / 1e6).toFixed(0)} M`;
+    return `${sig}${u}${abs.toFixed(2)}`;
+  }
+  function _mmPct(x, dec) {
+    return (x == null || !isFinite(x)) ? '—' : (x * 100).toFixed(dec == null ? 1 : dec) + '%';
+  }
+
+  function _renderMM(d) {
+    const mon = d.moneda || 'USD';
+    const p = d.puente, e = d.entradas, m = d.mercado;
+    const fila = (etq, val, nota, fuerte) => `
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;${fuerte ? 'border-top:1px solid var(--regla);margin-top:4px;padding-top:10px;' : ''}">
+        <span style="font-size:${fuerte ? '13px' : '12px'};color:var(--tinta-${fuerte ? '1' : '3'});${fuerte ? 'font-weight:600;' : ''}">${etq}${nota ? `<span style="color:var(--tinta-4);font-weight:400;"> · ${nota}</span>` : ''}</span>
+        <span class="tabular" style="font-size:${fuerte ? '14px' : '12.5px'};font-weight:${fuerte ? '700' : '600'};color:var(--tinta-1);white-space:nowrap;">${val}</span>
+      </div>`;
+
+    const dif = m.diferencia_pct;
+    const colorDif = dif == null ? 'var(--tinta-3)' : (dif >= 0 ? 'var(--alza)' : 'var(--baja)');
+
+    const g = d.crecimiento_implicito;
+    const bloqueG = g == null ? '' : `
+      <div style="background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:14px;margin-top:12px;">
+        <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--sello);">Lo que el mercado está pagando</p>
+        <p class="tabular" style="margin:6px 0 0;font-size:26px;font-weight:800;color:var(--tinta-1);letter-spacing:-0.02em;">${_mmPct(g, 2)}</p>
+        <p style="margin:2px 0 0;font-size:11px;color:var(--tinta-3);">crecimiento perpetuo implícito en el precio de hoy</p>
+      </div>`;
+
+    const libros = d.valor_libros_por_accion == null ? '' : `
+      <p style="margin:10px 0 0;font-size:11px;color:var(--tinta-4);line-height:1.5;">
+        Valor en libros: <strong class="tabular" style="color:var(--tinta-3);">${_mmMoneda(d.valor_libros_por_accion, mon)}</strong> por acción
+        — activos menos <em>todos</em> los pasivos, no solo la deuda. Es el piso contable, no un precio objetivo.
+      </p>`;
+
+    return `
+      <div>
+        ${fila('Utilidad operativa después de impuestos', _mmMoneda(p.nopat, mon), `EBIT ${_mmMoneda(e.ebit, mon)} · impuestos ${_mmPct(e.tasa_impuestos)}`)}
+        ${fila('Valor de la empresa sin deuda', _mmMoneda(p.valor_sin_deuda, mon), `descontado a ${_mmPct(e.costo_capital_r0)}`)}
+        ${fila('+ Escudo fiscal de la deuda', _mmMoneda(p.escudo_fiscal, mon), 'Tc × deuda')}
+        ${fila('= Valor de la empresa', _mmMoneda(p.valor_empresa, mon), null, true)}
+        ${fila('− Deuda', _mmMoneda(-p.menos_deuda, mon))}
+        ${fila('+ Caja', _mmMoneda(p.mas_caja, mon))}
+        ${fila('= Valor del accionista', _mmMoneda(p.equity, mon), null, true)}
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <div style="flex:1;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:12px;">
+          <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--tinta-4);">Precio Modigliani-Miller</p>
+          <p class="tabular" style="margin:4px 0 0;font-size:20px;font-weight:700;color:var(--tinta-1);">${_mmMoneda(p.precio_mm, mon)}</p>
+        </div>
+        <div style="flex:1;background:var(--sup-panel);border:1px solid var(--regla);border-radius:var(--radio-tarjeta);padding:12px;">
+          <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--tinta-4);">Mercado</p>
+          <p class="tabular" style="margin:4px 0 0;font-size:20px;font-weight:700;color:var(--tinta-1);">${_mmMoneda(m.precio, mon)}
+            <span style="font-size:12px;font-weight:600;color:${colorDif};">${dif == null ? '' : (dif >= 0 ? '+' : '') + _mmPct(dif, 0)}</span></p>
+        </div>
+      </div>
+      ${bloqueG}
+      <p style="margin:12px 0 0;font-size:12px;color:var(--tinta-2);line-height:1.55;">${d.lectura || ''}</p>
+      ${libros}
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer;font-size:11px;color:var(--tinta-4);">Supuestos del modelo</summary>
+        <ul style="margin:8px 0 0;padding-left:16px;font-size:11px;color:var(--tinta-3);line-height:1.6;">
+          ${(d.supuestos || []).map(x => `<li>${x}</li>`).join('')}
+        </ul>
+        <p style="margin:8px 0 0;font-size:10.5px;color:var(--tinta-4);line-height:1.5;">
+          Beta desapalancada ${e.beta_desapalancada} (de ${e.beta_apalancada} apalancada, fórmula de Hamada).
+          Estimación con reglas generales, no una recomendación de inversión.
+        </p>
+      </details>`;
+  }
+
+  window.renderMMEn = async function(ticker, contId) {
+    const cont = document.getElementById(contId);
+    if (!cont || !ticker) return;
+    cont.innerHTML = `<p style="text-align:center;color:var(--tinta-4);font-size:13px;padding:18px;">Calculando valuación Modigliani-Miller…</p>`;
+    try {
+      const res = await fetch(`/api/modigliani-miller/${encodeURIComponent(ticker)}`);
+      const d = await res.json();
+      if (d.ok) { cont.innerHTML = _renderMM(d); return; }
+      /* Se distingue "aquí este modelo no dice nada" de "faltan datos". No es
+         lo mismo, y mezclarlos haría parecer roto lo que es una decisión. */
+      const esNoAplica = d.aplica === false;
+      cont.innerHTML = `<p style="font-size:12px;color:var(--tinta-${esNoAplica ? '3' : '4'});line-height:1.55;padding:4px 0;">
+          ${esNoAplica ? '' : '<strong style="color:var(--tinta-2);">Sin datos suficientes.</strong> '}${d.error || 'No disponible.'}
+        </p>`;
+    } catch (e) {
+      cont.innerHTML = `<p style="color:var(--tinta-4);font-size:12px;padding:6px 0;">No se pudo calcular ahora mismo.
+        <button onclick="window.renderMMEn('${ticker}','${contId}')" style="color:var(--sello);text-decoration:underline;cursor:pointer;background:none;border:0;">Reintentar</button></p>`;
+    }
+  };
+
   window.renderDeepDiveEn = async function(ticker, contId) {
     const cont = document.getElementById(contId);
     if (!cont || !ticker) return;

@@ -2370,6 +2370,24 @@ def api_sml(ticker):
         return jsonify({"ok": False, "error": f"SML fallo: {e}"}), 500
 
 
+@app.route("/api/modigliani-miller/<path:ticker>", methods=["GET"])
+@requiere_acceso
+def api_modigliani_miller(ticker):
+    """Valuación Modigliani-Miller con impuestos: V_L = V_U + Tc·D, y de ahí el
+    puente a lo que debería costar la acción.
+
+    Devuelve `ok: false` con `aplica: false` cuando el modelo NO corresponde
+    (bancos, fondos, cripto, EBIT negativo). Esa distinción importa: no es lo
+    mismo "faltan datos" que "este modelo no dice nada aquí", y el frontend
+    enseña cosas distintas.
+    """
+    try:
+        import modigliani_miller as _mm
+        return jsonify(_mm.valuar_mm(ticker))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Modigliani-Miller falló: {e}"}), 500
+
+
 @app.route("/api/periodico/top-movers", methods=["GET"])
 def api_periodico_top_movers():
     """Top tickers por ganadores, perdedores y populares del periodo.
