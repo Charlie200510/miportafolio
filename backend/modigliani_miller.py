@@ -354,6 +354,19 @@ def _calcular(ticker: str) -> Dict[str, Any]:
 
     moneda = info.get("currency") or ("MXN" if t.endswith(".MX") else "USD")
 
+    notas = [
+        "El precio de mercado no se discute: se toma como dato y se despeja "
+        "qué supuestos lo justifican.",
+        f"Costo de capital base {r0:.1%} = tasa libre de riesgo {rf:.1%} + "
+        f"beta desapalancada {beta_u:.2f} × prima de mercado {prima:.1%}.",
+        f"Tasa efectiva de impuestos {tc:.1%}, del último ejercicio reportado "
+        f"y acotada entre {_TC_MIN:.0%} y {_TC_MAX:.0%}.",
+        "El escudo fiscal supone que la deuda se mantiene indefinidamente "
+        "(Modigliani-Miller con impuestos: V_L = V_U + Tc·D).",
+        "Las celdas vacías son combinaciones donde el crecimiento alcanza al "
+        "costo de capital y la fórmula deja de tener sentido.",
+    ]
+
     return {
         "ok": True,
         "aplica": True,
@@ -388,7 +401,7 @@ def _calcular(ticker: str) -> Dict[str, Any]:
             "equity_mercado": equity_mercado,
         },
         # Lo que SÍ es supuesto, y qué valor implica el precio de hoy.
-        "supuestos": {
+        "supuestos_implicitos": {
             "costo_capital_base": r0,
             "beta_apalancada": round(beta_l, 3),
             "beta_desapalancada": round(beta_u, 3),
@@ -406,20 +419,32 @@ def _calcular(ticker: str) -> Dict[str, Any]:
             "cambio_por_punto_de_crecimiento": sens_g,
             "cambio_por_punto_de_costo_capital": sens_r0,
         },
+        # ── COMPATIBILIDAD CON CLIENTES VIEJOS ─────────────────────────────
+        # El backend se despliega para TODOS a la vez, pero el JS de cada quien
+        # llega cuando su navegador decide refrescar la caché. Al renombrar
+        # `supuestos` de array a objeto y quitar `entradas`, el frontend anterior
+        # reventaba —hacía `(d.supuestos || []).map(...)` sobre un objeto— y la
+        # tarjeta mostraba "No se pudo calcular ahora mismo" hasta que el usuario
+        # recargara dos veces. Cambiar la forma de una respuesta ya publicada es
+        # romper un contrato: estos dos campos lo mantienen.
+        "entradas": {
+            "ebit": ebit,
+            "tasa_impuestos": tc,
+            "deuda": deuda,
+            "caja": caja,
+            "acciones": acciones,
+            "beta_apalancada": round(beta_l, 3),
+            "beta_desapalancada": round(beta_u, 3),
+            "tasa_libre_riesgo": rf,
+            "prima_mercado": prima,
+            "costo_capital_r0": r0,
+        },
         "valor_libros_por_accion": libros_por_accion,
         "lectura": _lectura(precio, g_implicita, r0_implicito, r0, sens_g),
-        "notas": [
-            "El precio de mercado no se discute: se toma como dato y se despeja "
-            "qué supuestos lo justifican.",
-            f"Costo de capital base {r0:.1%} = tasa libre de riesgo {rf:.1%} + "
-            f"beta desapalancada {beta_u:.2f} × prima de mercado {prima:.1%}.",
-            f"Tasa efectiva de impuestos {tc:.1%}, del último ejercicio reportado "
-            f"y acotada entre {_TC_MIN:.0%} y {_TC_MAX:.0%}.",
-            "El escudo fiscal supone que la deuda se mantiene indefinidamente "
-            "(Modigliani-Miller con impuestos: V_L = V_U + Tc·D).",
-            "Las celdas vacías son combinaciones donde el crecimiento alcanza al "
-            "costo de capital y la fórmula deja de tener sentido.",
-        ],
+        # `supuestos` conserva su tipo original (lista de texto): el frontend
+        # anterior lo recorre con .map y se rompería con cualquier otra cosa.
+        "supuestos": notas,
+        "notas": notas,
     }
 
 

@@ -1150,7 +1150,21 @@
 
   function _renderMM(d) {
     const mon = d.moneda || 'USD';
-    const p = d.puente, o = d.observado, sup = d.supuestos, sen = d.sensibilidad, m = d.mercado;
+    /* Todo con valor por defecto. El backend se despliega para todos a la vez,
+       pero este archivo llega cuando cada navegador refresca su caché: durante
+       ese hueco puede tocarle una respuesta con otra forma. Antes eso lanzaba
+       una excepción y la tarjeta decía "No se pudo calcular ahora mismo", que
+       suena a fallo del servidor cuando en realidad era JS viejo. Ahora, como
+       mucho, se deja de pintar el bloque que falte. */
+    const p   = d.puente || {};
+    const o   = d.observado || d.entradas || {};
+    const sup = d.supuestos_implicitos || {};
+    const sen = d.sensibilidad || null;
+    const m   = d.mercado || { precio: d.precio_mercado };
+    if (!p.precio_mm && sup.crecimiento_implicito == null) {
+      return `<p style="font-size:12px;color:var(--tinta-4);padding:6px 0;">
+                Valuación no disponible para esta emisora ahora mismo.</p>`;
+    }
 
     /* ── 1. QUÉ HAY QUE CREER PARA PAGAR EL PRECIO DE HOY ──────────────────
        Va primero a propósito. El precio MM solo (abajo) invita a compararlo con
@@ -1265,7 +1279,7 @@
       <details style="margin-top:10px;">
         <summary style="cursor:pointer;font-size:11px;color:var(--tinta-4);">Cómo se calcula</summary>
         <ul style="margin:8px 0 0;padding-left:16px;font-size:11px;color:var(--tinta-3);line-height:1.6;">
-          ${(d.notas || []).map(x => `<li>${x}</li>`).join('')}
+          ${((d.notas || d.supuestos) || []).map(x => `<li>${x}</li>`).join('')}
         </ul>
         <p style="margin:8px 0 0;font-size:10.5px;color:var(--tinta-4);line-height:1.5;">
           Beta desapalancada ${sup.beta_desapalancada} (de ${sup.beta_apalancada} apalancada, fórmula de Hamada).
