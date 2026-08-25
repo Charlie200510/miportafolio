@@ -187,18 +187,23 @@ _SML_CACHE: Dict[str, Any] = {}
 _SML_TTL = 6 * 60 * 60   # 6h — beta/alpha no cambian rápido
 
 
-def _descargar_close(ticker: str, period: str = "5y", intentos: int = 3) -> Optional[pd.Series]:
+def _descargar_close(ticker: str, period: str = "5y", intentos: int = 3,
+                     interval: Optional[str] = None) -> Optional[pd.Series]:
     """Descarga la serie de cierres con reintentos + backoff.
 
     Yahoo devuelve 429 ('too many requests') con frecuencia desde IPs
     compartidas como las de Render. El backoff da margen a que se libere el
     límite en vez de fallar al primer intento.
+
+    `interval` sirve para la ventana de un día: el histórico local solo guarda
+    cierres diarios, así que sin intradía la gráfica del día sería un punto.
     """
     import time as _t
     import yfinance as _yf
+    extra = {"interval": interval} if interval else {}
     for i in range(intentos):
         try:
-            hist = _yf.Ticker(ticker).history(period=period, auto_adjust=True)
+            hist = _yf.Ticker(ticker).history(period=period, auto_adjust=True, **extra)
             if hist is not None and not hist.empty and "Close" in hist.columns:
                 s = hist["Close"].dropna()
                 if len(s):

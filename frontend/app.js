@@ -3794,7 +3794,7 @@ const Periodico = (() => {
           <div class="mp-tarjeta-asa" aria-hidden="true"></div>
           <hr>
           ${t.resumen ? `<p class="mp-tarjeta-resumen">${escapeHtml(t.resumen)}</p>` : ''}
-          ${t.grafica ? `<div class="mp-tarjeta-grafica"><canvas></canvas></div>` : ''}
+          ${t.grafica ? `<div class="mp-tarjeta-grafica"><canvas id="tjg-${clave}-${i}"></canvas></div>` : ''}
           ${metricas}
           ${razones}
           ${chips}
@@ -4050,23 +4050,44 @@ const Periodico = (() => {
   // ─────────────────────────────────────────────────────────
   //  Gráfica dentro de la tarjeta — reusa MP_GRAFICA (tema único)
   // ─────────────────────────────────────────────────────────
+  /* Ventana del selector → rango que entiende /api/historico. La gráfica tiene
+     que contar el MISMO periodo que el número de arriba: si la tarjeta dice
+     "+3.1% en la semana" y el trazo enseña seis meses, el dibujo contradice a
+     la cifra que acompaña. */
+  const _RANGO_POR_PERIODO = { dia: '1D', semana: '1S', mes: '1M', anio: '1A' };
+
   async function _pintarGrafica(card, ticker, id) {
     const host = card.querySelector('.mp-tarjeta-grafica');
     const cv = host && host.querySelector('canvas');
-    if (!cv || state.charts[id]) return;
+    if (!cv) return;
+    // La clave lleva emisora y ventana, no solo la posición en el mazo: con
+    // `mazo-0` a secas, al cambiar de periodo la entrada vieja seguía puesta y
+    // esta función se salía antes de dibujar, dejando el canvas en blanco.
+    const clave = `${id}|${ticker}|${state.periodo}`;
+    if (state.charts[clave]) return;
     if (typeof Chart === 'undefined') { host.remove(); return; }
-    state.charts[id] = 'cargando';
-    const d = await safeJson(s => fetch(`/api/historico/${encodeURIComponent(ticker)}?rango=6M`, { signal: s }));
+    // Suelta el trazo anterior de ESTE canvas antes de pintar encima: si no,
+    // quedan dos instancias de Chart.js sobre el mismo contexto.
+    Object.keys(state.charts).forEach(k => {
+      if (k.startsWith(`${id}|`)) {
+        try { state.charts[k].destroy && state.charts[k].destroy(); } catch (_) {}
+        delete state.charts[k];
+      }
+    });
+    state.charts[clave] = 'cargando';
+    const rango = _RANGO_POR_PERIODO[state.periodo] || '1M';
+    const d = await safeJson(s => fetch(
+      `/api/historico/${encodeURIComponent(ticker)}?rango=${rango}`, { signal: s }));
     if (!d || !d.ok || !Array.isArray(d.precios) || d.precios.length < 2) {
       // Sin serie no se deja un hueco ni un canvas vacío: se quita el bloque.
-      delete state.charts[id];
+      delete state.charts[clave];
       if (host) host.remove();
       const mazo = card.closest('.mp-mazo');
       if (mazo) { _posicionar(mazo, true); _reajustarPista(); }
       return;
     }
     const tinta = getComputedStyle(card).getPropertyValue('--cat-tinta').trim() || MP_GRAFICA.tinta1;
-    state.charts[id] = new Chart(cv.getContext('2d'), {
+    state.charts[clave] = new Chart(cv.getContext('2d'), {
       type: 'line',
       data: {
         labels: d.fechas,
@@ -4418,10 +4439,15 @@ const Periodico = (() => {
 
     // Las gráficas del pane viejo se sueltan ANTES de tirar su DOM: si no,
     // quedan instancias de Chart.js apuntando a canvas que ya no existen.
-    viejo.querySelectorAll('canvas[id]').forEach(c => {
-      const ch = state.charts[c.id];
+    // Se recorren las claves de state.charts, no los <canvas>: antes se
+    // buscaba `canvas[id]` y los canvas de las tarjetas no llevaban id, así que
+    // esto no borraba NADA. Las entradas viejas sobrevivían y _pintarGrafica se
+    // salía antes de dibujar —de ahí las gráficas que no aparecían—.
+    Object.keys(state.charts).forEach(k => {
+      if (!k.startsWith(`${clave}-`)) return;
+      const ch = state.charts[k];
       try { ch && ch.destroy && ch.destroy(); } catch (_) {}
-      delete state.charts[c.id];
+      delete state.charts[k];
     });
     delete state.abierta[clave];
     state.datos[clave] = res.tarjetas || [];

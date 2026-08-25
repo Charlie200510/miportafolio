@@ -2442,20 +2442,33 @@ def api_portafolio_optimo():
 def api_historico(ticker):
     """Serie de cierres de un ticker. Primero del universo local; si no está,
     cae a Yahoo Finance (universo extendido), como el resto de la app.
-    ?rango=1M|3M|6M|1A|5A|MAX  ·  ?puntos=N para muestrear (sparklines)."""
+    ?rango=1D|1S|1M|3M|6M|1A|5A|MAX  ·  ?puntos=N para muestrear (sparklines)."""
     try:
         import accion_del_dia as _ad
+        import sml as _sml
         df = _ad._cargar_precios()
         ticker = (ticker or "").strip().upper()
         rango = (request.args.get("rango") or "1A").upper()
-        dias = {"1M": 21, "3M": 63, "6M": 126, "1A": 252, "5A": 252 * 5, "MAX": 10 ** 9}.get(rango, 252)
-        if df is not None and ticker in df.columns:
+        dias = {"1D": 2, "1S": 5, "1M": 21, "3M": 63, "6M": 126, "1A": 252,
+                "5A": 252 * 5, "MAX": 10 ** 9}.get(rango, 252)
+        s = None
+        if rango == "1D":
+            # El histórico local solo tiene cierres diarios: en la ventana de un
+            # día daría un punto y Chart.js no dibuja una línea con un punto.
+            # Por eso el día —y solo el día— sale de intradía.
+            s = _sml._descargar_close(ticker, period="1d", interval="5m", intentos=2)
+            if s is not None:
+                s = s.dropna()
+            if s is None or len(s) < 2:
+                # Mercado cerrado o sin intradía: se cae a la última semana de
+                # cierres, que al menos sí contiene el movimiento del día.
+                s, dias = None, 5
+        if s is None and df is not None and ticker in df.columns:
             s = df[ticker].dropna().iloc[-dias:]
-        else:
+        elif s is None:
             # Fallback a Yahoo Finance con reintentos (universo extendido)
-            import sml as _sml
-            period = {"1M": "1mo", "3M": "3mo", "6M": "6mo", "1A": "1y",
-                      "5A": "5y", "MAX": "max"}.get(rango, "1y")
+            period = {"1S": "5d", "1M": "1mo", "3M": "3mo", "6M": "6mo",
+                      "1A": "1y", "5A": "5y", "MAX": "max"}.get(rango, "1y")
             s = _sml._descargar_close(ticker, period=period)
             if s is None or len(s) == 0:
                 return jsonify({"ok": False, "error": "ticker no encontrado en el universo ni en Yahoo"}), 404
