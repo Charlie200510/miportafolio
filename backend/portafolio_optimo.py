@@ -70,7 +70,7 @@ _CACHE_DIR.mkdir(exist_ok=True)
 _MAX_POR_EMISORA = 0.10
 
 # Se sube al cambiar las REGLAS (tope, objetivo, restricciones). Invalida caché.
-_VERSION_ALGORITMO = 8
+_VERSION_ALGORITMO = 11
 
 # Más candidatos entre los que elegir. Con 40 y un tope del 10% por emisora, el
 # optimizador se quedaba sin dónde repartir: 7 u 8 de las posiciones acababan
@@ -155,7 +155,159 @@ def _cargar_info() -> Dict[str, Any]:
 # Yahoo y el dato no cambia.
 _SECTORES_PATH = _BACKEND_DIR / "_datos" / "sectores_cache.json"
 _SECTORES_MEM: Dict[str, str] = {}
-_SIN_SECTOR = {None, "", "Desconocido", "desconocido"}
+# Valores del universo que NO son una categoría real y hay que reemplazar.
+_SIN_SECTOR = {None, "", "Desconocido", "desconocido", "ETF / Índice",
+               "Otros", "Otro", "Otras emisoras"}
+
+# Vocabulario ÚNICO de categorías. Es cerrado a propósito: el tope por sector
+# agrupa comparando el nombre, así que si el mismo sector aparece con dos
+# etiquetas ("Salud" y "Healthcare") el límite del 30% se aplica dos veces por
+# separado y la cartera puede acabar con 60% en lo mismo creyendo que cumple.
+_TECNOLOGIA = "Tecnología"
+_INDICE = "Índice amplio"
+_CANONICAS = ("Tecnología", "Financiero", "Salud", "Industrial", "Energía",
+              "Materias primas", "Consumo discrecional", "Consumo defensivo",
+              "Comunicaciones", "Servicios públicos", "Inmobiliario",
+              "Energía limpia", "Índice amplio", "Renta fija", "Internacional",
+              "Criptoactivos", "Multiactivo")
+# Búsqueda sin distinguir mayúsculas: evita que "Materias Primas" y "Materias
+# primas" cuenten como dos sectores distintos al aplicar el tope del 30%.
+_CANON_POR_CLAVE = {c.lower(): c for c in _CANONICAS}
+
+# Fragmento de `category` de ETF (Yahoo no da `sector` en ETFs, siempre None)
+# → categoría. Se evalúa en orden, primer fragmento contenido gana, así que va
+# de lo más específico a lo más genérico.
+_CAT_ETF = (
+    ("digital assets", "Criptoactivos"), ("blockchain", "Criptoactivos"),
+    ("clean energy", "Energía limpia"), ("alternative energy", "Energía limpia"),
+    ("equity precious metals", "Materias primas"),
+    ("natural resources", "Materias primas"), ("commodities", "Materias primas"),
+    ("miscellaneous sector", "Energía limpia"),
+    ("health", "Salud"),
+    ("technology", _TECNOLOGIA),
+    ("consumer defensive", "Consumo defensivo"),
+    ("consumer cyclical", "Consumo discrecional"),
+    ("financial", "Financiero"),
+    ("energy", "Energía"),
+    ("industrials", "Industrial"),
+    ("utilities", "Servicios públicos"),
+    ("real estate", "Inmobiliario"),
+    ("communication", "Comunicaciones"),
+    ("government", "Renta fija"), ("bond", "Renta fija"),
+    ("treasury", "Renta fija"), ("fixed", "Renta fija"),
+    ("muni", "Renta fija"), ("convertible", "Renta fija"),
+    ("allocation", "Multiactivo"), ("multistrategy", "Multiactivo"),
+    ("hedged", "Multiactivo"), ("long-short", "Multiactivo"),
+    ("systematic trend", "Multiactivo"), ("multi-asset", "Multiactivo"),
+)
+# Sector de acción (inglés de Yahoo) → mismo vocabulario, en español.
+_SECTOR_ES = {
+    "healthcare": "Salud",
+    "technology": _TECNOLOGIA,
+    "consumer defensive": "Consumo defensivo",
+    "consumer cyclical": "Consumo discrecional",
+    "financial services": "Financiero",
+    "energy": "Energía",
+    "industrials": "Industrial",
+    "utilities": "Servicios públicos",
+    "real estate": "Inmobiliario",
+    "communication services": "Comunicaciones",
+    "basic materials": "Materias primas",
+}
+# Productos que NO se clasifican: se sacan del universo. No es un cajón de
+# sastre disfrazado —es que a estos instrumentos el modelo no los sabe medir—.
+# Markowitz supone que la volatilidad histórica describe el riesgo futuro:
+#   · Apalancados 2x/3x: se reajustan a diario, así que su rendimiento depende
+#     del camino y no solo del destino; la serie histórica no se puede escalar.
+#   · Covered call / buffer: recortan a propósito la cola derecha, así que su
+#     volatilidad medida sale baja mientras la cola izquierda sigue entera.
+#     El optimizador los leería como "gratis" y los cargaría hasta el tope.
+_CAT_EXCLUIR = ("leveraged", "trading--", "derivative income", "defined outcome",
+                "option income", "inverse")
+
+
+def _clasificar_sector(info_yf: Dict[str, Any], nombre: str = "") -> str:
+    """Categoría de UN activo, o "" si no se puede clasificar.
+
+    Devolver "" no deja el activo en un cajón: lo saca del universo. Antes se
+    leía solo `sector` —vacío en todos los ETFs— y lo que no fuera acción de
+    EE. UU. caía en "Desconocido", que llegó a ser el 88% de una cartera. Un
+    cajón así no informa de nada y además rompe el tope por sector, porque
+    agrupa bajo una misma etiqueta cosas que no tienen relación entre sí.
+    """
+    nom = (nombre or "").upper()
+    sec = (info_yf.get("sector") or "").strip().lower()
+    if sec:
+        # Ya canónica (viene de la caché): se devuelve tal cual, sin volver a
+        # pasarla por .title(), que es lo que duplicaba "Materias primas".
+        if sec in _CANON_POR_CLAVE:
+            return _CANON_POR_CLAVE[sec]
+        return _SECTOR_ES.get(sec, sec.title())
+
+    cat = (info_yf.get("category") or "").strip().lower()
+    if cat:
+        if any(k in cat for k in _CAT_EXCLUIR):
+            return ""
+        for clave, valor in _CAT_ETF:
+            if clave in cat:
+                return valor
+        if any(k in cat for k in ("foreign", "emerging", "world", "global",
+                                  "international", "china", "japan", "europe",
+                                  "latin", "pacific", "equity", "region",
+                                  "india")):
+            return "Internacional"
+        # Índices amplios: large/mid/small blend, value, growth. NO son un
+        # sector concentrado —ya reparten entre sectores— y por eso más abajo se
+        # les exime del tope sectorial.
+        if any(k in cat for k in ("blend", "value", "growth", "cap", "total",
+                                  "index", "500")):
+            return _INDICE
+
+    # Sin sector ni categoría utilizable se recurre al nombre, que en estos
+    # casos sí dice qué es: bonos ("...5.25% NOTES DUE 2028"), FIBRAs, TRACs.
+    if any(k in nom for k in ("NOTES DUE", "NOTE DUE", "DEBENTURE", "BONO",
+                              "BOND", "SUBORDINATED")):
+        return "Renta fija"
+    if any(k in nom for k in ("REIT", "FIBRA", "REALTY", "PROPERTIES")):
+        return "Inmobiliario"
+    if any(k in nom for k in ("TRAC", "INDEX", "ÍNDICE", "INDICE", "S&P/BMV")):
+        return _INDICE
+    if any(k in nom for k in ("CABLE", "TELECOM", "MEDIA", "BROADCAST")):
+        return "Comunicaciones"
+    if any(k in nom for k in ("BANCO", "BANK", "CAPITAL", "FINANC", "SEGUROS")):
+        return "Financiero"
+    if (info_yf.get("quoteType") or "").strip().upper() == "ETF":
+        return _INDICE
+    return ""
+
+
+_NOMBRES_PATH = _BACKEND_DIR / "_datos" / "nombres_cache.json"
+_NOMBRES_MEM: Dict[str, str] = {}
+
+
+def _nombres_cache() -> Dict[str, str]:
+    """Nombre de empresa por ticker, cacheado igual que el sector."""
+    global _NOMBRES_MEM
+    if _NOMBRES_MEM:
+        return _NOMBRES_MEM
+    try:
+        if _NOMBRES_PATH.exists():
+            with open(_NOMBRES_PATH, encoding="utf-8") as f:
+                _NOMBRES_MEM = json.load(f) or {}
+    except Exception:
+        _NOMBRES_MEM = {}
+    return _NOMBRES_MEM
+
+
+def _guardar_nombres(d: Dict[str, str]) -> None:
+    try:
+        _NOMBRES_PATH.parent.mkdir(exist_ok=True)
+        tmp = _NOMBRES_PATH.with_suffix(".json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f, ensure_ascii=False, indent=1)
+        tmp.replace(_NOMBRES_PATH)
+    except Exception:
+        pass
 
 
 def _sectores_cache() -> Dict[str, str]:
@@ -190,10 +342,23 @@ def _enriquecer_sectores(tickers, info_all: Dict[str, Any], limite: int = 120) -
     caché fría se completa en dos o tres pasadas en vez de bloquear la primera.
     """
     cache = _sectores_cache()
+    _nom = _nombres_cache()
+    for t in tickers:
+        if t in _nom:
+            info_all.setdefault(t, {})["nombre"] = _nom[t]
     pendientes = []
     for t in tickers:
         actual = (info_all.get(t) or {}).get("sector")
         if actual not in _SIN_SECTOR:
+            # Tiene sector, pero puede venir del universo base en inglés
+            # ("Financial Services"). Hay que traducirlo igualmente: si la misma
+            # industria circula con dos etiquetas, el tope del 30% se aplica una
+            # vez a cada una y la cartera acaba con 60% en el mismo sector.
+            canon = _CANON_POR_CLAVE.get(str(actual).strip().lower())
+            if not canon:
+                canon = _SECTOR_ES.get(str(actual).strip().lower())
+            if canon and canon != actual:
+                info_all.setdefault(t, {})["sector"] = canon
             continue
         if t in cache:
             info_all.setdefault(t, {})["sector"] = cache[t]
@@ -207,18 +372,24 @@ def _enriquecer_sectores(tickers, info_all: Dict[str, Any], limite: int = 120) -
     except Exception:
         return
     nuevos = 0
+    nombres = _nombres_cache()
     for t in pendientes[:limite]:
         try:
-            sec = (yf.Ticker(t).info or {}).get("sector")
+            iy = yf.Ticker(t).info or {}
         except Exception:
-            sec = None
-        # Se cachea TAMBIÉN el fallo, como "Desconocido": si no, cada corrida
-        # volvería a preguntar por los mismos tickers sin sector en Yahoo.
-        cache[t] = sec or "Desconocido"
+            iy = {}
+        cache[t] = _clasificar_sector(iy, (info_all.get(t) or {}).get("nombre") or t)
         info_all.setdefault(t, {})["sector"] = cache[t]
+        # El nombre sale de la MISMA respuesta, así que no cuesta una llamada
+        # extra. Sin esto la cartera lista claves ("AXSM") en vez de empresas:
+        # el universo ampliado no trae nombres, solo lo traía la lista curada.
+        n = (iy.get("longName") or iy.get("shortName") or "").strip()
+        if n and n != t:
+            nombres[t] = n
         nuevos += 1
     if nuevos:
         _guardar_sectores(cache)
+        _guardar_nombres(nombres)
 
 
 def _liquidez_diaria(info: Dict[str, Any], precio: Optional[float]) -> float:
@@ -622,10 +793,12 @@ def _optimizar_markowitz(
             sec = (sectores.get(t) or "Desconocido")
             grupos[sec].append(i)
         for sec, idxs in grupos.items():
-            # "Desconocido" NO se restringe: agrupar lo que no se pudo clasificar
-            # trataría como un sector a un cajón de sastre, y el límite caería
-            # sobre emisoras que quizá no tienen nada que ver entre sí.
-            if sec == "Desconocido" or len(idxs) < 2:
+            # "Índice amplio" NO se restringe, y no es una excepción de
+            # conveniencia: un SPY o un VTI YA reparte entre todos los sectores,
+            # así que limitarlo al 30% no reduce riesgo sectorial —lo aumenta,
+            # al obligar a sustituirlo por apuestas concentradas—. El tope
+            # existe para que no se acumule exposición a UN sector.
+            if sec in ("Índice amplio",) or len(idxs) < 2:
                 continue
             m = np.zeros(n)
             m[idxs] = 1.0
@@ -949,6 +1122,14 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
     # de concentración por sector operaría sobre un campo que en su mayoría dice
     # "Desconocido" y no restringiría nada.
     _enriquecer_sectores(candidatos, info_all)
+
+    # Lo que no se pudo clasificar sale del universo en vez de agruparse en un
+    # cajón. Si no sabemos ni describir un activo, no hay por qué recomendarlo;
+    # y dejarlo dentro rompería el tope por sector, que agrupa por etiqueta.
+    _sin_clasificar = [t for t in candidatos
+                       if not (info_all.get(t) or {}).get("sector")]
+    if _sin_clasificar and len(candidatos) - len(_sin_clasificar) >= 5:
+        candidatos = [t for t in candidatos if t not in set(_sin_clasificar)]
 
     # 2) Construir matriz de retornos mensuales para los candidatos
     rets = {}
