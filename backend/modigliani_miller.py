@@ -328,21 +328,28 @@ def _calcular(ticker: str) -> Dict[str, Any]:
     # del medio SEA el precio de hoy. Así la tabla no discute con el mercado:
     # enseña qué tan frágil es ese precio ante un punto de más o de menos.
     g_centro = g_implicita if g_implicita is not None else 0.0
-    PASO = 0.01                      # un punto porcentual por escalón
+    # Medio punto por escalón. Con un punto entero la rejilla barría un rango
+    # demasiado ancho: los extremos se iban a combinaciones que ya nadie
+    # defendería y las celdas útiles —las de alrededor del precio de hoy—
+    # quedaban desperdigadas. A medio punto la tabla enseña el vecindario real
+    # de la decisión.
+    PASO = 0.005
     eje_g  = [g_centro + k * PASO for k in (-2, -1, 0, 1, 2)]
     eje_r0 = [r0 + k * PASO for k in (-2, -1, 0, 1, 2)]
     celdas = [[_precio(gg, rr) for rr in eje_r0] for gg in eje_g]
 
-    # Cuánto se mueve el precio con UN punto de cambio, para poder decirlo en
-    # palabras en vez de obligar a leer la tabla.
     centro = celdas[2][2]
-    sens_g  = None
-    sens_r0 = None
+    # La sensibilidad se mide SIEMPRE a un punto porcentual, no al escalón de la
+    # tabla: es lo que dice la frase de la lectura, y si se leyera de la rejilla
+    # cambiaría de significado cada vez que se ajuste el paso.
+    sens_g = sens_r0 = None
     if centro:
-        if celdas[3][2]:
-            sens_g = celdas[3][2] / centro - 1.0
-        if celdas[2][3]:
-            sens_r0 = celdas[2][3] / centro - 1.0
+        p1 = _precio(g_centro + 0.01, r0)
+        p2 = _precio(g_centro, r0 + 0.01)
+        if p1:
+            sens_g = p1 / centro - 1.0
+        if p2:
+            sens_r0 = p2 / centro - 1.0
 
     # Valor en libros como referencia: activos menos TODOS los pasivos, no solo
     # la deuda. Es el piso contable, no un precio objetivo.
