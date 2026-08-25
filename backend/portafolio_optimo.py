@@ -70,7 +70,7 @@ _CACHE_DIR.mkdir(exist_ok=True)
 _MAX_POR_EMISORA = 0.10
 
 # Se sube al cambiar las REGLAS (tope, objetivo, restricciones). Invalida caché.
-_VERSION_ALGORITMO = 2
+_VERSION_ALGORITMO = 3
 
 NIVELES = {
     1:  {"vol_objetivo": 0.06, "n_acciones": 18, "etiqueta": "Conservador",
@@ -790,6 +790,41 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
         a["peso_pct"] = round(a["peso"] * 100, 2)
     acciones = [a for a in acciones if a["peso"] > 0]
 
+    # 6) El "efectivo" pasa a ser una posición REAL en CETES.
+    #
+    #    Antes, cuando el objetivo de volatilidad quedaba por debajo de lo que
+    #    puede dar cualquier combinación de acciones, el resto aparecía como una
+    #    rebanada gris de "cash". Eso es una abstracción que nadie puede comprar:
+    #    el usuario veía 49% de su cartera en algo sin nombre ni forma de
+    #    ejecutarlo. CETES sí se compra, en cetesdirecto y desde $100.
+    #
+    #    NO le aplica el tope del 10%. Ese límite existe contra el riesgo
+    #    específico de una EMPRESA, y CETES es deuda del gobierno federal: no hay
+    #    riesgo idiosincrático que diversificar. Capearlo al 10% dejaría al nivel
+    #    conservador sin forma de bajar la volatilidad, que es justo su trabajo.
+    _cash = float(resultado.get("peso_cash") or 0.0)
+    if _cash > 0.005:
+        try:
+            import renta_fija_mx as _rf
+            _tasa = ((_rf.obtener_cetes() or {}).get("tasas") or {}).get("28", {}).get("tasa_pct")
+        except Exception:
+            _tasa = None
+        acciones.append({
+            "ticker":   "CETES28",
+            "nombre":   "CETES 28 días",
+            "sector":   "Renta fija MX",
+            "peso":     round(_cash, 4),
+            "peso_pct": round(_cash * 100, 2),
+            # CETES se colocan a descuento sobre un valor nominal de $10 MXN.
+            "precio":   10.0,
+            "es_mx":    True,
+            # Marca para que la interfaz no lo trate como una acción: no tiene
+            # gráfica, ni score, ni se compra por un broker con ticker.
+            "es_renta_fija": True,
+            "tasa_pct": _tasa,
+        })
+        _cash = 0.0
+
     data = {
         "ok":                    True,
         "nivel":                 nivel,
@@ -810,7 +845,9 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
         "retorno_esperado":      resultado["retorno_esperado"],
         "volatilidad_anual":     resultado["volatilidad_anual"],
         "sharpe":                resultado["sharpe"],
-        "peso_cash":             resultado["peso_cash"],
+        # Se conserva la clave por compatibilidad, pero ya siempre en 0: lo que
+        # antes era efectivo ahora es una posición en CETES dentro de `acciones`.
+        "peso_cash":             _cash,
         "n_acciones":            len(acciones),
         "diversificacion_pct":   resultado["diversificacion_pct"],
 

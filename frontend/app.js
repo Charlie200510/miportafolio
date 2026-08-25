@@ -2117,7 +2117,9 @@ const PortafolioOptimo = (() => {
           </div>
           <div class="text-right shrink-0">
             <p class="text-[14px] font-bold text-zinc-100 tabular">${a.peso_pct.toFixed(1)}%</p>
-            ${a.precio ? `<p class="text-[10px] text-zinc-500 tabular">${a.es_mx?'$':'US$'}${a.precio.toFixed(2)}</p>` : ''}
+            ${a.es_renta_fija
+                ? `<p class="text-[10px] text-accent-green tabular">${a.tasa_pct != null ? a.tasa_pct.toFixed(2) + '% anual' : 'tasa Banxico'}</p>`
+                : (a.precio ? `<p class="text-[10px] text-zinc-500 tabular">${a.es_mx?'$':'US$'}${a.precio.toFixed(2)}</p>` : '')}
           </div>
         </div>
       `;
@@ -2280,7 +2282,13 @@ const PortafolioOptimo = (() => {
       if (!state.data || !state.data.acciones) return;
       // Cargar en el picker (selección + pesos)
       try {
-        const tickers = state.data.acciones.map(a => ({
+        /* CETES queda FUERA del picker. No es una acción: no cotiza con ticker,
+           no tiene gráfica y no se compra por un broker sino en cetesdirecto.
+           Meterlo aquí lo llevaría a Mi Portafolio como si fuera una emisora y
+           rompería su análisis. Se avisa aparte, para que el usuario sepa que
+           esa parte de la cartera también hay que ejecutarla. */
+        const rentaFija = state.data.acciones.filter(a => a.es_renta_fija);
+        const tickers = state.data.acciones.filter(a => !a.es_renta_fija).map(a => ({
           ticker: a.ticker, nombre: a.nombre, peso: a.peso_pct,
           moneda: a.es_mx ? 'MXN' : 'USD', precio: a.precio,
         }));
@@ -2294,7 +2302,13 @@ const PortafolioOptimo = (() => {
         // window.toast(msg, tipo) — la forma canónica de ux_helpers.js. Antes
         // llamaba a window.toast.success(...), que no existe: lanzaba
         // TypeError y se comía el resultado en el catch de abajo.
-        if (window.toast) window.toast(`Portafolio óptimo cargado: ${tickers.length} acciones`, 'success');
+        if (window.toast) {
+            const rf = rentaFija[0];
+            window.toast(
+              rf ? `Cargadas ${tickers.length} acciones. El ${rf.peso_pct.toFixed(1)}% en CETES se contrata aparte, en cetesdirecto.`
+                 : `Portafolio óptimo cargado: ${tickers.length} acciones`,
+              'success', rf ? 7000 : undefined);
+          }
       } catch (e) {
         if (window.toast) window.toast('No pude cargar el portafolio', 'error');
       }
