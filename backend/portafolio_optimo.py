@@ -70,7 +70,7 @@ _CACHE_DIR.mkdir(exist_ok=True)
 _MAX_POR_EMISORA = 0.10
 
 # Se sube al cambiar las REGLAS (tope, objetivo, restricciones). Invalida caché.
-_VERSION_ALGORITMO = 3
+_VERSION_ALGORITMO = 4
 
 NIVELES = {
     1:  {"vol_objetivo": 0.06, "n_acciones": 18, "etiqueta": "Conservador",
@@ -782,8 +782,20 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
     #    los que quedan proporcionalmente, y eso empujaba a los mayores por
     #    encima del máximo —así salía un 15.56% con el tope en 15%—. De nada
     #    sirve imponer el límite en el optimizador si el post-proceso lo deshace.
+    #    Qué se hace con el efectivo se decide ANTES de repartir, porque cambia
+    #    el objetivo del reparto:
+    #      · si es significativo  → se vuelve una posición en CETES (abajo) y el
+    #        reparto de acciones va sobre (1 − esa parte);
+    #      · si es un residuo de redondeo (<0.5%) → NO se deja colgando. Antes se
+    #        quedaba como "efectivo 0.2%" y las posiciones sumaban 99.78%: un
+    #        sobrante invisible que no es ni cartera ni instrumento. Se reparte
+    #        entre las acciones, siempre respetando el tope.
+    _cash_bruto = float(resultado.get("peso_cash") or 0.0)
+    _cash_es_posicion = _cash_bruto > 0.005
+    _objetivo_acciones = (1.0 - _cash_bruto) if _cash_es_posicion else 1.0
+
     reparto = _repartir_con_tope({a["ticker"]: a["peso"] for a in acciones},
-                                 1.0 - float(resultado["peso_cash"]),
+                                 _objetivo_acciones,
                                  _MAX_POR_EMISORA)
     for a in acciones:
         a["peso"] = reparto.get(a["ticker"], 0.0)
@@ -802,8 +814,8 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
     #    específico de una EMPRESA, y CETES es deuda del gobierno federal: no hay
     #    riesgo idiosincrático que diversificar. Capearlo al 10% dejaría al nivel
     #    conservador sin forma de bajar la volatilidad, que es justo su trabajo.
-    _cash = float(resultado.get("peso_cash") or 0.0)
-    if _cash > 0.005:
+    _cash = _cash_bruto
+    if _cash_es_posicion:
         try:
             import renta_fija_mx as _rf
             _tasa = ((_rf.obtener_cetes() or {}).get("tasas") or {}).get("28", {}).get("tasa_pct")
@@ -823,6 +835,9 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
             "es_renta_fija": True,
             "tasa_pct": _tasa,
         })
+        _cash = 0.0
+    else:
+        # Residuo absorbido por las acciones: ya no queda efectivo que reportar.
         _cash = 0.0
 
     data = {
