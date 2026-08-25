@@ -70,29 +70,40 @@ _CACHE_DIR.mkdir(exist_ok=True)
 _MAX_POR_EMISORA = 0.10
 
 # Se sube al cambiar las REGLAS (tope, objetivo, restricciones). Invalida caché.
-_VERSION_ALGORITMO = 4
+_VERSION_ALGORITMO = 8
+
+# Más candidatos entre los que elegir. Con 40 y un tope del 10% por emisora, el
+# optimizador se quedaba sin dónde repartir: 7 u 8 de las posiciones acababan
+# PEGADAS al tope, o sea que la "optimización" era casi equiponderar los mejores
+# y el nivel de riesgo apenas movía la cartera.
+_MAX_CANDIDATOS = 90
+
+# Tope por SECTOR. El límite del 10% por emisora no diversifica por sí solo: diez
+# tecnológicas al 10% son diez formas de apostar a lo mismo. El riesgo que de
+# verdad hace daño en una caída es el sectorial, no el de una empresa suelta.
+_MAX_POR_SECTOR = 0.30
 
 NIVELES = {
-    1:  {"vol_objetivo": 0.06, "n_acciones": 18, "etiqueta": "Conservador",
+    1:  {"vol_objetivo": 0.06, "n_acciones": 20, "etiqueta": "Conservador",
          "descripcion": "Preservación de capital. Vol objetivo ~6%."},
-    2:  {"vol_objetivo": 0.08, "n_acciones": 18, "etiqueta": "Conservador+",
+    2:  {"vol_objetivo": 0.08, "n_acciones": 20, "etiqueta": "Conservador+",
          "descripcion": "Capital con ingreso. Vol objetivo ~8%."},
-    3:  {"vol_objetivo": 0.10, "n_acciones": 17, "etiqueta": "Moderado bajo",
+    3:  {"vol_objetivo": 0.1, "n_acciones": 20, "etiqueta": "Moderado bajo",
          "descripcion": "Crecimiento con cautela. Vol objetivo ~10%."},
-    4:  {"vol_objetivo": 0.12, "n_acciones": 17, "etiqueta": "Moderado",
+    4:  {"vol_objetivo": 0.12, "n_acciones": 20, "etiqueta": "Moderado",
          "descripcion": "Balance retorno/riesgo. Vol objetivo ~12%."},
-    5:  {"vol_objetivo": 0.14, "n_acciones": 16, "etiqueta": "Balanceado",
+    5:  {"vol_objetivo": 0.14, "n_acciones": 22, "etiqueta": "Balanceado",
          "descripcion": "Similar al S&P500. Vol objetivo ~14%."},
-    6:  {"vol_objetivo": 0.16, "n_acciones": 16, "etiqueta": "Balanceado+",
+    6:  {"vol_objetivo": 0.16, "n_acciones": 22, "etiqueta": "Balanceado+",
          "descripcion": "Por encima de mercado. Vol objetivo ~16%."},
-    7:  {"vol_objetivo": 0.18, "n_acciones": 15, "etiqueta": "Crecimiento",
+    7:  {"vol_objetivo": 0.18, "n_acciones": 24, "etiqueta": "Crecimiento",
          "descripcion": "Sobreponderar growth. Vol objetivo ~18%."},
-    8:  {"vol_objetivo": 0.21, "n_acciones": 15, "etiqueta": "Crecimiento+",
-         "descripcion": "Convicción alta. Vol objetivo ~21%."},
-    9:  {"vol_objetivo": 0.24, "n_acciones": 14, "etiqueta": "Agresivo",
-         "descripcion": "Alta volatilidad por mayor retorno. Vol objetivo ~24%."},
-    10: {"vol_objetivo": 0.28, "n_acciones": 14, "etiqueta": "Muy agresivo",
-         "descripcion": "Máxima convicción. Vol objetivo ~28%."},
+    8:  {"vol_objetivo": 0.2, "n_acciones": 24, "etiqueta": "Crecimiento+",
+         "descripcion": "Convicción alta. Vol objetivo ~20%."},
+    9:  {"vol_objetivo": 0.225, "n_acciones": 26, "etiqueta": "Agresivo",
+         "descripcion": "Alta volatilidad por mayor retorno. Vol objetivo ~22.5%."},
+    10: {"vol_objetivo": 0.25, "n_acciones": 26, "etiqueta": "Muy agresivo",
+         "descripcion": "Máxima exposición a renta variable. Vol objetivo ~25%."},
 }
 
 
@@ -126,6 +137,90 @@ def _cargar_info() -> Dict[str, Any]:
     return {}
 
 
+# ─────────────────────────────────────────────────────────
+# Sectores: enriquecer lo que el universo dejó en "Desconocido"
+# ─────────────────────────────────────────────────────────
+# El universo se construye con `descargar_universo.py`, que escribe
+# literalmente "Desconocido" en el sector de todo lo que no es ETF: nunca se lo
+# pidió a Yahoo. Resultado: el 96% del universo y el 23% del set curado —casi
+# todas las emisoras mexicanas— sin sector.
+#
+# Eso hacía IMPOSIBLE diversificar por sector, y peor, imposible siquiera
+# medirlo: las carteras salían con "Desconocido" al 54-88% y parecían
+# diversificadas cuando nadie sabía si lo estaban. Poner una restricción de
+# sector sobre ese dato habría sido teatro.
+#
+# Se enriquece SOLO lo que hace falta (el set curado son ~171 tickers, de los
+# que faltan ~39) y se cachea en disco, porque cada consulta es una llamada a
+# Yahoo y el dato no cambia.
+_SECTORES_PATH = _BACKEND_DIR / "_datos" / "sectores_cache.json"
+_SECTORES_MEM: Dict[str, str] = {}
+_SIN_SECTOR = {None, "", "Desconocido", "desconocido"}
+
+
+def _sectores_cache() -> Dict[str, str]:
+    global _SECTORES_MEM
+    if _SECTORES_MEM:
+        return _SECTORES_MEM
+    try:
+        if _SECTORES_PATH.exists():
+            with open(_SECTORES_PATH, encoding="utf-8") as f:
+                _SECTORES_MEM = json.load(f) or {}
+    except Exception:
+        _SECTORES_MEM = {}
+    return _SECTORES_MEM
+
+
+def _guardar_sectores(d: Dict[str, str]) -> None:
+    try:
+        _SECTORES_PATH.parent.mkdir(exist_ok=True)
+        tmp = _SECTORES_PATH.with_suffix(".json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f, ensure_ascii=False, indent=1)
+        tmp.replace(_SECTORES_PATH)
+    except Exception:
+        pass
+
+
+def _enriquecer_sectores(tickers, info_all: Dict[str, Any], limite: int = 120) -> None:
+    """Rellena el sector de los tickers que lo tengan en 'Desconocido'.
+
+    Escribe sobre `info_all` en memoria y deja el resultado cacheado en disco.
+    `limite` acota cuántas consultas a Yahoo se hacen por ejecución: con la
+    caché fría se completa en dos o tres pasadas en vez de bloquear la primera.
+    """
+    cache = _sectores_cache()
+    pendientes = []
+    for t in tickers:
+        actual = (info_all.get(t) or {}).get("sector")
+        if actual not in _SIN_SECTOR:
+            continue
+        if t in cache:
+            info_all.setdefault(t, {})["sector"] = cache[t]
+        else:
+            pendientes.append(t)
+
+    if not pendientes:
+        return
+    try:
+        import yfinance as yf
+    except Exception:
+        return
+    nuevos = 0
+    for t in pendientes[:limite]:
+        try:
+            sec = (yf.Ticker(t).info or {}).get("sector")
+        except Exception:
+            sec = None
+        # Se cachea TAMBIÉN el fallo, como "Desconocido": si no, cada corrida
+        # volvería a preguntar por los mismos tickers sin sector en Yahoo.
+        cache[t] = sec or "Desconocido"
+        info_all.setdefault(t, {})["sector"] = cache[t]
+        nuevos += 1
+    if nuevos:
+        _guardar_sectores(cache)
+
+
 def _liquidez_diaria(info: Dict[str, Any], precio: Optional[float]) -> float:
     vol = (info.get("averageVolume") or info.get("average_volume") or 0)
     if vol and precio:
@@ -136,6 +231,96 @@ def _liquidez_diaria(info: Dict[str, Any], precio: Optional[float]) -> float:
 # ─────────────────────────────────────────────────────────
 # Selección de candidatos para Markowitz
 # ─────────────────────────────────────────────────────────
+def _preseleccion_barata(df_precios: pd.DataFrame, info_all: Dict[str, Any],
+                         tope: int = 800) -> List[str]:
+    """Triaje sobre el universo COMPLETO, sin puntuar.
+
+    El optimizador miraba solo las ~171 emisoras marcadas `recomendada`, que es
+    una lista curada a mano: el resto del universo —casi 9,000 tickers— no se
+    consideraba nunca, por buena que fuera una emisora.
+
+    Puntuar los 9,000 con el score canónico cuesta ~49 s (5.5 ms cada uno), que
+    es inaceptable en una petición. Así que primero se tria con operaciones
+    vectorizadas sobre la matriz de precios —milisegundos— y solo los que pasan
+    llegan al score caro.
+
+    El filtro no pretende elegir buenas empresas, solo descartar lo que no es
+    invertible: sin historia suficiente para estimar covarianzas, o de precio
+    tan bajo que el spread se come cualquier resultado. El orden lo pone un
+    proxy barato de retorno ajustado por riesgo; la decisión real la sigue
+    tomando el score canónico después.
+    """
+    try:
+        # 1) Historia suficiente para que la covarianza signifique algo.
+        validos = df_precios.notna().sum()
+        cols = validos[validos >= 500].index
+
+        # 2) Fuera lo que no es una acción/ETF invertible.
+        descartar = set()
+        for t in cols:
+            info = info_all.get(t) or {}
+            tipo = (info.get("tipo") or info.get("quoteType") or "").upper()
+            if tipo in ("CRYPTOCURRENCY", "MUTUALFUND", "INDEX", "FUTURE"):
+                descartar.add(t)
+            elif MC.es_crypto(t):
+                descartar.add(t)
+            else:
+                # APALANCADOS E INVERSOS FUERA. SOXL (3x semiconductores) o KORU
+                # (3x Corea) puntúan altísimo en cualquier proxy de retorno tras
+                # un buen semestre, pero se reajustan a diario: en un lateral
+                # pierden valor aunque el índice acabe igual. No son una versión
+                # "más agresiva" del subyacente, son otro instrumento, y no
+                # tienen sitio en una cartera que se arma para mantener.
+                nom = (info.get("nombre") or "").upper()
+                if any(k in nom for k in ("3X", "2X", "ULTRA", "LEVERAGED",
+                                          "INVERSE", "-1X", "SHORT ", "BEAR")):
+                    descartar.add(t)
+        cols = [c for c in cols if c not in descartar]
+        if not cols:
+            return []
+
+        sub = df_precios[cols].tail(378)          # ~18 meses hábiles
+        ultimo = sub.ffill().iloc[-1]
+        cols = [c for c in cols if float(ultimo.get(c) or 0) >= 5.0]   # sin centavos
+        if not cols:
+            return []
+
+        # 3) Orden por retorno ajustado por riesgo, todo vectorizado.
+        sub = df_precios[cols].tail(378).ffill()
+        rets = sub.pct_change().dropna(how="all")
+        vol = rets.std() * (252 ** 0.5)
+        ret = sub.iloc[-1] / sub.iloc[0] - 1.0
+
+        # PISO DE VOLATILIDAD. Sin él, el proxy retorno/volatilidad se dispara
+        # justo donde la volatilidad tiende a cero, y los primeros puestos se
+        # llenaban de ETFs de deuda ultracorta —SGOV, SHV, BILZ, MINT, GBIL—:
+        # un cociente enorme que no viene de buen retorno sino de un
+        # denominador diminuto. Además duplican el papel que ya cubre CETES,
+        # que sí es el instrumento correcto para esa función y no paga comisión
+        # de ETF. Aquí se busca renta variable.
+        vol = vol[vol >= 0.04]
+        proxy = (ret.reindex(vol.index) / vol)
+        proxy = proxy.replace([float("inf"), float("-inf")], float("nan")).dropna()
+
+        ordenados = list(proxy.sort_values(ascending=False).index)
+    except Exception:
+        ordenados = []
+
+    # Las curadas entran SIEMPRE: son la lista con la que el producto se probó,
+    # y el triaje no debe poder tirarlas por un mal semestre.
+    curadas = [t for t, v in info_all.items()
+               if isinstance(v, dict) and v.get("recomendada") and t in df_precios.columns]
+    vistos = set()
+    salida = []
+    for t in curadas + ordenados:
+        if t not in vistos:
+            vistos.add(t)
+            salida.append(t)
+        if len(salida) >= tope:
+            break
+    return salida
+
+
 def _seleccionar_candidatos(
     df_precios: pd.DataFrame,
     info_all: Dict[str, Any],
@@ -162,14 +347,11 @@ def _seleccionar_candidatos(
         isinstance(v, dict) and v.get("recomendada") for v in info_all.values()
     )
 
-    for t in df_precios.columns:
+    # Universo COMPLETO, triado barato antes de puntuar. Antes este bucle
+    # recorría df_precios entero pero descartaba todo lo que no fuera
+    # `recomendada`: de 8,934 tickers solo competían 171.
+    for t in _preseleccion_barata(df_precios, info_all):
         info = info_all.get(t, {})
-        # Filtro de calidad: solo 'recomendada' (set curado ~120). Reemplaza el
-        # viejo filtro de liquidez, que dependía de averageVolume/market_cap —
-        # campos ausentes en el universo lite, por lo que descartaba TODO y el
-        # optimizador se quedaba sin candidatos (no devolvía portafolio).
-        if hay_recomendadas and not info.get("recomendada"):
-            continue
         # Excluir crypto, fondos, índices, futuros. Los ETFs SÍ se permiten: los
         # niveles conservadores los necesitan para bajar la volatilidad objetivo.
         tipo = (info.get("tipo") or info.get("quoteType") or "").upper()
@@ -303,6 +485,8 @@ def _optimizar_markowitz(
     vol_objetivo_anual: float,
     rf_anual: float,
     max_peso: float = 0.10,
+    sectores: Optional[Dict[str, str]] = None,
+    max_sector: float = 1.0,
 ) -> Optional[Dict[str, Any]]:
     """Resuelve max Sharpe sujeto a vol_anual <= vol_objetivo.
 
@@ -344,7 +528,15 @@ def _optimizar_markowitz(
     # equiponderada de los propios candidatos. Eso conserva la señal relativa
     # —un activo de beta alta sigue esperando más, y por eso los niveles siguen
     # dando carteras distintas— pero le quita la extrapolación de la racha.
-    _ENCOGIMIENTO = 0.5     # mitad muestra, mitad modelo
+    # ENCOGIMIENTO MÁS FUERTE AL AMPLIAR EL UNIVERSO. Era 0.5 (mitad muestra,
+    # mitad modelo) cuando el optimizador elegía entre 171 candidatos curados.
+    # Al abrirlo a todo el universo pasa a elegir entre ~800, y Markowitz es un
+    # maximizador de errores de estimación: cuantos más activos mire, más
+    # probable es que el "mejor" de la muestra lo sea por suerte y no por
+    # calidad. Se vio de inmediato — el Sharpe superaba 2.8 en el nivel
+    # conservador, que no es creíble fuera de muestra. Con 0.7 manda el modelo
+    # (CAPM) y la muestra solo inclina.
+    _ENCOGIMIENTO = 0.3     # 30% muestra, 70% modelo
     _PREMIO_MERCADO = 0.055 # premio por riesgo de renta variable, anual
     mercado = df_rets.mean(axis=1)
     var_mkt = float(mercado.var())
@@ -420,6 +612,25 @@ def _optimizar_markowitz(
     # siendo retorno por unidad de riesgo; la SML es el suelo.
     betas_v = betas.values if var_mkt > 0 else np.zeros(n)
 
+    # Una máscara 0/1 por sector con más de un candidato. Los sectores con un
+    # solo nombre no necesitan restricción: ya los limita el tope por emisora.
+    mascaras_sector = []
+    if sectores and max_sector < 1.0:
+        from collections import defaultdict
+        grupos = defaultdict(list)
+        for i, t in enumerate(df_rets.columns):
+            sec = (sectores.get(t) or "Desconocido")
+            grupos[sec].append(i)
+        for sec, idxs in grupos.items():
+            # "Desconocido" NO se restringe: agrupar lo que no se pudo clasificar
+            # trataría como un sector a un cajón de sastre, y el límite caería
+            # sobre emisoras que quizá no tienen nada que ver entre sí.
+            if sec == "Desconocido" or len(idxs) < 2:
+                continue
+            m = np.zeros(n)
+            m[idxs] = 1.0
+            mascaras_sector.append(m)
+
     def alfa_p(w):
         return ret_p(w) - (rf_anual + float(w @ betas_v) * _PREMIO_MERCADO)
 
@@ -444,6 +655,12 @@ def _optimizar_markowitz(
             {"type": "ineq", "fun": lambda w, v=vol_obj: v - vol_p(w)},          # techo
             {"type": "ineq", "fun": lambda w, v=vol_obj: vol_p(w) - v * 0.85},   # piso
         ]
+        # Ningún sector por encima de `max_sector`. El tope por emisora no
+        # diversifica solo: diez tecnológicas al 10% son diez formas de apostar
+        # a lo mismo, y en una caída sectorial se hunden juntas.
+        for _mask in mascaras_sector:
+            restr.append({"type": "ineq",
+                          "fun": lambda w, m=_mask: max_sector - float(w @ m)})
         if con_sml:
             restr.append({"type": "ineq", "fun": lambda w: alfa_p(w)})           # alfa >= 0
         r = minimize(neg_sharpe, w_maxsharpe, method="SLSQP",
@@ -680,7 +897,7 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
             "descripcion": f"Objetivo de volatilidad ~{v*100:.0f}% anual (desviación estándar σ).",
         }
         max_peso = _MAX_POR_EMISORA
-        nivel = max(1, min(10, int(round((v - 0.06) / 0.22 * 9 + 1))))
+        nivel = max(1, min(10, int(round((v - 0.06) / 0.19 * 9 + 1))))
         cache_key = f"vol_{int(round(v * 100))}"
     else:
         nivel = max(1, min(10, int(nivel_riesgo)))
@@ -724,9 +941,14 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
     info_all = _cargar_info()
 
     # 1) Pre-seleccionar candidatos
-    candidatos = _seleccionar_candidatos(df_precios, info_all, nivel, max_candidatos=40)
+    candidatos = _seleccionar_candidatos(df_precios, info_all, nivel, max_candidatos=_MAX_CANDIDATOS)
     if len(candidatos) < 5:
         return {"ok": False, "error": "No hay suficientes candidatos con score positivo"}
+
+    # Sector real de los candidatos antes de repartir: sin esto, la restricción
+    # de concentración por sector operaría sobre un campo que en su mayoría dice
+    # "Desconocido" y no restringiría nada.
+    _enriquecer_sectores(candidatos, info_all)
 
     # 2) Construir matriz de retornos mensuales para los candidatos
     rets = {}
@@ -750,6 +972,9 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
         vol_objetivo_anual=params["vol_objetivo"],
         rf_anual=rf,
         max_peso=max_peso,   # tope duro por emisora (ver _MAX_POR_EMISORA)
+        sectores={t: (info_all.get(t) or {}).get("sector") or "Desconocido"
+                  for t in candidatos},
+        max_sector=_MAX_POR_SECTOR,
     )
     if resultado is None:
         return {"ok": False, "error": "Optimizador no convergió"}
