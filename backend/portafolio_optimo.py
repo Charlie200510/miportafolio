@@ -54,26 +54,44 @@ _CACHE_DIR.mkdir(exist_ok=True)
 # ─────────────────────────────────────────────────────────
 # Mapeo nivel de riesgo → parámetros del optimizador
 # ─────────────────────────────────────────────────────────
+# LOS TAMAÑOS SUBIERON AL PONER EL TOPE DE 10% POR EMISORA. Es aritmética, no
+# preferencia: con un máximo de 10% hacen falta 10 posiciones solo para llegar
+# al 100%, y con exactamente 10 la única solución posible es 10% en cada una
+# —equiponderado, sin optimización—. Los tamaños de antes (8 y 9 en los niveles
+# altos) hacían el tope directamente infactible: 8 × 10% = 80% invertido.
+# Con 14-18 nombres el optimizador conserva margen real para repartir.
+# ─────────────────────────────────────────────────────────
+# Tope duro por emisora, igual en los diez niveles. Que un nivel agresivo
+# permitiera 25% en una sola acción no era "más riesgo", era riesgo NO
+# COMPENSADO: el mercado no paga por el riesgo específico de una empresa, solo
+# por el sistemático. Concentrar en una emisora añade varianza sin añadir
+# retorno esperado, que es justo lo contrario de maximizar retorno por unidad
+# de riesgo.
+_MAX_POR_EMISORA = 0.10
+
+# Se sube al cambiar las REGLAS (tope, objetivo, restricciones). Invalida caché.
+_VERSION_ALGORITMO = 2
+
 NIVELES = {
-    1:  {"vol_objetivo": 0.06, "n_acciones": 12, "etiqueta": "Conservador",
+    1:  {"vol_objetivo": 0.06, "n_acciones": 18, "etiqueta": "Conservador",
          "descripcion": "Preservación de capital. Vol objetivo ~6%."},
-    2:  {"vol_objetivo": 0.08, "n_acciones": 12, "etiqueta": "Conservador+",
+    2:  {"vol_objetivo": 0.08, "n_acciones": 18, "etiqueta": "Conservador+",
          "descripcion": "Capital con ingreso. Vol objetivo ~8%."},
-    3:  {"vol_objetivo": 0.10, "n_acciones": 11, "etiqueta": "Moderado bajo",
+    3:  {"vol_objetivo": 0.10, "n_acciones": 17, "etiqueta": "Moderado bajo",
          "descripcion": "Crecimiento con cautela. Vol objetivo ~10%."},
-    4:  {"vol_objetivo": 0.12, "n_acciones": 11, "etiqueta": "Moderado",
+    4:  {"vol_objetivo": 0.12, "n_acciones": 17, "etiqueta": "Moderado",
          "descripcion": "Balance retorno/riesgo. Vol objetivo ~12%."},
-    5:  {"vol_objetivo": 0.14, "n_acciones": 10, "etiqueta": "Balanceado",
+    5:  {"vol_objetivo": 0.14, "n_acciones": 16, "etiqueta": "Balanceado",
          "descripcion": "Similar al S&P500. Vol objetivo ~14%."},
-    6:  {"vol_objetivo": 0.16, "n_acciones": 10, "etiqueta": "Balanceado+",
+    6:  {"vol_objetivo": 0.16, "n_acciones": 16, "etiqueta": "Balanceado+",
          "descripcion": "Por encima de mercado. Vol objetivo ~16%."},
-    7:  {"vol_objetivo": 0.18, "n_acciones": 9, "etiqueta": "Crecimiento",
+    7:  {"vol_objetivo": 0.18, "n_acciones": 15, "etiqueta": "Crecimiento",
          "descripcion": "Sobreponderar growth. Vol objetivo ~18%."},
-    8:  {"vol_objetivo": 0.21, "n_acciones": 9, "etiqueta": "Crecimiento+",
+    8:  {"vol_objetivo": 0.21, "n_acciones": 15, "etiqueta": "Crecimiento+",
          "descripcion": "Convicción alta. Vol objetivo ~21%."},
-    9:  {"vol_objetivo": 0.24, "n_acciones": 8, "etiqueta": "Agresivo",
+    9:  {"vol_objetivo": 0.24, "n_acciones": 14, "etiqueta": "Agresivo",
          "descripcion": "Alta volatilidad por mayor retorno. Vol objetivo ~24%."},
-    10: {"vol_objetivo": 0.28, "n_acciones": 8, "etiqueta": "Muy agresivo",
+    10: {"vol_objetivo": 0.28, "n_acciones": 14, "etiqueta": "Muy agresivo",
          "descripcion": "Máxima convicción. Vol objetivo ~28%."},
 }
 
@@ -229,11 +247,62 @@ def _repartir_exacto(crudos: Dict[str, float], objetivo: float) -> Dict[str, flo
     return {t: v / 10000 for t, v in base.items()}
 
 
+def _repartir_con_tope(crudos: Dict[str, float], objetivo: float,
+                       tope: float) -> Dict[str, float]:
+    """Reparte `objetivo` respetando un peso máximo por posición.
+
+    `_repartir_exacto` normaliza proporcionalmente, y al hacerlo puede empujar a
+    los mayores por encima del tope —justo lo que pasaba al recortar a los N
+    mejores—. Aquí se reparte por rondas: se recorta a quien pase del límite y
+    su excedente se reparte entre quienes aún tienen holgura, hasta que nadie
+    lo rebase o ya no quepa más.
+
+    Si el objetivo no cabe bajo el tope (por ejemplo 8 posiciones con tope 10%
+    solo llegan al 80%), se devuelve lo que sí cabe: es preferible enseñar una
+    cartera al 80% —y que el efectivo se vea— a inflar pesos por encima de una
+    regla que la propia pantalla promete.
+    """
+    if not crudos or objetivo <= 0 or tope <= 0:
+        return {}
+    tickers = list(crudos)
+    techo_total = tope * len(tickers)
+    meta = min(objetivo, techo_total)
+
+    pesos = {t: max(0.0, float(w)) for t, w in crudos.items()}
+    total = sum(pesos.values())
+    if total <= 0:
+        pesos = {t: 1.0 for t in tickers}
+        total = float(len(tickers))
+    pesos = {t: w / total * meta for t, w in pesos.items()}
+
+    for _ in range(24):                       # converge en 2-3; el tope es por si acaso
+        exceso = 0.0
+        holgura = []
+        for t in tickers:
+            if pesos[t] > tope:
+                exceso += pesos[t] - tope
+                pesos[t] = tope
+            elif pesos[t] < tope:
+                holgura.append(t)
+        if exceso <= 1e-12 or not holgura:
+            break
+        margen = sum(tope - pesos[t] for t in holgura)
+        if margen <= 1e-12:
+            break
+        repartible = min(exceso, margen)
+        for t in holgura:                     # a prorrata del margen disponible
+            pesos[t] += repartible * ((tope - pesos[t]) / margen)
+
+    # El cierre exacto a cuatro decimales lo sigue haciendo el método del resto
+    # mayor, pero ya sobre pesos que caben bajo el tope.
+    return _repartir_exacto(pesos, sum(pesos.values()))
+
+
 def _optimizar_markowitz(
     df_rets: pd.DataFrame,
     vol_objetivo_anual: float,
     rf_anual: float,
-    max_peso: float = 0.20,
+    max_peso: float = 0.10,
 ) -> Optional[Dict[str, Any]]:
     """Resuelve max Sharpe sujeto a vol_anual <= vol_objetivo.
 
@@ -339,18 +408,61 @@ def _optimizar_markowitz(
     #     max retorno   sujeto a   vol <= objetivo,  suma(w) = 1,  0 <= wi <= max
     # Eso da una cartera DISTINTA por nivel —más defensiva abajo, más agresiva
     # arriba— y siempre invertida al 100%.
-    def _en_frontera(vol_obj):
+    # ── Alfa contra la SML ─────────────────────────────────────────────────
+    # "Llegar a la SML" significa que la cartera gane AL MENOS lo que el CAPM
+    # predice para el riesgo sistemático que carga:
+    #     alfa = retorno − (rf + beta_cartera · premio de mercado)
+    # Un alfa negativo es una cartera que asume beta y no cobra por ella: está
+    # POR DEBAJO de la línea, y eso no se puede defender ante nadie.
+    #
+    # Se pide como restricción, no como objetivo, para no acabar eligiendo la
+    # cartera de mayor alfa aunque tenga peor Sharpe. Lo que se maximiza sigue
+    # siendo retorno por unidad de riesgo; la SML es el suelo.
+    betas_v = betas.values if var_mkt > 0 else np.zeros(n)
+
+    def alfa_p(w):
+        return ret_p(w) - (rf_anual + float(w @ betas_v) * _PREMIO_MERCADO)
+
+    def _en_frontera(vol_obj, con_sml=True):
+        """Mejor Sharpe DENTRO de la banda de riesgo del nivel.
+
+        Antes esto maximizaba RETORNO sujeto a vol <= objetivo. Cuando la
+        restricción aprieta las dos cosas coinciden; cuando no —los niveles
+        altos, cuyo objetivo queda por encima de la cartera tangente— maximizar
+        retorno empuja más allá de la tangente y EMPEORA el retorno por unidad
+        de riesgo, que es justo lo que se quería maximizar.
+
+        Se optimiza Sharpe, pero dentro de una BANDA [0.85·objetivo, objetivo],
+        no solo con techo. Sin el piso, todos los niveles por encima de la
+        tangente colapsarían en la misma cartera —el bug que ya se corrigió una
+        vez— y el nivel 10 dejaría de significar nada. Con banda, cada nivel
+        entrega la mejor relación retorno/riesgo DENTRO del riesgo que el
+        usuario eligió, que es lo que promete la pantalla.
+        """
         restr = [
             {"type": "eq",   "fun": lambda w: np.sum(w) - 1.0},
-            {"type": "ineq", "fun": lambda w, v=vol_obj: v - vol_p(w)},   # vol <= objetivo
+            {"type": "ineq", "fun": lambda w, v=vol_obj: v - vol_p(w)},          # techo
+            {"type": "ineq", "fun": lambda w, v=vol_obj: vol_p(w) - v * 0.85},   # piso
         ]
-        r = minimize(lambda w: -ret_p(w), w_maxsharpe, method="SLSQP",
+        if con_sml:
+            restr.append({"type": "ineq", "fun": lambda w: alfa_p(w)})           # alfa >= 0
+        r = minimize(neg_sharpe, w_maxsharpe, method="SLSQP",
                      bounds=bounds, constraints=restr,
-                     options={"maxiter": 300, "ftol": 1e-8})
+                     options={"maxiter": 400, "ftol": 1e-9})
         return r
 
     peso_cash = 0.0
-    res_front = _en_frontera(vol_objetivo_anual)
+    sml_cumplida = True
+    res_front = _en_frontera(vol_objetivo_anual, con_sml=True)
+    if not (res_front.success and vol_p(res_front.x) <= vol_objetivo_anual * 1.02):
+        # Con estos candidatos no hay ninguna combinación que llegue a la SML
+        # dentro de la banda de riesgo. Se resuelve sin esa restricción y se
+        # DEVUELVE el dato: una cartera bajo la línea es información, no algo
+        # que deba taparse eligiendo otra solución en silencio.
+        alt = _en_frontera(vol_objetivo_anual, con_sml=False)
+        if alt.success:
+            res_front = alt
+            sml_cumplida = False
     if res_front.success and vol_p(res_front.x) <= vol_objetivo_anual * 1.02:
         w_final = res_front.x
     else:
@@ -373,6 +485,9 @@ def _optimizar_markowitz(
 
     retorno_esp = float(w_final @ mu.values) + peso_cash * rf_anual
     vol_final = float(np.sqrt(w_final @ cov.values @ w_final))
+    # Posición final frente a la SML, ya con el efectivo dentro (beta 0, renta rf).
+    _beta_final = float(w_final @ betas_v)
+    _alfa_final = retorno_esp - (rf_anual + _beta_final * _PREMIO_MERCADO)
     sharpe = (retorno_esp - rf_anual) / vol_final if vol_final > 0 else 0
 
     # Pesos como dict, filtrando el polvo (<0.5%) que el optimizador deja.
@@ -418,6 +533,19 @@ def _optimizar_markowitz(
         "sharpe":                round(sharpe, 3),
         "n_acciones":            len(pesos),
         "diversificacion_pct":   round(pct_diversificable_eliminado * 100, 1),
+        # Posición frente a la SML. Se devuelve SIEMPRE, también cuando no se
+        # cumple: una cartera por debajo de la línea es un dato que el usuario
+        # tiene derecho a ver, no algo que deba desaparecer del payload.
+        # El alfa se mide sobre la cartera COMPLETA, efectivo incluido. `alfa_p`
+        # trabaja con pesos que suman 1 (dentro del optimizador siempre es así),
+        # pero en la rama con efectivo w_final suma menos y el retorno real lleva
+        # además `efectivo × rf`. Sin ese término el alfa salía subestimado y el
+        # nivel 1 se reportaba bajo la SML cuando no lo estaba.
+        "beta_portafolio":       round(_beta_final, 3),
+        "alfa_vs_sml":           round(_alfa_final, 4),
+        "sobre_la_sml":          bool(sml_cumplida and _alfa_final >= -1e-6),
+        "max_peso_emisora":      round(max_peso, 4),
+        "peso_mayor":            round(float(np.max(w_final)), 4),
     }
 
 
@@ -551,13 +679,13 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
             "vol_objetivo": v, "n_acciones": n_acc, "etiqueta": etiqueta,
             "descripcion": f"Objetivo de volatilidad ~{v*100:.0f}% anual (desviación estándar σ).",
         }
-        max_peso = 0.25 if v >= 0.20 else 0.15
+        max_peso = _MAX_POR_EMISORA
         nivel = max(1, min(10, int(round((v - 0.06) / 0.22 * 9 + 1))))
         cache_key = f"vol_{int(round(v * 100))}"
     else:
         nivel = max(1, min(10, int(nivel_riesgo)))
         params = NIVELES[nivel]
-        max_peso = 0.25 if nivel >= 8 else 0.15
+        max_peso = _MAX_POR_EMISORA
         cache_key = f"nivel_{nivel}"
     # La huella de los datos entra en la clave. El CSV del universo lo reescribe
     # a diario un timer de systemd; con una clave que solo dependía del nivel, un
@@ -568,6 +696,11 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
         cache_key += "_" + str(int(_fuente.stat().st_mtime))
     except Exception:
         pass
+    # La clave dependía SOLO de los datos, así que al cambiar las REGLAS del
+    # optimizador seguía sirviendo carteras calculadas con las anteriores hasta
+    # que caducara el TTL de 6 horas. Se versiona el algoritmo: cualquier cambio
+    # de reglas sube ese número y las cachés viejas quedan huérfanas al instante.
+    cache_key += f"_alg{_VERSION_ALGORITMO}"
 
     cached = _CACHE.get(cache_key)
     if not forzar and cached and (time.time() - cached["ts"]) < _CACHE_TTL:
@@ -616,7 +749,7 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
         df_rets,
         vol_objetivo_anual=params["vol_objetivo"],
         rf_anual=rf,
-        max_peso=max_peso,   # agresivo permite más concentración
+        max_peso=max_peso,   # tope duro por emisora (ver _MAX_POR_EMISORA)
     )
     if resultado is None:
         return {"ok": False, "error": "Optimizador no convergió"}
@@ -644,8 +777,14 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
     n_max = params["n_acciones"]
     if len(acciones) > n_max:
         acciones = acciones[:n_max]
-    reparto = _repartir_exacto({a["ticker"]: a["peso"] for a in acciones},
-                               1.0 - float(resultado["peso_cash"]))
+    #    OJO: repartir sin tope rompía la regla del 10% en el último paso. Al
+    #    recortar a los N mejores, el peso de los que se caen se reparte entre
+    #    los que quedan proporcionalmente, y eso empujaba a los mayores por
+    #    encima del máximo —así salía un 15.56% con el tope en 15%—. De nada
+    #    sirve imponer el límite en el optimizador si el post-proceso lo deshace.
+    reparto = _repartir_con_tope({a["ticker"]: a["peso"] for a in acciones},
+                                 1.0 - float(resultado["peso_cash"]),
+                                 _MAX_POR_EMISORA)
     for a in acciones:
         a["peso"] = reparto.get(a["ticker"], 0.0)
         a["peso_pct"] = round(a["peso"] * 100, 2)
@@ -660,6 +799,13 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
         "fecha":                 time.strftime("%Y-%m-%d"),
         "actualizado_ts":        int(time.time()),
 
+        # Regla de concentración y posición frente a la SML.
+        "max_peso_emisora":      resultado.get("max_peso_emisora"),
+        "peso_mayor":            max((a["peso"] for a in acciones), default=0.0),
+        "beta_portafolio":       resultado.get("beta_portafolio"),
+        "alfa_vs_sml":           resultado.get("alfa_vs_sml"),
+        "sobre_la_sml":          resultado.get("sobre_la_sml"),
+
         # Métricas del portafolio
         "retorno_esperado":      resultado["retorno_esperado"],
         "volatilidad_anual":     resultado["volatilidad_anual"],
@@ -673,11 +819,17 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
 
         # Metodología
         "metodologia": (
-            "Optimización media-varianza (Markowitz). Para cada nivel se busca el "
-            "punto de la frontera eficiente que MAXIMIZA el retorno esperado sin "
-            "pasar de la volatilidad objetivo, con pesos positivos y un tope por "
-            "posición, de modo que cada nivel da una cartera distinta y siempre "
-            "invertida al 100%. El retorno esperado no es el promedio histórico "
+            "Optimización media-varianza (Markowitz) con tres reglas duras. "
+            "PRIMERA: ninguna emisora puede pasar del 10% de la cartera. El "
+            "mercado no paga por el riesgo específico de una empresa, solo por el "
+            "sistemático, así que concentrar añade varianza sin añadir retorno "
+            "esperado. SEGUNDA: se maximiza el retorno por unidad de riesgo "
+            "(Sharpe) dentro de la banda de volatilidad del nivel elegido, no el "
+            "retorno a secas: pasada la cartera tangente, exprimir más retorno "
+            "empeora la relación riesgo/retorno. TERCERA: la cartera debe quedar "
+            "sobre la Línea del Mercado de Valores (SML), es decir ganar al menos "
+            "lo que el CAPM predice para el beta que carga; si con los candidatos "
+            "disponibles no se puede, se dice. El retorno esperado no es el promedio histórico "
             "crudo: se encoge a medio camino de la expectativa CAPM (rf + β·premio) "
             "porque extrapolar la racha reciente es lo que hace que este tipo de "
             "optimizador se vuelque sobre lo que más subió. Solo cuando la "
