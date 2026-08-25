@@ -1256,11 +1256,26 @@
                 <span style="font-size:11px;font-weight:600;color:${colorDif};">${dif == null ? '' : (dif >= 0 ? '+' : '') + _mmPct(dif, 0)}</span></p>
             </div>
           </div>
+          ${g == null ? `
           <p style="margin:8px 0 0;font-size:11px;color:var(--tinta-4);line-height:1.5;">
             Esta cifra supone crecimiento CERO para siempre, así que en una empresa sana
-            queda por debajo del mercado. La diferencia no mide carestía: mide justo el
-            crecimiento que este caso base no supone — el de arriba.
-          </p>
+            queda por debajo del mercado.
+          </p>` : `
+          <!-- La explicación del hueco, justo donde nace la duda. Ver el precio MM
+               tan por debajo del mercado sin nada al lado se lee como "está
+               carísima"; el número que lo explica no puede quedar solo arriba. -->
+          <div style="margin-top:10px;padding:12px 14px;background:var(--sup-panel);border:1px solid var(--regla);border-left:3px solid var(--sello);border-radius:var(--radio-tarjeta);">
+            <p style="margin:0;font-size:11.5px;color:var(--tinta-3);line-height:1.5;">
+              La diferencia con el mercado no es carestía: es el crecimiento que este
+              caso base supone en <strong style="color:var(--tinta-2);">cero</strong>.
+            </p>
+            <p class="tabular" style="margin:6px 0 0;font-size:30px;font-weight:800;color:var(--sello);letter-spacing:-.02em;line-height:1;">${_mmPct(g, 1)}</p>
+            <p style="margin:4px 0 0;font-size:11.5px;color:var(--tinta-3);line-height:1.5;">
+              es el crecimiento perpetuo que hay que suponer para pasar de
+              <strong class="tabular" style="color:var(--tinta-2);">${_mmMoneda(p.precio_mm, mon)}</strong> a
+              <strong class="tabular" style="color:var(--tinta-2);">${_mmMoneda(m.precio, mon)}</strong>.
+            </p>
+          </div>`}
         </div>
       </details>`;
 
