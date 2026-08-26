@@ -179,9 +179,23 @@ def enriquecer(limite: int = 80, pausa: float = 1.2, verbose: bool = True) -> in
     # A quién preguntar primero: momentum sano (ni plano ni parabólico) y que
     # haya subido en el año. Es el perfil que describe a una emergente con
     # tracción, que es lo que este pool busca.
+    # Las CURADAS entran con prioridad aunque no tengan pinta de emergentes:
+    # sin su market cap, `_ajuste_descubrimiento` no puede castigarlas por
+    # gigantes y competían como si fueran chicas. Saber que XOM es enorme vale
+    # tanto como saber que DJCO es pequeña.
+    try:
+        import json as _j
+        _info = _j.loads((BACKEND / "universo_lite_info.json").read_text(encoding="utf-8"))
+        curadas = {t.upper() for t, v in _info.items()
+                   if isinstance(v, dict) and v.get("recomendada")}
+    except Exception:
+        curadas = set()
+
     faltan = [t for t in senales if t not in cache]
+    faltan.sort(key=lambda t: 0 if t in curadas else 1)
     faltan.sort(key=lambda t: (
-        -(1 if 0.02 <= senales[t]["r3m"] <= 0.60 else 0),
+        0 if t in curadas else 1,                                  # curadas primero
+        -(1 if 0.02 <= senales[t]["r3m"] <= 0.60 else 0),          # momentum sano
         -senales[t]["r1y"],
     ))
 

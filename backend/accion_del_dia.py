@@ -350,18 +350,29 @@ def _ajuste_descubrimiento(det: Dict[str, Any], info: Dict[str, Any]) -> float:
         aj -= 20
 
     mc = info.get("market_cap") or info.get("marketCap")
+    try:
+        mc = float(mc) if mc else 0.0
+    except (TypeError, ValueError):
+        mc = 0.0
     if mc:
-        try:
-            mc = float(mc)
-            if det.get("es_mx"):
-                mc /= 18.0   # MXN→USD aprox para comparar magnitudes
-            if mc > 200e9:     aj -= 16   # gigante archiconocida
-            elif mc > 50e9:    aj -= 8
-            elif mc > 15e9:    aj -= 3
-            elif mc >= 500e6:  aj += 8    # small/mid: el sweet spot emergente
-            else:              aj -= 4    # micro: demasiado ilíquida/especulativa
-        except (TypeError, ValueError):
-            pass
+        if det.get("es_mx"):
+            mc /= 18.0   # MXN→USD aprox para comparar magnitudes
+        # Gradiente reforzado. Con el anterior, Coca-Cola FEMSA (23.5 B USD, la
+        # marca más conocida de México) recibía −3 y ganaba el día: un castigo
+        # simbólico frente al +8 de una emergente no cambia quién gana. Si la
+        # sección existe para DESCUBRIR, pasar de 15 B tiene que costar caro.
+        if mc > 200e9:     aj -= 30   # gigante archiconocida
+        elif mc > 50e9:    aj -= 22
+        elif mc > 15e9:    aj -= 14
+        elif mc > 8e9:     aj += 3    # mediana conocida: ni premio ni castigo
+        elif mc >= 400e6:  aj += 12   # small/mid: el sweet spot emergente
+        else:              aj -= 4    # micro: demasiado ilíquida/especulativa
+    else:
+        # SIN dato de tamaño no se puede afirmar que sea chica, y el universo
+        # curado son sobre todo large caps conocidas. Antes esta rama no existía
+        # y las gigantes sin market cap —XOM, CVX, JNJ, BRK-B— se libraban del
+        # castigo por completo: competían como si fueran emergentes.
+        aj -= 10
 
     sector = (det.get("sector") or "").lower()
     if any(s in sector for s in _SECTORES_CRECIMIENTO):
