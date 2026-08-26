@@ -134,11 +134,22 @@ done
 # refrescar-universo). Antes eso dejaba producción sirviendo precios viejos
 # hasta la corrida nocturna del timer; el paso 5b de abajo lo rehidrata.
 datos_revertidos=0
+# Respaldo de la versión FRESCA antes de descartarla. El paso 5b rehidrata
+# después del pull, pero si esa descarga falla —Yahoo devolviendo poco fuera
+# del horario del timer, por ejemplo— sin respaldo nos quedaríamos con el CSV
+# commiteado, que suele ir semanas atrás. Es decir: el deploy dejaría
+# producción PEOR de como la encontró. Con el respaldo, el peor caso es
+# quedarse igual, que es lo que el paso 5b siempre dio por hecho.
+RESPALDO_DATOS="$(mktemp -d "${TMPDIR:-/tmp}/mp-datos.XXXXXX")"
+trap 'rm -rf "$RESPALDO_DATOS"' EXIT
+fecha_respaldo="$(_fecha_universo)"   # frescura ANTES de tocar nada
 paso "Descartando cambios locales de los archivos de datos"
 for f in "${DATA_FILES[@]}"; do
   git ls-files --error-unmatch "$f" >/dev/null 2>&1 || continue
   if ! git diff --quiet HEAD -- "$f"; then
-    echo "  $f estaba modificado (corrida del timer) -> descarto y lo rehidrato tras el pull"
+    echo "  $f estaba modificado (corrida del timer) -> respaldo, descarto y rehidrato tras el pull"
+    mkdir -p "$RESPALDO_DATOS/$(dirname "$f")"
+    cp -p "$f" "$RESPALDO_DATOS/$f"
     git checkout -- "$f"
     datos_revertidos=1
   else
@@ -233,6 +244,23 @@ elif [[ "$datos_revertidos" == "1" || -n "$fecha_antes" ]]; then
     fi
   else
     rojo "  AVISO: no se pudo lanzar miportafolio-universo.service; el timer lo hará de noche."
+  fi
+
+  # Si tras todo esto el CSV sigue más viejo que el que había al empezar, se
+  # devuelve el respaldo: es dato REAL que ya estaba sirviéndose, y perderlo
+  # por un deploy es peor que no haber desplegado.
+  fecha_final="$(_fecha_universo)"
+  for f in "${DATA_FILES[@]}"; do
+    [[ -f "$RESPALDO_DATOS/$f" ]] || continue
+    if [[ -z "$fecha_final" || "$fecha_final" < "$fecha_respaldo" ]]; then
+      cp -p "$RESPALDO_DATOS/$f" "$f"
+      restaurado=1
+    fi
+  done
+  if [[ "${restaurado:-0}" == "1" ]]; then
+    rojo "  Restauro los datos que había antes del deploy (${fecha_respaldo}): la"
+    rojo "  rehidratación no los superó y el CSV commiteado es más viejo."
+    sudo systemctl restart miportafolio >/dev/null 2>&1 || true
   fi
 else
   echo "  (los archivos de datos no retrocedieron: nada que rehidratar)"

@@ -58,6 +58,18 @@ def main():
         nuevos = nuevos.to_frame()
     nuevos = nuevos.dropna(how="all")
 
+    # Se recortan las filas del final que vengan a medias. Fuera del horario del
+    # timer (23:00 UTC, tras el cierre de EE.UU.) la última fila es el día EN
+    # CURSO: existe pero casi vacía, porque las barras diarias aún no se
+    # publican. Medir la cobertura ahí daba ~34% y abortaba la actualización
+    # entera, tirando un mes de datos buenos por una fila incompleta. Producción
+    # se quedaba con el CSV commiteado —semanas atrás— tras cada deploy fuera de
+    # horario, y no se recuperaba hasta la corrida nocturna siguiente.
+    while len(nuevos) > 1 and nuevos.iloc[-1].notna().mean() < 0.5:
+        print(f"  descarto {nuevos.index[-1].date()}: fila incompleta "
+              f"({nuevos.iloc[-1].notna().mean():.0%} de los tickers)")
+        nuevos = nuevos.iloc[:-1]
+
     # Guarda de seguridad: si Yahoo no devolvió nada útil, no tocar el archivo.
     cobertura = nuevos.iloc[-1].notna().mean() if len(nuevos) else 0
     if len(nuevos) == 0 or cobertura < 0.5:
