@@ -70,7 +70,7 @@ _CACHE_DIR.mkdir(exist_ok=True)
 _MAX_POR_EMISORA = 0.10
 
 # Se sube al cambiar las REGLAS (tope, objetivo, restricciones). Invalida caché.
-_VERSION_ALGORITMO = 13
+_VERSION_ALGORITMO = 14
 
 # Más candidatos entre los que elegir. Con 40 y un tope del 10% por emisora, el
 # optimizador se quedaba sin dónde repartir: 7 u 8 de las posiciones acababan
@@ -283,6 +283,132 @@ def _clasificar_sector(info_yf: Dict[str, Any], nombre: str = "") -> str:
 
 _NOMBRES_PATH = _BACKEND_DIR / "_datos" / "nombres_cache.json"
 _NOMBRES_MEM: Dict[str, str] = {}
+
+_VALUACION_PATH = _BACKEND_DIR / "_datos" / "valuacion_cache.json"
+_VALUACION_MEM: Dict[str, Any] = {}
+# Campos PROSPECTIVOS de Yahoo. El universo local solo guarda sector, industria,
+# país y precio: ni un solo múltiplo. Por eso el bloque fundamental del score
+# canónico nunca sumaba nada aquí y la selección acababa siendo pura historia de
+# precios —comprar lo que ya subió—, que es justo lo que no se quiere.
+_CAMPOS_VALUACION = ("forwardPE", "trailingPE", "pegRatio", "trailingPegRatio",
+                     "returnOnEquity", "operatingMargins", "profitMargins",
+                     "revenueGrowth", "earningsGrowth", "targetMeanPrice",
+                     "currentPrice", "debtToEquity", "priceToBook")
+
+
+def _valuacion_cache() -> Dict[str, Any]:
+    global _VALUACION_MEM
+    if _VALUACION_MEM:
+        return _VALUACION_MEM
+    try:
+        if _VALUACION_PATH.exists():
+            with open(_VALUACION_PATH, encoding="utf-8") as f:
+                _VALUACION_MEM = json.load(f) or {}
+    except Exception:
+        _VALUACION_MEM = {}
+    return _VALUACION_MEM
+
+
+def _guardar_valuacion(d: Dict[str, Any]) -> None:
+    try:
+        _VALUACION_PATH.parent.mkdir(exist_ok=True)
+        tmp = _VALUACION_PATH.with_suffix(".json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f, ensure_ascii=False, indent=1)
+        tmp.replace(_VALUACION_PATH)
+    except Exception:
+        pass
+
+
+def _enriquecer_valuacion(tickers, limite: int = 120) -> Dict[str, Any]:
+    """Descarga y cachea los múltiplos prospectivos de los candidatos."""
+    cache = _valuacion_cache()
+    pendientes = [t for t in tickers if t not in cache]
+    if pendientes:
+        try:
+            import yfinance as yf
+        except Exception:
+            return cache
+        for t in pendientes[:limite]:
+            try:
+                iy = yf.Ticker(t).info or {}
+            except Exception:
+                iy = {}
+            # Se guarda SIEMPRE, aunque venga vacío: así un ticker sin datos no
+            # se vuelve a pedir en cada ejecución.
+            cache[t] = {k: iy.get(k) for k in _CAMPOS_VALUACION
+                        if iy.get(k) is not None}
+        _guardar_valuacion(cache)
+    return cache
+
+
+def _tramo(v, malo, bueno):
+    """Mapea un valor a [-1, 1] linealmente entre `malo` y `bueno`."""
+    if v is None:
+        return None
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return None
+    if malo == bueno:
+        return 0.0
+    x = (v - malo) / (bueno - malo)
+    return max(-1.0, min(1.0, x * 2.0 - 1.0))
+
+
+def _score_valuacion(v: Dict[str, Any]) -> Optional[float]:
+    """Potencial de la empresa MIRANDO HACIA ADELANTE, en [-1, 1].
+
+    No es un modelo de valuación completo: es un sesgo. Combina crecimiento
+    (ingresos y utilidades), qué tan cara está esa expectativa (P/E adelantado
+    y PEG), calidad del negocio (ROE y margen operativo) y el recorrido que le
+    ven los analistas.
+
+    Cada componente que falta se OMITE y los pesos se renormalizan sobre los
+    que sí hay. Rellenar el hueco con cero castigaría a la empresa por lo que
+    Yahoo no publica, que no dice nada de la empresa.
+    """
+    if not v:
+        return None
+    comp = []   # (peso, valor en [-1,1])
+
+    # Crecimiento: lo que se busca. -10% es malo, +25% es bueno.
+    g_ing = _tramo(v.get("revenueGrowth"), -0.10, 0.25)
+    g_uti = _tramo(v.get("earningsGrowth"), -0.10, 0.30)
+    for g in (g_ing, g_uti):
+        if g is not None:
+            comp.append((0.30 / (2 if (g_ing is not None and g_uti is not None) else 1), g))
+
+    # Precio de esa expectativa. P/E adelantado bajo es bueno; se invierte el
+    # tramo (40 malo → 10 bueno). Un P/E negativo significa pérdidas: no es
+    # "barato", así que se descarta el componente en vez de premiarlo.
+    fpe = v.get("forwardPE")
+    if fpe is not None and float(fpe) > 0:
+        comp.append((0.20, _tramo(fpe, 40.0, 10.0)))
+
+    # PEG: precio ajustado por crecimiento. Por debajo de 1 se considera barato
+    # para lo que crece; por encima de 3, caro.
+    peg = v.get("pegRatio") or v.get("trailingPegRatio")
+    if peg is not None and 0 < float(peg) < 100:
+        comp.append((0.15, _tramo(peg, 3.0, 0.8)))
+
+    # Calidad: que el crecimiento venga de un negocio que gana dinero.
+    roe = _tramo(v.get("returnOnEquity"), -0.05, 0.25)
+    mar = _tramo(v.get("operatingMargins"), 0.0, 0.25)
+    for q in (roe, mar):
+        if q is not None:
+            comp.append((0.20 / (2 if (roe is not None and mar is not None) else 1), q))
+
+    # Recorrido según analistas (precio objetivo contra el actual).
+    pt, px = v.get("targetMeanPrice"), v.get("currentPrice")
+    if pt and px and float(px) > 0:
+        comp.append((0.15, _tramo(float(pt) / float(px) - 1.0, -0.10, 0.35)))
+
+    comp = [(p, x) for p, x in comp if x is not None]
+    if not comp:
+        return None
+    total = sum(p for p, _ in comp)
+    return sum(p * x for p, x in comp) / total
 
 
 def _nombres_cache() -> Dict[str, str]:
@@ -658,6 +784,7 @@ def _optimizar_markowitz(
     max_peso: float = 0.10,
     sectores: Optional[Dict[str, str]] = None,
     max_sector: float = 1.0,
+    valuacion: Optional[Dict[str, float]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Resuelve max Sharpe sujeto a vol_anual <= vol_objetivo.
 
@@ -718,6 +845,23 @@ def _optimizar_markowitz(
     else:
         mu_capm = pd.Series(rf_anual + _PREMIO_MERCADO, index=df_rets.columns)
     mu = mu_bruto * _ENCOGIMIENTO + mu_capm * (1 - _ENCOGIMIENTO)
+
+    # SESGO POR VALUACIÓN. Sin esto el retorno esperado sale solo de la historia
+    # de precios y del CAPM: el optimizador premia lo que YA subió y no mira si
+    # la empresa puede seguir creciendo ni a qué precio se está pagando esa
+    # expectativa. El score va en [-1, 1] y aquí se convierte en puntos de
+    # retorno anual.
+    #
+    # El tope es deliberadamente pequeño (±2pp) frente al premio de mercado
+    # (5.5pp): es una INCLINACIÓN, no una tesis. Markowitz amplifica cualquier
+    # diferencia que se le meta en `mu`, así que un sesgo grande concentraría la
+    # cartera en las cuatro empresas mejor puntuadas —y estos múltiplos vienen
+    # de estimaciones de terceros, no de una certeza.
+    _TILT_VALUACION = 0.02
+    if valuacion:
+        ajuste = pd.Series({c: float(valuacion.get(c) or 0.0) * _TILT_VALUACION
+                            for c in df_rets.columns})
+        mu = mu + ajuste.reindex(mu.index).fillna(0.0)
 
     # Búsqueda aleatoria + optimización local con scipy.minimize
     try:
@@ -1170,6 +1314,16 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
     if _sin_clasificar and len(candidatos) - len(_sin_clasificar) >= 5:
         candidatos = [t for t in candidatos if t not in set(_sin_clasificar)]
 
+    # Múltiplos prospectivos de los finalistas: crecimiento, a qué precio se
+    # paga y qué calidad tiene el negocio detrás. Solo de los candidatos, no de
+    # los 800 del triaje: son ~90 consultas y quedan cacheadas.
+    _vals = _enriquecer_valuacion(candidatos)
+    _valuacion_candidatos = {}
+    for _t in candidatos:
+        _s = _score_valuacion(_vals.get(_t) or {})
+        if _s is not None:
+            _valuacion_candidatos[_t] = _s
+
     # 2) Construir matriz de retornos mensuales para los candidatos
     rets = {}
     for t in candidatos:
@@ -1195,6 +1349,7 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
         sectores={t: (info_all.get(t) or {}).get("sector") or "Desconocido"
                   for t in candidatos},
         max_sector=_MAX_POR_SECTOR,
+        valuacion=_valuacion_candidatos,
     )
     if resultado is None:
         return {"ok": False, "error": "Optimizador no convergió"}
