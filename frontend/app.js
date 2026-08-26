@@ -2053,25 +2053,62 @@ const PortafolioOptimo = (() => {
     MP_COLOR.sello, MP_COLOR.sello,
   ];
 
+  /* Skeleton del portafolio.
+     Antes empezaba con `if (!window.bbgSkel) return;`, y bbgSkel vive en
+     ux_helpers.js, que el HTML carga DESPUÉS de app.js: si la petición salía
+     antes de que ese archivo terminara de parsearse, no se pintaba nada y la
+     sección se quedaba en blanco todo lo que durase la respuesta. El armazón se
+     dibuja ahora con marcado propio y bbgSkel solo se usa si está. */
+  let _poEspera = null;
   function pintarSkeletons() {
     const S = window.bbgSkel;
-    if (!S) return;
+    const linea = (w, cls = '') => S
+      ? S.line(w, cls)
+      : `<span class="bbg-skel bbg-skel-line ${cls}" style="width:${w};"></span>`;
+
     const mets = document.getElementById('po-metricas');
     if (mets) {
-      mets.innerHTML = Array.from({length:4}, () => `
+      mets.innerHTML = Array.from({ length: 4 }, () => `
         <div class="bg-zinc-900/40 rounded-lg p-3">
-          ${S.line('60%','sm')}${S.line('80%','lg')}
-        </div>
-      `).join('');
+          ${linea('60%', 'sm')}${linea('80%', 'lg')}
+        </div>`).join('');
     }
     const comp = document.getElementById('po-composicion');
     if (comp) {
-      comp.innerHTML = Array.from({length:5}, () => `
+      // Ocho filas, no cinco: es el número de posiciones que suele traer una
+      // cartera, así que el bloque no pega un salto de alto al llegar el dato.
+      comp.innerHTML = Array.from({ length: 8 }, (_, i) => `
         <div class="flex items-center gap-3 p-2 rounded-lg bg-zinc-900/30">
-          ${S.line('40px','sm')}<div class="flex-1">${S.line('70%','sm')}</div>${S.line('45px','sm')}
-        </div>
-      `).join('');
+          ${linea('40px', 'sm')}<div class="flex-1">${linea(`${70 - i * 4}%`, 'sm')}</div>${linea('45px', 'sm')}
+        </div>`).join('');
     }
+    // La barra de sectores y la gráfica también se vacían: dejar los de la
+    // corrida anterior mientras llega otra hace creer que ya terminó.
+    const barra = document.getElementById('po-barra-apilada');
+    if (barra) barra.innerHTML = `<span class="bbg-skel" style="width:100%;height:100%;display:block"></span>`;
+    const nacc = document.getElementById('po-n-acciones');
+    if (nacc) nacc.textContent = '';
+    if (_frontChart) { try { _frontChart.destroy(); } catch (_) {} _frontChart = null; }
+
+    // Recalcular una cartera cuesta ~20 s cuando la caché está fría. Un
+    // armazón inmóvil tanto rato se lee como "se colgó", así que pasados 4 s
+    // se dice qué está pasando. No es una barra de progreso falsa: es la única
+    // información honesta que hay, que el cálculo sigue corriendo.
+    const desc = document.getElementById('po-descripcion');
+    if (_poEspera) clearTimeout(_poEspera);
+    if (desc) {
+      _poEspera = setTimeout(() => {
+        if (desc.dataset.esperando === '1') return;
+        desc.dataset.esperando = '1';
+        desc.textContent = 'Optimizando entre ~800 emisoras… puede tardar unos segundos.';
+      }, 4000);
+    }
+  }
+
+  function limpiarEspera() {
+    if (_poEspera) { clearTimeout(_poEspera); _poEspera = null; }
+    const desc = document.getElementById('po-descripcion');
+    if (desc) delete desc.dataset.esperando;
   }
 
   function pintarMetricas(d) {
@@ -2237,7 +2274,7 @@ const PortafolioOptimo = (() => {
         : `No pude generar el portafolio: ${e.message}`
       );
     } finally {
-      if (myReq === state.reqSeq) state.enVuelo = false;
+      if (myReq === state.reqSeq) { state.enVuelo = false; limpiarEspera(); }
     }
   }
 

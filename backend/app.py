@@ -796,14 +796,38 @@ def _ejecutar_warmup_blocking():
         }
     _paso("accion_dia", _r5)
 
-    # 6) Portafolio óptimo nivel 5 (el default que el frontend carga al abrir).
-    #    Calienta también el cache en memoria del DataFrame de precios, que
-    #    comparten Acción del Día y el optimizador.
+    # 6) Portafolio óptimo. Se calienta POR VOLATILIDAD, no por nivel: el
+    #    frontend pide ?vol=14 y la clave de caché es "vol_14_<fecha>", mientras
+    #    que calentar nivel_riesgo=5 escribía "nivel_5_<fecha>". Eran claves
+    #    distintas, así que este paso existía pero no le ahorraba el arranque en
+    #    frío a nadie: el primer usuario seguía esperando ~20 s.
+    #    Primero el 14%, que es el valor por defecto de la barra y por tanto lo
+    #    que se ve al abrir la sección.
     def _r6():
         import portafolio_optimo as _po
-        d = _po.portafolio_optimo(nivel_riesgo=5)
+        d = _po.portafolio_optimo(vol_objetivo=14)
         return {"ok": d.get("ok", False), "n": len(d.get("acciones", [])) if d.get("ok") else 0}
-    _paso("portafolio_optimo_5", _r6)
+    _paso("portafolio_optimo_14", _r6)
+
+    # 6b) El resto de la barra (5%–25%, paso de 1). Arrancando desde el 14 hacia
+    #     afuera: quien mueve la barra suele moverla poco, así que los valores
+    #     vecinos son los siguientes en pedirse. Cada uno cuesta ~8 s porque la
+    #     puntuación de candidatos ya está memorizada del paso anterior.
+    def _r6b():
+        import portafolio_optimo as _po
+        listos, fallos = 0, 0
+        for v in sorted(range(5, 26), key=lambda x: abs(x - 14)):
+            if v == 14:
+                continue
+            try:
+                if _po.portafolio_optimo(vol_objetivo=v).get("ok"):
+                    listos += 1
+                else:
+                    fallos += 1
+            except Exception:
+                fallos += 1
+        return {"ok": fallos == 0, "calentados": listos, "fallos": fallos}
+    _paso("portafolio_optimo_barra", _r6b)
 
     # 7) Score de ETFs y cripto para el screener. Son 233 activos y puntuarlos
     #    tarda ~10 s; si no se calientan aquí, ese costo lo paga el primer

@@ -39,6 +39,14 @@ import metricas_canonicas as MC
 _BACKEND_DIR = Path(__file__).parent
 _UNIV_FULL = _BACKEND_DIR / "universo_precios.csv"
 _UNIV_LITE = _BACKEND_DIR / "universo_lite_precios.csv"
+
+# Candidatos puntuados, memorizados entre niveles. La puntuación de los ~790
+# tickers es idéntica para los diez niveles; solo cambia el ajuste por riesgo.
+_CAND_BASE_MEM: Dict[str, Any] = {}
+
+# Curvas de frontera ya resueltas, por conjunto de candidatos. Cada curva son
+# 28 optimizaciones y no depende del objetivo de volatilidad, solo del pool.
+_FRONT_MEM: Dict[Any, Any] = {}
 # Ver nota en accion_del_dia.py: el stub info_activos.json no trae 'recomendada'
 # ni 'sector'. Preferimos universo_info.json (dev) y caemos al lite (prod).
 _INFO_FULL = _BACKEND_DIR / "universo_info.json"
@@ -46,7 +54,14 @@ _INFO_LITE = _BACKEND_DIR / "universo_lite_info.json"
 _INFO_STUB = _BACKEND_DIR / "info_activos.json"
 
 _CACHE: Dict[str, Any] = {}
-_CACHE_TTL = 6 * 60 * 60   # 6 horas (matriz de covarianzas no cambia rápido)
+# 26 h: algo más que un día, para cubrir el hueco hasta el refresco nocturno
+# del universo (23:00 UTC). No es un TTL laxo: la clave de caché YA lleva la
+# fecha del CSV y la versión del algoritmo, así que datos nuevos o código nuevo
+# generan una clave distinta y el dato viejo deja de usarse solo. El TTL solo
+# es la red de seguridad. Con 6 horas se recalculaba cuatro veces al día sin
+# que hubiera cambiado nada, y cada recálculo le costaba ~20 s al usuario que
+# tuviera la mala suerte de llegar primero.
+_CACHE_TTL = 26 * 60 * 60
 _CACHE_DIR = _BACKEND_DIR / "_cache_portafolio_optimo"
 _CACHE_DIR.mkdir(exist_ok=True)
 
@@ -70,7 +85,7 @@ _CACHE_DIR.mkdir(exist_ok=True)
 _MAX_POR_EMISORA = 0.10
 
 # Se sube al cambiar las REGLAS (tope, objetivo, restricciones). Invalida caché.
-_VERSION_ALGORITMO = 14
+_VERSION_ALGORITMO = 15
 
 # Más candidatos entre los que elegir. Con 40 y un tope del 10% por emisora, el
 # optimizador se quedaba sin dónde repartir: 7 u 8 de las posiciones acababan
@@ -633,6 +648,21 @@ def _seleccionar_candidatos(
     # que el nivel de riesgo pueda inclinar el ranking.
     candidatos: List[Tuple[str, float, float, Optional[float], Optional[float]]] = []
 
+    # Puntuar los ~790 candidatos cuesta ~8 s y NO depende del nivel: el score
+    # canónico es el mismo para los diez, solo cambia el `ajuste` de más abajo.
+    # Sin memorizar, esos 8 s se pagaban diez veces —una por nivel— cada vez que
+    # se invalidaba la caché (un deploy o el refresco nocturno del universo).
+    # La clave es la fecha del universo: si cambian los precios, se repuntúa.
+    global _CAND_BASE_MEM
+    _clave_base = None
+    try:
+        _f = _UNIV_FULL if _UNIV_FULL.exists() else _UNIV_LITE
+        _clave_base = str(int(_f.stat().st_mtime))
+    except Exception:
+        pass
+    if _clave_base and _CAND_BASE_MEM.get("clave") == _clave_base:
+        candidatos = list(_CAND_BASE_MEM["lista"])
+
     # Para no llamar score_para_ticker() 1000 veces, hacemos shortcut:
     # importamos accion_del_dia que ya cachea el universo
     import accion_del_dia as _ad
@@ -647,7 +677,7 @@ def _seleccionar_candidatos(
     # Universo COMPLETO, triado barato antes de puntuar. Antes este bucle
     # recorría df_precios entero pero descartaba todo lo que no fuera
     # `recomendada`: de 8,934 tickers solo competían 171.
-    for t in _preseleccion_barata(df_precios, info_all):
+    for t in ([] if candidatos else _preseleccion_barata(df_precios, info_all)):
         info = info_all.get(t, {})
         # Excluir crypto, fondos, índices, futuros. Los ETFs SÍ se permiten: los
         # niveles conservadores los necesitan para bajar la volatilidad objetivo.
@@ -665,6 +695,9 @@ def _seleccionar_candidatos(
         precio = float(df_precios[t].dropna().iloc[-1]) if df_precios[t].dropna().size else 0
         liq = _liquidez_diaria(info, precio)
         candidatos.append((t, score, liq, det.get("volatilidad_anual"), det.get("beta")))
+
+    if _clave_base and _CAND_BASE_MEM.get("clave") != _clave_base:
+        _CAND_BASE_MEM = {"clave": _clave_base, "lista": list(candidatos)}
 
     # Ranking final: el nivel SÍ cambia a quién se prefiere.
     #
@@ -1108,6 +1141,28 @@ def _frontera_eficiente(df_rets, optimo=None, seleccionados=None, n_puntos=28,
     n = len(cols)
     if n < 2:
         return None
+
+    # La CURVA no depende del objetivo de volatilidad: sale de la media y la
+    # covarianza del mismo conjunto de candidatos. Los 21 valores de la barra
+    # se reparten en 10 niveles, y dentro de un nivel los candidatos son
+    # idénticos, así que sin memorizar se resolvían las mismas 28
+    # optimizaciones una y otra vez —el grueso del tiempo de la petición—.
+    # Solo cambia `optimo`, que es el punto y se pega al final.
+    _clave_fr = (tuple(cols), round(max_peso, 4), round(max_sector, 4),
+                 tuple(round(float(v), 6) for v in (mu_ext or {}).values()))
+    _guardada = _FRONT_MEM.get(_clave_fr)
+    if _guardada is not None:
+        _opt = None
+        if optimo and optimo.get("vol") is not None and optimo.get("ret") is not None:
+            _opt = {"vol": round(float(optimo["vol"]) * 100, 2),
+                    "ret": round(float(optimo["ret"]) * 100, 2)}
+        # `sel` marca qué candidatas quedaron DENTRO de la cartera, y eso sí
+        # cambia con el objetivo de volatilidad aunque el pool sea el mismo.
+        # Reusar la lista tal cual pintaría resaltadas las de otro nivel.
+        _sel = seleccionados or set()
+        _act = [dict(a, sel=a["ticker"] in _sel) for a in _guardada["activos"]]
+        return {"curva": _guardada["curva"], "activos": _act, "optimo": _opt}
+
     # Mismo vector de retornos esperados que usó el optimizador (encogido hacia
     # CAPM). Sin esto la curva vive en otra escala de retorno que el punto.
     if mu_ext:
@@ -1150,6 +1205,12 @@ def _frontera_eficiente(df_rets, optimo=None, seleccionados=None, n_puntos=28,
                                 float(_m - w[_i].sum())),
                     })
 
+            # ARRANQUE EN CALIENTE. Los objetivos de retorno se recorren en
+            # orden, así que la solución de un punto está a un paso de la del
+            # siguiente. Partir siempre del reparto uniforme obligaba a SLSQP a
+            # rehacer el camino entero 28 veces: era la mitad del tiempo total
+            # de la petición (14.5 s de 31 s), y todo para una curva de adorno.
+            w_prev = np.ones(n) / n
             for k in range(n_puntos):
                 r = rmin + (rmax - rmin) * k / (n_puntos - 1)
                 cons = (
@@ -1157,9 +1218,10 @@ def _frontera_eficiente(df_rets, optimo=None, seleccionados=None, n_puntos=28,
                     {"type": "eq", "fun": (lambda w, _r=r: float(w @ mu - _r))},
                     *cons_sector,
                 )
-                res = minimize(_var, w0, method="SLSQP", bounds=bounds,
+                res = minimize(_var, w_prev, method="SLSQP", bounds=bounds,
                                constraints=cons, options={"maxiter": 120, "ftol": 1e-8})
                 if res.success:
+                    w_prev = res.x
                     v = float(np.sqrt(max(_var(res.x), 0.0)))
                     curva.append({"vol": round(v * 100, 2), "ret": round(r * 100, 2)})
             # Quedarnos con la parte EFICIENTE (de la mínima varianza hacia arriba)
@@ -1182,6 +1244,10 @@ def _frontera_eficiente(df_rets, optimo=None, seleccionados=None, n_puntos=28,
     opt = None
     if optimo and optimo.get("vol") is not None and optimo.get("ret") is not None:
         opt = {"vol": round(float(optimo["vol"]) * 100, 2), "ret": round(float(optimo["ret"]) * 100, 2)}
+    # Solo curva y activos: `optimo` es el punto y cambia con cada objetivo.
+    if len(_FRONT_MEM) > 24:
+        _FRONT_MEM.clear()
+    _FRONT_MEM[_clave_fr] = {"curva": curva, "activos": activos}
     return {"curva": curva, "activos": activos, "optimo": opt}
 
 
@@ -1243,8 +1309,15 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
         v = float(vol_objetivo)
         if v > 1:
             v = v / 100.0                       # acepta "14" o "0.14"
-        v = max(0.05, min(0.35, v))             # clamp 5%–35%
-        n_acc = max(8, min(12, int(round(12 - (v - 0.06) / 0.22 * 4))))
+        v = max(0.05, min(0.25, v))             # clamp 5%–25% (igual que la barra)
+        nivel = max(1, min(10, int(round((v - 0.05) / 0.20 * 9 + 1))))
+        # El número de posiciones sale de NIVELES, igual que en la ruta por
+        # nivel. Antes esta rama tenía su propia fórmula con techo en 12, y
+        # como el frontend SIEMPRE pide por ?vol=, la cartera que se veía en
+        # pantalla acababa recortada a 10-12 emisoras —con tope del 10% cada
+        # una, eso es una cartera de diez apuestas— por mucho que NIVELES
+        # dijera 20-26. Las dos rutas tienen que describir el mismo producto.
+        n_acc = NIVELES[nivel]["n_acciones"]
         etiqueta = ("Conservador" if v < 0.09 else "Moderado" if v < 0.13
                     else "Balanceado" if v < 0.17 else "Crecimiento" if v < 0.22
                     else "Agresivo")
@@ -1253,7 +1326,6 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
             "descripcion": f"Objetivo de volatilidad ~{v*100:.0f}% anual (desviación estándar σ).",
         }
         max_peso = _MAX_POR_EMISORA
-        nivel = max(1, min(10, int(round((v - 0.06) / 0.19 * 9 + 1))))
         cache_key = f"vol_{int(round(v * 100))}"
     else:
         nivel = max(1, min(10, int(nivel_riesgo)))
