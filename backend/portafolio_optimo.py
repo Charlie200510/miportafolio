@@ -70,7 +70,7 @@ _CACHE_DIR.mkdir(exist_ok=True)
 _MAX_POR_EMISORA = 0.10
 
 # Se sube al cambiar las REGLAS (tope, objetivo, restricciones). Invalida caché.
-_VERSION_ALGORITMO = 11
+_VERSION_ALGORITMO = 13
 
 # Más candidatos entre los que elegir. Con 40 y un tope del 10% por emisora, el
 # optimizador se quedaba sin dónde repartir: 7 u 8 de las posiciones acababan
@@ -84,8 +84,8 @@ _MAX_CANDIDATOS = 90
 _MAX_POR_SECTOR = 0.30
 
 NIVELES = {
-    1:  {"vol_objetivo": 0.06, "n_acciones": 20, "etiqueta": "Conservador",
-         "descripcion": "Preservación de capital. Vol objetivo ~6%."},
+    1:  {"vol_objetivo": 0.05, "n_acciones": 20, "etiqueta": "Conservador",
+         "descripcion": "Preservación de capital. Vol objetivo ~5%."},
     2:  {"vol_objetivo": 0.08, "n_acciones": 20, "etiqueta": "Conservador+",
          "descripcion": "Capital con ingreso. Vol objetivo ~8%."},
     3:  {"vol_objetivo": 0.1, "n_acciones": 20, "etiqueta": "Moderado bajo",
@@ -808,25 +808,27 @@ def _optimizar_markowitz(
         return ret_p(w) - (rf_anual + float(w @ betas_v) * _PREMIO_MERCADO)
 
     def _en_frontera(vol_obj, con_sml=True):
-        """Mejor Sharpe DENTRO de la banda de riesgo del nivel.
+        """Máximo RETORNO con la volatilidad objetivo como techo.
 
-        Antes esto maximizaba RETORNO sujeto a vol <= objetivo. Cuando la
-        restricción aprieta las dos cosas coinciden; cuando no —los niveles
-        altos, cuyo objetivo queda por encima de la cartera tangente— maximizar
-        retorno empuja más allá de la tangente y EMPEORA el retorno por unidad
-        de riesgo, que es justo lo que se quería maximizar.
+        Es decir: la cartera más lucrativa que se puede armar sin pasarse del
+        riesgo que el usuario eligió. En la frontera eficiente ese punto cae
+        exactamente en vol = objetivo, así que el nivel elegido se gasta entero.
 
-        Se optimiza Sharpe, pero dentro de una BANDA [0.85·objetivo, objetivo],
-        no solo con techo. Sin el piso, todos los niveles por encima de la
-        tangente colapsarían en la misma cartera —el bug que ya se corrigió una
-        vez— y el nivel 10 dejaría de significar nada. Con banda, cada nivel
-        entrega la mejor relación retorno/riesgo DENTRO del riesgo que el
-        usuario eligió, que es lo que promete la pantalla.
+        Antes esto maximizaba Sharpe dentro de la banda [0.85·objetivo,
+        objetivo]. El problema es que pasada la cartera tangente el Sharpe solo
+        baja, así que el óptimo se pegaba al SUELO de la banda: el nivel 10
+        pedía 25% de volatilidad y entregaba 21.2%, dejando retorno sin recoger
+        en un nivel cuyo sentido es justamente asumir más riesgo a cambio de más
+        retorno. El piso de la banda deja de hacer falta, porque maximizar
+        retorno ya empuja al techo por sí solo.
+
+        El precio consciente de esto: en los niveles altos el Sharpe baja. Es
+        correcto —el usuario pidió más riesgo, no mejor riesgo/retorno— y por
+        eso el Sharpe se sigue publicando junto al resultado.
         """
         restr = [
             {"type": "eq",   "fun": lambda w: np.sum(w) - 1.0},
             {"type": "ineq", "fun": lambda w, v=vol_obj: v - vol_p(w)},          # techo
-            {"type": "ineq", "fun": lambda w, v=vol_obj: vol_p(w) - v * 0.85},   # piso
         ]
         # Ningún sector por encima de `max_sector`. El tope por emisora no
         # diversifica solo: diez tecnológicas al 10% son diez formas de apostar
@@ -836,7 +838,7 @@ def _optimizar_markowitz(
                           "fun": lambda w, m=_mask: max_sector - float(w @ m)})
         if con_sml:
             restr.append({"type": "ineq", "fun": lambda w: alfa_p(w)})           # alfa >= 0
-        r = minimize(neg_sharpe, w_maxsharpe, method="SLSQP",
+        r = minimize(lambda w: -ret_p(w), w_maxsharpe, method="SLSQP",
                      bounds=bounds, constraints=restr,
                      options={"maxiter": 400, "ftol": 1e-9})
         return r
@@ -917,6 +919,12 @@ def _optimizar_markowitz(
 
     return {
         "pesos":                 pesos,
+        # Vector de retornos esperados YA encogido hacia CAPM. La frontera del
+        # gráfico tiene que dibujarse con este mismo vector: si ella usa la
+        # media histórica cruda y el portafolio usa la encogida, son dos ejes
+        # de retorno distintos y el punto no puede caer sobre la curva por
+        # mucho que se igualen las restricciones (se veía como -89pp de hueco).
+        "mu_esperado":           {c: float(v) for c, v in mu.items()},
         "peso_cash":             round(peso_cash, 4),
         "retorno_esperado":      round(retorno_esp, 4),
         "volatilidad_anual":     round(vol_final, 4),
@@ -942,37 +950,68 @@ def _optimizar_markowitz(
 # ─────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────
-def _frontera_eficiente(df_rets, optimo=None, seleccionados=None, n_puntos=28):
-    """Frontera eficiente LONG-ONLY: misma restricción que el portafolio real
-    (sin ventas en corto, pesos ≥ 0), para que el punto óptimo (la estrella)
-    caiga SOBRE la curva y no debajo de una frontera teórica inalcanzable.
+def _frontera_eficiente(df_rets, optimo=None, seleccionados=None, n_puntos=28,
+                        max_peso=1.0, sectores=None, max_sector=1.0, mu_ext=None):
+    """Frontera eficiente con LAS MISMAS restricciones que el portafolio real.
 
-    Para cada retorno objetivo, minimiza la varianza con pesos largos que suman 1.
-    Si scipy falla, cae a la frontera analítica clásica.
+    No basta con que sea long-only. Si la curva se traza sin el tope del 10% por
+    emisora y sin el del 30% por sector, dibuja carteras que al portafolio le
+    están prohibidas: queda por encima de lo alcanzable y el punto flota por
+    debajo, como si el optimizador lo hubiera hecho mal. Con las mismas
+    restricciones el punto cae SOBRE la curva porque de verdad está en ella.
     """
     cols = list(df_rets.columns)
     n = len(cols)
     if n < 2:
         return None
-    mu = df_rets.mean().values * 12.0
+    # Mismo vector de retornos esperados que usó el optimizador (encogido hacia
+    # CAPM). Sin esto la curva vive en otra escala de retorno que el punto.
+    if mu_ext:
+        mu = np.array([float(mu_ext.get(c, 0.0)) for c in cols])
+    else:
+        mu = df_rets.mean().values * 12.0
     cov = df_rets.cov().values * 12.0
 
     curva = []
     try:
         from scipy.optimize import minimize
-        rmin, rmax = float(mu.min()), float(mu.max())
+        # Con tope por emisora los extremos NO son el activo peor y el mejor:
+        # si nadie puede pasar del 10%, hacen falta 10 posiciones como mínimo,
+        # así que el techo es el promedio de las 10 mejores. Usar mu.max()
+        # pedía un retorno inalcanzable y esos puntos salían infactibles.
+        k_min = max(1, int(np.ceil(1.0 / max(max_peso, 1e-9))))
+        k_min = min(k_min, n)
+        orden = np.sort(mu)
+        rmax = float(orden[-k_min:].mean())
+        rmin = float(orden[:k_min].mean())
         if rmax > rmin:
-            bounds = [(0.0, 1.0)] * n
+            bounds = [(0.0, max_peso)] * n
             w0 = np.ones(n) / n
 
             def _var(w):
                 return float(w @ cov @ w)
+
+            # Mismo tope por sector que el portafolio.
+            cons_sector = []
+            if sectores and max_sector < 1.0:
+                grupos = {}
+                for i, c in enumerate(cols):
+                    grupos.setdefault(sectores.get(c) or "", []).append(i)
+                for sec, idxs in grupos.items():
+                    if sec in ("", _INDICE) or len(idxs) < 2:
+                        continue
+                    cons_sector.append({
+                        "type": "ineq",
+                        "fun": (lambda w, _i=np.array(idxs), _m=max_sector:
+                                float(_m - w[_i].sum())),
+                    })
 
             for k in range(n_puntos):
                 r = rmin + (rmax - rmin) * k / (n_puntos - 1)
                 cons = (
                     {"type": "eq", "fun": lambda w: float(np.sum(w) - 1.0)},
                     {"type": "eq", "fun": (lambda w, _r=r: float(w @ mu - _r))},
+                    *cons_sector,
                 )
                 res = minimize(_var, w0, method="SLSQP", bounds=bounds,
                                constraints=cons, options={"maxiter": 120, "ftol": 1e-8})
@@ -1307,6 +1346,10 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
             df_rets,
             optimo={"vol": resultado["volatilidad_anual"], "ret": resultado["retorno_esperado"]},
             seleccionados={a["ticker"] for a in acciones},
+            max_peso=_MAX_POR_EMISORA,
+            sectores={t: (info_all.get(t) or {}).get("sector") for t in df_rets.columns},
+            max_sector=_MAX_POR_SECTOR,
+            mu_ext=resultado.get("mu_esperado"),
         )
     except Exception:
         data["frontera"] = None
