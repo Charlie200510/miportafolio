@@ -10000,9 +10000,9 @@ const Analizador = (() => {
       </div>`;
 
     // ddHTML + srHTML removidos (requieren Claude API)
-    const smlHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Valoración SML · CAPM</h4><div id="an-sml-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
-    const mmHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Valuación Modigliani-Miller</h4><p class="text-[11px] text-zinc-500 mb-3">Qué vale la empresa por lo que produce, y qué queda para el accionista después de la deuda.</p><div id="an-mm-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
-    const estHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Consenso de analistas</h4><div id="an-estimados-host" class="text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-violet-500/40 border-t-violet-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando consenso…</div></div>`;
+    const smlHTML = `<div id="an-sml-card" class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Valoración SML · CAPM</h4><div id="an-sml-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
+    const mmHTML = `<div id="an-mm-card" class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Valuación Modigliani-Miller</h4><p class="text-[11px] text-zinc-500 mb-3">Qué vale la empresa por lo que produce, y qué queda para el accionista después de la deuda.</p><div id="an-mm-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
+    const estHostHTML = `<div id="an-est-card" class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Consenso de analistas</h4><div id="an-estimados-host" class="text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-violet-500/40 border-t-violet-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando consenso…</div></div>`;
     const ddHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Análisis profundo · Deep Dive</h4><p class="text-[11px] text-zinc-500 mb-3">Comparativa contra peers + narrativa. Tarda unos segundos (descarga datos en vivo).</p><div id="an-deepdive-host"><button id="an-dd-load" class="text-[12px] font-semibold text-accent-blue border border-accent-blue/40 hover:bg-accent-blue/10 rounded-lg px-4 py-2 transition">Ver análisis profundo →</button></div></div>`;
     // ── Ensamblado según el TIPO de activo ────────────────────────────────
     // Para ETF y cripto se sustituyen los bloques de empresa (fundamentales,
@@ -10058,11 +10058,16 @@ const Analizador = (() => {
       const res = await fetch('/api/estimados/' + encodeURIComponent(ticker));
       d = await res.json();
     } catch (e) {
-      host.innerHTML = '<p class="text-[11px] text-zinc-600">No se pudo cargar el consenso.</p>';
+      const card = document.getElementById('an-est-card');
+      if (card) card.remove(); else host.remove();
       return;
     }
     if (!d || !d.disponible) {
-      host.innerHTML = `<p class="text-[11px] text-zinc-600">${escapeHtml((d && d.nota) || 'Sin consenso de analistas para esta acción (Finnhub cubre EE.UU.).')}</p>`;
+      // Sin consenso NO se deja la tarjeta explicando que no hay consenso: eso
+      // ocupa el mismo espacio que un dato y no dice nada del activo. Se retira
+      // la sección entera, igual que se hace con ETF y cripto.
+      const card = document.getElementById('an-est-card');
+      if (card) card.remove(); else host.remove();
       return;
     }
     let html = '';
@@ -10116,9 +10121,8 @@ const Analizador = (() => {
       const res = await fetch(`/api/dashboard/${encodeURIComponent(ticker)}`);
       const data = await res.json();
       if (!res.ok || !data.ok || !data.tiene_datos) {
-        host.innerHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5 text-xs text-zinc-500 text-center">
-          Estados financieros no disponibles para ${escapeHtml(ticker)}. Yahoo Finance no publica estados completos para muchas emisoras de la BMV (.MX), ETFs, cripto ni varios ADRs internacionales.
-        </div>`;
+        // Sin estados financieros no se explica por qué faltan: se quita.
+        host.remove();
         return;
       }
       renderDashboardFinanciero(host, data);

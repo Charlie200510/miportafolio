@@ -1114,8 +1114,9 @@
     try {
       const res = await fetch(`/api/sml/${encodeURIComponent(ticker)}`);
       const d = await res.json();
-      cont.innerHTML = d.ok ? _renderSml(d)
-        : `<p style="color:var(--tinta-4);font-size:12px;padding:10px;">Valoración SML no disponible: ${d.error || ''}</p>`;
+      // Sin valoración no queda un aviso de que no la hay: se quita la sección.
+      if (d.ok) cont.innerHTML = _renderSml(d);
+      else (cont.closest('[id$="-card"]') || cont).remove();
     } catch (e) {
       cont.innerHTML = `<p style="color:var(--baja);font-size:12px;padding:10px;">Error SML: ${e.message}</p>`;
     }
@@ -1311,12 +1312,12 @@
       const res = await fetch(`/api/modigliani-miller/${encodeURIComponent(ticker)}`);
       const d = await res.json();
       if (d.ok) { cont.innerHTML = _renderMM(d); return; }
-      /* Se distingue "aquí este modelo no dice nada" de "faltan datos". No es
-         lo mismo, y mezclarlos haría parecer roto lo que es una decisión. */
-      const esNoAplica = d.aplica === false;
-      cont.innerHTML = `<p style="font-size:12px;color:var(--tinta-${esNoAplica ? '3' : '4'});line-height:1.55;padding:4px 0;">
-          ${esNoAplica ? '' : '<strong style="color:var(--tinta-2);">Sin datos suficientes.</strong> '}${d.error || 'No disponible.'}
-        </p>`;
+      /* Sin valuación —porque el modelo no aplica (bancos, aseguradoras) o
+         porque faltan datos— se retira la SECCIÓN COMPLETA en vez de dejar un
+         párrafo explicando su propia ausencia. Ese texto ocupa lo mismo que un
+         dato y no dice nada de la empresa. La distinción entre "no aplica" y
+         "faltan datos" era correcta pero se le contaba a quien no la pidió. */
+      (cont.closest('[id$="-card"]') || cont).remove();
     } catch (e) {
       cont.innerHTML = `<p style="color:var(--tinta-4);font-size:12px;padding:6px 0;">No se pudo calcular ahora mismo.
         <button onclick="window.renderMMEn('${ticker}','${contId}')" style="color:var(--sello);text-decoration:underline;cursor:pointer;background:none;border:0;">Reintentar</button></p>`;
