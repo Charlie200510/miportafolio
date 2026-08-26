@@ -161,6 +161,112 @@ def _fund_neon_map() -> Dict[str, Dict[str, Any]]:
     return out
 
 
+def _completar_ganador(det: Dict[str, Any]) -> None:
+    """Completa la ficha del GANADOR con una sola consulta a Yahoo.
+
+    El enriquecimiento semanal es incremental, así que un ganador recién
+    descubierto puede no estar todavía en el caché y la tarjeta saldría con
+    «Desconocido» y con la clave en vez del nombre de la empresa. Aquí se paga
+    UNA llamada —la del único activo que se va a mostrar— y se guarda en el
+    caché compartido, así que la próxima vez ya no cuesta nada.
+
+    Silenciosa por diseño: si Yahoo falla, la tarjeta sale como saldría hoy.
+    Nunca debe tumbar la sección por un dato de adorno.
+    """
+    tk = (det.get("ticker") or "").upper()
+    if not tk:
+        return
+    falta_sector = det.get("sector") in (None, "", "Desconocido")
+    falta_nombre = not det.get("nombre") or det.get("nombre") == tk
+    if not (falta_sector or falta_nombre or not det.get("market_cap")):
+        return
+    try:
+        import json as _json
+        import yfinance as _yf
+        iy = _yf.Ticker(tk).info or {}
+        if not iy:
+            return
+        nom = iy.get("longName") or iy.get("shortName")
+        if falta_nombre and nom:
+            det["nombre"] = nom
+        if falta_sector and iy.get("sector"):
+            det["sector"] = iy["sector"]
+        if det.get("industria") in (None, "", "Desconocido") and iy.get("industry"):
+            det["industria"] = iy["industry"]
+        if not det.get("market_cap") and iy.get("marketCap"):
+            det["market_cap"] = iy["marketCap"]
+
+        # Se guarda para que la próxima consulta ya no haga falta.
+        ruta = Path(__file__).parent / "_datos" / "valuacion_cache.json"
+        try:
+            datos = _json.loads(ruta.read_text(encoding="utf-8")) if ruta.exists() else {}
+        except Exception:
+            datos = {}
+        reg = dict(datos.get(tk) or {})
+        for k in ("marketCap", "sector", "industry", "longName", "shortName",
+                  "revenueGrowth", "returnOnEquity", "profitMargins"):
+            if iy.get(k) is not None:
+                reg[k] = iy[k]
+        datos[tk] = reg
+        ruta.parent.mkdir(exist_ok=True)
+        tmp = ruta.with_suffix(".json.tmp")
+        tmp.write_text(_json.dumps(datos, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(ruta)
+    except Exception:
+        pass
+
+
+def _completar_desde_caches(info_all: Dict[str, Any]) -> None:
+    """Rellena sector, nombre y market cap desde los cachés que ya existen.
+
+    El universo lite solo trae sector, industria, país y precio, y para buena
+    parte de las emisoras el sector viene vacío. Eso tenía dos efectos:
+
+      · La tarjeta salía con «Desconocido» y con la clave en vez del nombre
+        de la empresa.
+      · Peor: `_ajuste_descubrimiento` decide si una empresa es CHICA a partir
+        de `market_cap`, y sin ese dato el sesgo hacia emergentes —la razón de
+        ser de esta sección— quedaba a ciegas y no inclinaba nada.
+
+    Los datos ya estaban bajados: portafolio_optimo.py y descubrir_emergentes.py
+    comparten `_datos/valuacion_cache.json`. Aquí solo se leen; ninguna llamada
+    de red vive en esta función.
+    """
+    import json as _json
+    base = Path(__file__).parent / "_datos"
+    for nombre_arch, campos in (
+        ("valuacion_cache.json", None),      # dict de dicts
+        ("sectores_cache.json", "sector"),   # dict de strings
+        ("nombres_cache.json", "nombre"),
+    ):
+        ruta = base / nombre_arch
+        if not ruta.exists():
+            continue
+        try:
+            with open(ruta, encoding="utf-8") as f:
+                datos = _json.load(f) or {}
+        except Exception:
+            continue
+        for tk, val in datos.items():
+            reg = info_all.setdefault(tk, {})
+            if campos is None:
+                if not isinstance(val, dict):
+                    continue
+                if not reg.get("market_cap") and val.get("marketCap"):
+                    reg["market_cap"] = val["marketCap"]
+                if val.get("sector") and (reg.get("sector") in (None, "", "Desconocido")):
+                    reg["sector"] = val["sector"]
+                if val.get("industry") and (reg.get("industria") in (None, "", "Desconocido")):
+                    reg["industria"] = val["industry"]
+                nom = val.get("longName") or val.get("shortName")
+                if nom and (not reg.get("nombre") or reg.get("nombre") == tk):
+                    reg["nombre"] = nom
+            elif isinstance(val, str) and val:
+                actual = reg.get(campos)
+                if actual in (None, "", "Desconocido") or actual == tk:
+                    reg[campos] = val
+
+
 def _es_candidato(ticker: str, info: Dict[str, Any]) -> bool:
     """Filtra ETFs, fondos, crypto, índices."""
     t = ticker.upper()
@@ -371,6 +477,7 @@ def score_para_ticker(ticker: str) -> Optional[Dict[str, Any]]:
     if df is None:
         return None
     info_all = _cargar_info()
+    _completar_desde_caches(info_all)
     serie_us = df["SPY"] if "SPY" in df.columns else None
     serie_mx = df["NAFTRAC.MX"] if "NAFTRAC.MX" in df.columns else None
     res = calcular_metricas_y_score(ticker, df, info_all, serie_us, serie_mx)
@@ -498,6 +605,7 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
     # La regla anterior —"si repites a ayer y ganas por menos de 6, toma el
     # segundo"— se retiró: solo miraba un día y no sobrevivía a los deploys.
     _rank0, score, mejor = puntuados[0]
+    _completar_ganador(mejor)
 
     nivel, nivel_color = MC.nivel_para_score(score)
 

@@ -102,7 +102,7 @@ def _potencial(fund: dict) -> float:
 _VALUACION_PATH = BACKEND / "_datos" / "valuacion_cache.json"
 _CAMPOS = ("marketCap", "sector", "industry", "revenueGrowth", "earningsGrowth",
            "returnOnEquity", "profitMargins", "operatingMargins", "currentPrice",
-           "forwardPE", "trailingPE")
+           "forwardPE", "trailingPE", "longName", "shortName")
 
 
 def _leer_valuacion() -> dict:
