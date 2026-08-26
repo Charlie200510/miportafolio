@@ -308,7 +308,12 @@ _VALUACION_MEM: Dict[str, Any] = {}
 _CAMPOS_VALUACION = ("forwardPE", "trailingPE", "pegRatio", "trailingPegRatio",
                      "returnOnEquity", "operatingMargins", "profitMargins",
                      "revenueGrowth", "earningsGrowth", "targetMeanPrice",
-                     "currentPrice", "debtToEquity", "priceToBook")
+                     "currentPrice", "debtToEquity", "priceToBook",
+                     # marketCap y sector no los usa el optimizador: los usa
+                     # descubrir_emergentes.py para saber qué es una empresa
+                     # CHICA. Se capturan aquí porque la llamada a Yahoo ya se
+                     # está haciendo y no cuesta nada más.
+                     "marketCap", "sector", "industry")
 
 
 def _valuacion_cache() -> Dict[str, Any]:

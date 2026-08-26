@@ -60,7 +60,11 @@ _CACHE_DIR.mkdir(exist_ok=True)
 # con memoria de un día lo mejor que podía pasar era alternar entre las dos
 # mismas emisoras, que desde fuera se ve igual de estancado.
 _HIST_PATH = _BACKEND_DIR / "_datos" / "accion_del_dia_historial.json"
-_HIST_DIAS = 7      # ventana de enfriamiento
+_HIST_DIAS = 21     # ventana de enfriamiento. Eran 7, y con esa ventana una
+                    # emisora volvía a competir SIN penalización al octavo día:
+                    # el historial mostraba OMAB.MX los días 6, 18 y 26, y
+                    # PE&OLES.MX los días 7, 16 y 22 de un mes. Con 21 días la
+                    # rotación tiene que ir a buscar nombres nuevos.
 _HIST_MAX  = 30     # entradas guardadas
 
 
