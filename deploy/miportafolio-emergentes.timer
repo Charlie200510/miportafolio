@@ -1,0 +1,14 @@
+[Unit]
+Description=Timer: pool semanal de emergentes (Mi Portafolio)
+
+[Timer]
+# Domingos a las 09:00 UTC = 03:00 en Ciudad de México. Domingo porque el pool
+# se renueva por semana, no por día, y de madrugada porque son ~5 minutos de
+# llamadas a Yahoo y así no compite con nadie usando la app.
+# Lejos del refresco del universo (23:00 L-V) para no solapar dos trabajos que
+# ambos hablan con Yahoo.
+OnCalendar=Sun *-*-* 09:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,21 @@
+[Unit]
+Description=Pool semanal de emergentes para Acción del Día (Mi Portafolio)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/portafolio-app/backend
+# --enriquecer 240: baja de Yahoo hasta 240 fichas que falten, con 1.2s entre
+# llamadas para no provocar el 429. Son ~5 minutos y es incremental: cada
+# semana cubre más universo hasta tenerlo entero, y después solo rellena huecos.
+#
+# Sin esto, el pool de emergentes NUNCA se generaba en producción y Acción del
+# Día se quedaba reciclando el mismo puñado de emisoras curadas.
+ExecStart=/home/ubuntu/portafolio-app/.venv/bin/python descubrir_emergentes.py --enriquecer 240 --pausa 1.2 --n 60
+# Yahoo puede tardar; que no lo mate systemd a medias.
+TimeoutStartSec=1800
+# Si falla, no pasa nada grave: el pool anterior sigue sirviendo y el timer
+# reintenta la semana que viene.
+SuccessExitStatus=0 1
