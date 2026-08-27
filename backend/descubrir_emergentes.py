@@ -191,8 +191,26 @@ def enriquecer(limite: int = 80, pausa: float = 1.2, verbose: bool = True) -> in
     except Exception:
         curadas = set()
 
-    faltan = [t for t in senales if t not in cache]
-    faltan.sort(key=lambda t: 0 if t in curadas else 1)
+    # Un ticker cuenta como PENDIENTE si no está, o si su ficha quedó vacía
+    # hace más de una semana. Esa distinción importa: cuando la tanda encadena
+    # cientos de llamadas, Yahoo empieza a devolver respuestas vacías por límite
+    # de tasa, y guardarlas como definitivas envenena el caché para siempre. Fue
+    # lo que pasó con XOM, CVX, CSCO, AVGO y COST: quedaron marcados como
+    # consultados y sin market cap, y sin tamaño el filtro no puede castigarlos
+    # por gigantes. Un vacío por rate-limit no es «no hay dato»: es «vuelve a
+    # preguntar más tarde».
+    _REINTENTO = 7 * 24 * 3600
+    _ahora = time.time()
+
+    def _pendiente(t):
+        d = cache.get(t)
+        if d is None:
+            return True
+        if d.get("marketCap") is not None:
+            return False
+        return (_ahora - float(d.get("_vacio") or 0)) > _REINTENTO
+
+    faltan = [t for t in senales if _pendiente(t)]
     faltan.sort(key=lambda t: (
         0 if t in curadas else 1,                                  # curadas primero
         -(1 if 0.02 <= senales[t]["r3m"] <= 0.60 else 0),          # momentum sano
@@ -210,9 +228,13 @@ def enriquecer(limite: int = 80, pausa: float = 1.2, verbose: bool = True) -> in
             iy = yf.Ticker(t).info or {}
         except Exception:
             iy = {}
-        # Se guarda SIEMPRE, aunque venga vacío: así un ticker sin ficha no se
-        # vuelve a pedir en cada corrida y la tanda avanza de verdad.
-        cache[t] = {k: iy.get(k) for k in _CAMPOS if iy.get(k) is not None}
+        reg = {k: iy.get(k) for k in _CAMPOS if iy.get(k) is not None}
+        if not reg.get("marketCap"):
+            # Vacío: se anota CUÁNDO, para que la tanda avance ahora pero el
+            # ticker vuelva a la cola dentro de una semana. Sin la marca de
+            # tiempo, un fallo pasajero de Yahoo se volvía permanente.
+            reg["_vacio"] = _ahora
+        cache[t] = reg
         nuevos += 1
         if nuevos % 20 == 0:
             _guardar_valuacion(cache)
