@@ -1,0 +1,14 @@
+[Unit]
+Description=Timer: ranking semanal del universo completo (Mi Portafolio)
+
+[Timer]
+# Sábados 07:00 UTC = 01:00 del sábado en Ciudad de México. Fin de semana con
+# los mercados cerrados: es el trabajo más pesado (~8,900 tickers) y reinicia
+# gunicorn al acabar, así que conviene que caiga cuando no hay nadie usando la
+# app. Semanal porque el universo COMPLETO no cambia de composición a diario;
+# los precios del día a día ya los refresca el timer del universo lite.
+OnCalendar=Sat *-*-* 07:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

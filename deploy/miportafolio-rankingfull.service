@@ -1,0 +1,26 @@
+[Unit]
+Description=Ranking semanal del universo COMPLETO (Mi Portafolio)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/portafolio-app/backend
+EnvironmentFile=/home/ubuntu/portafolio-app/deploy/.env
+# Descarga precios del universo completo (~8,900) y regenera el ranking del
+# screener. Solo PRECIOS: yfinance.download sí funciona en bulk, a diferencia
+# de .info ticker a ticker.
+#
+# Efecto secundario que importa tanto como el ranking: escribe
+# universo_precios.csv, que es de donde portafolio_optimo toma el universo
+# COMPLETO. Sin este archivo el optimizador se queda con las 500 del lite; en
+# producción llevaba así desde siempre, así que las carteras se estaban armando
+# con una fracción del universo disponible.
+ExecStart=/home/ubuntu/portafolio-app/.venv/bin/python refrescar_ranking_full.py
+TimeoutStartSec=5400
+# Reiniciar gunicorn al terminar: la clave de caché del optimizador incluye la
+# fecha del archivo del universo, así que con datos nuevos hay que invalidar lo
+# calculado y dejar que el warmup vuelva a llenar la barra de riesgo.
+ExecStartPost=+/usr/bin/systemctl restart miportafolio
+SuccessExitStatus=0 1

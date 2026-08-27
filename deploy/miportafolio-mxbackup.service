@@ -1,0 +1,22 @@
+[Unit]
+Description=Respaldo diario de fundamentales de la BMV (Mi Portafolio)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/portafolio-app/backend
+EnvironmentFile=/home/ubuntu/portafolio-app/deploy/.env
+# 73 emisoras .MX, una a una con 4s de pausa: ~5 minutos. Lento a propósito,
+# porque .info encadenado sin pausa provoca respuestas vacías por límite de
+# tasa —el mismo problema que envenenó el caché del descubridor—.
+#
+# Yahoo cubre mal la BMV, así que este respaldo es lo que sostiene la sección
+# de análisis para las mexicanas. Nunca había corrido en la VM: dependía de que
+# la Mac del autor estuviera encendida.
+ExecStart=/home/ubuntu/portafolio-app/.venv/bin/python actualizar_mx_backup.py --pausa 4
+TimeoutStartSec=2400
+# Si una emisora falla, el script sigue con la siguiente y termina bien; solo
+# un fallo global debería marcar error.
+SuccessExitStatus=0 1

@@ -1,0 +1,12 @@
+[Unit]
+Description=Timer: respaldo diario de fundamentales de la BMV (Mi Portafolio)
+
+[Timer]
+# 05:00 UTC = 23:00 en Ciudad de México. Después del cierre y lejos de los otros
+# trabajos que hablan con Yahoo (universo 23:00 UTC, emergentes domingo 09:00),
+# porque encadenar dos a la vez es lo que dispara el límite de tasa.
+OnCalendar=*-*-* 05:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
