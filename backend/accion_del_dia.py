@@ -555,6 +555,7 @@ def accion_del_dia(forzar: bool = False) -> Dict[str, Any]:
         return {"ok": False, "error": "No hay datos del universo cargados"}
 
     info_all = _cargar_info()
+    _completar_desde_caches(info_all)
     serie_us = df_precios["SPY"] if "SPY" in df_precios.columns else None
     serie_mx = df_precios["NAFTRAC.MX"] if "NAFTRAC.MX" in df_precios.columns else None
     if serie_us is None and serie_mx is None:
@@ -699,6 +700,7 @@ def ranking(n: int = 60, solo_recomendadas: bool = True,
     if df is None or df.empty:
         return []
     info_all = _cargar_info()
+    _completar_desde_caches(info_all)
     serie_us = df["SPY"] if "SPY" in df.columns else None
     serie_mx = df["NAFTRAC.MX"] if "NAFTRAC.MX" in df.columns else None
     hay_rec = any(isinstance(v, dict) and v.get("recomendada") for v in info_all.values())
