@@ -117,7 +117,22 @@ def _cargar_precios() -> Optional[pd.DataFrame]:
         c = _PRECIOS_CACHE.get("df")
         if c is not None and c["path"] == str(csv) and c["mtime"] == mtime:
             return c["df"]
-        df = pd.read_csv(csv, index_col=0, parse_dates=True).sort_index()
+        # float32 y no float64: al activarse el universo COMPLETO el marco pasó
+        # de 500 a 11,439 columnas y cada worker de gunicorn carga su propia
+        # copia. Con seis workers eso son ~6.6 GB de los 11.9 de la VM; en
+        # float32 baja a la mitad. Un precio tiene 7 cifras significativas de
+        # sobra con float32 —los cálculos de retorno y covarianza no notan la
+        # diferencia— y de paso el CSV se parsea más rápido.
+        try:
+            # dtype en el propio parser: evita materializar el marco en float64
+            # y convertirlo después, que duplicaría la memoria en el pico.
+            df = pd.read_csv(csv, index_col=0, parse_dates=True,
+                             dtype="float32").sort_index()
+        except (ValueError, TypeError):
+            # Alguna columna trae texto: se lee normal y se convierte lo que se
+            # pueda. Preferible a quedarse sin universo por una celda sucia.
+            df = pd.read_csv(csv, index_col=0, parse_dates=True).sort_index()
+            df = df.apply(pd.to_numeric, errors="coerce", downcast="float")
         _PRECIOS_CACHE["df"] = {"df": df, "mtime": mtime, "path": str(csv)}
         return df
     except Exception:
