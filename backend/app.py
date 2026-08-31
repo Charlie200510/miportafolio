@@ -3070,6 +3070,25 @@ def _email_efectivo(email_cliente: Optional[str]) -> Optional[str]:
 # server-side (actualizar_plan) o de MercadoPago en web.
 _TRIAL_DIAS = int(os.environ.get("TRIAL_DIAS", "14"))
 
+# Cuentas de revisión de App Store: acceso permanente decidido EN CÓDIGO, no en
+# el store de cuentas.
+#
+# Por qué en código y no con el flag `acceso_permanente` del store: la cuenta
+# que se le dio a Apple se creó como trial normal el 23-ago-2026 y vencía el
+# 6-sep. Si la revisión cae después de esa fecha, el revisor abre la app, se
+# topa con el muro de pago y rechaza por Guideline 2.1 —y con un 4.3(a) previo
+# encima, eso es un segundo rechazo por una causa completamente evitable—.
+# Puesto aquí, la cuenta no puede caducar nunca, queda documentado en el repo y
+# no depende de que alguien se acuerde de tocar un JSON en el servidor.
+#
+# Se puede sustituir por variable de entorno sin desplegar. La comparación es
+# sobre el correo ya normalizado a minúsculas, igual que en el registro.
+_CUENTAS_DEMO = {
+    c.strip().lower()
+    for c in os.environ.get("CUENTAS_DEMO", "carbarser05@gmail.com").split(",")
+    if c.strip()
+}
+
 
 def _estado_plan(usuario: dict) -> dict:
     # Acceso PERMANENTE por cuenta (p.ej. la cuenta demo de Apple): nunca expira
@@ -3077,7 +3096,8 @@ def _estado_plan(usuario: dict) -> dict:
     # `acceso_permanente: true` en el store, SOLO en esa cuenta exacta. El cliente
     # no puede setearlo (vive en el store; se lee vía _sesion_actual). No cambia
     # la lógica global del trial.
-    if (usuario or {}).get("acceso_permanente") is True:
+    _correo = str((usuario or {}).get("email") or "").strip().lower()
+    if (usuario or {}).get("acceso_permanente") is True or _correo in _CUENTAS_DEMO:
         return {
             "plan": "premium",
             "premium": True,
