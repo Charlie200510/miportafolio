@@ -208,12 +208,12 @@ def obtener_dashboard(ticker: str) -> dict[str, Any]:
             "fcf": {
                 "valor":      _ultimo(fcf_d),
                 "yoy":        _yoy(fcf_d),
-                "label":      "Free Cash Flow",
+                "label":      "Flujo de caja libre",
             },
             "eps_diluted": {
                 "valor":      _ultimo(eps_d),
                 "yoy":        _yoy(eps_d),
-                "label":      "EPS diluted",
+                "label":      "Utilidad por acción",
             },
             "roe": {
                 "valor":      roe,

@@ -344,7 +344,7 @@
   const BENEFICIOS = [
     'Portafolio óptimo y frontera eficiente',
     'Simulación Monte Carlo y plan de rebalanceo',
-    'Análisis profundo (Deep Dive) y valuación SML',
+    'Análisis profundo y valuación SML',
     'Screener avanzado y ranking por score',
     'Reporte mensual en PDF y alertas',
   ];

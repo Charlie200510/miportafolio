@@ -41,7 +41,7 @@
         <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:16px;">
           <div>
             <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--sello);">Análisis profundo</p>
-            <h2 style="margin:4px 0 0;font-size:22px;color:var(--tinta-1);font-weight:700;">Deep Dive de empresa</h2>
+            <h2 style="margin:4px 0 0;font-size:22px;color:var(--tinta-1);font-weight:700;">Análisis profundo de la empresa</h2>
             <p style="margin:6px 0 0;font-size:12px;color:var(--tinta-3);">Métricas + comparativa vs peers + narrativa automática. Especialmente útil para BMV (WALMEX, GFNORTEO, AMX, etc).</p>
           </div>
           <button onclick="document.getElementById('mp-herramienta-modal').remove()" style="background:transparent;border:none;color:var(--tinta-4);font-size:24px;cursor:pointer;padding:4px 8px;">×</button>

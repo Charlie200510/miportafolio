@@ -9879,14 +9879,14 @@ const Analizador = (() => {
               const peso = (d.score_pesos || {})[k] || 0;
               const pct = peso > 0 ? Math.round((v / peso) * 100) : 0;
               const label = ({
-                value_growth: 'Value/Growth',
+                value_growth: 'Valor/Crecimiento',
                 gross_margin: 'Margen bruto',
                 rev_growth:   'Crecimiento ingresos',
                 ev_ebitda:    'EV/EBITDA',
                 roe:          'ROE',
-                debt_equity:  'Deuda/Equity',
+                debt_equity:  'Deuda/Capital',
                 pe:           'P/E',
-                pos_52w:      'Posición 52w',
+                pos_52w:      'Posición 52 sem',
               })[k] || k;
               return `
                 <div class="bg-zinc-900/40 border border-surface-border rounded-lg p-2.5">
@@ -9926,23 +9926,23 @@ const Analizador = (() => {
       <div class="bg-surface border border-surface-border rounded-2xl p-6">
         <div class="flex items-center gap-2 mb-3">
           <span class="text-accent-green">●</span>
-          <h4 class="text-sm font-semibold text-zinc-200 uppercase tracking-wider">Peer Comparison Table</h4>
+          <h4 class="text-sm font-semibold text-zinc-200 uppercase tracking-wider">Comparativa con empresas similares</h4>
         </div>
-        <p class="text-xs text-zinc-500 mb-4">Valuación relativa vs ${(peer.peers || []).length} competidores. Lower Value/Growth Score = más crecimiento por cada peso de valuación.</p>
+        <p class="text-xs text-zinc-500 mb-4">Valuación relativa contra ${(peer.peers || []).length} competidores. Un puntaje V/C más bajo significa más crecimiento por cada peso de valuación.</p>
         <div class="overflow-x-auto -mx-2">
           <table class="w-full text-left">
             <thead>
               <tr class="border-b border-surface-border">
                 <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">Ticker</th>
                 <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">P/S TTM</th>
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">P/S Fwd</th>
+                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">P/S proy.</th>
                 <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">EV/EBITDA</th>
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">Gross Margin</th>
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">YoY Rev</th>
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">V/G Score</th>
+                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">Margen bruto</th>
+                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">Ingresos a/a</th>
+                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">Puntaje V/C</th>
               </tr>
             </thead>
-            <tbody>${peerRows || '<tr><td colspan="7" class="py-4 text-center text-xs text-zinc-500">Sin datos de peers.</td></tr>'}</tbody>
+            <tbody>${peerRows || '<tr><td colspan="7" class="py-4 text-center text-xs text-zinc-500">Sin datos de empresas comparables.</td></tr>'}</tbody>
           </table>
         </div>
       </div>
@@ -9953,7 +9953,7 @@ const Analizador = (() => {
       <div class="bg-surface border border-surface-border rounded-2xl p-6">
         <div class="flex items-center gap-2 mb-4">
           <span class="text-accent-blue">●</span>
-          <h4 class="text-sm font-semibold text-zinc-200 uppercase tracking-wider">Deep Dive — 4 partes</h4>
+          <h4 class="text-sm font-semibold text-zinc-200 uppercase tracking-wider">Análisis profundo — 4 partes</h4>
           ${d.narrativa_fuente === 'claude' ? '<span class="text-[9px] uppercase tracking-wider text-accent-purple/80">IA</span>' : '<span class="text-[9px] uppercase tracking-wider text-zinc-600">Datos</span>'}
         </div>
         <div class="grid md:grid-cols-2 gap-4">
@@ -10040,7 +10040,7 @@ const Analizador = (() => {
     const smlHTML = `<div id="an-sml-card" class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Valoración SML · CAPM</h4><div id="an-sml-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
     const mmHTML = `<div id="an-mm-card" class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Valuación Modigliani-Miller</h4><p class="text-[11px] text-zinc-500 mb-3">Qué vale la empresa por lo que produce, y qué queda para el accionista después de la deuda.</p><div id="an-mm-host" style="display:flex;flex-direction:column;gap:10px;"></div></div>`;
     const estHostHTML = `<div id="an-est-card" class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-3">Consenso de analistas</h4><div id="an-estimados-host" class="text-xs text-zinc-500"><span class="inline-block w-3 h-3 border-2 border-violet-500/40 border-t-violet-500 rounded-full animate-spin mr-2 align-middle"></span>Cargando consenso…</div></div>`;
-    const ddHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Análisis profundo · Deep Dive</h4><p class="text-[11px] text-zinc-500 mb-3">Comparativa contra peers + narrativa. Tarda unos segundos (descarga datos en vivo).</p><div id="an-deepdive-host"><button id="an-dd-load" class="text-[12px] font-semibold text-accent-blue border border-accent-blue/40 hover:bg-accent-blue/10 rounded-lg px-4 py-2 transition">Ver análisis profundo →</button></div></div>`;
+    const ddHostHTML = `<div class="bg-surface border border-surface-border rounded-2xl p-5"><h4 class="text-sm font-semibold text-zinc-200 mb-1">Análisis profundo</h4><p class="text-[11px] text-zinc-500 mb-3">Comparativa contra empresas similares y narrativa. Tarda unos segundos (descarga datos en vivo).</p><div id="an-deepdive-host"><button id="an-dd-load" class="text-[12px] font-semibold text-accent-blue border border-accent-blue/40 hover:bg-accent-blue/10 rounded-lg px-4 py-2 transition">Ver análisis profundo →</button></div></div>`;
     // ── Ensamblado según el TIPO de activo ────────────────────────────────
     // Para ETF y cripto se sustituyen los bloques de empresa (fundamentales,
     // peers por P/S, SML/CAPM, consenso de analistas, dashboard financiero,
@@ -10207,7 +10207,7 @@ const Analizador = (() => {
     if (yoy != null && !isNaN(yoy)) {
       const cls = yoy >= 0 ? 'text-[color:var(--sello)]' : 'text-[color:var(--baja)]';
       const arrow = yoy >= 0 ? '▲' : '▼';
-      yoyHTML = `<span class="${cls} text-[11px] font-semibold tabular ml-1">${arrow} ${Math.abs(yoy*100).toFixed(1)}% YoY</span>`;
+      yoyHTML = `<span class="${cls} text-[11px] font-semibold tabular ml-1">${arrow} ${Math.abs(yoy*100).toFixed(1)}% a/a</span>`;
     }
     return `
       <div class="rounded-xl p-4" style="background:var(--sup-panel); border:1px solid #222;">
@@ -10228,7 +10228,7 @@ const Analizador = (() => {
         <div class="flex items-baseline justify-between flex-wrap gap-2 mb-1 pb-4" style="border-bottom:1px solid #222;">
           <div>
             <h3 style="font-family: 'Libre Baskerville', Georgia, serif; font-weight:700; color:var(--sello);" class="text-2xl">
-              Dashboard financiero
+              Panel financiero
             </h3>
             <p class="text-xs text-zinc-500 mt-1" style="font-family: 'IBM Plex Sans', sans-serif;">
               Fiscal Year ${escapeHtml(d.fy_actual || '—')} · datos en ${escapeHtml(moneda)} · ${escapeHtml(d.nombre || d.ticker)}
@@ -10245,17 +10245,17 @@ const Analizador = (() => {
         <!-- CHARTS GRID -->
         <div class="grid lg:grid-cols-2 gap-4 mt-6">
           <div class="rounded-xl p-5" style="background:var(--sup-panel); border:1px solid #222;">
-            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:var(--sello);" class="text-base font-bold">Revenue 5Y</h4>
+            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:var(--sello);" class="text-base font-bold">Ingresos · 5 años</h4>
             <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'IBM Plex Sans', sans-serif;">Crecimiento anual de ingresos.</p>
             <canvas id="dash-revenue" class="mt-3" style="max-height:220px;"></canvas>
           </div>
           <div class="rounded-xl p-5" style="background:var(--sup-panel); border:1px solid #222;">
-            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:var(--sello);" class="text-base font-bold">Free Cash Flow 5Y</h4>
+            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:var(--sello);" class="text-base font-bold">Flujo de caja libre · 5 años</h4>
             <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'IBM Plex Sans', sans-serif;">Cuánto efectivo libre genera tras capex.</p>
             <canvas id="dash-fcf" class="mt-3" style="max-height:220px;"></canvas>
           </div>
           <div class="rounded-xl p-5 lg:col-span-2" style="background:var(--sup-panel); border:1px solid #222;">
-            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:var(--sello);" class="text-base font-bold">Márgenes 5Y</h4>
+            <h4 style="font-family: 'Libre Baskerville', Georgia, serif; color:var(--sello);" class="text-base font-bold">Márgenes · 5 años</h4>
             <p class="text-[10px] text-zinc-500 mt-0.5" style="font-family: 'IBM Plex Sans', sans-serif;">Bruto · Operativo · Neto. La eficiencia operativa en una sola gráfica.</p>
             <canvas id="dash-margenes" class="mt-3" style="max-height:240px;"></canvas>
           </div>
