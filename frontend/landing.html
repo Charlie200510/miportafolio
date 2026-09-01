@@ -311,44 +311,24 @@
   <!-- ═══════════════════════════════════════════════════ -->
   <!-- HERO                                                 -->
   <!-- ═══════════════════════════════════════════════════ -->
-  <!-- HERO. Reescrito entero: los tells se sostenían entre sí y quitar uno
-       suelto no cambiaba nada.
-         · Alineado a la izquierda, no centrado. El hero centrado con serif
-           gigante es la composición por defecto de cualquier generador.
-         · Sin itálica decorativa ni palabra en color de acento. Ese combo
-           —serif de alto contraste + una palabra en terracota— es el patrón
-           más reconocible de página generada por IA que hay ahora mismo.
-           El énfasis lo carga la frase, no el maquillaje.
-         · Un solo botón. Antes había dos, pegados, diciendo casi lo mismo
-           ("Empezar gratis" / "Empezar prueba gratis").
-         · Fuera la píldora con puntito parpadeante: un adorno que no
-           codificaba ninguna información.
-         · Fuera la tira de cinco pastillas de estadísticas: repetía los
-           mismos números que la sección de cifras de más abajo.
-       Lo que queda en su lugar es la tesis del producto en una frase, y
-       debajo el dato que de verdad lo distingue: nadie más compara tu
-       cartera contra las AFOREs ni calcula el ISR del 129 LISR. -->
-  <section class="max-w-6xl mx-auto px-6 pt-20 sm:pt-28 pb-20 fade-up">
-    <div class="max-w-3xl">
-      <h1 class="display text-5xl sm:text-7xl lg:text-[80px] font-medium tracking-tighter-3 leading-[0.98]">
-        La cuenta que tu<br class="hidden sm:block">
-        broker no te enseña.
-      </h1>
+  <section class="max-w-6xl mx-auto px-6 pt-20 sm:pt-28 pb-20 text-center fade-up">
+    <h1 class="display text-5xl sm:text-7xl lg:text-[88px] font-medium tracking-tighter-3 leading-[0.95] max-w-5xl mx-auto">
+      Las herramientas de un analista profesional.<br class="hidden sm:block">
+      Para el mexicano retail.
+    </h1>
 
-      <p class="text-lg sm:text-xl text-zinc-400 mt-8 max-w-2xl leading-relaxed font-light">
-        Markowitz sobre 11,000 emisoras, tu ISR del artículo 129 LISR calculado solo,
-        y tu cartera comparada contra las 9 AFOREs. La aritmética completa, a la vista.
-      </p>
+    <p class="text-lg sm:text-xl text-zinc-400 mt-8 max-w-2xl mx-auto leading-relaxed font-light">
+      Markowitz, backtests, stress tests, ISR mexicano automático, comparativa contra AFOREs,
+      8 brokers analizados. <strong class="text-zinc-200 font-semibold">14 días gratis. Sin tarjeta.</strong>
+    </p>
 
-      <div class="mt-12">
-        <a href="/signup" class="btn-primary inline-block px-8 py-4 rounded-full font-semibold text-[15px]">
-          Abrir mi cuenta
-        </a>
-        <p class="text-[12px] text-zinc-500 mt-5 font-medium">
-          14 días gratis, sin tarjeta · Nunca pedimos credenciales de tu banco ni de tu broker
-        </p>
-      </div>
+    <div class="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3">
+      <a href="/signup" class="btn-primary w-full sm:w-auto px-8 py-4 rounded-full font-semibold text-[15px]">
+        Empezar gratis →
+      </a>
     </div>
+    <p class="text-[12px] text-zinc-500 mt-6 font-medium">14 días gratis · Sin tarjeta · Sin credenciales bancarias · Datos en tu navegador</p>
+
 
     <!-- Mock-up del producto -->
     <div class="mt-20 max-w-5xl mx-auto fade-up" style="animation-delay: 0.15s;">
@@ -363,9 +343,6 @@
         </div>
         <div class="p-8 sm:p-12 grid sm:grid-cols-3 gap-6">
           <div class="card p-5 sm:col-span-2">
-            <!-- Etiquetado como EJEMPLO. Antes se leía como un rendimiento
-                 real de la app: en un producto financiero eso es una promesa
-                 de resultados, y es justo lo que App Review mira con lupa. -->
             <p class="eyebrow mb-2">Rendimiento total · ejemplo</p>
             <p class="display text-5xl font-medium tabular text-brand-400">+24.8<span class="text-3xl">%</span></p>
             <p class="text-[12px] text-zinc-500 mt-1">vs S&amp;P 500 +12.3% · IPC +6.1%</p>
@@ -444,11 +421,6 @@
         <p class="text-[12px] text-zinc-500 mt-3 font-medium leading-snug">ISR MX calculado automático</p>
       </div>
       <div class="text-center">
-        <!-- Aquí decía "14 días · Prueba gratis, sin tarjeta". Eso no es una
-             cifra del producto, es la oferta comercial colada entre datos, y
-             además ya se dice en el hero y en la sección de precio. Se cambia
-             por el número que de verdad falta en esta fila: nadie más en
-             México compara tu cartera contra las AFOREs. -->
         <p class="display text-5xl sm:text-6xl font-medium tabular text-grad-brand tracking-tighter-2">9</p>
         <p class="text-[12px] text-zinc-500 mt-3 font-medium leading-snug">AFOREs contra las que se mide tu cartera</p>
       </div>
@@ -679,13 +651,10 @@
           <li class="flex gap-3 items-start"><span class="text-brand-400 mt-0.5">✓</span><span class="text-zinc-300">Comparativa de 8 brokers MX con comisiones reales</span></li>
         </ul>
 
-        <!-- Este botón y el del cierre decían exactamente lo mismo. Cada uno
-             llega en un momento distinto de la lectura, así que cada uno nombra
-             lo que pasa al pulsarlo. La línea de abajo se quita: "sin tarjeta"
-             y "cancela cuando quieras" ya están dos renglones más arriba. -->
         <a href="/signup" class="btn-primary block text-center py-4 rounded-full font-semibold text-[15px]">
-          Probar los 14 días →
+          Empezar prueba gratis →
         </a>
+        <p class="text-center text-[11px] text-zinc-500 mt-4">14 días gratis · Sin tarjeta · Cancela cuando quieras</p>
       </div>
     </div>
   </section>
@@ -697,10 +666,7 @@
     <div class="max-w-3xl mx-auto px-6">
       <div class="text-center mb-14">
         <p class="eyebrow mb-4">Preguntas frecuentes</p>
-        <!-- "¿Aún tienes dudas?" no dice nada de lo que hay debajo. Estas seis
-             preguntas son, en realidad, las objeciones concretas que frenan a
-             alguien antes de registrarse: el título ahora lo declara. -->
-        <h2 class="display text-4xl sm:text-5xl font-medium tracking-tighter-2 leading-tight">Lo que preguntan antes de entrar.</h2>
+        <h2 class="display text-4xl sm:text-5xl font-medium tracking-tighter-2 leading-tight">¿Aún tienes dudas?</h2>
       </div>
       <div class="space-y-3">
         <details class="group card px-6 py-5">
@@ -800,17 +766,17 @@
     <div class="max-w-4xl mx-auto px-6 text-center">
       <h2 class="display text-4xl sm:text-6xl font-medium tracking-tighter-3 leading-[0.95]">
         Pruébalo <span class="text-grad-brand">gratis.</span><br>
-        <span class="italic font-light text-zinc-300">Sin tarjeta, y el ISR del año te lo calcula desde el primer día.</span>
+        <span class="italic font-light text-zinc-300">14 días, sin tarjeta. No hay razón para no intentarlo.</span>
       </h2>
       <div class="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3">
         <a href="/signup" class="btn-primary px-10 py-5 rounded-full font-semibold text-[16px]">
-          Crear mi cuenta →
+          Empezar prueba gratis →
         </a>
         <a href="/" class="px-10 py-5 rounded-full font-semibold text-[16px] border border-white/20 text-zinc-100 hover:bg-white/5 transition">
           Ya tengo cuenta
         </a>
       </div>
-      <p class="text-[12px] text-zinc-500 mt-5 font-medium">Tus datos viven en tu navegador · Nunca pedimos credenciales bancarias</p>
+      <p class="text-[12px] text-zinc-500 mt-5 font-medium">14 días gratis · Sin tarjeta · Tus datos viven en tu navegador</p>
     </div>
   </section>
 
