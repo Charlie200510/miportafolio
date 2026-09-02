@@ -171,7 +171,10 @@
     btn.disabled = true; btn.textContent = 'Enviando…';
     poner('', '');
     try {
-      const r = await fetch('/api/soporte', {
+      // Absoluto a propósito: esta página también viaja dentro del paquete
+      // de la app nativa, y ahí un POST relativo iría a capacitor://localhost.
+      const base = location.protocol.startsWith('http') ? '' : 'https://miportafolio.uk';
+      const r = await fetch(base + '/api/soporte', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ correo, tema: f.tema.value, mensaje }),
