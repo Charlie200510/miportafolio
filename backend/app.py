@@ -1094,9 +1094,66 @@ def archivo_raiz(filename):
 
 
 # ── Páginas legales ─────────────────────────────────────────────
+@app.route("/api/soporte", methods=["POST"])
+@_rate_limit("6 per hour")
+def api_soporte():
+    """Recibe el formulario de soporte y lo entrega por correo.
+
+    POR QUÉ UN FORMULARIO Y NO UN mailto: ninguno de los dos dominios del
+    proyecto tiene registros MX, así que soporte@miportafolio.app —publicado en
+    los Términos y en la ayuda— NUNCA pudo recibir un correo. Cualquier usuario
+    que escribiera recibía un rebote, y de ahí el rechazo 1.5 de App Review.
+
+    Salida por Resend, que es el mismo transporte que ya usan las alertas y que
+    sí puede ENVIAR desde miportafolio.uk aunque el dominio no reciba. El
+    destino se configura con SOPORTE_DESTINO; sin esa variable no se envía y se
+    devuelve error, en vez de tragarse el mensaje en silencio.
+    """
+    body = request.get_json(silent=True) or {}
+    correo  = (body.get("correo") or "").strip()[:200]
+    tema    = (body.get("tema") or "Sin tema").strip()[:120]
+    mensaje = (body.get("mensaje") or "").strip()[:5000]
+
+    if "@" not in correo or "." not in correo.split("@")[-1]:
+        return jsonify({"ok": False, "error": "correo_invalido"}), 400
+    if len(mensaje) < 12:
+        return jsonify({"ok": False, "error": "mensaje_muy_corto"}), 400
+
+    destino = os.environ.get("SOPORTE_DESTINO", "").strip()
+    if not destino:
+        app.logger.error("SOPORTE_DESTINO sin configurar: mensaje de soporte perdido")
+        return jsonify({"ok": False, "error": "canal_no_configurado"}), 503
+
+    import html as _html
+    cuerpo = (
+        f"<p><strong>De:</strong> {_html.escape(correo)}</p>"
+        f"<p><strong>Tema:</strong> {_html.escape(tema)}</p>"
+        f"<hr><p style='white-space:pre-wrap'>{_html.escape(mensaje)}</p>"
+    )
+    try:
+        import alertas as _al
+        # reply_to con el correo del usuario: contestar es darle a Responder.
+        _al._enviar_resend(destino, f"[Soporte] {tema}", cuerpo, reply_to=correo)
+    except Exception as e:
+        app.logger.error("soporte: fallo al enviar: %s", e)
+        return jsonify({"ok": False, "error": "envio_fallido"}), 502
+    return jsonify({"ok": True})
+
+
 @app.route("/terminos")
 def pagina_terminos():
     return send_from_directory(str(FRONTEND_DIR), "terminos.html")
+
+
+@app.route("/soporte")
+def pagina_soporte():
+    """Página de soporte. Es la Support URL que se declara en App Store Connect.
+
+    Existe porque App Review rechazó la app por Guideline 1.5: la Support URL
+    apuntaba a la raíz del sitio, que para quien no tiene sesión es el muro de
+    registro —ninguna forma de pedir ayuda—.
+    """
+    return send_from_directory(str(FRONTEND_DIR), "soporte.html")
 
 
 @app.route("/privacidad")

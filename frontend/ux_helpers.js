@@ -1299,7 +1299,7 @@
               </details>
             `).join('')}
             <p style="margin-top:24px;padding-top:16px;border-top:1px solid var(--regla);font-size:11px;color:var(--tinta-4);text-align:center;">
-              ¿Otra duda? Escríbenos a <a href="mailto:soporte@miportafolio.app" style="color:var(--sello);">soporte@miportafolio.app</a>
+              ¿Otra duda? Escríbenos desde <a href="/soporte" style="color:var(--sello);">soporte</a>
             </p>
           </div>
         </div>

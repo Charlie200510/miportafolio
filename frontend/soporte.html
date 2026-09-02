@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soporte · Mi Portafolio</title>
+<meta name="description" content="Ayuda y contacto de Mi Portafolio: preguntas frecuentes, cómo cancelar tu suscripción, cómo borrar tu cuenta y formulario para escribirnos.">
+<link rel="icon" href="/static/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="/static/css/mp-tokens.css">
+<link rel="stylesheet" href="/static/css/mp-editorial.css">
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  body { margin:0; background:var(--sup); color:var(--tinta-1); font-family:var(--ff-sans); line-height:1.6; }
+  .marco { max-width: 720px; margin: 0 auto; padding: 0 20px 72px; }
+  header.top { border-bottom:1px solid var(--regla); margin-bottom:36px; }
+  header.top .in { max-width:720px; margin:0 auto; padding:18px 20px; display:flex; align-items:center; gap:12px; }
+  header.top a.logo { display:flex; align-items:center; gap:9px; text-decoration:none; color:inherit; font-weight:700; }
+  header.top img { width:26px; height:26px; border-radius:6px; }
+  h1 { font-family:var(--ff-serif); font-size:clamp(28px,5vw,38px); letter-spacing:-.02em; margin:32px 0 8px; }
+  h2 { font-family:var(--ff-serif); font-size:20px; margin:36px 0 10px; letter-spacing:-.01em; }
+  .sub { color:var(--tinta-3); margin:0 0 8px; }
+  .tarjeta { background:var(--sup-panel); border:1px solid var(--regla); border-radius:12px; padding:20px; margin:18px 0; }
+  dl { margin:0; } dt { font-weight:600; margin-top:16px; } dt:first-child { margin-top:0; }
+  dd { margin:4px 0 0; color:var(--tinta-2); }
+  label { display:block; font-size:13px; font-weight:600; margin:14px 0 5px; }
+  input,textarea,select {
+    width:100%; padding:11px 13px; font:inherit; font-size:15px; color:var(--tinta-1);
+    background:var(--sup-hondo); border:1px solid var(--regla); border-radius:9px;
+  }
+  textarea { min-height:132px; resize:vertical; }
+  input:focus,textarea:focus,select:focus { outline:2px solid var(--sello); outline-offset:1px; border-color:transparent; }
+  button {
+    margin-top:18px; width:100%; min-height:48px; font:inherit; font-size:15px; font-weight:600;
+    background:var(--sello-solido); color:var(--sobre-sello); border:0; border-radius:999px; cursor:pointer;
+  }
+  button:disabled { opacity:.55; cursor:progress; }
+  button:focus-visible { outline:2px solid var(--tinta-1); outline-offset:2px; }
+  .aviso { margin-top:14px; padding:12px 14px; border-radius:9px; font-size:14px; display:none; }
+  .aviso.ok  { display:block; background:rgba(15,92,51,.10); color:var(--alza); border:1px solid rgba(15,92,51,.25); }
+  .aviso.mal { display:block; background:rgba(150,36,24,.08); color:var(--baja); border:1px solid rgba(150,36,24,.25); }
+  .meta { font-size:13px; color:var(--tinta-3); }
+  a { color:var(--sello); }
+  footer { border-top:1px solid var(--regla); margin-top:48px; padding-top:20px; font-size:13px; color:var(--tinta-3); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="in">
+    <a class="logo" href="/landing"><img src="/static/logo.png" alt=""> Mi Portafolio</a>
+  </div>
+</header>
+
+<div class="marco">
+  <h1>Soporte</h1>
+  <p class="sub">¿Algo no funciona o tienes una duda? Escríbenos o llámanos.
+     Normalmente respondemos el mismo día hábil.</p>
+
+  <div class="tarjeta" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <div>
+      <div class="meta" style="font-size:12px;letter-spacing:.06em;text-transform:uppercase">Teléfono</div>
+      <a href="tel:+525574918332" style="font-family:var(--ff-mono);font-size:20px;font-weight:600;text-decoration:none">
+        +52 55 7491 8332</a>
+    </div>
+    <div class="meta" style="flex:1;min-width:190px">
+      Horario de atención: lunes a viernes, 9:00 a 18:00 (hora del centro de México).
+    </div>
+  </div>
+
+  <!-- El formulario va PRIMERO: quien llega aquí viene con un problema, no a leer. -->
+  <div class="tarjeta">
+    <h2 style="margin-top:0">Escríbenos</h2>
+    <form id="f" novalidate>
+      <label for="correo">Tu correo</label>
+      <input id="correo" name="correo" type="email" autocomplete="email" required
+             placeholder="para poder responderte">
+
+      <label for="tema">¿De qué se trata?</label>
+      <select id="tema" name="tema">
+        <option>No puedo entrar a mi cuenta</option>
+        <option>Problema con mi suscripción o cobro</option>
+        <option>Quiero cancelar o pedir reembolso</option>
+        <option>Quiero borrar mi cuenta</option>
+        <option>Un dato o cálculo se ve mal</option>
+        <option>Otra cosa</option>
+      </select>
+
+      <label for="mensaje">Cuéntanos qué pasó</label>
+      <textarea id="mensaje" name="mensaje" required
+                placeholder="Entre más detalle, más rápido lo resolvemos: qué hacías, qué esperabas y qué viste."></textarea>
+
+      <button id="btn" type="submit">Enviar mensaje</button>
+      <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
+      <p class="meta" style="margin-top:12px">
+        Solo usamos tu correo para responderte. No lo compartimos con nadie.
+      </p>
+    </form>
+  </div>
+
+  <h2>Lo que más nos preguntan</h2>
+  <div class="tarjeta">
+    <dl>
+      <dt>¿Cómo cancelo mi suscripción?</dt>
+      <dd>Si te suscribiste desde el iPhone, se cancela en
+          <strong>Ajustes → tu nombre → Suscripciones → Mi Portafolio</strong>.
+          Si te suscribiste desde la web, entra a <strong>Mi cuenta</strong> y ahí está el botón.
+          En los dos casos conservas el acceso hasta que termine el periodo pagado.</dd>
+
+      <dt>¿Cómo borro mi cuenta?</dt>
+      <dd>Dentro de la app: <strong>Mi cuenta → Eliminar cuenta</strong>. Se borra todo,
+          incluidos tus portafolios y tu historial. Es inmediato y no se puede deshacer.</dd>
+
+      <dt>¿Mi Portafolio compra o vende acciones por mí?</dt>
+      <dd>No. La app es de análisis: te dice qué comprarías y en qué proporción, pero
+          las operaciones las haces tú en tu casa de bolsa. Nunca pedimos las claves de
+          tu banco ni de tu bróker.</dd>
+
+      <dt>¿De dónde salen los precios?</dt>
+      <dd>De Yahoo Finance para acciones y ETFs, y de Banxico para las tasas de CETES.
+          Los precios pueden traer retraso y no son cotizaciones en tiempo real.</dd>
+
+      <dt>¿Esto es asesoría de inversión?</dt>
+      <dd>No. Es una herramienta educativa y de análisis. No somos asesores autorizados
+          ni damos recomendaciones personalizadas. Las decisiones son tuyas.</dd>
+
+      <dt>¿Puedo pedir un reembolso?</dt>
+      <dd>Si compraste desde el iPhone, los reembolsos los gestiona Apple en
+          <a href="https://reportaproblem.apple.com">reportaproblem.apple.com</a>.
+          Si compraste desde la web, escríbenos con este formulario dentro de los
+          primeros 7 días y lo resolvemos.</dd>
+    </dl>
+  </div>
+
+  <h2>Otros datos</h2>
+  <div class="tarjeta">
+    <p class="meta" style="margin:0">
+      <strong>Responsable:</strong> Carlos Barreda · Ciudad de México, México<br>
+      <strong>Teléfono:</strong> <a href="tel:+525574918332">+52 55 7491 8332</a>
+        (lunes a viernes, 9:00–18:00 hora del centro)<br>
+      <strong>Tiempo de respuesta:</strong> mismo día hábil, máximo 48 horas<br>
+      <strong>Legal:</strong> <a href="/terminos">Términos</a> · <a href="/privacidad">Privacidad</a>
+    </p>
+  </div>
+
+  <footer>
+    <a href="/landing">Inicio</a> · <a href="/terminos">Términos</a> · <a href="/privacidad">Privacidad</a>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const f = document.getElementById('f');
+  const btn = document.getElementById('btn');
+  const aviso = document.getElementById('aviso');
+  const poner = (clase, texto) => { aviso.className = 'aviso ' + clase; aviso.textContent = texto; };
+
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const correo = f.correo.value.trim();
+    const mensaje = f.mensaje.value.trim();
+    // Validación propia: el navegador con novalidate no la hace, y así el
+    // mensaje de error dice qué falta en vez de un genérico del sistema.
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) {
+      poner('mal', 'Escribe un correo válido para poder responderte.');
+      f.correo.focus(); return;
+    }
+    if (mensaje.length < 12) {
+      poner('mal', 'Cuéntanos un poco más para poder ayudarte.');
+      f.mensaje.focus(); return;
+    }
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    poner('', '');
+    try {
+      const r = await fetch('/api/soporte', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correo, tema: f.tema.value, mensaje }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || 'No se pudo enviar');
+      f.reset();
+      poner('ok', 'Listo, ya nos llegó. Te respondemos a ' + correo + '.');
+      btn.textContent = 'Enviar mensaje';
+    } catch (err) {
+      // Sin canal alterno que ofrecer, lo honesto es decir que reintente.
+      poner('mal', 'No se pudo enviar (' + (err.message || 'error') +
+                   '). Vuelve a intentarlo en un minuto.');
+      btn.textContent = 'Reintentar';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
