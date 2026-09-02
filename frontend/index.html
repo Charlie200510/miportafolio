@@ -63,8 +63,11 @@
   }
   </script>
 
-  <!-- Tailwind vía CDN (dev) -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind empaquetado, no CDN: es el motor JIT que pinta toda la interfaz,
+       así que si la petición falla la app abre sin estilos. Igual que las
+       fuentes de abajo, tiene que verse igual sin red. Es el mismo script de
+       cdn.tailwindcss.com (3.4.17), servido desde el bundle. -->
+  <script src="/static/vendor/tailwind-play-3.4.17.js"></script>
   <script>
     /* ── TEMA EDITORIAL ────────────────────────────────────────────────────
        El markup ya reparte utilidades de Tailwind por ~400 KB de HTML y JS.
@@ -168,12 +171,6 @@
   </script>
 
   <!-- Performance: preconnect + dns-prefetch a TODOS los CDNs externos.
-       Hace el TCP+TLS handshake en paralelo durante el parse del HTML,
-       ahorrando ~200-400ms en first paint. -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-
   <!-- ── SISTEMA EDITORIAL ────────────────────────────────────────────────
        Fuentes empaquetadas en /static/fonts (Source Serif 4 + IBM Plex
        Sans/Mono, OFL 1.1). Sin Google Fonts ni CDN de tipografía: la app
@@ -189,8 +186,9 @@
   <link rel="stylesheet" href="/static/css/mp-tokens.css">
   <link rel="stylesheet" href="/static/css/mp-editorial.css">
 
-  <!-- Chart.js — defer para no bloquear el render inicial -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <!-- Chart.js — empaquetado por lo mismo que Tailwind; defer para no bloquear
+       el render inicial -->
+  <script src="/static/vendor/chart-4.4.1.umd.min.js" defer></script>
 
   <style>
     /* El fondo, la tipografía, la scrollbar y `.tabular` viven ahora en

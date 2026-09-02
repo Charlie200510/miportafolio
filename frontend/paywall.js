@@ -49,6 +49,18 @@
     { tipo: 'LIFETIME', nombre: 'Ilimitado', precio: '$6,500 MXN', sufijo: ' · pago único' },
   ];
 
+  // Los mismos planes SIN cifra, para cuando la tienda todavía no confirmó el
+  // precio o falló. Los de arriba están en pesos porque es la tienda principal,
+  // pero enseñárselos a alguien con cuenta de otra región —un revisor de Apple,
+  // por ejemplo— es anunciar un precio que no es el que se va a cobrar, que es
+  // justo lo que castiga la 3.1.2. En su lugar se enseña el periodo, que es
+  // cierto en cualquier moneda y cubre la divulgación que Apple exige; la cifra
+  // exacta la pone StoreKit en la hoja de compra.
+  const PERIODO = { MONTHLY: 'Cada mes', ANNUAL: 'Cada año', LIFETIME: 'Pago único' };
+  const PLANES_SIN_PRECIO = PLANES_REF.map(p => ({
+    ...p, precio: PERIODO[p.tipo] || '', sufijo: '',
+  }));
+
   // Planes de WEB (MercadoPago). "Ilimitado" NO existe aquí: es pago único de
   // la tienda y sólo se ofrece en iOS. Igual que arriba, son de REFERENCIA:
   // /api/payments/estado manda los reales y los sustituye, de modo que el
@@ -401,10 +413,11 @@
     // WEB: si hay correo, botón de prueba; si no, captura de correo para MercadoPago.
     const cta = nativo
       ? `<div data-x="planes" style="display:flex;flex-direction:column;gap:8px">${
-             // Se siembra con los precios de referencia (no con "Cargando…") por
-             // si _cargarPlanesEnOverlay nunca llega a correr: la pantalla de
-             // compra jamás debe quedar vacía (Guideline 2.1(b)).
-             _htmlPlanesRef('')
+             // Se siembra con nombre y periodo (no con "Cargando…") por si
+             // _cargarPlanesEnOverlay nunca llega a correr: la pantalla de compra
+             // jamás debe quedar vacía (Guideline 2.1(b)). Sin cifra, porque
+             // hasta que la tienda responda no sabemos en qué moneda cobra.
+             _htmlPlanesSinPrecio('')
            }</div>
          <button data-x="restore" style="${BTN_SEC}">Restaurar compra</button>
          ${loginOpcional}`
@@ -528,8 +541,8 @@
     return true;
   }
 
-  function _htmlPlanesRef(nota) {
-    return PLANES_REF.map(p => _botonPlan(p)).join('') + (nota || '');
+  function _htmlPlanesSinPrecio(nota) {
+    return PLANES_SIN_PRECIO.map(p => _botonPlan(p)).join('') + (nota || '');
   }
 
   function _htmlPlanesReales(pkgs) {
@@ -559,7 +572,7 @@
     if (!_overlay) return;
     const cont = _overlay.querySelector('[data-x="planes"]');
     if (!cont) return;
-    cont.innerHTML = _htmlPlanesRef(
+    cont.innerHTML = _htmlPlanesSinPrecio(
       `<p style="${NOTA}">Confirmando precios con la App Store…</p>`);
 
     let vencido = false;
@@ -582,10 +595,10 @@
         '· key=' + !!(plataforma() === 'ios' ? window.MP_REVENUECAT_KEY_IOS : window.MP_REVENUECAT_KEY_ANDROID));
       const c = _overlay && _overlay.querySelector('[data-x="planes"]');
       if (!c) return;
-      c.innerHTML = _htmlPlanesRef(
+      c.innerHTML = _htmlPlanesSinPrecio(
         `<p style="color:var(--sello);font-size:12px;text-align:center;margin:8px 0 0;line-height:1.5">
-           No pudimos confirmar los precios con la App Store. Los de arriba son de referencia;
-           al comprar verás el precio exacto de tu región.</p>
+           No pudimos confirmar los precios con la App Store. El precio exacto de tu región
+           aparece en la hoja de compra antes de que confirmes.</p>
          <button data-x="reintentar-planes" style="${BTN_SEC};margin-top:8px">Reintentar</button>`);
     });
   }

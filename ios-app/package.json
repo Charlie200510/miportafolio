@@ -4,7 +4,9 @@
   "description": "Mi Portafolio — wrapper iOS + Android via Capacitor",
   "private": true,
   "scripts": {
-    "sync-www": "rm -rf www && cp -R ../frontend www && find www -name '.DS_Store' -delete && find www \\( -name '*.html' -o -name '*.js' -o -name '*.webmanifest' \\) -exec sed -i '' 's|/static/|/|g' {} +",
+    "sync-www": "rm -rf www && cp -R ../frontend www && find www -name '.DS_Store' -delete && npm run prune-www && find www \\( -name '*.html' -o -name '*.js' -o -name '*.webmanifest' \\) -exec sed -i '' 's|/static/|/|g' {} +",
+    "//prune-www": "Fuera del bundle nativo: la landing y el blog anuncian el precio y el checkout de la web (3.1.1), y los archivos de verificación y de repro no pintan nada dentro de la app.",
+    "prune-www": "rm -rf www/landing.html www/blog www/_repro_mpsec.html www/robots.txt www/sitemap.xml www/BingSiteAuth.xml && rm -f www/google*.html",
     "cap:add:ios": "npm run sync-www && npx cap add ios",
     "cap:add:android": "npm run sync-www && npx cap add android",
     "cap:sync": "npm run sync-www && npx cap sync",
