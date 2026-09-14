@@ -181,3 +181,23 @@ body {
   transition: background-color var(--t-rapida) var(--easing);
 }
 .cta-box a:hover { background: var(--sello-vivo); border-color: var(--sello-vivo); }
+
+/* Segundo botón: el lector que no viene de un iPhone —o que prefiere no
+   instalar nada— tiene que poder entrar igual desde el navegador. Va con
+   menos peso visual para no competir con la descarga. */
+.cta-box a.cta-sec {
+  background: transparent;
+  color: var(--tinta-2);
+  border-color: var(--regla-fuerte);
+  margin-left: 8px;
+}
+.cta-box a.cta-sec:hover {
+  background: transparent;
+  border-color: var(--tinta-1);
+  color: var(--tinta-1);
+}
+@media (max-width: 520px) {
+  /* En móvil apilados y a todo el ancho: es donde más se descarga. */
+  .cta-box a { display: block; text-align: center; }
+  .cta-box a.cta-sec { margin: 8px 0 0; }
+}
