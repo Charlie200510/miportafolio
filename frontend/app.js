@@ -786,6 +786,18 @@ async function analizarYRender(tickers, pesos /* dict opcional */) {
   if (typeof Fundamentales !== 'undefined') {
     Fundamentales.cargar();
   }
+
+  // Buen momento para pedir la calificación: el análisis salió bien y el
+  // usuario está viendo su cartera completa. Se pide AQUÍ y no en un botón
+  // porque el diálogo lo decide iOS: un botón "califícanos" no haría nada las
+  // más de las veces, y además lo prohíbe la guía 1.1 de App Store.
+  //
+  // mpQuizaPedirResena no hace nada si no toca (pocas aperturas, cartera
+  // vacía, ya se pidió hace poco, o no es la app nativa); las reglas viven en
+  // mp_resena.js y no hay que conocerlas desde aquí.
+  if (typeof window.mpQuizaPedirResena === 'function') {
+    try { window.mpQuizaPedirResena(); } catch (_) {}
+  }
 }
 
 // --- META ------------------------------------------------------------------

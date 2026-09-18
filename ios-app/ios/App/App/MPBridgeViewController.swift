@@ -126,7 +126,7 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
     private func registrarCanalBloqueo() {
         guard let wv = webView else { return }
         let cc = wv.configuration.userContentController
-        for canal in ["mpBloqueo", "mpUI", "mpWidget", "mpDispositivo"] {
+        for canal in ["mpBloqueo", "mpUI", "mpWidget", "mpDispositivo", "mpResena"] {
             cc.removeScriptMessageHandler(forName: canal)
             cc.add(self, name: canal)
         }
@@ -173,6 +173,14 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
             // leer, y se le pide a WidgetKit que recargue en el acto.
             if accion == "guardar", let t = cuerpo["tickers"] as? [String] {
                 MPWidgetConfig.guardar(t)
+            }
+
+        case "mpResena":
+            // El JS ya decidió que es buen momento (ver mp_resena.js). Aquí no
+            // se vuelve a decidir: duplicar la regla en dos sitios es cómo se
+            // acaba pidiendo reseña después de un error.
+            if accion == "pedir" {
+                MPResena.pedir(desde: view)
             }
 
         case "mpUI":
