@@ -17,6 +17,7 @@ Env vars:
 from __future__ import annotations
 
 import hashlib
+import hmac
 import html
 import json
 import os
@@ -152,6 +153,144 @@ def cuenta_eliminada(email: str) -> bool:
         return False
     with _LOCK:
         return _esta_eliminado(_cargar(), email)
+
+
+# ─────────────────────────────────────────────────────────────────
+# Registro de trials ya consumidos (por teléfono)
+# ─────────────────────────────────────────────────────────────────
+# El agujero que cierra esto: el trial se cuenta desde `creado_en` de la
+# CUENTA, y `eliminar_cuenta` hace `usuarios.pop(email)`, lo que además
+# LIBERA el teléfono. Así que el ciclo completo era:
+#
+#     se acaban los 15 días → borro mi cuenta desde la app →
+#     me registro otra vez con el MISMO correo y el MISMO teléfono →
+#     creado_en = ahora → trial nuevo, gratis, para siempre
+#
+# Y el botón de borrar cuenta no se puede quitar: lo exige App Store 5.1.1v.
+# El tombstone tampoco servía: dura 30 días y se levanta a propósito al
+# re-registrarse (esa parte está bien, el usuario tiene derecho a volver).
+#
+# La defensa es un registro aparte de los usuarios, que sobrevive al borrado y
+# guarda UNA sola cosa: que este teléfono ya empezó un trial, y cuándo. Al
+# re-registrarse se le devuelve su `creado_en` original en vez de `ahora`, así
+# que el trial sale donde lo dejó. No hace falta tocar el paywall: app.py ya
+# deriva todo de `creado_en`.
+#
+# Sobre privacidad: 5.1.1v exige borrar la cuenta y sus datos, y eso se sigue
+# haciendo. Lo único que queda es un HMAC del teléfono, que no permite
+# recuperar el número ni saber de quién era. Tiene que ser HMAC y no SHA-256 a
+# secas: un móvil mexicano son 10 dígitos, o sea 10^10 combinaciones, que se
+# prueban todas en segundos. Con HMAC, sin la llave, el hash no dice nada.
+_TRIAL_TTL = int(os.environ.get("TRIAL_MEMORIA_DIAS", "730")) * 86400
+_SECRETO_PATH = _DATA_DIR / ".secreto_trials"
+
+
+def _secreto_trials() -> bytes:
+    """Llave para el HMAC. De la variable de entorno, o se genera y persiste.
+
+    Se autogenera a propósito: si dependiera de que alguien configure una
+    variable en la VM, el día que falte el antiabuso se caería en silencio.
+    Vive en _datos/, que el deploy nunca toca, así que sobrevive a los pulls.
+    """
+    env = os.environ.get("TRIAL_HMAC_SECRET", "").strip()
+    if env:
+        return env.encode("utf-8")
+    try:
+        if _SECRETO_PATH.exists():
+            v = _SECRETO_PATH.read_text(encoding="utf-8").strip()
+            if v:
+                return v.encode("utf-8")
+        nuevo = secrets.token_hex(32)
+        _SECRETO_PATH.write_text(nuevo, encoding="utf-8")
+        try:
+            os.chmod(_SECRETO_PATH, 0o600)
+        except OSError:
+            pass
+        return nuevo.encode("utf-8")
+    except OSError as e:
+        # Sin llave persistente el registro seguiría funcionando pero el
+        # antiabuso no, y en silencio. Mejor que se vea.
+        print(f"[auth] NO SE PUDO GUARDAR LA LLAVE DE TRIALS ({e}). El control "
+              f"de trials repetidos queda INACTIVO hasta que se arregle.",
+              flush=True)
+        raise
+
+
+def _clave_trial(eje: str, valor: str) -> str:
+    """HMAC de un identificador, etiquetado por eje para que no se mezclen."""
+    msg = f"{eje}:{(valor or '').strip().lower()}".encode("utf-8")
+    return hmac.new(_secreto_trials(), msg, hashlib.sha256).hexdigest()
+
+
+def _ejes_de(email: Optional[str] = None, telefono: Optional[str] = None,
+             dispositivo: Optional[str] = None) -> list[tuple[str, str]]:
+    """Los ejes por los que se recuerda un trial, de más a menos fuerte.
+
+    HOY el único que existe en todas las altas es el correo canónico: el alta
+    dejó de pedir teléfono (costaba dinero por SMS) y `dispositivo` solo llega
+    desde la app nativa. El correo canónico no es gran defensa —basta con otro
+    correo— pero cierra lo más barato: borrar la cuenta y volver a entrar con
+    el mismo correo, o con un alias con puntos o con +algo.
+
+    `dispositivo` es identifierForVendor, que SE REINICIA al borrar la app, así
+    que recordar el trial por ese eje aguanta más que la cuota de altas (que
+    también se reinicia con él) pero tampoco es definitivo. El eje que sí
+    resiste reinstalar es DeviceCheck, y cuando se implemente entra aquí como
+    un eje más sin tocar nada de lo demás.
+    """
+    ejes: list[tuple[str, str]] = []
+    if email:
+        ejes.append(("correo", clave_email(email)))
+    if telefono:
+        ejes.append(("tel", telefono))
+    if dispositivo:
+        ejes.append(("disp", dispositivo))
+    return ejes
+
+
+def _limpiar_trials(data: dict[str, Any]) -> None:
+    """Las compañías reciclan números. A los dos años, el registro caduca."""
+    ahora = time.time()
+    data["trials"] = {
+        k: v for k, v in (data.get("trials") or {}).items()
+        if isinstance(v, dict) and (v.get("primer_alta") or 0) > ahora - _TRIAL_TTL
+    }
+
+
+def _trial_previo(data: dict[str, Any], ejes: list[tuple[str, str]]) -> Optional[float]:
+    """La fecha MÁS VIEJA en que alguno de estos ejes empezó un trial.
+
+    La más vieja y no la más nueva: si coinciden dos ejes, vale el primero que
+    consumió prueba. Con la más nueva bastaría con estrenar un eje para
+    rejuvenecer el trial.
+    """
+    trials = data.get("trials") or {}
+    fechas = []
+    for eje, valor in ejes:
+        e = trials.get(_clave_trial(eje, valor))
+        ts = (e or {}).get("primer_alta") if isinstance(e, dict) else None
+        if isinstance(ts, (int, float)) and ts > 0:
+            fechas.append(float(ts))
+    return min(fechas) if fechas else None
+
+
+def _apuntar_trial(data: dict[str, Any], ejes: list[tuple[str, str]],
+                   cuando: float) -> None:
+    """Deja constancia en cada eje, sin pisar nunca una fecha anterior.
+
+    No se sobreescribe hacia adelante: si ya había un alta más vieja, esa vale.
+    Si no, borrar y recrear la cuenta adelantaría la fecha y el agujero
+    seguiría abierto, que es justo lo que esto cierra.
+    """
+    trials = data.setdefault("trials", {})
+    for eje, valor in ejes:
+        if not valor:
+            continue
+        k = _clave_trial(eje, valor)
+        previo = (trials.get(k) or {}).get("primer_alta")
+        if isinstance(previo, (int, float)) and 0 < previo <= cuando:
+            continue
+        trials[k] = {"primer_alta": float(cuando)}
 
 
 class AltaRequiereTelefono(ValueError):
@@ -676,9 +815,17 @@ def registrar_con_password(email: str, password: str,
         # Un solo guardián para las tres puertas: desechables, alias del mismo
         # buzón y cuotas por IP y por dispositivo.
         verificar_alta(data, email, ip=ip, dispositivo=dispositivo)
+        # Si este correo (o este aparato) ya estrenó prueba alguna vez, la
+        # cuenta nueva hereda aquella fecha en vez de empezar de cero. Es lo
+        # que impide que borrar la cuenta sea el botón de "otros 14 días":
+        # app.py deriva todo el paywall de creado_en, así que no hay que tocarlo.
+        _limpiar_trials(data)
+        _ejes = _ejes_de(email=email, telefono=telefono, dispositivo=dispositivo)
+        inicio = _trial_previo(data, _ejes) or ahora
+        _apuntar_trial(data, _ejes, inicio)
         usuarios[email] = {
             "email": email,
-            "creado_en": ahora,          # ← inicio del trial POR CUENTA (server-side)
+            "creado_en": inicio,         # ← inicio del trial POR CUENTA (server-side)
             "ultima_sesion": ahora,
             "plan": "trial",
             "estado_pago": "inactivo",
@@ -698,7 +845,7 @@ def registrar_con_password(email: str, password: str,
     # Se apunta DESPUÉS de crear: si se contara al intentar, un error de
     # tecleo gastaría cuota.
     _apuntar_origen_seguro(ip, dispositivo)
-    return {"email": email, "creado_en": ahora, "plan": "trial", "nueva": True}
+    return {"email": email, "creado_en": inicio, "plan": "trial", "nueva": True}
 
 
 def login_con_password(email: str, password: str) -> dict[str, Any]:
@@ -993,9 +1140,18 @@ def confirmar_registro_telefono(telefono: str, codigo: str) -> dict[str, Any]:
             _guardar(data)
             raise ValueError("Ese teléfono ya está en uso por otra cuenta.")
 
+        # Si este teléfono ya empezó un trial alguna vez, la cuenta nueva hereda
+        # aquella fecha en vez de estrenar uno. Así, borrar la cuenta y volver a
+        # registrarse deja el trial donde estaba: si ya se había agotado, sigue
+        # agotado. El paywall no se entera de nada, porque solo mira creado_en.
+        _limpiar_trials(data)
+        _ejes = _ejes_de(email=email, telefono=tel)
+        inicio = _trial_previo(data, _ejes) or ahora
+        _apuntar_trial(data, _ejes, inicio)
+
         usuarios[email] = {
             "email": email,
-            "creado_en": ahora,          # ← el trial arranca aquí, no en el paso 1
+            "creado_en": inicio,         # ← el trial arranca aquí, no en el paso 1
             "ultima_sesion": ahora,
             "plan": "trial",
             "estado_pago": "inactivo",
@@ -1192,6 +1348,17 @@ def eliminar_cuenta(email: str) -> dict[str, Any]:
         data = _cargar()
         usuarios = data.setdefault("usuarios", {})
         existia = email in usuarios
+        # El pop se lleva también el teléfono, que es lo que ataba la cuenta a
+        # una persona. Hay que dejar constancia ANTES de que desaparezca, o el
+        # borrado se convierte en el botón de "dame otro trial".
+        _saliente = usuarios.get(email) or {}
+        try:
+            _apuntar_trial(data,
+                           _ejes_de(email=email, telefono=_saliente.get("telefono")),
+                           float(_saliente.get("creado_en") or time.time()))
+        except (OSError, TypeError, ValueError) as e:
+            print(f"[auth] no se pudo apuntar el trial al borrar la cuenta: {e}",
+                  flush=True)
         usuarios.pop(email, None)
         # Borrar sesiones y tokens asociados a ese email
         data["sesiones"] = {
