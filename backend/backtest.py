@@ -60,6 +60,24 @@ PERIODOS_PRESET = {
 
 
 def _cargar_precios() -> Optional[pd.DataFrame]:
+    # Reusa el DataFrame que accion_del_dia ya tiene cacheado por (ruta, mtime)
+    # y en float32, igual que portafolio_optimo. Este módulo era el único que
+    # releía el CSV entero en cada petición y en float64: con el universo
+    # completo (471 MB en la VM, ~3,650 × 8,900 celdas) eso son cientos de MB
+    # por llamada, encima de la copia que el worker ya tiene residente, más el
+    # tiempo de parseo contra el timeout de 90 s de gunicorn.
+    #
+    # El caché resuelve el CSV en cada llamada, no al importar, así que además
+    # arregla el caso de que el universo completo aparezca DESPUÉS de arrancar
+    # el proceso (lo escribe un timer semanal): antes, el módulo se quedaba
+    # clavado en el lite hasta el siguiente reinicio.
+    try:
+        import accion_del_dia as _ad
+        df = _ad._cargar_precios()
+        if df is not None:
+            return df
+    except Exception:
+        pass
     if not _UNIV_CSV.exists():
         return None
     try:
@@ -224,25 +242,57 @@ def correr_backtest(tickers: list[str], pesos: dict[str, float],
     else:
         faltantes = []
 
-    # Re-normalizar pesos solo entre los disponibles
-    suma_d = sum(pesos_norm.get(t, 0) for t in disponibles)
-    if suma_d <= 0:
-        pesos_norm = {t: 1.0 / len(disponibles) for t in disponibles}
-    else:
-        pesos_norm = {t: pesos_norm.get(t, 0) / suma_d for t in disponibles}
-
     # Sub-frame del periodo
     sub = precios.loc[
         (precios.index >= fecha_ini) & (precios.index <= fecha_fin),
         disponibles
     ].copy()
     sub = sub.dropna(how="all")
+
+    # Tickers que NO cotizaban en esta ventana. ffill() no rellena hacia atrás,
+    # así que su columna se queda en NaN y el dropna(how="any") de abajo se
+    # llevaría TODAS las filas: el frame quedaba vacío y sub.iloc[0] lanzaba
+    # IndexError, que no es ValueError y salía al usuario como
+    # "single positional indexer is out-of-bounds" con un 500.
+    #
+    # Pasaba con cualquier portafolio que tuviera algo reciente —IBIT, FBTC y
+    # ARKB empiezan en enero de 2024— y se preguntara por 2020. En la ventana
+    # covid_full, 3,759 de las 8,934 columnas del universo no tienen un solo
+    # dato: bastaba UNA para tumbar la corrida entera.
+    #
+    # Se excluyen en vez de fallar, que es lo que el código ya hace más arriba
+    # con los tickers que no están en el CSV: preguntar por 2020 teniendo MSFT
+    # y un ETF de bitcoin debe dar el backtest de MSFT con una nota, no un
+    # error. La nota viaja en `tickers_sin_historia`.
+    sub = sub.ffill()
+    sin_historia = [t for t in disponibles if sub[t].isna().all()]
+    if sin_historia:
+        disponibles = [t for t in disponibles if t not in sin_historia]
+        if not disponibles:
+            desde = fecha_ini.date()
+            raise ValueError(
+                f"Ninguno de tus activos cotizaba en ese periodo (desde {desde}). "
+                f"Elige un rango más reciente."
+            )
+        sub = sub[disponibles]
+
+    # Re-normalizar pesos solo entre los que de verdad quedaron
+    suma_d = sum(pesos_norm.get(t, 0) for t in disponibles)
+    if suma_d <= 0:
+        pesos_norm = {t: 1.0 / len(disponibles) for t in disponibles}
+    else:
+        pesos_norm = {t: pesos_norm.get(t, 0) / suma_d for t in disponibles}
+
+    # Ahora sí: el recorte definitivo (se van las filas previas al primer
+    # precio del activo más joven que SÍ sobrevivió) y recién después se
+    # comprueba si quedó suficiente. Antes el control corría sobre el frame
+    # sin recortar y daba por bueno lo que luego se quedaba en cero.
+    sub = sub.dropna()
     if len(sub) < 10:
         raise ValueError(
             f"No hay suficientes datos en ese periodo ({len(sub)} días). "
             "Prueba con un rango más amplio o que tu portafolio tenga tickers con más historia."
         )
-    sub = sub.ffill().dropna()
 
     # Calcular valor del portafolio: rebalanceo virtual al inicio,
     # luego deja correr (peso varía con precio)
@@ -288,6 +338,10 @@ def correr_backtest(tickers: list[str], pesos: dict[str, float],
         },
         "tickers_usados":  disponibles,
         "tickers_faltantes": faltantes,
+        # Los que sí están en el universo pero no cotizaban en esta ventana.
+        # Es distinto de "faltantes" (que no existen en el CSV) y el usuario
+        # merece saber por qué su ETF de bitcoin no aparece en el 2020.
+        "tickers_sin_historia": sin_historia,
         "pesos_normalizados": {t: round(pesos_norm[t], 4) for t in disponibles},
         "serie_valor":     serializar(valor_diario),
         "serie_benchmarks": {label: serializar(s) for label, s in benchmarks_data.items()},

@@ -1401,8 +1401,13 @@
         </h3>
         <select id="bt-periodo" class="bg-zinc-900 border border-zinc-700 text-zinc-100 text-xs rounded-md px-2 py-1 focus:outline-none focus:border-accent-blue">
           <option value="completo">Historia completa</option>
-          <option value="ultimo_ano">Últimos 12 meses</option>
-          <option value="covid_full" selected>COVID + Recovery 2020</option>
+          <!-- El preseleccionado era covid_full, la ventana PEOR cubierta: casi
+               la mitad del universo no cotizaba en 2020, así que el primer clic
+               —el único que da la mayoría— fallaba. Los últimos 12 meses
+               siempre tienen datos para cualquier activo que el usuario pueda
+               tener en cartera. -->
+          <option value="ultimo_ano" selected>Últimos 12 meses</option>
+          <option value="covid_full">COVID + Recovery 2020</option>
           <option value="covid_crash">COVID Crash (Mar 2020)</option>
           <option value="rate_hike_2022">Subida de tasas 2022</option>
           <option value="ano_2023">AI Rally 2023</option>
@@ -3432,6 +3437,7 @@
   </footer>
 
   <script src="/static/native-config.js"></script>
+  <script src="/static/mp_resena.js"></script>
   <script src="/static/app.js"></script>
   <script src="/static/ux_helpers.js"></script>
   <script src="/static/extras.js"></script>
