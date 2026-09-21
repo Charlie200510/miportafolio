@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Opciones de exportación para subir a App Store Connect.
+
+  Vivía en un directorio temporal y se perdía cada vez que se limpiaba, así que
+  cada release había que reconstruirlo de memoria. Aquí queda versionado.
+
+  Uso (desde ios-app/ios/App):
+
+    xcodebuild archive -workspace App.xcworkspace -scheme App \
+      -configuration Release -destination 'generic/platform=iOS' \
+      -archivePath /tmp/App.xcarchive -allowProvisioningUpdates \
+      -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_5T2N2W66Q8.p8 \
+      -authenticationKeyID 5T2N2W66Q8 \
+      -authenticationKeyIssuerID 28f32e72-0ad4-4ce1-ac44-536001e28056
+
+    xcodebuild -exportArchive -archivePath /tmp/App.xcarchive \
+      -exportOptionsPlist ../../deploy/exportOptions.plist \
+      -exportPath /tmp/export -allowProvisioningUpdates \
+      -authenticationKeyPath ... (los mismos tres)
+
+    xcrun altool --upload-app -f /tmp/export/App.ipa -t ios \
+      --apiKey 5T2N2W66Q8 --apiIssuer 28f32e72-0ad4-4ce1-ac44-536001e28056
+
+  La llave .p8 NO está en el repo y no debe estarlo: vive en
+  ~/.appstoreconnect/private_keys/, que es donde altool y xcodebuild la buscan.
+-->
+<plist version="1.0">
+<dict>
+  <key>method</key><string>app-store-connect</string>
+  <key>teamID</key><string>B3C6794B74</string>
+  <key>signingStyle</key><string>automatic</string>
+  <key>uploadSymbols</key><true/>
+  <key>destination</key><string>export</string>
+</dict>
+</plist>
