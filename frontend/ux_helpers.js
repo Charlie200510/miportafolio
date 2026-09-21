@@ -35,12 +35,12 @@
     }
     .mp-toast.out { animation: mpToastOut .12s cubic-bezier(.2,0,.2,1) forwards; }
     .mp-toast .mp-toast-icon { flex-shrink: 0; width: 18px; height: 18px; }
-    .mp-toast.success { border-color: rgba(156,93,18,.4); }
+    .mp-toast.success { border-color: rgba(32,90,72,.4); }
     .mp-toast.success .mp-toast-icon { color: var(--sello); }
     .mp-toast.error   { border-color: rgba(174,50,35,.4); }
     .mp-toast.error   .mp-toast-icon { color: var(--baja); }
     .mp-toast.info    .mp-toast-icon { color: var(--sello); }
-    .mp-toast.warn    { border-color: rgba(156,93,18,.4); }
+    .mp-toast.warn    { border-color: rgba(32,90,72,.4); }
     .mp-toast.warn    .mp-toast-icon { color: var(--sello); }
     /* Sin rebote ni escalado: sólo un desplazamiento corto de 160ms. */
     @keyframes mpToastIn  { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
@@ -135,7 +135,7 @@
       position: fixed; z-index: 10001; max-width: 320px;
       background: var(--sup-panel); border: 1px solid var(--sello);
       border-radius: var(--radio-tarjeta); padding: 18px 20px;
-      box-shadow: 0 0 0 4px rgba(156,93,18,0.15), 0 24px 64px -12px rgba(26,26,24,.12);
+      box-shadow: 0 0 0 4px rgba(32,90,72,0.15), 0 24px 64px -12px rgba(26,26,24,.12);
       display: none;
     }
     #mp-tour-tooltip.mp-tour-anim {
@@ -199,7 +199,7 @@
     @media (min-width: 640px) {
       .mp-tour-highlight {
         position: relative; z-index: 9999 !important;
-        box-shadow: 0 0 0 4px rgba(156,93,18,0.5), 0 0 0 9999px rgba(26,26,24,.40) !important;
+        box-shadow: 0 0 0 4px rgba(32,90,72,0.5), 0 0 0 9999px rgba(26,26,24,.40) !important;
         border-radius: var(--radio);
         transition: box-shadow .3s;
       }
@@ -212,7 +212,7 @@
     @media (max-width: 767px) {
       /* --- Base: tap feedback nativo y safe areas iOS --- */
       html {
-        -webkit-tap-highlight-color: rgba(156,93,18,0.15);
+        -webkit-tap-highlight-color: rgba(32,90,72,0.15);
         -webkit-text-size-adjust: 100%;
       }
       body {
@@ -969,7 +969,7 @@
             background: var(--sup-panel);
             display: flex; align-items: center; justify-content: center;
             font-size: 32px; margin-bottom: 24px;
-            box-shadow: 0 0 40px rgba(156,93,18,0.3);
+            box-shadow: 0 0 40px rgba(32,90,72,0.3);
           "><span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 19V11"/><path d="M10 19V6"/><path d="M16 19V14"/><path d="M22 19H2"/></svg></span></div>
           <h2 id="mpm-titulo" style="
             font-size: 26px; font-weight: 700; color: var(--tinta-1);
@@ -991,7 +991,7 @@
             padding: 18px;
             font-size: 17px; font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 8px 24px -8px rgba(156,93,18,0.6);
+            box-shadow: 0 8px 24px -8px rgba(32,90,72,0.6);
             -webkit-tap-highlight-color: transparent;
           "></button>
           <button id="mpm-saltar" style="
@@ -1088,7 +1088,7 @@
     @keyframes mpSplashOut { to { opacity: 0; pointer-events: none; visibility: hidden; } }
     #mp-splash img {
       width: 80px; height: 80px; border-radius: var(--radio-tarjeta);
-      box-shadow: 0 0 60px rgba(156,93,18,0.5);
+      box-shadow: 0 0 60px rgba(32,90,72,0.5);
       animation: mpSplashLogo .6s cubic-bezier(.18,.95,.32,1) both;
     }
     @keyframes mpSplashLogo {
@@ -1106,7 +1106,7 @@
     #mp-splash .mp-splash-dot {
       width: 6px; height: 6px; border-radius: 50%; background: var(--sello);
       animation: mpSplashDot 1s ease-in-out infinite;
-      box-shadow: 0 0 12px rgba(156,93,18,0.8);
+      box-shadow: 0 0 12px rgba(32,90,72,0.8);
     }
     @keyframes mpSplashDot { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
   `;
@@ -1220,7 +1220,7 @@
       flex: none;                    /* nunca se comprime ni corta el número */
       padding: 3px 7px;
       background: transparent;
-      border: 1px solid rgba(156,93,18,0.4);
+      border: 1px solid rgba(32,90,72,0.4);
       border-radius: 999px;
       font-family: 'IBM Plex Mono', ui-monospace, monospace;
       font-variant-numeric: tabular-nums lining-nums;
@@ -1343,9 +1343,9 @@
     if (!host || document.getElementById('mp-fiscal-widget')) return;
     const fechas = _proximasFechasFiscales(3);
     const tipoColor = {
-      isr:  { bg: 'rgba(156,93,18,0.1)',  border: 'rgba(156,93,18,0.3)',  color: MP_COLOR.sello, label: 'ISR' },
-      sat:  { bg: 'rgba(156,93,18,0.1)',  border: 'rgba(156,93,18,0.3)',  color: MP_COLOR.sello, label: 'SAT' },
-      tip:  { bg: 'rgba(156,93,18,0.1)',   border: 'rgba(156,93,18,0.3)',   color: MP_COLOR.sello, label: 'TIP' },
+      isr:  { bg: 'rgba(32,90,72,0.1)',  border: 'rgba(32,90,72,0.3)',  color: MP_COLOR.sello, label: 'ISR' },
+      sat:  { bg: 'rgba(32,90,72,0.1)',  border: 'rgba(32,90,72,0.3)',  color: MP_COLOR.sello, label: 'SAT' },
+      tip:  { bg: 'rgba(32,90,72,0.1)',   border: 'rgba(32,90,72,0.3)',   color: MP_COLOR.sello, label: 'TIP' },
     };
     const widget = document.createElement('div');
     widget.id = 'mp-fiscal-widget';
@@ -1583,7 +1583,7 @@
     }
     const html = `
       <div id="mp-curso-modal" style="position:fixed;inset:0;background:rgba(26,26,24,.40);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);">
-        <div style="background:var(--sup);border:1px solid var(--sello);border-radius:var(--radio-tarjeta);max-width:480px;width:100%;box-shadow:0 0 80px -20px rgba(156,93,18,0.4);">
+        <div style="background:var(--sup);border:1px solid var(--sello);border-radius:var(--radio-tarjeta);max-width:480px;width:100%;box-shadow:0 0 80px -20px rgba(32,90,72,0.4);">
           <div style="padding:16px 20px 12px;border-bottom:1px solid var(--regla);display:flex;align-items:center;justify-content:space-between;">
             <div>
               <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--sello);">Mini-curso</p>
@@ -1676,7 +1676,7 @@
     badge.style.cssText = `
       margin-top: 8px; padding: 6px 10px;
       background: var(--sup-panel);
-      border: 1px solid rgba(156,93,18,0.25);
+      border: 1px solid rgba(32,90,72,0.25);
       border-radius: var(--radio-chico); font-size: 10px; line-height: 1.4;
       color: var(--sello);
     `;

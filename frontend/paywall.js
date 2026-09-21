@@ -509,7 +509,7 @@
     const izquierda = o.badge
       ? `<span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
            <span>${o.nombre}</span>
-           <span style="background:rgba(26,26,24,.14);color:${destacado ? MP_COLOR.sup : MP_COLOR.sello};border:1px solid ${destacado ? 'rgba(26,26,24,.35)' : 'rgba(156,93,18,.4)'};font-family:IBM Plex Mono,ui-monospace,monospace;font-size:9px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:999px;white-space:nowrap">${o.badge}</span>
+           <span style="background:rgba(26,26,24,.14);color:${destacado ? MP_COLOR.sup : MP_COLOR.sello};border:1px solid ${destacado ? 'rgba(26,26,24,.35)' : 'rgba(32,90,72,.4)'};font-family:IBM Plex Mono,ui-monospace,monospace;font-size:9px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:999px;white-space:nowrap">${o.badge}</span>
          </span>`
       : `<span>${o.nombre}</span>`;
     const pkgAttr = (o.idx == null) ? '' : ` data-pkg="${o.idx}"`;

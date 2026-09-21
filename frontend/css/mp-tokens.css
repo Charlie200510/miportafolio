@@ -167,16 +167,31 @@
   --tinta-4:  #5A6170;  /*  4.9:1 — mínimo AA para texto tenue */
 
   /* ── ACENTO ─────────────────────────────────────────────────────────────
-     Un solo acento para TODA la interacción: ámbar de tinta de sello,
-     bajado a ocre para que pase AA sobre papel (el #D79A3C del tema oscuro
-     daba 2.2:1 aquí y era ilegible). Sigue sin ser verde a propósito: el
-     verde queda reservado a la dirección de mercado.                      */
-  --sello:        #8C520C;  /* 5.0:1 — texto/borde de acento */
-  --sello-vivo:   #6F4009;  /* hover: se oscurece, no se aclara */
-  --sello-solido: #8C520C;  /* fondo de botón; encima va --sobre-sello */
-  --sello-tenue:  rgba(140,82,12,.10);
-  --sello-tenue2: rgba(140,82,12,.16);
-  --sobre-sello:  #FFFFFF;  /* 7.4:1 sobre --sello-solido */
+     Un solo acento para TODA la interacción: verde pino oscuro, tomado del
+     verde de la marca. Antes era un ocre de tinta de sello (#8C520C), que se
+     leía como café anaranjado y no casaba con el logo.
+
+     EL VERDE CONVIVE CON EL DE MERCADO, Y ESO HAY QUE CUIDARLO.
+     La versión anterior de esta nota decía que el acento no era verde "a
+     propósito, porque el verde queda reservado a la dirección de mercado".
+     El riesgo es real: --alza es #0F5C33 y un botón verde puede confundirse
+     con un "subió". Se resolvió por distancia, no por evitarlo:
+
+        --sello #1B4D3E  vs  --alza #0F5C33   ->  ΔE 18.6  (>15 = distinguible)
+
+     El acento es más oscuro y tira a azul; el de mercado es más puro y vivo.
+     Si algún día se toca cualquiera de los dos, hay que volver a medir esa
+     distancia: por debajo de ΔE 15 se empiezan a confundir y el color deja de
+     decir lo que dice.
+
+     Contrastes contra --sup-panel (#FFFFFF), el peor caso. El acento mejoró
+     al cambiar: el ocre daba 5.6:1 y este da 9.6:1.                        */
+  --sello:        #1B4D3E;  /* 9.6:1 — texto/borde de acento */
+  --sello-vivo:   #13382D;  /* hover: se oscurece, no se aclara */
+  --sello-solido: #1B4D3E;  /* fondo de botón; encima va --sobre-sello */
+  --sello-tenue:  rgba(27,77,62,.10);
+  --sello-tenue2: rgba(27,77,62,.16);
+  --sobre-sello:  #FFFFFF;  /* 9.6:1 sobre --sello-solido */
 
   /* ── DIRECCIÓN DE MERCADO ───────────────────────────────────────────────
      NUNCA decorativos. Reajustados para papel: el verde menta y el salmón

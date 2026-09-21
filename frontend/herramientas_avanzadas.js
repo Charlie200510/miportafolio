@@ -93,7 +93,7 @@
     const narr = (d.narrativa || []).map(n => `<li style="padding:6px 0;color:var(--tinta-2);font-size:13px;line-height:1.6;list-style:none;">${n}</li>`).join('');
     const peers = (d.peers || []).map(p => `<span style="display:inline-block;padding:3px 8px;background:var(--sup-panel);border:1px solid var(--regla);border-radius:999px;font-size:11px;color:var(--tinta-3);font-family:monospace;margin:2px;">${p.ticker}</span>`).join('');
     return `
-      <div style="background:var(--sup-panel);border:1px solid rgba(156,93,18,0.25);border-radius:var(--radio-tarjeta);padding:16px;margin-bottom:16px;">
+      <div style="background:var(--sup-panel);border:1px solid rgba(32,90,72,0.25);border-radius:var(--radio-tarjeta);padding:16px;margin-bottom:16px;">
         <h3 style="margin:0;font-size:18px;color:var(--tinta-1);font-weight:700;">${emp.nombre || d.ticker}</h3>
         <p style="margin:4px 0 0;font-size:11px;color:var(--tinta-3);">${emp.sector || ''} · ${emp.industria || ''} · ${emp.pais || ''}</p>
         ${emp.precio ? `<p style="margin:8px 0 0;font-size:24px;color:var(--sello);font-weight:700;font-family:monospace;">$${emp.precio.toFixed(2)} ${emp.moneda || ''}</p>` : ''}
@@ -160,7 +160,7 @@
         // Recolectar transacciones y precios actuales del localStorage / state
         const txs = JSON.parse(localStorage.getItem('miPortafolio.transacciones.v1') || '[]');
         if (!txs.length) {
-          cont.innerHTML = `<p style="color:var(--sello);font-size:13px;padding:14px;background:rgba(156,93,18,0.08);border-radius:var(--radio-tarjeta);">Primero registra tus transacciones en la pestaña <strong>Transacciones</strong> para que el optimizador sepa qué tienes.</p>`;
+          cont.innerHTML = `<p style="color:var(--sello);font-size:13px;padding:14px;background:rgba(32,90,72,0.08);border-radius:var(--radio-tarjeta);">Primero registra tus transacciones en la pestaña <strong>Transacciones</strong> para que el optimizador sepa qué tienes.</p>`;
           return;
         }
         // Precios actuales — pedimos al backend de info_activos del universo
@@ -217,12 +217,12 @@
     const isrAhorroColor = ahorro > 0 ? MP_COLOR.alza : ahorro < 0 ? MP_COLOR.sello : MP_COLOR.tinta4;
     return `
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;">
-        <div style="background:rgba(156,93,18,0.08);border:1px solid rgba(156,93,18,0.25);border-radius:var(--radio-tarjeta);padding:14px;text-align:center;">
+        <div style="background:rgba(32,90,72,0.08);border:1px solid rgba(32,90,72,0.25);border-radius:var(--radio-tarjeta);padding:14px;text-align:center;">
           <p style="margin:0;font-size:10px;color:var(--sello);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">ISR proyectado</p>
           <p style="margin:6px 0 0;font-size:24px;font-weight:700;color:var(--tinta-1);font-family:monospace;">$${d.isr_proyectado.toLocaleString()}</p>
           <p style="margin:2px 0 0;font-size:11px;color:var(--tinta-3);">con plan óptimo</p>
         </div>
-        <div style="background:rgba(156,93,18,0.08);border:1px solid rgba(156,93,18,0.25);border-radius:var(--radio-tarjeta);padding:14px;text-align:center;">
+        <div style="background:rgba(32,90,72,0.08);border:1px solid rgba(32,90,72,0.25);border-radius:var(--radio-tarjeta);padding:14px;text-align:center;">
           <p style="margin:0;font-size:10px;color:var(--alza);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Ahorro vs vender al azar</p>
           <p style="margin:6px 0 0;font-size:24px;font-weight:700;color:${isrAhorroColor};font-family:monospace;">$${ahorro.toLocaleString()}</p>
           <p style="margin:2px 0 0;font-size:11px;color:var(--tinta-3);">menos ISR pagado</p>
@@ -827,7 +827,7 @@
       try {
         const txs = JSON.parse(localStorage.getItem('miPortafolio.transacciones.v1') || '[]');
         if (!txs.length) {
-          cont.innerHTML = `<p style="color:var(--sello);font-size:13px;padding:14px;background:rgba(156,93,18,0.08);border-radius:var(--radio-tarjeta);">Primero registra tus transacciones arriba.</p>`;
+          cont.innerHTML = `<p style="color:var(--sello);font-size:13px;padding:14px;background:rgba(32,90,72,0.08);border-radius:var(--radio-tarjeta);">Primero registra tus transacciones arriba.</p>`;
           return;
         }
         const precios = {};
@@ -1027,8 +1027,8 @@
 
   function _renderSml(d) {
     const colorMap = {
-      green: { bg: 'rgba(156,93,18,0.08)', border: 'rgba(156,93,18,0.3)', text: MP_COLOR.alza },
-      blue:  { bg: 'rgba(156,93,18,0.08)', border: 'rgba(156,93,18,0.3)', text: MP_COLOR.sello },
+      green: { bg: 'rgba(32,90,72,0.08)', border: 'rgba(32,90,72,0.3)', text: MP_COLOR.alza },
+      blue:  { bg: 'rgba(32,90,72,0.08)', border: 'rgba(32,90,72,0.3)', text: MP_COLOR.sello },
       red:   { bg: 'rgba(174,50,35,0.08)', border: 'rgba(174,50,35,0.3)', text: MP_COLOR.baja },
     };
     const c = colorMap[d.veredicto_color] || colorMap.blue;

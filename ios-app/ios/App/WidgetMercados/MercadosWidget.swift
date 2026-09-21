@@ -216,7 +216,7 @@ enum Tinta {
     static let regla   = Color(red: 0.882, green: 0.894, blue: 0.918)  // #E1E4EB
     static let tinta1  = Color(red: 0.078, green: 0.086, blue: 0.106)  // #14161B
     static let tinta3  = Color(red: 0.345, green: 0.369, blue: 0.420)  // #585E6B
-    static let sello   = Color(red: 0.549, green: 0.322, blue: 0.047)  // #8C520C
+    static let sello   = Color(red: 0.106, green: 0.302, blue: 0.243)  // #1B4D3E
     static let alza    = Color(red: 0.059, green: 0.361, blue: 0.200)  // #0F5C33
     static let baja    = Color(red: 0.588, green: 0.141, blue: 0.094)  // #962418
 }

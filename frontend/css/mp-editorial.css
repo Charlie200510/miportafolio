@@ -738,10 +738,10 @@ main .bg-surface-card {
 }
 
 /* ─────────────────────────── ACENTO Y BOTONES ───────────────────────────── */
-/* El acento ámbar cubre TODA la interacción. `accent-green` y `accent-red`
+/* El acento verde cubre TODA la interacción. `accent-green` y `accent-red`
    quedan FUERA de este barrido a propósito: el tema de Tailwind ya los apunta
    al verde y rojo de mercado, y son los únicos dos colores que codifican un
-   dato (dirección). Pintarlos de ámbar aquí borraría esa información. */
+   dato (dirección). Pintarlos con el acento aquí borraría esa información. */
 .text-accent-teal, .text-accent-blue, .text-accent-purple,
 .text-accent-indigo, .text-accent-amber, .text-accent-orange, .text-accent-rose,
 .text-amber-300, .text-amber-400, .text-amber-100, .text-sky-400, .text-cyan-400,

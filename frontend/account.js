@@ -370,7 +370,7 @@
   function paso3(email) {
     return caja(`
       <div style="text-align:center">
-        <div style="width:56px;height:56px;margin:0 auto 14px;border-radius:999px;background:rgba(156,93,18,.12);border:1px solid rgba(156,93,18,.4);display:flex;align-items:center;justify-content:center">
+        <div style="width:56px;height:56px;margin:0 auto 14px;border-radius:999px;background:rgba(32,90,72,.12);border:1px solid rgba(32,90,72,.4);display:flex;align-items:center;justify-content:center">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--sello)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <h2 style="margin:0 0 8px;font-size:20px;font-weight:700">Tu cuenta fue eliminada</h2>

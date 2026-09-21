@@ -48,7 +48,7 @@ final class MPBloqueoBiometrico {
         capa.backgroundColor = UIColor(red: 0.937, green: 0.945, blue: 0.961, alpha: 1)  // #EFF1F5
 
         let candado = UIImageView(image: UIImage(systemName: "lock.fill"))
-        candado.tintColor = UIColor(red: 0.612, green: 0.365, blue: 0.071, alpha: 1)     // #9C5D12
+        candado.tintColor = UIColor(red: 0.125, green: 0.353, blue: 0.282, alpha: 1)     // #205A48
         candado.translatesAutoresizingMaskIntoConstraints = false
         candado.contentMode = .scaleAspectFit
         capa.addSubview(candado)

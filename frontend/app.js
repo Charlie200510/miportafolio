@@ -32,7 +32,7 @@ const MP_COLOR = (() => {
     sup: '#EFF1F5', supPanel: '#FFFFFF', supAlto: '#FFFFFF', supHondo: '#E4E7EE',
     regla: '#E1E4EB', reglaSuave: '#EDEFF3', reglaFuerte: '#C3C8D4',
     tinta1: '#14161B', tinta2: '#3B404A', tinta3: '#585E6B', tinta4: '#5A6170',
-    sello: '#8C520C', selloVivo: '#6F4009', selloSolido: '#8C520C', sobreSello: '#FFFFFF',
+    sello: '#1B4D3E', selloVivo: '#13382D', selloSolido: '#1B4D3E', sobreSello: '#FFFFFF',
     alza: '#0F5C33', baja: '#962418',
   };
   const tokens = {
@@ -1460,7 +1460,7 @@ function renderCorrelaciones(data) {
   html += `
     <div class="flex items-center justify-between mt-4 text-[10px] text-zinc-500">
       <div class="flex items-center gap-1.5">
-        <span class="w-3 h-3 rounded" style="background: rgba(156,93,18,0.5)"></span>
+        <span class="w-3 h-3 rounded" style="background: rgba(32,90,72,0.5)"></span>
         <span>Negativa</span>
       </div>
       <div class="flex items-center gap-1.5">
@@ -6286,8 +6286,8 @@ const Metas = (() => {
       {
         label: 'P90 (optimista)',
         data: p90,
-        borderColor: 'rgba(156,93,18,0.4)',
-        backgroundColor: 'rgba(156,93,18,0.08)',
+        borderColor: 'rgba(32,90,72,0.4)',
+        backgroundColor: 'rgba(32,90,72,0.08)',
         borderWidth: 1,
         fill: '+2',  // llena entre p90 y p10
         pointRadius: 0,
@@ -7211,7 +7211,7 @@ const Backtest = (() => {
     const datasets = [{
       label: 'Tu portafolio',
       data: d.serie_valor.map(p => p.valor),
-      borderColor: MP_COLOR.sello, backgroundColor: 'rgba(156,93,18,0.1)',
+      borderColor: MP_COLOR.sello, backgroundColor: 'rgba(32,90,72,0.1)',
       borderWidth: 2, tension: 0.2, pointRadius: 0, fill: true,
     }];
     Object.entries(d.serie_benchmarks || {}).forEach(([label, serie], i) => {
@@ -8982,7 +8982,7 @@ const Analizador = (() => {
               Fiscal Year ${escapeHtml(d.fy_actual || '—')} · datos en ${escapeHtml(moneda)} · ${escapeHtml(d.nombre || d.ticker)}
             </p>
           </div>
-          <span class="text-[9px] uppercase tracking-[0.2em] font-semibold px-2.5 py-1 rounded" style="color:var(--sello); background:rgba(156,93,18,0.08); border:1px solid rgba(156,93,18,0.25);">10-K resumido</span>
+          <span class="text-[9px] uppercase tracking-[0.2em] font-semibold px-2.5 py-1 rounded" style="color:var(--sello); background:rgba(32,90,72,0.08); border:1px solid rgba(32,90,72,0.25);">10-K resumido</span>
         </div>
 
         <!-- KPI ROW -->

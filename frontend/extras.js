@@ -220,7 +220,7 @@
           <p style="font-size:13px;color:var(--tinta-3);line-height:1.6;margin:0 0 16px;">
             Exporta tus operaciones desde tu broker (GBM, Kuspit, Bursanet, Hapi, Schwab, IBKR, etc.) como CSV y súbelo aquí. El parser <strong style="color:var(--sello);">detecta automáticamente el broker</strong> y mapea las columnas.
           </p>
-          <div style="background:rgba(156,93,18,0.06);border:1px solid rgba(156,93,18,0.25);border-radius:var(--radio-tarjeta);padding:10px 12px;margin-bottom:12px;">
+          <div style="background:rgba(32,90,72,0.06);border:1px solid rgba(32,90,72,0.25);border-radius:var(--radio-tarjeta);padding:10px 12px;margin-bottom:12px;">
             <p style="font-size:11px;color:var(--sello);margin:0;font-weight:600;">✓ Brokers reconocidos automáticamente:</p>
             <p style="font-size:11px;color:var(--tinta-3);margin:4px 0 0;line-height:1.5;">GBM Plus · Kuspit · Bursanet (Banorte) · Hapi · Schwab · Interactive Brokers · y cualquier CSV genérico con columnas estándar.</p>
           </div>
@@ -404,7 +404,7 @@
                        minAp >= 1000    ? `$${(minAp/1000).toFixed(0)}k MXN` :
                        minAp > 0        ? `$${minAp} MXN` : 'Sin mínimo';
       return `
-        <div style="display:flex;gap:12px;align-items:center;padding:14px;background:${esTop ? 'rgba(156,93,18,0.06)' : MP_COLOR.supPanel};border:1px solid ${esTop ? 'rgba(156,93,18,0.3)' : MP_COLOR.regla};border-radius:var(--radio-tarjeta);margin-bottom:8px;">
+        <div style="display:flex;gap:12px;align-items:center;padding:14px;background:${esTop ? 'rgba(32,90,72,0.06)' : MP_COLOR.supPanel};border:1px solid ${esTop ? 'rgba(32,90,72,0.3)' : MP_COLOR.regla};border-radius:var(--radio-tarjeta);margin-bottom:8px;">
             ${_selloBroker(b)}
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;">
@@ -437,7 +437,7 @@
       <div style="margin-bottom:16px;">
         ${items}
       </div>
-      <div style="padding:12px;background:rgba(156,93,18,0.08);border:1px solid rgba(156,93,18,0.25);border-radius:var(--radio-tarjeta);">
+      <div style="padding:12px;background:rgba(32,90,72,0.08);border:1px solid rgba(32,90,72,0.25);border-radius:var(--radio-tarjeta);">
         <p style="margin:0;font-size:11px;color:var(--sello);line-height:1.55;">
           <span class="mp-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M8 21h8"/><path d="M5 7 2 14h6z"/><path d="M19 7l-3 7h6z"/></svg></span> <strong>Mi Portafolio no ejecuta trades</strong> ni custodia tu dinero. Al picar "Abrir" vas al sitio/app de tu broker — ahí inicias sesión y ejecutas la compra tú mismo. No somos casa de bolsa registrada ante CNBV.
         </p>
