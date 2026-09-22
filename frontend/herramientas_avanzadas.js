@@ -1355,6 +1355,46 @@
     const secSml = document.getElementById('sub-sml');
     const secComparar = document.getElementById('sub-comparar');
     if (!tabs.length) return;
+    // UN SOLO SITIO decide qué pestaña se ve activa, en las DOS barras.
+    //
+    // Antes el marcado estaba repartido: activar() apagaba y encendía las
+    // `.sub-analizar-btn`, pero el botón "Optimizador (varias)" no es una de
+    // ellas —es un `.nav-tab[data-vista=explorador]`, porque cambia de vista
+    // entera— y lo manejaba el nav principal, que no sabe nada de este subnav.
+    // Resultado: al ir Optimizador -> Screener quedaban DOS pestañas
+    // encendidas, porque nadie apagaba la del Optimizador.
+    //
+    // 'cual' es el data-sub-analizar de la pestaña, o 'explorador'.
+    function marcarSubnav(cual) {
+      const todos = document.querySelectorAll(
+        '.sub-analizar-btn, .nav-tab[data-vista="explorador"]');
+      todos.forEach(b => {
+        // Cada barra pinta su acento con un nombre distinto (orange en
+        // Analizar, blue en el Optimizador). Los dos apuntan al mismo token,
+        // así que se ven igual; se respeta el que cada botón traía.
+        //
+        // El tono se recuerda la PRIMERA vez y se guarda en el dataset: leerlo
+        // de las clases en cada pasada no funciona, porque esta misma función
+        // las quita al desactivar y a la segunda vuelta ya no hay de dónde
+        // deducirlo. El botón del Optimizador nacía 'blue' y se despertaba
+        // 'orange'. Hoy no se nota —los dos son el mismo verde— y por eso
+        // habría pasado inadvertido hasta que alguien los separara.
+        if (!b.dataset.tono) {
+          b.dataset.tono = b.className.includes('accent-blue') ? 'blue' : 'orange';
+        }
+        const tono = b.dataset.tono;
+        const activo = (b.dataset.subAnalizar || 'explorador') === cual;
+        b.classList.toggle('text-zinc-100', activo);
+        b.classList.toggle(`bg-accent-${tono}/15`, activo);
+        b.classList.toggle('ring-1', activo);
+        b.classList.toggle(`ring-accent-${tono}/40`, activo);
+        b.classList.toggle('text-zinc-500', !activo);
+      });
+    }
+    // Lo usa el nav principal al entrar al Optimizador, para que la pestaña
+    // que queda encendida sea la suya y no la que estuviera antes.
+    window.marcarSubnavOptimizador = () => marcarSubnav('explorador');
+
     function activar(sub) {
       // Estos tabs viven en Analizar. Si se clican desde el Optimizador (que es
       // otra vista, vista-explorador), primero regresamos a Analizar reutilizando
@@ -1364,14 +1404,7 @@
         const navA = document.querySelector('.nav-tab.nav-primary[data-vista="analizar"]');
         if (navA) navA.click();
       }
-      tabs.forEach(b => {
-        const activo = b.dataset.subAnalizar === sub;
-        b.classList.toggle('text-zinc-100', activo);
-        b.classList.toggle('bg-accent-orange/15', activo);
-        b.classList.toggle('ring-1', activo);
-        b.classList.toggle('ring-accent-orange/40', activo);
-        b.classList.toggle('text-zinc-500', !activo);
-      });
+      marcarSubnav(sub);
       if (secAccion) secAccion.classList.toggle('hidden', sub !== 'una-accion');
       if (secDeep)   secDeep.classList.toggle('hidden', sub !== 'deep-dive');
       if (secScreen) secScreen.classList.toggle('hidden', sub !== 'screener');
@@ -1383,6 +1416,10 @@
       if (sub === 'comparar' && typeof window.iniciarComparar === 'function') window.iniciarComparar();
     }
     tabs.forEach(b => b.addEventListener('click', () => activar(b.dataset.subAnalizar)));
+    // El botón del Optimizador cambia de vista por su cuenta (nav principal);
+    // aquí solo se encarga de dejar el subnav coherente.
+    document.querySelectorAll('.nav-tab[data-vista="explorador"]').forEach(
+      b => b.addEventListener('click', () => marcarSubnav('explorador')));
   };
 
   // Auto-bind al cargar
