@@ -2542,20 +2542,34 @@
     </section>
 
     <!-- KPIs -->
+    <!-- "Valor actual" sale de la retícula y pasa a ser la cifra protagonista.
+         Era una de cuatro cajas idénticas de 24px, con el mismo peso que
+         "Invertido" o "ROI" — y es el número por el que alguien abre la app.
+         Ahora va en serif grande, como el rendimiento en Analizar, que ya
+         seguía este patrón. Los otros tres KPIs se quedan en retícula debajo:
+         son contexto de esta cifra, no sus iguales. -->
     <section class="max-w-7xl mx-auto px-6 pb-4">
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up fade-up-1">
+      <div class="fade-up">
+        <p class="mp-etq">Valor actual</p>
+        <!-- SIN `tabular` a propósito, al revés que las tarjetas de abajo.
+             tabular-nums le da a la coma y al punto un hueco de dígito
+             completo: en una columna eso alinea, pero en una cifra sola y a
+             56px se lee "$487 , 320 . 50", con huecos visibles. Las tres
+             tarjetas de abajo sí lo conservan, porque ahí forman columna. -->
+        <p class="text-[44px] sm:text-[56px] leading-none font-bold mt-1.5 text-zinc-100" id="tx-kpi-valor">—</p>
+        <p class="mp-cabecera-meta mt-2.5 max-w-xl">
+          Cuánto valdría tu portafolio si vendieras todo ahora mismo a precio de mercado.
+        </p>
+      </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-6 pb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 fade-up fade-up-1">
         <div class="bg-surface-card border border-surface-border rounded-xl p-4">
           <p class="text-[11px] text-zinc-500 uppercase tracking-wider">Invertido</p>
           <p class="text-2xl font-semibold tabular mt-1 text-zinc-100" id="tx-kpi-invertido">—</p>
           <p class="text-[10px] text-zinc-600 mt-2 leading-snug border-t border-surface-border pt-2">
             Capital que tienes puesto hoy (compras menos lo que ya vendiste, a costo promedio).
-          </p>
-        </div>
-        <div class="bg-surface-card border border-surface-border rounded-xl p-4">
-          <p class="text-[11px] text-zinc-500 uppercase tracking-wider">Valor actual</p>
-          <p class="text-2xl font-semibold tabular mt-1 text-zinc-100" id="tx-kpi-valor">—</p>
-          <p class="text-[10px] text-zinc-600 mt-2 leading-snug border-t border-surface-border pt-2">
-            Cuánto valdría tu portafolio si vendieras todo ahora mismo a precio de mercado.
           </p>
         </div>
         <div class="bg-surface-card border border-surface-border rounded-xl p-4">
