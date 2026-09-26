@@ -1927,7 +1927,12 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
     /* --feed-asomo: cuánto se ve de la siguiente. No es decorativo: sin ese
        borde asomando, nada indica que haya más notas debajo. */
     --feed-asomo: 34px;
-    --feed-alto: min(68svh, 520px);
+    /* Valor de emergencia: solo manda si _ajustarFeed() no llegó a correr.
+       Era min(68svh, 520px), y en una pantalla de 667px eso daba 520 para un
+       hueco real de ~481: la tarjeta se salía por abajo. Descontando lo que
+       mide la topbar pegajosa, el valor por defecto ya nunca es mayor que el
+       sitio que hay. */
+    --feed-alto: min(calc(100svh - 190px), 520px);
 
     position: static;          /* sale del apilado absoluto de .mp-mazo */
     height: var(--feed-alto);
@@ -1945,7 +1950,18 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
     position: relative;                 /* deja de estar posicionada */
     transform: none !important;         /* gana a los translateY en línea */
     height: auto;
+    /* MÍNIMO Y MÁXIMO, los dos, y el máximo es el que arregla el reporte.
+       Con solo el mínimo, una nota de titular largo crecía MÁS ALTA que la
+       ventana del feed. Y como el anclaje es `mandatory` + `align: start` +
+       `stop: always`, el scroll solo puede pararse al principio de cada
+       tarjeta: el trozo que sobraba por abajo quedaba literalmente
+       inalcanzable, por mucho que se arrastrara. De ahí "se corta sin llegar
+       hasta abajo".
+       Fijando el alto, cada tarjeta cabe entera en una posición de anclaje.
+       Lo que sobra lo absorbe el texto (ver .mp-tarjeta-cara), nunca el botón
+       de "Leer la nota", que va aparte y siempre visible. */
     min-height: calc(var(--feed-alto) - var(--feed-asomo));
+    max-height: calc(var(--feed-alto) - var(--feed-asomo));
     scroll-snap-align: start;
     scroll-snap-stop: always;
     margin-bottom: var(--paso-3);
@@ -1995,13 +2011,22 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
     flex: 1 1 auto;
     justify-content: flex-start;
     gap: var(--paso-2);
+    /* La cara es lo que cede cuando el texto no cabe: se recorta ella y el
+       botón de abajo sobrevive. Sin esto, el texto empujaba al botón fuera de
+       la tarjeta y había que adivinar que estaba ahí. */
+    overflow: hidden;
   }
 
-  /* EL ARREGLO: titular completo. Se anula el recorte a dos líneas. */
+  /* Titular largo, pero no infinito. En la pila se recortaba a dos líneas y
+     eso era demasiado poco; quitarle el tope del todo era demasiado, porque un
+     titular de seis líneas se comía la tarjeta entera y empujaba el sumario y
+     la fecha fuera del recorte. Cuatro líneas es lo que cabe sin desplazar
+     nada en la ventana más apretada. */
   .mp-mazo--feed .mp-tarjeta-titular {
-    display: block;
-    -webkit-line-clamp: unset;
-    overflow: visible;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     font-size: clamp(21px, 5.6vw, 27px);
     line-height: 1.18;
   }

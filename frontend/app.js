@@ -4186,10 +4186,29 @@ const Periodico = (() => {
     const anchas = window.matchMedia('(min-width: 1024px)').matches;
     document.querySelectorAll('.mp-mazo--feed').forEach(m => {
       if (anchas) { m.style.removeProperty('--feed-alto'); return; }
-      if (window.scrollY > 40) return;
-      const top = m.getBoundingClientRect().top;
-      if (top <= 0) return;
-      const alto = Math.max(300, Math.min(620, Math.round(window.innerHeight - top - 12)));
+
+      /* SE MIDE CONTRA LA TOPBAR, NO CONTRA DÓNDE ESTÁ EL SCROLL.
+         La versión anterior hacía `innerHeight - rect.top - 12` y se rendía si
+         la página estaba desplazada (`scrollY > 40`) o si el feed ya había
+         subido. Dos fallos de eso:
+
+         1) Al arrancar, el feed está a ~680px del tope porque encima van
+            cabecera, cintilla, pestañas y título. Restar ESO daba un feed de
+            304px cuando la pantalla mide 1000 — una ventanita en la que la
+            tarjeta no cabe.
+         2) Girar el teléfono o cambiar el tamaño ESTANDO DESPLAZADO abortaba
+            los cuatro recálculos y dejaba el valor viejo puesto. Si ese valor
+            era mayor que el hueco real, la tarjeta se salía por abajo y no
+            había forma de llegar a su final. Es lo que se veía.
+
+         Lo que de verdad limita al feed es la topbar, que es `position:
+         sticky`: por mucho que se baje, el feed nunca puede empezar más arriba
+         de ella. Así que el hueco es `innerHeight - altoDeLaTopbar`, y eso no
+         depende de dónde esté el scroll en el momento de medir. */
+      const tb = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--mp-topbar-h')
+      ) || 0;
+      const alto = Math.max(300, Math.min(760, Math.round(window.innerHeight - tb - 12)));
       m.style.setProperty('--feed-alto', alto + 'px');
     });
   }
