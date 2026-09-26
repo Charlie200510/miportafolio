@@ -941,7 +941,7 @@ function renderRegata(data) {
   $('regata-leyenda').innerHTML = r.orden.map(b => {
     const v = b.total;
     return '<li' + (b.rotulada ? '' : ' class="sin-rotulo"') + '>'
-         +   '<i style="background:' + b.color + '"></i>'
+         +   '<i style="background:' + b.color + '" aria-hidden="true"></i>'
          +   '<b>' + escapeHtml(String(b.etq).split('.')[0]) + '</b>'
          +   '<span>' + Math.round(b.peso * 100) + '%</span>'
          +   '<em>' + (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '</em>'
@@ -1515,11 +1515,26 @@ function renderTablaActivos(data, info) {
   const activos = data.por_activo || {};
   const pesos   = (data.portafolio && data.portafolio.pesos) || {};
   const tickers = Object.keys(activos);
+  /* El copo de cada fila. Mismas opciones que la figura de arriba, así que la
+     silueta de la tabla y la de la cabecera hablan del mismo CETES y del mismo
+     benchmark. Si el módulo no cargó, la columna queda vacía y la tabla sigue
+     funcionando: la marca es un extra, no un requisito. */
+  const meta = data.metadata || {};
+  const opcFig = {
+    cetes: meta.tasa_libre_riesgo_pct,
+    benchmarkAnual: data.benchmark && typeof data.benchmark.rendimiento_anualizado_pct === 'number'
+      ? data.benchmark.rendimiento_anualizado_pct : undefined,
+  };
+  const copoDe = (m) => {
+    const F = window.MP_FLOTACION;
+    if (!F || !m) return '';
+    return '<span class="mp-copo-fila">' + F.copo(F.puntuar(m, opcFig), 30, '') + '</span>';
+  };
 
   $('activos-count').textContent = `${tickers.length} activo${tickers.length === 1 ? '' : 's'}`;
 
   if (!tickers.length) {
-    $('tabla-activos').innerHTML = `<tr><td colspan="8" class="px-5 py-8 text-center text-zinc-500 text-xs">Sin datos</td></tr>`;
+    $('tabla-activos').innerHTML = `<tr><td colspan="9" class="px-5 py-8 text-center text-zinc-500 text-xs">Sin datos</td></tr>`;
     return;
   }
 
@@ -1543,6 +1558,7 @@ function renderTablaActivos(data, info) {
             </div>
           </div>
         </td>
+        <td class="px-2 py-3 w-9">${copoDe(a)}</td>
         <td class="px-5 py-3 hidden md:table-cell text-xs text-zinc-400">${sector}</td>
         <td class="px-5 py-3 text-right tabular text-sm">${fmtPct(peso, 1, false)}</td>
         <td class="px-5 py-3 text-right tabular text-sm ${claseColor(a.rendimiento_total_pct)}">${fmtPct(a.rendimiento_total_pct, 1)}</td>
@@ -3468,12 +3484,47 @@ window.iniciarComparar = (function () {
 //  tinta pura, que es justo lo que hizo que el fallo pasara desapercibido—.
 //  Cada `suave` está medido ≥5:1 contra su propio `sup`:
 //    mx 5.1:1 · global 5.0:1 · cripto 5.1:1 · posicion 5.1:1 · macro 5.1:1
+/* ══════════════════════════════════════════════════════════════════════════
+   COLOR DE LAS TARJETAS DEL PERIÓDICO
+   ══════════════════════════════════════════════════════════════════════════
+   Plástico teñido a fondo, no pastel. Antes eran menta #A8DCB8, lila #CFBBEE,
+   durazno #F5C7A3: tintes claros con tinta oscura encima. Eso se lee como
+   interfaz, no como objeto — es la paleta de cualquier dashboard. Una tarjeta
+   de verdad (la de un banco, la del metro, un pase de Wallet) es oscura y
+   saturada con texto claro, porque está TEÑIDA, no impresa.
+
+   Al invertirlo cambian todos los umbrales: el ▲ verde (--alza #0F5C33) y el
+   ▼ rojo (--baja #962418) son tintas oscuras y sobre una tarjeta oscura
+   desaparecen. Por eso cada categoría trae su PROPIO par claro de dirección.
+
+   MEDIDO SOBRE EL PIXEL COMPUESTO, no sobre el color nominal (AA pide 4.5:1).
+   Esa distinción es el detalle que casi se cuela: con los colores de abajo
+   sobre el fondo NOMINAL el peor caso daba 4.98:1 y parecía resuelto, pero
+   encima del fondo van el canto iluminado, la banda especular y el grano.
+   Sumados aclaran el fondo un 12% y el peor caso se desploma a 2.81:1. Los
+   claros de texto están calculados HACIA ATRÁS desde ese fondo aclarado:
+     peor caso real 4.56:1 — el ▼ sobre el bronce.
+   Si se sube el brillo especular o el grano en mp-editorial.css, estos cuatro
+   colores hay que recalcularlos.
+   Y entre ellas, para que no se confundan de un vistazo:
+     par más cercano ΔE76 20.4 (global vs posicion).
+   Macro empezó en grafito y en pizarra; los dos se acercaban demasiado al
+   verde o al azul (ΔE 18-19). En vino queda separado de las cuatro.
+
+   Si se toca cualquiera hay que volver a medir LAS DOS COSAS: contraste de los
+   cuatro textos sobre el fondo, y distancia a las otras cuatro tarjetas.
+     sup    fondo de la tarjeta
+     pie    el mismo, 18% más oscuro: el degradado de cuerpo termina ahí
+     tinta  texto principal
+     suave  rótulos y metadatos
+     alza   ▲ en esta tarjeta        baja   ▼ en esta tarjeta
+     borde  canto iluminado, decorativo (no lleva texto encima)          */
 const MP_CATEGORIAS = {
-  mx:       { etq: 'BMV · IPC',      leyenda: 'Mercado mexicano',  sup: '#A8DCB8', tinta: '#0E4526', suave: '#255C3C', borde: '#8BCB9F' },
-  global:   { etq: 'Global',         leyenda: 'Mercados globales', sup: '#AECDF2', tinta: '#123457', suave: '#305174', borde: '#8FB8E8' },
-  cripto:   { etq: 'Cripto',         leyenda: 'Criptomonedas',     sup: '#F6D28C', tinta: '#573305', suave: '#724E1C', borde: '#E8BE6B' },
-  posicion: { etq: 'Tus posiciones', leyenda: 'Tus posiciones',    sup: '#CFBBEE', tinta: '#382461', suave: '#533F7A', borde: '#BBA2E4' },
-  macro:    { etq: 'Macro y tasas',  leyenda: 'Macro y tasas',     sup: '#F5C7A3', tinta: '#5A3212', suave: '#714828', borde: '#EAB183' },
+  mx:       { etq: 'BMV · IPC',      leyenda: 'Mercado mexicano',  sup: '#0F4434', pie: '#0C372A', tinta: '#F5F7F2', suave: '#C8D1C7', alza: '#91DFB4', baja: '#FFC0B5', borde: '#577C70' },
+  global:   { etq: 'Global',         leyenda: 'Mercados globales', sup: '#1B3A5C', pie: '#162F4B', tinta: '#F5F7F2', suave: '#C8D1C7', alza: '#91DFB4', baja: '#FFC0B5', borde: '#5F758C' },
+  cripto:   { etq: 'Cripto',         leyenda: 'Criptomonedas',     sup: '#5E3A0C', pie: '#4D2F09', tinta: '#F5F7F2', suave: '#C8D1C7', alza: '#91DFB4', baja: '#FFC0B5', borde: '#8E7554' },
+  posicion: { etq: 'Tus posiciones', leyenda: 'Tus posiciones',    sup: '#3D2A5C', pie: '#32224B', tinta: '#F5F7F2', suave: '#C8D1C7', alza: '#91DFB4', baja: '#FFC0B5', borde: '#77698C' },
+  macro:    { etq: 'Macro y tasas',  leyenda: 'Macro y tasas',     sup: '#5A1F2E', pie: '#4A1926', tinta: '#F5F7F2', suave: '#C8D1C7', alza: '#91DFB4', baja: '#FFC0B5', borde: '#8B6069' },
 };
 window.MP_CATEGORIAS = MP_CATEGORIAS;
 
@@ -4029,7 +4080,7 @@ const Periodico = (() => {
 
     return `
       <article class="mp-tarjeta" data-i="${i}"
-               style="--cat-sup:${c.sup};--cat-tinta:${c.tinta};--cat-suave:${c.suave};--cat-borde:${c.borde}">
+               style="--cat-sup:${c.sup};--cat-pie:${c.pie || c.sup};--cat-tinta:${c.tinta};--cat-suave:${c.suave};--cat-borde:${c.borde};--cat-alza:${c.alza || 'var(--alza)'};--cat-baja:${c.baja || 'var(--baja)'}">
         <button class="mp-tarjeta-cara" id="${idBtn}" type="button"
                 aria-expanded="false" aria-controls="${idDet}">${cara}</button>
         ${irDirecto}

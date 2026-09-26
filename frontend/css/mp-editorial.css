@@ -1326,14 +1326,42 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
      Encima del color va un barrido de luz que baja del canto superior: es lo
      que hace que la franja se lea como una superficie física y no como una
      banda de color plano. */
+  /* ── MATERIAL: QUE PAREZCA UN OBJETO, NO UNA CAJA DE COLOR ─────────────
+     Antes era un barrido blanco sobre color plano. Sobre los tintes pastel
+     viejos eso bastaba para insinuar superficie; con el color teñido a fondo
+     ya no, porque una tarjeta física no es un rectángulo de color: es un
+     material con un grosor, una luz que le pega en diagonal y un canto.
+
+     Cuatro capas, de arriba hacia abajo en el `background`:
+       1) BRILLO ESPECULAR. Una banda diagonal angosta, no un degradado
+          suave: el reflejo del plástico tiene bordes. Va a 115° para que no
+          coincida con ninguna arista y se lea como luz de ventana.
+       2) LUZ DE CANTO. Corta y solo arriba — es el grosor del canto
+          recogiendo luz, no un degradado decorativo que baje media tarjeta.
+       3) VIÑETA DE PIE. Oscurece las esquinas de abajo: la tarjeta se
+          despega del mazo aunque la sombra no se vea.
+       4) CUERPO. Del color a su versión 18% más oscura, a 170° (casi
+          vertical, con un grado de inclinación para que no sea una banda).  */
   background:
+    linear-gradient(112deg,
+      transparent 36%,
+      rgba(255, 255, 255, .060) 45%,
+      rgba(255, 255, 255, .025) 49%,
+      transparent 56%),
     linear-gradient(180deg,
-      rgba(255, 255, 255, .55) 0%,
-      rgba(255, 255, 255, .16) 34%,
-      rgba(255, 255, 255, 0) 62%),
-    var(--cat-sup, var(--sup-panel));
+      rgba(255, 255, 255, .26) 0%,
+      rgba(255, 255, 255, .07) 4%,
+      rgba(255, 255, 255, .02) 12%,
+      transparent 24%),
+    radial-gradient(130% 95% at 50% 120%,
+      rgba(0, 0, 0, .20) 0%,
+      transparent 66%),
+    linear-gradient(170deg,
+      var(--cat-sup, var(--sup-panel)) 0%,
+      var(--cat-pie, var(--cat-sup, var(--sup-panel))) 100%);
   color: var(--cat-tinta, var(--tinta-1));
   border: 0;   /* el canto lo dibujan las sombras internas, no un filete */
+  isolation: isolate;   /* contiene el mix-blend del grano de ::after */
 
   /* ── EL APILADO ────────────────────────────────────────────────────────
      La sombra principal va HACIA ARRIBA (offset-y negativo). No es un
@@ -1393,6 +1421,52 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
     0 16px 32px -20px rgba(20, 22, 27, .45),
     0 4px 12px -10px rgba(20, 22, 27, .28);
 }
+/* ── GRANO ─────────────────────────────────────────────────────────────────
+   Lo que de verdad separa "objeto" de "rectángulo de color" es que ninguna
+   superficie real es perfectamente lisa. Un color plano a pantalla completa
+   delata que es un div; con una pizca de ruido, el ojo lo lee como plástico
+   teñido o cartulina.
+
+   Va en ::after y no en el background porque necesita `mix-blend-mode`, y
+   porque así no hay que repetir las cuatro capas de material. El SVG va
+   embebido (feTurbulence) en vez de un PNG: pesa ~250 bytes, escala a
+   cualquier densidad de pantalla y no añade una petición — la app nativa
+   arranca sin red.
+
+   opacity .045 es deliberadamente casi invisible: si se ve el ruido, está
+   mal puesto. Solo tiene que quitarle la perfección al color.
+   pointer-events:none o se come los toques de la tarjeta.                  */
+.mp-tarjeta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  /* Detrás del contenido y delante del color. Como ::after es el último hijo,
+     sin esto el grano se pintaría ENCIMA del texto y le comería contraste.
+     Con z-index negativo dentro del contexto de apilado que crea el
+     `isolation: isolate` de la tarjeta, queda sobre el fondo y bajo el texto,
+     que es donde va el material. */
+  z-index: -1;
+  opacity: .045;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+}
+/* Quien no soporte mix-blend-mode se queda sin grano, no con un velo gris. */
+@supports not (mix-blend-mode: overlay) {
+  .mp-tarjeta::after { display: none; }
+}
+
+/* ── DIRECCIÓN DE MERCADO SOBRE TARJETA OSCURA ─────────────────────────────
+   --alza y --baja globales son tintas OSCURAS, pensadas para papel. Sobre el
+   color teñido de la tarjeta se hunden. Cada categoría inyecta su par claro
+   en --cat-alza / --cat-baja; el fallback deja las globales por si alguna
+   tarjeta se pinta sin tokens. El !important es para ganarle a la regla
+   global de .mp-alza/.mp-baja, que ya lo lleva.                            */
+.mp-tarjeta .mp-alza { color: var(--cat-alza, var(--alza)) !important; }
+.mp-tarjeta .mp-baja { color: var(--cat-baja, var(--baja)) !important; }
+
 /* Mientras se arrastra hacia abajo para cerrar, manda el dedo: sin transición. */
 .mp-tarjeta.arrastrando { transition: none !important; }
 /* Colocación inicial (y recolocación por resize/rotación): posición aplicada de
@@ -2049,3 +2123,15 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
    una regla de overflow. */
 #regata-figura, #marea-figura { overflow: visible; }
 #regata-figura > svg, #marea-figura > svg { max-width: 100%; }
+
+/* ── EL COPO EN FILA ───────────────────────────────────────────────────────
+   La marca del activo dentro de la tabla. Ancho fijo para que la columna no
+   baile de fila en fila, y `overflow: visible` en el SVG porque el trazo del
+   polígono se sale medio píxel del viewBox en los vértices extremos. */
+.mp-copo-fila {
+  display: block;
+  width: 30px;
+  height: 30px;
+  margin: 0 auto;
+}
+.mp-copo-fila > svg { width: 30px; height: 30px; }

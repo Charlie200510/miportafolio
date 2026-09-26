@@ -1199,6 +1199,10 @@
           <thead>
             <tr class="text-[11px] text-zinc-500 uppercase tracking-wider border-b border-surface-border">
               <th class="text-left font-medium px-5 py-3">Ticker</th>
+              <!-- El copo: la marca del activo. Va pegado al ticker a propósito,
+                   para que se lean como una sola cosa y el ojo aprenda la
+                   silueta junto al nombre. -->
+              <th class="font-medium px-2 py-3" title="Perfil contra CETES"><span class="sr-only">Perfil</span></th>
               <th class="text-left font-medium px-5 py-3 hidden md:table-cell">Sector</th>
               <th class="text-right font-medium px-5 py-3">Peso</th>
               <th class="text-right font-medium px-5 py-3">Retorno</th>
@@ -1209,7 +1213,7 @@
             </tr>
           </thead>
           <tbody id="tabla-activos" class="divide-y divide-surface-border">
-            <tr><td colspan="8" class="px-5 py-8 text-center text-zinc-500 text-xs">Cargando…</td></tr>
+            <tr><td colspan="9" class="px-5 py-8 text-center text-zinc-500 text-xs">Cargando…</td></tr>
           </tbody>
         </table>
       </div>

@@ -661,6 +661,81 @@
     };
   }
 
+  /* ══════════════════════════════════════════════════════════════════════
+     EL COPO — la marca, no la gráfica.
+     ══════════════════════════════════════════════════════════════════════
+     Las otras tres proyecciones EXPLICAN (barras que se leen eje por eje).
+     Esta IDENTIFICA: un pentágono irregular cuya silueta cambia con el
+     activo, para reconocerlo de un vistazo en una lista sin leer una cifra.
+     Es el trabajo que hace el copo de Simply Wall St y que unas barras a 30px
+     no hacen: a ese tamaño todas las barras se parecen, las siluetas no.
+
+     LO QUE NO ES UN RADAR DE CHART.JS: el círculo punteado del centro es
+     CETES. Un radar normal dibuja los ejes contra la nada y no dice dónde
+     está el aprobado; aquí la punta que ROMPE el círculo le ganó a la tasa
+     libre de riesgo y la que se queda dentro, no. Esa lectura —sin leyenda,
+     sin números, sin tooltip— es la que justifica la forma.
+
+     Vértices rectos y no curva suave: a 28px una curva se convierte en una
+     mancha redonda y todas se parecen. Las esquinas son lo que distingue una
+     silueta de otra cuando es pequeña. */
+  function copo(puntajes, tam, etiqueta) {
+    var S = acotar(Math.round(tam || 120), 20, 400);
+    var cx = S / 2, cy = S / 2;
+    /* ESCALA ASIMÉTRICA, y con motivo doble.
+       Con un radio lineal (R0 + puntaje·K) el −3 caía en negativo y se
+       aplastaba contra el mínimo: a 30px, AMXB y CEMEX salían como dos motas
+       idénticas de 1.6px que se leían como "falta el dato", no como "va mal".
+       Y en el otro extremo la lineal exagera, porque el ojo lee ÁREA y el
+       área crece con el cuadrado del radio.
+       Así que el +3 sube hasta 0.40·S (llena la caja) y el −3 baja solo hasta
+       0.085·S: pequeño pero todavía una forma con sus cinco esquinas. A
+       0.055 seguía siendo una mota de 3px de ancho a tamaño de fila. */
+    var R0    = S * 0.15;          // radio de CETES: el puntaje 0 cae aquí
+    var K_MAS = (S * 0.40 - R0) / 3;
+    var K_MEN = (R0 - S * 0.085) / 3;
+
+    var vivos = EJES.filter(function (e) {
+      return puntajes[e.id] !== null && puntajes[e.id] !== undefined;
+    });
+    if (vivos.length < 3) return '';   // con menos de tres no hay polígono
+
+    /* Los ángulos se reparten entre los ejes QUE HAY, no entre los cinco: con
+       un hueco fijo, a un activo sin benchmark le salía una muesca que se leía
+       como "va muy mal en mercado" en vez de "no hay dato". */
+    var paso = 2 * Math.PI / vivos.length;
+    var pts = vivos.map(function (e, i) {
+      var a = -Math.PI / 2 + i * paso;
+      var v = puntajes[e.id];
+      var r = R0 + v * (v >= 0 ? K_MAS : K_MEN);
+      return [cx + Math.cos(a) * r, cy + Math.sin(a) * r];
+    });
+
+    var f = flota(puntajes);
+    var color = f === null ? RAMPA[2] : colorDe(f * COLOR_POR_FLOTA);
+    var p = [];
+    p.push('<svg viewBox="0 0 ' + S + ' ' + S + '" style="width:100%;height:auto;display:block;overflow:visible" ' +
+      'role="img" aria-label="' + esc(etiqueta || 'Perfil del activo contra CETES') + '">');
+    /* CETES primero: queda debajo del polígono, así que solo se ve asomar por
+       donde el activo NO llega. Ese hueco es el dato. */
+    /* A tamaño de fila el punteado se vuelve una sucesión de medios píxeles y
+       desaparece: por debajo de 44px el círculo va continuo. Sigue diciendo lo
+       mismo y se ve. */
+    var guion = S >= 44
+      ? ' stroke-dasharray="' + (S * 0.030).toFixed(2) + ' ' + (S * 0.025).toFixed(2) + '"'
+      : '';
+    p.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + R0.toFixed(1) +
+      '" fill="none" stroke="var(--tinta-1)" stroke-width="' +
+      Math.max(S * 0.013, 0.9).toFixed(2) + '" stroke-opacity="' + (S >= 44 ? 1 : 0.65) + '"' +
+      guion + '/>');
+    p.push('<polygon points="' + pts.map(function (q) {
+      return q[0].toFixed(1) + ',' + q[1].toFixed(1);
+    }).join(' ') + '" fill="' + color + '" fill-opacity="0.88" stroke="' + color +
+      '" stroke-width="' + (S * 0.016).toFixed(2) + '" stroke-linejoin="round"/>');
+    p.push('</svg>');
+    return p.join('');
+  }
+
   window.MP_FLOTACION = {
     ejes: EJES,
     puntuar: puntuar,
@@ -669,6 +744,7 @@
     flota: flota,
     ayudaEje: ayudaEje,
     colorDe: colorDe,
+    copo: copo,
     regata: regata,
     marea: marea
   };
