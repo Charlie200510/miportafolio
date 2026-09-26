@@ -28,16 +28,16 @@
   /* Los cinco ejes. El orden importa: se lee de izquierda a derecha y PODER va
    * primero porque es la pregunta que trae al usuario a la app. */
   var EJES = [
-    { id: 'poder',      etq: 'PODER',      ayuda: 'Contra CETES, lo que rindió al año' },
-    { id: 'eficiencia', etq: 'EFICIENCIA', ayuda: 'Cuánto rinde por unidad de riesgo' },
-    { id: 'calma',      etq: 'CALMA',      ayuda: 'Qué tan poco se mueve' },
-    { id: 'aguante',    etq: 'AGUANTE',    ayuda: 'Qué tan poco cayó en su peor racha' },
+    { id: 'poder',      etq: 'PODER',      art: 'el poder',      ayuda: 'Contra CETES, lo que rindió al año' },
+    { id: 'eficiencia', etq: 'EFICIENCIA', art: 'la eficiencia', ayuda: 'Cuánto rinde por unidad de riesgo' },
+    { id: 'calma',      etq: 'CALMA',      art: 'la calma',      ayuda: 'Qué tan poco se mueve' },
+    { id: 'aguante',    etq: 'AGUANTE',    art: 'el aguante',    ayuda: 'Qué tan poco cayó en su peor racha' },
     /* La ayuda de MERCADO es un MARCADOR, no el texto final: el benchmark lo
        elige el backend según la moneda dominante (^MXX si la cartera es
        mayoritariamente MXN, ^GSPC si no). Decía fijo "Contra el IPC", así que
        una cartera de acciones estadounidenses leía "Contra el IPC" junto a un
        número calculado contra el S&P 500. Usa ayudaEje(), no este campo. */
-    { id: 'mercado',    etq: 'MERCADO',    ayuda: 'Contra el índice de tu mercado' }
+    { id: 'mercado',    etq: 'MERCADO',    art: 'el mercado',    ayuda: 'Contra el índice de tu mercado' }
   ];
 
   /* Los dos benchmarks que devuelve el backend, en cristiano. Si algún día
@@ -83,6 +83,53 @@
 
   /* Elige el paso de la rampa según el total (−15..+15). Cinco cubos, sin
    * interpolar: ver la nota de RAMPA. */
+  /* ══════════════════════════════════════════════════════════════════════
+     LA FLOTACIÓN: qué tan por encima de la línea está algo.
+     ══════════════════════════════════════════════════════════════════════
+     NO es la suma de los cinco ejes, y esa era una mentira de bulto.
+
+     Lo que se vio midiendo instrumentos mexicanos de verdad: un fondo de
+     deuda que apenas empata con CETES (rinde 9.5%, vol 1.1%, sin caídas)
+     sacaba +5.6 de suma y ENCABEZABA la regata, por encima de VOO (+4.8) y
+     de WALMEX (+4.4). O sea: la figura ponía al instrumento que DEFINE la
+     línea cinco puntos y medio por encima de la línea.
+
+     La causa es que CALMA y AGUANTE son absolutos, no relativos a la línea.
+     Premian no moverse — y CETES tampoco se mueve. Al sumarlos, la quietud
+     paga como si fuera rendimiento.
+
+     Flotar significa UNA cosa: le ganaste a la referencia. Eso lo dicen
+     PODER (contra CETES), MERCADO (contra el índice) y EFICIENCIA (el
+     Sharpe, que ya es exceso sobre la tasa libre de riesgo por unidad de
+     riesgo). CALMA y AGUANTE describen el CAMINO, no el resultado: siguen
+     dibujándose como barras y siguen contando en el veredicto, pero no
+     levantan a nadie por encima de la línea.
+
+     PODER y MERCADO se PROMEDIAN, no se suman. Medido: la diferencia entre
+     los dos es constante —(benchmark − cetes)/5, 0.48 en la última corrida—
+     porque los dos salen del MISMO rendimiento anualizado contra dos
+     referencias distintas. Sumarlos contaba el rendimiento dos veces y lo
+     dejaba pesando el doble que el Sharpe.
+
+     Rango: ±6. Devuelve null si no hay con qué calcularlo. */
+  function flota(p) {
+    if (!p) return null;
+    var vivo = function (v) { return typeof v === 'number' && isFinite(v); };
+    var refs = [];
+    if (vivo(p.poder))   refs.push(p.poder);
+    if (vivo(p.mercado)) refs.push(p.mercado);
+    var partes = [];
+    if (refs.length) partes.push(refs.reduce(function (a, b) { return a + b; }, 0) / refs.length);
+    if (vivo(p.eficiencia)) partes.push(p.eficiencia);
+    if (!partes.length) return null;
+    // Cada parte va de −3 a +3. El factor deja el total en ±6 falte o no una.
+    return partes.reduce(function (a, b) { return a + b; }, 0) * (2 / partes.length);
+  }
+
+  /* El color se elige sobre la escala de ±15 de la suma vieja; para que la
+     rampa siga repartiéndose igual, la flotación (±6) se estira ×2.5. */
+  var COLOR_POR_FLOTA = 15 / 6;
+
   function colorDe(total) {
     var t = acotar((total + 15) / 30, 0, 0.9999);
     return RAMPA[Math.floor(t * RAMPA.length)];
@@ -138,8 +185,11 @@
     var vivos = EJES.filter(function (e) { return puntajes[e.id] !== null && puntajes[e.id] !== undefined; });
     if (!vivos.length) return '';
 
-    var total = vivos.reduce(function (a, e) { return a + puntajes[e.id]; }, 0);
-    var color = colorDe(total * (5 / vivos.length));   // normaliza si falta algún eje
+    /* El color sale de flota(), no de la suma de los cinco: si no, un fondo
+       de deuda que solo empata con CETES se pintaba de petróleo (ver la nota
+       larga de flota()). Si no hay con qué calcularla, queda neutro. */
+    var f = flota(puntajes);
+    var color = f === null ? RAMPA[2] : colorDe(f * COLOR_POR_FLOTA);
     var agua = P.agua;
     var ancho = vivos.length * P.barra + (vivos.length - 1) * P.hueco;
     var x0 = (P.w - ancho) / 2;
@@ -224,7 +274,6 @@
     var cetes = typeof o.cetes === 'number' ? o.cetes : 9.5;
     var r = metricas.rendimiento_anualizado_pct;
     var vivos = EJES.filter(function (e) { return puntajes[e.id] !== null && puntajes[e.id] !== undefined; });
-    var total = vivos.reduce(function (a, e) { return a + puntajes[e.id]; }, 0);
 
     var peor = null, mejor = null;
     vivos.forEach(function (e) {
@@ -232,21 +281,50 @@
       if (mejor === null || puntajes[e.id] > puntajes[mejor.id]) mejor = e;
     });
 
+    /* SI GANA O NO lo dice la flotación (±6). QUÉ TAN MOVIDO fue el camino lo
+       dicen CALMA y AGUANTE, que es justo para lo que sirven ahora que no
+       levantan a nadie por encima de la línea. Los umbrales estaban sobre la
+       suma de los cinco (±15) y "sin sustos" se lo llevaba cualquier cosa
+       quieta, incluida una que no ganara nada. */
+    var f = flota(puntajes);
+    var camino = ['calma', 'aguante'].reduce(function (a, k) {
+      return a + (typeof puntajes[k] === 'number' && isFinite(puntajes[k]) ? puntajes[k] : 0);
+    }, 0);
+
     var cabeza;
     if (typeof r === 'number' && r < cetes) {
       cabeza = 'Rindió ' + r.toFixed(1) + '% al año. CETES pagó ' + cetes.toFixed(1) +
                '% sin arriesgar nada.';
-    } else if (total >= 6) {
-      cabeza = 'Le gana a CETES y lo hace sin sustos.';
-    } else if (total >= 0) {
+    } else if (f === null) {
+      cabeza = 'No hay datos suficientes para compararlo contra CETES.';
+    } else if (f >= 2.0) {
+      cabeza = camino >= 0
+        ? 'Le gana a CETES y lo hace sin sustos.'
+        : 'Le gana a CETES, pero el camino es movido.';
+    } else if (f >= 0.5) {
       cabeza = 'Le gana a CETES, pero no por mucho.';
+    } else if (f >= -0.5) {
+      /* Banda neutra. Sin ella, un fondo de deuda a −0.18 —que no le hace
+         correr riesgo a nadie— recibía "No compensa el riesgo que te hace
+         correr", que además de falso suena a regaño. */
+      cabeza = 'Va prácticamente igual que CETES, que no te cuesta nada tener.';
     } else {
       cabeza = 'No compensa el riesgo que te hace correr.';
     }
-    var cola = (peor && mejor && peor.id !== mejor.id)
-      ? ' Su fuerte es ' + mejor.etq.toLowerCase() + '; donde falla es ' + peor.etq.toLowerCase() + '.'
-      : '';
-    return cabeza + cola;
+
+    /* El fuerte solo se nombra si DE VERDAD es un fuerte, y lo mismo el
+       fallo. Antes se tomaba el máximo y el mínimo a secas, así que a un
+       activo con los cinco ejes en negativo se le decía "su fuerte es
+       eficiencia" señalando el menos malo. */
+    var fuerte = (mejor && puntajes[mejor.id] > 0.3) ? mejor : null;
+    var flojo = (peor && peor.id !== (mejor && mejor.id) && puntajes[peor.id] < -0.3) ? peor : null;
+    if (fuerte && flojo) {
+      return cabeza + ' Su fuerte es ' + fuerte.art + '; donde falla es ' + flojo.art + '.';
+    }
+    if (fuerte) return cabeza + ' Su fuerte es ' + fuerte.art + '.';
+    /* Suelto, "donde falla es el mercado" no funciona como oración. */
+    if (flojo)  return cabeza + ' Su punto más débil es ' + flojo.art + '.';
+    return cabeza;
   }
 
   /* ══════════════════════════════════════════════════════════════════════
@@ -290,21 +368,16 @@
     var TOPE = W >= 700 ? 100 : 80;
     var AGUA = TOPE + 16, H = AGUA + TOPE + 24;
     var HUECO = estrecho ? 3 : 4, MIN_ANCHO = estrecho ? 7 : 10;
+    /* Entra quien tenga con qué calcular la flotación. Antes bastaba con UN
+       eje cualquiera, así que un activo del que solo se supiera la
+       volatilidad salía flotando por ser tranquilo. */
     var vivos = (barcos || []).filter(function (b) {
-      return b && b.puntajes && EJES.some(function (e) {
-        return b.puntajes[e.id] !== null && b.puntajes[e.id] !== undefined;
-      });
+      return b && b.puntajes && flota(b.puntajes) !== null;
     });
     if (vivos.length < 2) return '';
 
-    /* Suma normalizada: si a un activo le falta un eje, no puede quedar
-       automáticamente más cerca de cero que uno con los cinco. */
     vivos.forEach(function (b) {
-      var con = EJES.filter(function (e) {
-        return b.puntajes[e.id] !== null && b.puntajes[e.id] !== undefined;
-      });
-      var s = con.reduce(function (a, e) { return a + b.puntajes[e.id]; }, 0);
-      b._total = con.length ? s * (5 / con.length) : 0;
+      b._total = flota(b.puntajes);          // ±6, ya normalizada
       b._peso = (typeof b.peso === 'number' && b.peso > 0) ? b.peso : 0;
     });
     /* De la que más flota a la que más se hunde: la silueta baja de
@@ -333,14 +406,14 @@
       return MIN_ANCHO + holgura * (b._peso / sumaMostrados);
     });
 
-    var unidad = TOPE / 15;
+    var unidad = TOPE / 6;                   // la flotación va de −6 a +6
     var p = [];
     p.push('<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" ' +
       'role="img" aria-label="Cada posición de la cartera medida contra CETES">');
 
-    /* Rejilla cada 5 puntos: se cuenta a través del relleno translúcido. */
+    /* Rejilla cada 2 puntos de flotación. */
     p.push('<g stroke="var(--regla)" stroke-width="1">');
-    [5, 10, 15].forEach(function (k) {
+    [2, 4, 6].forEach(function (k) {
       p.push('<line x1="0" y1="' + (AGUA - k * unidad) + '" x2="' + W + '" y2="' + (AGUA - k * unidad) + '"/>');
       p.push('<line x1="0" y1="' + (AGUA + k * unidad) + '" x2="' + W + '" y2="' + (AGUA + k * unidad) + '"/>');
     });
@@ -354,11 +427,11 @@
       var y = b._total >= 0 ? AGUA - alto : AGUA;
       barras.push({ b: b, x: x, an: an, alto: alto, y: y });
       p.push('<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + an.toFixed(1) +
-        '" height="' + alto.toFixed(1) + '" fill="' + colorDe(b._total) + '">' +
+        '" height="' + alto.toFixed(1) + '" fill="' + colorDe(b._total * COLOR_POR_FLOTA) + '">' +
         '<title>' + esc(b.etq) + ' · ' +
         (b._peso && sumaCartera > 0 ? Math.round(b._peso / sumaCartera * 100) + '% de la cartera · ' : '') +
         (b._total > 0 ? '+' : b._total < 0 ? '−' : '') + Math.abs(b._total).toFixed(1) +
-        ' contra CETES</title></rect>');
+        ' de 6 contra CETES</title></rect>');
       x += an + HUECO;
     });
 
@@ -453,7 +526,7 @@
           etq: b.etq,
           total: b._total,
           peso: sumaCartera > 0 ? b._peso / sumaCartera : 0,
-          color: colorDe(b._total),
+          color: colorDe(b._total * COLOR_POR_FLOTA),
           rotulada: !!barras[i].rotulada
         };
       })
@@ -593,6 +666,7 @@
     puntuar: puntuar,
     dibujar: dibujar,
     veredicto: veredicto,
+    flota: flota,
     ayudaEje: ayudaEje,
     colorDe: colorDe,
     regata: regata,
