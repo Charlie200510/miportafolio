@@ -27,8 +27,12 @@ html, body {
 }
 
 /* Titulares y cifras protagonistas: serif editorial. */
+/* Bricolage es variable: 'wdth' la condensa y 'opsz' ajusta el dibujo al
+   tamaño. Condensada a 88 los titulares largos en español —que son largos—
+   caben sin bajar el cuerpo. */
 h1, h2, h3, .mp-titular, .mp-cifra {
-  font-family: var(--ff-serif) !important;
+  font-variation-settings: 'wdth' 88;
+  font-family: var(--ff-display) !important;
   color: var(--tinta-1);
   letter-spacing: -0.012em;
   font-feature-settings: 'ss01';
@@ -92,7 +96,7 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 
 /* ───────────────────────────── MASTHEAD ─────────────────────────────────── */
 .mp-masthead {
-  font-family: var(--ff-serif) !important;
+  font-family: var(--ff-display) !important;
   font-weight: 700;
   color: var(--tinta-1);
   letter-spacing: -0.028em;
@@ -258,7 +262,7 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
   margin-bottom: var(--paso-4);
 }
 .mp-panel-titulo {
-  font-family: var(--ff-serif) !important;
+  font-family: var(--ff-display) !important;
   font-size: var(--txt-seccion); font-weight: 700; letter-spacing: -0.02em;
   color: var(--tinta-1); margin: 0;
 }
@@ -348,7 +352,7 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
   text-transform: uppercase; color: var(--sello); margin: 0;
 }
 .mp-modal-titulo {
-  font-family: var(--ff-serif) !important;
+  font-family: var(--ff-display) !important;
   font-size: var(--txt-seccion); font-weight: 700; letter-spacing: -0.02em;
   color: var(--tinta-1); margin: var(--paso-1) 0 0;
 }
@@ -615,7 +619,7 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
 
 /* ────────────────────────── TITULARES DE NOTA ───────────────────────────── */
 .mp-titular {
-  font-family: var(--ff-serif) !important;
+  font-family: var(--ff-display) !important;
   font-weight: 700;
   color: var(--tinta-1);
   letter-spacing: -0.02em;
@@ -728,7 +732,7 @@ main .bg-surface-card {
   color: var(--tinta-4);
 }
 .mp-colofon-titulo {
-  font-family: var(--ff-serif) !important;
+  font-family: var(--ff-display) !important;
   font-size: 13px;
   font-weight: 700;
   color: var(--tinta-1);
@@ -1158,7 +1162,7 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
   gap: var(--paso-4);
 }
 .mp-titulo-vista {
-  font-family: var(--ff-serif) !important;
+  font-family: var(--ff-display) !important;
   font-size: var(--txt-vista);
   font-weight: 700;
   line-height: 1.05;
@@ -1445,7 +1449,7 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
   margin-bottom: var(--paso-2);
 }
 .mp-tarjeta-titular {
-  font-family: var(--ff-serif) !important;
+  font-family: var(--ff-display) !important;
   font-weight: 700;
   font-size: var(--txt-titular);
   line-height: 1.2;
@@ -1798,7 +1802,7 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
     width: auto; height: auto;
     clip-path: none;
     overflow: visible;
-    font-family: var(--ff-serif) !important;
+    font-family: var(--ff-display) !important;
     font-size: var(--txt-seccion);
     font-weight: 700;
     letter-spacing: -0.02em;

@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest" />
-  <meta name="theme-color" content="#EFF1F5" />
+  <meta name="theme-color" content="#EDEFE8" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -82,9 +82,9 @@
        nombres que los tokens (`sup*` superficies, `tinta*` texto). Si tocas
        mp-tokens.css, toca aquí. */
     const _tinta = {
-      base:  '#EFF1F5', panel: '#FFFFFF', alta: '#FFFFFF', honda: '#E4E7EE',
-      regla: '#E1E4EB', reglaSuave: '#EDEFF3', reglaFuerte: '#C3C8D4',
-      tinta1: '#14161B', tinta2: '#3B404A', tinta3: '#585E6B', tinta4: '#5A6170',
+      base:  '#EDEFE8', panel: '#FFFFFF', alta: '#FFFFFF', honda: '#E2E5DB',
+      regla: '#D8DCD2', reglaSuave: '#E6E9E0', reglaFuerte: '#BCC2B4',
+      tinta1: '#181D18', tinta2: '#41473F', tinta3: '#646D61', tinta4: '#646D61',
       sello: '#1B4D3E', selloVivo: '#13382D', selloSolido: '#1B4D3E',
       sobreSello: '#FFFFFF',
       alza:  '#0F5C33', baja: '#962418',
@@ -93,6 +93,11 @@
       theme: {
         extend: {
           fontFamily: {
+            /* Bricolage Grotesque para titulares: variable, con ejes de ancho
+               y tamaño óptico, y con carácter propio. El serif editorial —y en
+               cursiva sobre todo— está catalogado como cliché de diseño
+               generado en 2026, igual que Inter, Manrope y Space Grotesk. */
+            display: ['Bricolage Grotesque', 'IBM Plex Sans', 'system-ui', 'sans-serif'],
             serif: ['Source Serif 4', 'Georgia', 'Times New Roman', 'serif'],
             sans: ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
             mono: ['IBM Plex Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
@@ -109,7 +114,7 @@
                protagonista y `bg-zinc-900` para los paneles. Sobre papel eso se
                INVIERTE respecto a la escala de Tailwind: los índices bajos
                (texto) pasan a ser tinta oscura y los altos (superficies) pasan a
-               ser papel claro. Por eso 50→#14161B y 950→#EFF1F5, que leído en
+               ser papel claro. Por eso 50→#181D18 y 950→#EDEFE8, que leído en
                frío parece un error y no lo es.
                950 además es el color del texto sobre botones sólidos
                (`bg-accent-* text-zinc-950`), así que tiene que ser casi blanco. */
@@ -800,6 +805,25 @@
           </div>
         </div>
       </div>
+
+      <!-- LA FLOTACIÓN · la figura de la casa.
+           Cinco barras que salen de CETES: lo que sube ganó de verdad, lo que
+           baja se hunde. Es la misma figura que va en las filas de la tabla y
+           en el widget, a otra densidad — no son tres gráficas, son tres
+           lecturas del mismo vector de cinco números. La dibuja flotacion.js
+           con las métricas que /api/analizar ya devuelve. -->
+      <section id="flotacion-bloque" class="hidden fade-up fade-up-1">
+        <div class="grid lg:grid-cols-12 gap-x-8 gap-y-3 items-start">
+          <div class="lg:col-span-7 min-w-0">
+            <p class="mp-etq">Tu cartera contra CETES</p>
+            <div id="flotacion-figura" class="mt-2"></div>
+          </div>
+          <div class="lg:col-span-5 min-w-0 lg:border-l lg:border-surface-border lg:pl-6">
+            <p id="flotacion-veredicto" class="text-[15px] leading-relaxed text-zinc-200"></p>
+            <ul id="flotacion-ejes" class="mt-4 text-[12.5px]"></ul>
+          </div>
+        </div>
+      </section>
 
       <!-- KPI cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up fade-up-1">
@@ -3451,6 +3475,7 @@
   </footer>
 
   <script src="/static/native-config.js"></script>
+  <script src="/static/flotacion.js"></script>
   <script src="/static/mp_resena.js"></script>
   <script src="/static/app.js"></script>
   <script src="/static/ux_helpers.js"></script>

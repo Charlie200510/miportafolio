@@ -29,9 +29,9 @@ const API_BASE = (window.MP_API_BASE || '').replace(/\/$/, '');
 //    · valor que consume JS        →  MP_COLOR.x     (Chart.js, canvas)
 const MP_COLOR = (() => {
   const respaldo = {
-    sup: '#EFF1F5', supPanel: '#FFFFFF', supAlto: '#FFFFFF', supHondo: '#E4E7EE',
-    regla: '#E1E4EB', reglaSuave: '#EDEFF3', reglaFuerte: '#C3C8D4',
-    tinta1: '#14161B', tinta2: '#3B404A', tinta3: '#585E6B', tinta4: '#5A6170',
+    sup: '#EDEFE8', supPanel: '#FFFFFF', supAlto: '#FFFFFF', supHondo: '#E2E5DB',
+    regla: '#D8DCD2', reglaSuave: '#E6E9E0', reglaFuerte: '#BCC2B4',
+    tinta1: '#181D18', tinta2: '#41473F', tinta3: '#646D61', tinta4: '#646D61',
     sello: '#1B4D3E', selloVivo: '#13382D', selloSolido: '#1B4D3E', sobreSello: '#FFFFFF',
     alza: '#0F5C33', baja: '#962418',
   };
@@ -782,6 +782,8 @@ async function analizarYRender(tickers, pesos /* dict opcional */) {
   renderConcentracion(data, info);
   renderRiesgoAvanzado(data);
 
+  renderFlotacion(data);
+
   // Fundamentales (async, no bloquea)
   if (typeof Fundamentales !== 'undefined') {
     Fundamentales.cargar();
@@ -798,6 +800,52 @@ async function analizarYRender(tickers, pesos /* dict opcional */) {
   if (typeof window.mpQuizaPedirResena === 'function') {
     try { window.mpQuizaPedirResena(); } catch (_) {}
   }
+}
+
+
+/* --- LA FLOTACIÓN ----------------------------------------------------------
+   Dibuja la figura de la casa con las métricas del PORTAFOLIO. La línea es
+   CETES, que ya viaja en metadata.tasa_libre_riesgo_pct, y el eje MERCADO usa
+   el benchmark que el backend ya eligió según el país de los activos.
+
+   Si falta una métrica, flotacion.js deja ese eje en null y dibuja una barra
+   menos. No se rellena con cero: un cero dice "normal", y eso sería inventar. */
+function renderFlotacion(data) {
+  const bloque = $('flotacion-bloque');
+  if (!bloque || typeof window.MP_FLOTACION === 'undefined') return;
+
+  const p = data && data.portafolio;
+  const meta = (data && data.metadata) || {};
+  if (!p) { bloque.classList.add('hidden'); return; }
+
+  const opciones = {
+    cetes: meta.tasa_libre_riesgo_pct,
+    benchmarkAnual: data.benchmark && typeof data.benchmark.rendimiento_anualizado_pct === 'number'
+      ? data.benchmark.rendimiento_anualizado_pct : undefined
+  };
+  const F = window.MP_FLOTACION;
+  const puntajes = F.puntuar(p, opciones);
+
+  const vivos = F.ejes.filter(e => puntajes[e.id] !== null && puntajes[e.id] !== undefined);
+  if (vivos.length < 3) { bloque.classList.add('hidden'); return; }
+
+  $('flotacion-figura').innerHTML = F.dibujar(puntajes, 'heroe', 'Tu cartera contra CETES');
+  $('flotacion-veredicto').textContent = F.veredicto(puntajes, p, opciones);
+
+  // Los mismos cinco números, desplegados en una dimensión. El usuario ve el
+  // dato tres veces (figura, lista, frase) y entra al nivel que aguante.
+  $('flotacion-ejes').innerHTML = vivos.map(e => {
+    const v = puntajes[e.id];
+    const signo = v > 0.15 ? 'sube' : (v < -0.15 ? 'baja' : '');
+    const txt = (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v).toFixed(1);
+    return '<li class="flex items-baseline justify-between gap-3 py-1.5 border-b border-surface-border last:border-0">'
+         +   '<span class="font-semibold tracking-wide">' + e.etq + '</span>'
+         +   '<span class="text-zinc-400 flex-grow">' + e.ayuda + '</span>'
+         +   '<span class="tabular font-semibold ' + signo + '">' + txt + '</span>'
+         + '</li>';
+  }).join('');
+
+  bloque.classList.remove('hidden');
 }
 
 // --- META ------------------------------------------------------------------

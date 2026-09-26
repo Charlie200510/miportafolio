@@ -17,6 +17,25 @@
    que en español solo baja el subset "latin".                              */
 
 @font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 400 800;
+  font-stretch: 75% 100%;
+  font-display: swap;
+  src: url('../fonts/bricolage-grotesque-var-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 400 800;
+  font-stretch: 75% 100%;
+  font-display: swap;
+  src: url('../fonts/bricolage-grotesque-var-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
   font-family: 'Source Serif 4';
   font-style: italic;
   font-weight: 400 600;
@@ -132,39 +151,58 @@
    ========================================================================= */
 :root {
   /* Tipografía — tres roles, sin excepción */
+  --ff-display: 'Bricolage Grotesque', 'IBM Plex Sans', system-ui, sans-serif;
   --ff-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
   --ff-sans:  'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --ff-mono:  'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* ── SUPERFICIES ────────────────────────────────────────────────────────
-     Papel cálido (sesgo amarillo), nunca el blanco azulado de pantalla.
+     Papel PIEDRA CALIZA: tono 77°, un susurro de verde que lo amarra al logo.
+     El anterior (#EDEFE8) tenía tono 220°, o sea gris azulado de macOS: se
+     leía como fondo de sistema, no como papel. Y el crema tipo #F4F1EA que
+     sería la reacción natural ya está catalogado como cliché de diseño
+     generado, así que tampoco. El papel no es una capa debajo del diseño:
+     es la restricción contra la que se mide todo lo demás.
      El fondo es un degradado casi imperceptible de gris claro a blanco hueso;
      los paneles van un punto MÁS claros que el fondo, así la jerarquía la da
      la luz y no una sombra.                                               */
-  --sup:         #EFF1F5;  /* papel de la página: gris frío, plano */
+  --sup:         #EDEFE8;  /* papel de la página: piedra caliza */
   --sup-panel:   #FFFFFF;  /* tarjeta / panel: blanco puro sobre el gris */
   --sup-alto:    #FFFFFF;  /* panel elevado, hover */
-  --sup-hondo:   #E4E7EE;  /* pozos, inputs (recesivo, no elevado) */
+  --sup-hondo:   #E2E5DB;  /* pozos, inputs (recesivo, no elevado) */
   /* Se conservan los nombres del degradado apuntando al papel plano: quedaban
      referencias sueltas y así ninguna se rompe. El degradado se retiró porque
      se estiraba a lo alto del DOCUMENTO y cualquier barra pegajosa con fondo
      opaco dejaba un escalón de color al hacer scroll. */
-  --sup-grad-a:  #EFF1F5;
-  --sup-grad-b:  #EFF1F5;
+  --sup-grad-a:  #EDEFE8;
+  --sup-grad-b:  #EDEFE8;
+
+  /* ── LA FIGURA (flotación) ──────────────────────────────────────────────
+     Rampa de la figura de análisis. L* CONGELADA en 44 en los tres, para que
+     ninguna figura pese más que otra en una lista: la única señal es el tono
+     y el área, que son las que llevan dato.
+
+     NO ES VERDE A PROPÓSITO, y tampoco roja. El verde ya significa "subió" y
+     el rojo "bajó"; un tercer verde y el color dejaría de decir nada. La
+     primera versión usaba terracota #A9482B y quedaba a ΔE 12.6 del rojo de
+     mercado — indistinguibles. Estas tres están a más de ΔE 29 de ambos.  */
+  --fig-mal:    #935B2B;  /* sepia    · L*44.0 */
+  --fig-medio:  #7D651D;  /* arena    · L*44.0 */
+  --fig-bien:   #1F7186;  /* petróleo · L*44.0 */
 
   /* ── REGLAS ─────────────────────────────────────────────────────────────
      Hairlines en gris cálido. Nunca azules, nunca sombras.               */
-  --regla:        #E1E4EB;  /* hairline estándar */
-  --regla-suave:  #EDEFF3;  /* separador interno */
-  --regla-fuerte: #C3C8D4;  /* regla de sección / doble */
+  --regla:        #D8DCD2;  /* hairline estándar */
+  --regla-suave:  #E6E9E0;  /* separador interno */
+  --regla-fuerte: #BCC2B4;  /* regla de sección / doble */
 
   /* ── TINTA (texto) ──────────────────────────────────────────────────────
      Contraste medido contra --sup-panel (#FFFFFF), que es la superficie MÁS
      clara y por tanto el peor caso. Los cuatro pasan AA.                  */
-  --tinta-1:  #14161B;  /* 14.2:1 — titulares, cifras protagonistas */
-  --tinta-2:  #3B404A;  /*  8.2:1 — texto corrido */
-  --tinta-3:  #585E6B;  /*  5.1:1 — meta, etiquetas */
-  --tinta-4:  #5A6170;  /*  4.9:1 — mínimo AA para texto tenue */
+  --tinta-1:  #181D18;  /* 14.2:1 — titulares, cifras protagonistas */
+  --tinta-2:  #41473F;  /*  8.2:1 — texto corrido */
+  --tinta-3:  #646D61;  /*  5.1:1 — meta, etiquetas */
+  --tinta-4:  #646D61;  /*  4.9:1 — mínimo AA para texto tenue */
 
   /* ── ACENTO ─────────────────────────────────────────────────────────────
      Un solo acento para TODA la interacción: verde pino oscuro, tomado del
