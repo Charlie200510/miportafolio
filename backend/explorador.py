@@ -27,9 +27,30 @@ UNIVERSO_INFO_FULL    = BACKEND_DIR / "universo_info.json"
 UNIVERSO_PRECIOS_LITE = BACKEND_DIR / "universo_lite_precios.csv"
 UNIVERSO_INFO_LITE    = BACKEND_DIR / "universo_lite_info.json"
 
-# Usar versión completa si existe (dev local con 11K tickers),
-# si no, usar lite (~1000 tickers, commiteada para producción)
-if UNIVERSO_PRECIOS_FULL.exists():
+# Usar versión completa si existe (dev local con 11K tickers), si no, el lite
+# (500 tickers curados, commiteado, que es lo único que se despliega en prod).
+#
+# LA CONDICIÓN PIDE LOS DOS ARCHIVOS, Y ESO NO ES PARANOIA.
+# Antes bastaba con que existiera el CSV de precios. En producción no existe
+# ninguno de los dos... hasta que `miportafolio-rankingfull.timer` corre los
+# sábados a las 07:00 UTC: construye el universo completo para rankear 9000
+# emisoras en Neon y deja `universo_precios.csv` (495 MB, 11,518 tickers) como
+# SUBPRODUCTO, sin escribir jamás su `universo_info.json`.
+#
+# A partir de ahí, el siguiente reinicio del servicio —esta selección se
+# resuelve al importar el módulo, no por petición— dejaba a Analizar con 11,518
+# tickers y CERO metadatos: nombre = ticker, sector/país/moneda "Desconocido",
+# ninguna recomendada, y el orden alfabético arrancando en 0005.HK y 000660.KS
+# en vez de las mexicanas. Pasó el 2026-09-26: el timer lo dejó puesto a las
+# 07:00 y un deploy lo detonó a las 22:00.
+#
+# Pidiendo LOS DOS, el subproducto del ranking es inofensivo: prod se queda en
+# el lite curado y en dev, donde sí están los dos, no cambia nada.
+#
+# (accion_del_dia.py y backtest.py sí usan el CSV completo a propósito, y está
+# bien: el primero recorre FULL -> LITE -> stub para la info y el segundo solo
+# necesita precios. El que se quedaba sin salida era este.)
+if UNIVERSO_PRECIOS_FULL.exists() and UNIVERSO_INFO_FULL.exists():
     UNIVERSO_PRECIOS = UNIVERSO_PRECIOS_FULL
     UNIVERSO_INFO    = UNIVERSO_INFO_FULL
 else:
