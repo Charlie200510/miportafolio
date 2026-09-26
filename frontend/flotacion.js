@@ -562,7 +562,7 @@
        lateral en el teléfono y la regata sí lo habría necesitado. */
     var W = acotar(Math.round(o.ancho || 680), 300, 1400);
     var TOPE = W >= 700 ? 68 : 52;          // ver la nota de altura en regata()
-    var AGUA = TOPE + 22, H = AGUA + TOPE + 26, HUECO = W < 460 ? 3 : 8;
+    var AGUA = TOPE + 22, HUECO = W < 460 ? 3 : 8;
     /* Único sitio donde la figura NO usa los 11 px del sistema: con once
        columnas en un teléfono cada una mide 27 px y "XLRE" a 11 px ocupa 26.4,
        o sea que roza a la vecina. A 9.5 ocupa 23 y respira. Es una excepción
@@ -596,6 +596,23 @@
 
     var n = vivas.length;
     var an = (W - (n - 1) * HUECO) / n;
+
+    /* ROTAR SI NO CABE, NUNCA RECORTAR NI ABREVIAR A UN CÓDIGO.
+       Aquí se imprimía el TICKER del ETF —XLK, XLI, XLRE— porque cabe en
+       cualquier ancho. Pero eso no es el nombre de un sector: es el símbolo
+       de un fondo de State Street, y nadie fuera del gremio sabe que XLRE son
+       bienes raíces. Ahora se escribe el nombre, y si no entra de lado se
+       gira. Con once sectores en un teléfono cada columna mide 27px, así que
+       en móvil siempre girará; en escritorio, casi nunca.
+       El 0.60 es el avance de IBM Plex Sans respecto al cuerpo. */
+    var etqs = vivas.map(function (r) { return String(r.f.etq || ''); });
+    var anchoMax = Math.max.apply(null, etqs.map(function (t) { return t.length; })) * CUERPO_ETQ * 0.60;
+    var girar = anchoMax > an - 3;
+    /* El pie deja sitio al rótulo: 26px tumbado, o lo que mida el más largo
+       de pie, más aire. */
+    var pie = girar ? Math.round(anchoMax) + 14 : 26;
+    var H = AGUA + TOPE + pie;
+
     var p = [];
     p.push('<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" ' +
       'role="img" aria-label="Cada sector medido contra ' + esc(fuente) + '">');
@@ -621,14 +638,24 @@
         (r.f.valor > 0 ? '+' : r.f.valor < 0 ? '−' : '') + Math.abs(r.f.valor).toFixed(2) + '% en el periodo · ' +
         (r.d >= 0 ? 'le gana al mercado por ' : 'se queda atrás por ') + Math.abs(r.d).toFixed(2) +
         ' puntos</title></rect>');
-      p.push('<text x="' + (x + an / 2).toFixed(1) + '" y="' + (H - 5) +
-        '" font-family="var(--ff-mono)" font-size="' + CUERPO_ETQ + '" fill="var(--tinta-3)" text-anchor="middle">' +
-        esc(String(r.f.etq || '')) + '</text>');
       x += an + HUECO;
     });
 
     p.push('<line x1="0" y1="' + AGUA + '" x2="' + W + '" y2="' + AGUA +
       '" stroke="var(--tinta-1)" stroke-width="2"/>');
+
+    p.push('<g font-family="var(--ff-sans)" font-size="' + CUERPO_ETQ + '" fill="var(--tinta-3)">');
+    etqs.forEach(function (t, i) {
+      var cx = i * (an + HUECO) + an / 2;
+      if (girar) {
+        p.push('<text transform="translate(' + cx.toFixed(1) + ',' + (H - 6) +
+          ') rotate(-90)" text-anchor="start" dominant-baseline="central">' + esc(t) + '</text>');
+      } else {
+        p.push('<text x="' + cx.toFixed(1) + '" y="' + (H - 8) +
+          '" text-anchor="middle">' + esc(t) + '</text>');
+      }
+    });
+    p.push('</g>');
     p.push('</svg>');
 
     /* Tres cubetas, no dos. Contando `n - arriba` como "se quedaron atrás",

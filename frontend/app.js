@@ -3907,6 +3907,28 @@ const Periodico = (() => {
     return { tarjetas: tarjetas.slice(0, MAX_TARJETAS) };
   }
 
+  /* Nombre corto de cada sector para el rótulo de la marea.
+     El backend los manda completos ("Consumo discrecional", "Servicios
+     públicos") y la figura pone once columnas en una fila: hasta girados, los
+     nombres largos obligan a un pie desproporcionado. Estos son los más
+     cortos que siguen siendo la palabra que usa la gente, no una abreviatura
+     inventada. Lo que NO se hace es caer al ticker del ETF: XLRE no es un
+     nombre, es el símbolo de un fondo de State Street. El nombre completo
+     sigue en el tooltip de la barra. */
+  const SECTOR_CORTO = {
+    'Tecnología':           'Tecnología',
+    'Financiero':           'Finanzas',
+    'Salud':                'Salud',
+    'Consumo discrecional': 'Consumo',
+    'Consumo básico':       'Básicos',
+    'Energía':              'Energía',
+    'Industrial':           'Industria',
+    'Servicios públicos':   'Servicios',
+    'Materiales':           'Materiales',
+    'Bienes raíces':        'Inmuebles',
+    'Comunicación':         'Telecom',
+  };
+
   async function mazoSector(mercados) {
     const per = state.periodo || 'dia';
     // El atajo por `mercados` solo sirve para el día: ese payload trae los
@@ -3924,7 +3946,11 @@ const Periodico = (() => {
     const spy = ((mercados && mercados.indices_us) || [])
       .find(x => (x.ticker || '').toUpperCase() === 'SPY');
     const marea = {
-      filas: sectores.map(s => ({ etq: s.etiqueta || s.ticker, nombre: s.nombre, valor: s.cambio_pct })),
+      filas: sectores.map(s => ({
+        etq: SECTOR_CORTO[s.nombre] || s.nombre || s.ticker,
+        nombre: s.nombre,
+        valor: s.cambio_pct,
+      })),
       linea: spy && typeof spy.cambio_pct === 'number' ? spy.cambio_pct : undefined,
       fuenteLinea: 'el S&P 500',
     };
