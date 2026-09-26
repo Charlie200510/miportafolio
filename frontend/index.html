@@ -825,6 +825,25 @@
         </div>
       </section>
 
+      <!-- LA REGATA · la misma línea, con la cartera entera encima.
+           La figura de arriba dice si la cartera flota; esta dice QUIÉN la
+           sostiene y quién la hunde. Alto = distancia a CETES, ancho = peso en
+           la cartera, así que el área es lo que de verdad aporta o resta. Con
+           barras de ancho igual, una posición del 2% hundidísima se ve tan
+           grave como una del 40% apenas bajo la línea, que es desinformar.
+           La dibuja renderRegata() con MP_FLOTACION.regata(). -->
+      <section id="regata-bloque" class="hidden fade-up fade-up-1 mt-8">
+        <div class="flex items-baseline justify-between gap-4 flex-wrap">
+          <p class="mp-etq">Posición por posición</p>
+          <!-- La clave de lectura NO se esconde en móvil: sin ella el ancho de
+               las barras es decoración. Con flex-wrap cae a su propio renglón. -->
+          <p class="mp-firma">Alto = distancia a CETES &middot; Ancho = peso en tu cartera</p>
+        </div>
+        <div id="regata-figura" class="mt-3"></div>
+        <ul id="regata-leyenda" class="mp-regata-leyenda"></ul>
+        <p id="regata-veredicto" class="text-[15px] leading-relaxed text-zinc-200 mt-3 max-w-2xl"></p>
+      </section>
+
       <!-- KPI cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up fade-up-1">
         <div class="bg-surface-card border border-surface-border rounded-xl p-4 hover:border-zinc-700 transition">
@@ -2292,6 +2311,24 @@
       </div>
       <p id="periodico-hora" class="mp-cabecera-meta">&#8212;</p>
 
+    </section>
+
+    <!-- LA MAREA · la misma línea de la flotación, pero la línea es el mercado.
+         Un sector que subió 0.4% sale verde en su tarjeta y parece buen día;
+         si el mercado subió 1.1%, perdió terreno. Eso no se ve en ninguna
+         parte y es lo único que hace esta figura.
+         El color NO puede ser verde/rojo aquí: la tarjeta de al lado ya usa
+         verde para "subió", y un sector verde que quedó bajo la marea saldría
+         pintado de rojo junto a su propio verde. Va con la rampa de la figura,
+         que significa otra cosa. La pinta _pintarMarea(). -->
+    <section id="marea-bloque" class="mp-marea max-w-7xl mx-auto hidden">
+      <div class="flex items-baseline justify-between gap-4 flex-wrap">
+        <p class="mp-etq">Los sectores contra el mercado</p>
+        <p class="mp-firma">La línea no es cero: es el mercado</p>
+      </div>
+      <div id="marea-figura" class="mt-3"></div>
+      <p id="marea-veredicto" class="mp-marea-ver"></p>
+      <p id="marea-escala" class="mp-firma mp-marea-pie"></p>
     </section>
 
     <!-- MAZOS DE TARJETAS -->

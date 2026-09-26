@@ -6,7 +6,7 @@
 */
 // IMPORTANTE: Bumpear esta versión cada vez que cambies JS/CSS críticos
 // para forzar invalidación del cache en todos los usuarios.
-const VERSION = 'mp-v1.37.0';
+const VERSION = 'mp-v1.38.0';
 const SHELL_CACHE  = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const ASSETS_CACHE = `${VERSION}-assets`;
@@ -22,6 +22,11 @@ const PRECACHE_URLS = [
   // tipografía correcta y no con el fallback del sistema.
   '/static/css/mp-tokens.css',
   '/static/css/mp-editorial.css',
+  /* Bricolage Grotesque la usan los NUEVE selectores de titular desde el
+     rediseño; faltaba aquí, así que sin red el primer render sacaba todos los
+     encabezados con la fuente del sistema. Solo el subset latin: el latin-ext
+     son 53 KB que en español no se piden nunca. */
+  '/static/fonts/bricolage-grotesque-var-latin.woff2',
   '/static/fonts/source-serif-4-400-700-latin.woff2',
   '/static/fonts/ibm-plex-sans-400-700-latin.woff2',
   '/static/fonts/ibm-plex-mono-400-latin.woff2',

@@ -157,9 +157,12 @@
   --ff-mono:  'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* ── SUPERFICIES ────────────────────────────────────────────────────────
-     Papel PIEDRA CALIZA: tono 77°, un susurro de verde que lo amarra al logo.
-     El anterior (#EDEFE8) tenía tono 220°, o sea gris azulado de macOS: se
-     leía como fondo de sistema, no como papel. Y el crema tipo #F4F1EA que
+     Papel PIEDRA CALIZA #EDEFE8: tono 77.1°, un susurro de verde que lo amarra
+     al logo. El anterior era #EFF1F5, de tono 220.0°, o sea gris azulado de
+     macOS: se leía como fondo de sistema, no como papel. (Esta nota citaba el
+     hex al revés —daba el nuevo como si fuera el viejo—, que es la clase de
+     error que sobrevive años porque nadie vuelve a medir un comentario.)
+     Y el crema tipo #F4F1EA que
      sería la reacción natural ya está catalogado como cliché de diseño
      generado, así que tampoco. El papel no es una capa debajo del diseño:
      es la restricción contra la que se mide todo lo demás.
@@ -177,18 +180,19 @@
   --sup-grad-a:  #EDEFE8;
   --sup-grad-b:  #EDEFE8;
 
-  /* ── LA FIGURA (flotación) ──────────────────────────────────────────────
-     Rampa de la figura de análisis. L* CONGELADA en 44 en los tres, para que
-     ninguna figura pese más que otra en una lista: la única señal es el tono
-     y el área, que son las que llevan dato.
+  /* ── LA FIGURA (flotación / regata / marea) ─────────────────────────────
+     AQUÍ NO HAY TOKENS DE LA FIGURA, Y ES A PROPÓSITO.
 
-     NO ES VERDE A PROPÓSITO, y tampoco roja. El verde ya significa "subió" y
-     el rojo "bajó"; un tercer verde y el color dejaría de decir nada. La
-     primera versión usaba terracota #A9482B y quedaba a ΔE 12.6 del rojo de
-     mercado — indistinguibles. Estas tres están a más de ΔE 29 de ambos.  */
-  --fig-mal:    #935B2B;  /* sepia    · L*44.0 */
-  --fig-medio:  #7D651D;  /* arena    · L*44.0 */
-  --fig-bien:   #1F7186;  /* petróleo · L*44.0 */
+     Había tres (--fig-mal/-medio/-bien) y se quitaron porque eran una segunda
+     fuente de verdad, muerta y además equivocada: la rampa real tiene CINCO
+     pasos, vive en flotacion.js, y uno de los tres colores de aquí (#7D651D)
+     ni siquiera estaba en ella. Ningún archivo los leía —comprobado con grep
+     sobre css, js y html—, así que lo único que hacían era documentar mal.
+
+     La rampa vive en RAMPA, en frontend/flotacion.js, con sus medidas de L* y
+     de ΔE2000 al lado. Si hace falta el color de la figura desde CSS algún
+     día, se declara aquí copiando los CINCO y se anota en los dos sitios que
+     tienen que moverse juntos.                                              */
 
   /* ── REGLAS ─────────────────────────────────────────────────────────────
      Hairlines en gris cálido. Nunca azules, nunca sombras.               */

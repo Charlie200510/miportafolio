@@ -783,6 +783,7 @@ async function analizarYRender(tickers, pesos /* dict opcional */) {
   renderRiesgoAvanzado(data);
 
   renderFlotacion(data);
+  renderRegata(data);
 
   // Fundamentales (async, no bloquea)
   if (typeof Fundamentales !== 'undefined') {
@@ -821,7 +822,10 @@ function renderFlotacion(data) {
   const opciones = {
     cetes: meta.tasa_libre_riesgo_pct,
     benchmarkAnual: data.benchmark && typeof data.benchmark.rendimiento_anualizado_pct === 'number'
-      ? data.benchmark.rendimiento_anualizado_pct : undefined
+      ? data.benchmark.rendimiento_anualizado_pct : undefined,
+    // El backend elige ^MXX o ^GSPC según la moneda dominante; el rótulo del
+    // eje MERCADO tiene que decir cuál, no dar por hecho que es el IPC.
+    benchmarkTicker: (data.benchmark && data.benchmark.ticker) || meta.benchmark || undefined
   };
   const F = window.MP_FLOTACION;
   const puntajes = F.puntuar(p, opciones);
@@ -840,8 +844,107 @@ function renderFlotacion(data) {
     const txt = (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v).toFixed(1);
     return '<li class="flex items-baseline justify-between gap-3 py-1.5 border-b border-surface-border last:border-0">'
          +   '<span class="font-semibold tracking-wide">' + e.etq + '</span>'
-         +   '<span class="text-zinc-400 flex-grow">' + e.ayuda + '</span>'
+         +   '<span class="text-zinc-400 flex-grow">' + escapeHtml(F.ayudaEje(e, opciones)) + '</span>'
          +   '<span class="tabular font-semibold ' + signo + '">' + txt + '</span>'
+         + '</li>';
+  }).join('');
+
+  bloque.classList.remove('hidden');
+}
+
+
+/* --- LA REGATA -------------------------------------------------------------
+   Misma línea de CETES, misma rampa, mismo módulo — pero con las posiciones
+   una al lado de otra en vez del agregado. Es la pregunta que sigue después
+   de la flotación y hoy la tabla de abajo no la contesta: la tabla tiene ocho
+   columnas de cifras y hay que leerlas todas para saber quién arrastra.
+
+   Usa `data.por_activo` y `data.portafolio.pesos`, que ya vienen en la misma
+   respuesta: ni una petición más. */
+/* Ancho REAL del contenedor, para que la figura se dibuje a esa medida en vez
+   de escalarse. Si todavía está oculto mide 0, y entonces se estima desde el
+   ancho de la ventana menos los canalones. */
+function _anchoFigura(el, canalones) {
+  const w = el ? el.clientWidth : 0;
+  if (w > 40) return w;
+  return Math.max(300, (document.documentElement.clientWidth || 680) - (canalones || 48));
+}
+
+/* Las figuras se dibujan al ancho que hay, así que un cambio de ancho —girar
+   el teléfono, arrastrar la ventana— las deja mal proporcionadas y hay que
+   volver a dibujarlas.
+
+   Solo cuando el ancho cambió DE VERDAD: sin el umbral esto se dispara con
+   cada píxel del arrastre, y en iOS también con la barra de direcciones que
+   se encoge al hacer scroll, que no es un cambio de ancho pero dispara
+   `resize` igual. */
+const _alCambiarAncho = (() => {
+  const suscritos = [];
+  let listo = false, t = null, previo = 0;
+  return (fn) => {
+    suscritos.push(fn);
+    if (listo) return;
+    listo = true;
+    previo = document.documentElement.clientWidth;
+    window.addEventListener('resize', () => {
+      const w = document.documentElement.clientWidth;
+      if (Math.abs(w - previo) < 32) return;
+      previo = w;
+      clearTimeout(t);
+      t = setTimeout(() => suscritos.forEach(f => { try { f(); } catch (_) {} }), 180);
+    });
+  };
+})();
+
+let _ultimaRegata = null;
+function _bindReajusteFiguras() {
+  if (_bindReajusteFiguras.listo) return;
+  _bindReajusteFiguras.listo = true;
+  _alCambiarAncho(() => { if (_ultimaRegata) renderRegata(_ultimaRegata); });
+}
+
+function renderRegata(data) {
+  const bloque = $('regata-bloque');
+  if (!bloque || typeof window.MP_FLOTACION === 'undefined') return;
+  _bindReajusteFiguras();
+
+  const activos = (data && data.por_activo) || {};
+  const pesos = (data && data.portafolio && data.portafolio.pesos) || {};
+  const meta = (data && data.metadata) || {};
+  const tickers = Object.keys(activos);
+  // Con menos de dos posiciones no hay regata que ver: la figura héroe ya lo
+  // dijo todo y una sola barra al lado de otra figura se lee como un error.
+  if (tickers.length < 2) { bloque.classList.add('hidden'); return; }
+
+  const F = window.MP_FLOTACION;
+  const opciones = {
+    cetes: meta.tasa_libre_riesgo_pct,
+    benchmarkAnual: data.benchmark && typeof data.benchmark.rendimiento_anualizado_pct === 'number'
+      ? data.benchmark.rendimiento_anualizado_pct : undefined
+  };
+  // Se destapa ANTES de medir: oculto, el contenedor mide 0 y la figura se
+  // dibujaría al ancho de emergencia en vez de al real.
+  bloque.classList.remove('hidden');
+  const r = F.regata(tickers.map(t => ({
+    etq: t,
+    peso: pesos[t],
+    puntajes: F.puntuar(activos[t] || {}, opciones)
+  })), Object.assign({ ancho: _anchoFigura($('regata-figura'), 48) }, opciones));
+
+  if (!r || !r.svg) { bloque.classList.add('hidden'); return; }
+  _ultimaRegata = data;
+
+  $('regata-figura').innerHTML = r.svg;
+  $('regata-veredicto').textContent = r.veredicto;
+  // La leyenda va en el MISMO orden que las barras, y es donde se identifican
+  // las que no dieron ancho para rótulo dentro de la figura.
+  $('regata-leyenda').innerHTML = r.orden.map(b => {
+    const v = b.total;
+    return '<li' + (b.rotulada ? '' : ' class="sin-rotulo"') + '>'
+         +   '<i style="background:' + b.color + '"></i>'
+         +   '<b>' + escapeHtml(String(b.etq).split('.')[0]) + '</b>'
+         +   '<span>' + Math.round(b.peso * 100) + '%</span>'
+         +   '<em>' + (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '</em>'
          + '</li>';
   }).join('');
 
@@ -3763,6 +3866,17 @@ const Periodico = (() => {
       sectores = (d && d.ok && d.sectores) || [];
     }
     if (!sectores.length) return { error: 'Los sectores no están disponibles ahora mismo.', tarjetas: [] };
+    /* LA MAREA. El mismo payload sirve para la figura de arriba del Periódico:
+       la línea es el S&P 500 sobre esta misma ventana, y cada sector se mide
+       contra ella. Se calcula aquí —y no en cargar()— para que recargarMazo()
+       al cambiar de ventana la actualice sola, por el mismo camino. */
+    const spy = ((mercados && mercados.indices_us) || [])
+      .find(x => (x.ticker || '').toUpperCase() === 'SPY');
+    const marea = {
+      filas: sectores.map(s => ({ etq: s.etiqueta || s.ticker, nombre: s.nombre, valor: s.cambio_pct })),
+      linea: spy && typeof spy.cambio_pct === 'number' ? spy.cambio_pct : undefined,
+      fuenteLinea: 'el S&P 500',
+    };
     // El "sector del día" es el de mayor movimiento absoluto: sale primero y el
     // resto queda debajo, ordenado por variación descendente.
     const orden = sectores.slice().sort((a, b) =>
@@ -3782,7 +3896,40 @@ const Periodico = (() => {
         return t;
       }),
       recorte: sectores.length > MAX_TARJETAS ? sectores.length - MAX_TARJETAS : 0,
+      marea,
     };
+  }
+
+  /* Pinta la marea con lo que armó mazoSector. Vive fuera de él porque la
+     llaman dos caminos —la carga inicial y el cambio de ventana— y en los dos
+     el dato es el mismo objeto. */
+  function _pintarMarea(res) {
+    const bloque = $('marea-bloque');
+    if (!bloque || typeof window.MP_FLOTACION === 'undefined') return;
+    if (!_pintarMarea.listo) {
+      _pintarMarea.listo = true;
+      _alCambiarAncho(() => { if (state.marea) _pintarMarea(state.marea); });
+    }
+    const m = res && res.marea;
+    if (!m || !m.filas || m.filas.length < 3) { bloque.classList.add('hidden'); return; }
+
+    bloque.classList.remove('hidden');   // medir oculto da 0
+    const out = window.MP_FLOTACION.marea(m.filas, {
+      linea: m.linea,
+      fuenteLinea: m.fuenteLinea,
+      ancho: _anchoFigura($('marea-figura'), 48),
+    });
+    if (!out || !out.svg) { bloque.classList.add('hidden'); return; }
+    state.marea = res;                   // para redibujar al cambiar de ancho
+
+    $('marea-figura').innerHTML = out.svg;
+    $('marea-veredicto').textContent = out.veredicto;
+    // El tope de la escala se imprime SIEMPRE: la figura se autoescala al día,
+    // así que sin esta línea sería una gráfica sin unidades.
+    $('marea-escala').textContent =
+      'Las guías punteadas marcan ±' + out.maxDist.toFixed(2) +
+      ' puntos de distancia. El color no dice si el sector subió: dice si le ganó al mercado.';
+    bloque.classList.remove('hidden');
   }
 
   async function mazoIndices(mercados) {
@@ -4460,6 +4607,7 @@ const Periodico = (() => {
     state.charts = {};
     state.abierta = {};
     MAZOS.forEach((m, i) => { state.datos[m.clave] = resultados[i].tarjetas || []; });
+    _pintarMarea(resultados[MAZOS.findIndex(m => m.clave === 'sector')]);
 
     pista.innerHTML = MAZOS.map((m, i) => _paneHTML(m, resultados[i])).join('');
     _ajustarFeed();   // antes de colocar: el feed necesita su alto ya puesto
@@ -4533,6 +4681,10 @@ const Periodico = (() => {
     // los números viejos sin ninguna señal parece que el botón no hizo nada.
     viejo.classList.add('cargando');
     const res = await constructor().catch(e => ({ error: String(e && e.message || e), tarjetas: [] }));
+    // La marea vive fuera del mazo pero se alimenta de él: si no se repinta
+    // aquí, al cambiar de ventana las tarjetas dicen "en el año" y la figura
+    // de arriba sigue enseñando la jornada.
+    if (clave === 'sector') _pintarMarea(res);
 
     // Las gráficas del pane viejo se sueltan ANTES de tirar su DOM: si no,
     // quedan instancias de Chart.js apuntando a canvas que ya no existen.

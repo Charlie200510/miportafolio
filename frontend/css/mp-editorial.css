@@ -1969,3 +1969,83 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
 @media (min-width: 1024px) {
   .mp-tarjeta-sumario { display: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LA REGATA Y LA MAREA
+   Las dos proyecciones de la figura de la casa: la misma línea con sentido y
+   las mismas barras divergentes, una con la cartera encima y otra con los
+   sectores. El SVG lo arma flotacion.js; aquí solo va el marco.
+
+   Los rótulos de escala y los veredictos viven en HTML y no dentro del SVG,
+   a propósito: metidos en el SVG se encabalgaban con los tickers de las
+   columnas de las orillas, y un texto que se escala con el viewBox deja de
+   respetar la escala tipográfica del resto de la app.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Leyenda de la regata ──────────────────────────────────────────────────
+   No es decoración ni repetición: es donde se identifican las posiciones
+   cuya barra quedó demasiado angosta para llevar rótulo dentro de la figura.
+   Por eso va en el MISMO orden que las barras y no alfabético ni por peso. */
+.mp-regata-leyenda {
+  list-style: none;
+  margin: var(--paso-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--paso-1) var(--paso-4);
+  font-family: var(--ff-mono);
+  font-size: var(--txt-meta);
+}
+.mp-regata-leyenda li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.mp-regata-leyenda i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+  align-self: center;
+}
+.mp-regata-leyenda b    { font-weight: 600; color: var(--tinta-1); }
+.mp-regata-leyenda span { color: var(--tinta-3); }
+.mp-regata-leyenda em   { font-style: normal; font-weight: 600; color: var(--tinta-2); }
+/* Las que no llevan rótulo en la figura se marcan con un filete: es la pista
+   de que esta entrada es la ÚNICA forma de identificar esa barra. */
+.mp-regata-leyenda .sin-rotulo b {
+  border-bottom: var(--hairline) dotted var(--regla-fuerte);
+}
+
+/* ── Marco de la marea ─────────────────────────────────────────────────────
+   Va entre la cabecera y los mazos, con el mismo canalón lateral que ellos
+   (--paso-5) para que la figura quede a hilo con las tarjetas de abajo. */
+.mp-marea {
+  padding: var(--paso-2) var(--paso-5) var(--paso-4);
+}
+.mp-marea-ver {
+  font-family: var(--ff-sans);
+  font-size: var(--txt-cuerpo);
+  line-height: 1.5;
+  color: var(--tinta-2);
+  margin: var(--paso-3) 0 0;
+  max-width: 68ch;
+}
+.mp-marea-pie {
+  margin: var(--paso-2) 0 0;
+  max-width: 76ch;
+  line-height: 1.45;
+}
+
+/* NI SCROLL LATERAL NI ESCALADO.
+   La primera versión de esto dejaba desbordar las figuras con overflow-x en
+   el teléfono. Dos razones para quitarlo: la regata va ordenada de la que más
+   flota a la que más se hunde, así que lo que quedaba fuera de pantalla era
+   justo la parte que hay que ver; y escalar un viewBox de 680 dentro de 327px
+   imprime los rótulos a 4.6px. Ahora flotacion.js recibe el ancho real y
+   dibuja PARA esa medida, con la tipografía a su tamaño de siempre. Si algo
+   se desborda aquí, el arreglo está en el `ancho` que pasa la vista, no en
+   una regla de overflow. */
+#regata-figura, #marea-figura { overflow: visible; }
+#regata-figura > svg, #marea-figura > svg { max-width: 100%; }
