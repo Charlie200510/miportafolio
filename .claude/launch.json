@@ -2,10 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "frontend",
+      "name": "backend-local",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "5055", "--directory", "frontend"],
-      "port": 5055
+      "runtimeArgs": ["app.py"],
+      "cwd": "backend",
+      "port": 5001,
+      "env": { "JWT_SECRET": "capturas-app-store-local", "FLASK_DEBUG": "0" }
     }
   ]
 }

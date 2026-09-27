@@ -34,6 +34,7 @@ import numpy as np
 import pandas as pd
 
 import metricas_canonicas as MC
+import moneda as _MON
 
 
 _BACKEND_DIR = Path(__file__).parent
@@ -85,7 +86,7 @@ _CACHE_DIR.mkdir(exist_ok=True)
 _MAX_POR_EMISORA = 0.10
 
 # Se sube al cambiar las REGLAS (tope, objetivo, restricciones). Invalida caché.
-_VERSION_ALGORITMO = 15
+_VERSION_ALGORITMO = 16
 
 # Más candidatos entre los que elegir. Con 40 y un tope del 10% por emisora, el
 # optimizador se quedaba sin dónde repartir: 7 u 8 de las posiciones acababan
@@ -643,6 +644,7 @@ def _seleccionar_candidatos(
     info_all: Dict[str, Any],
     nivel: int,
     max_candidatos: int = 40,
+    capital: Optional[float] = None,
 ) -> List[str]:
     """Pre-selecciona ~40 tickers candidatos para el optimizador.
 
@@ -665,6 +667,11 @@ def _seleccionar_candidatos(
         _clave_base = str(int(_f.stat().st_mtime))
     except Exception:
         pass
+    # El presupuesto entra en la clave: la lista puntuada es la misma, pero la
+    # FILTRADA no. Sin esto, pedir 50 mil y luego sin límite devolvía la lista
+    # recortada del primero.
+    if capital:
+        _clave_base = f"{_clave_base}_cap{int(capital)}"
     if _clave_base and _CAND_BASE_MEM.get("clave") == _clave_base:
         candidatos = list(_CAND_BASE_MEM["lista"])
 
@@ -699,6 +706,26 @@ def _seleccionar_candidatos(
         score, det = res
         precio = float(df_precios[t].dropna().iloc[-1]) if df_precios[t].dropna().size else 0
         liq = _liquidez_diaria(info, precio)
+
+        # PRESUPUESTO: una emisora más, un filtro más de elegibilidad.
+        #
+        # Las acciones se compran enteras, así que para sostener el peso w de
+        # una emisora dentro de una cartera de V pesos hace falta V·w >= precio.
+        # Como el tope por emisora es _MAX_POR_EMISORA, el peso máximo que
+        # puede tener es ese, y de ahí sale la condición dura:
+        #
+        #       precio <= capital · _MAX_POR_EMISORA
+        #
+        # Si no la cumple, NO hay reparto válido que la incluya: forzarla
+        # rompería el tope de concentración, que es una restricción de riesgo y
+        # no un adorno. Así que se descarta aquí, en la misma cadena que la
+        # liquidez y el score, y todo lo de después —SML, valuación, topes por
+        # sector, frontera— sigue operando igual sobre los que sí quedan.
+        if capital:
+            if not _MON.fraccionable(t, info_all):     # las criptos no aplican
+                precio_mxn = _MON.a_pesos(t, precio, info_all)
+                if precio_mxn > capital * _MAX_POR_EMISORA:
+                    continue
         candidatos.append((t, score, liq, det.get("volatilidad_anual"), det.get("beta")))
 
     if _clave_base and _CAND_BASE_MEM.get("clave") != _clave_base:
@@ -823,6 +850,7 @@ def _optimizar_markowitz(
     sectores: Optional[Dict[str, str]] = None,
     max_sector: float = 1.0,
     valuacion: Optional[Dict[str, float]] = None,
+    pisos: Optional[Dict[str, float]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Resuelve max Sharpe sujeto a vol_anual <= vol_objetivo.
 
@@ -921,7 +949,16 @@ def _optimizar_markowitz(
 
     # Restricciones: suma_pesos=1, pesos en [0, max_peso]
     constraints = [{"type": "eq", "fun": lambda w: np.sum(w) - 1.0}]
-    bounds = [(0.0, max_peso) for _ in range(n)]
+    # El piso por emisora es lo que hace ARMABLE la cartera con un presupuesto
+    # dado: sin él, el optimizador puede dejar a una emisora en 0.4% y entonces
+    # comprar una sola acción exigiría un portafolio siete veces mayor. Los
+    # candidatos que no podían cumplirlo ya se filtraron en la selección, así
+    # que aquí el piso nunca supera max_peso.
+    if pisos:
+        bounds = [(min(float(pisos.get(c, 0.0)), max_peso), max_peso)
+                  for c in df_rets.columns]
+    else:
+        bounds = [(0.0, max_peso) for _ in range(n)]
 
     # Inicializar con pesos iguales
     w0 = np.ones(n) / n
@@ -1301,8 +1338,44 @@ def _frontera_analitica(df_rets, optimo=None, seleccionados=None, n_puntos=40):
     return {"curva": curva, "activos": activos, "optimo": opt}
 
 
+def _capital_minimo_cartera(acciones: List[Dict[str, Any]],
+                            info_all: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Con cuánto dinero se puede armar esta cartera, de verdad.
+
+    capital mínimo = máx( precio_i / peso_i ) sobre las posiciones que se
+    compran por unidades enteras. Basta UNA emisora cara con peso chico para
+    dispararlo, y ese es justo el número que nadie veía: una cartera podía
+    pedir cientos de miles de pesos sin que nada en pantalla lo dijera.
+
+    Las fraccionables (cripto) y la posición en CETES quedan fuera del máximo:
+    de esas se compra cualquier cantidad.
+    """
+    cand = []
+    for a in acciones:
+        t, w, p = a.get("ticker"), a.get("peso") or 0.0, a.get("precio")
+        if not t or w <= 0 or not p or a.get("es_renta_fija"):
+            continue
+        if _MON.fraccionable(t, info_all):
+            continue
+        cand.append((t, _MON.a_pesos(t, float(p), info_all) / w, float(p), w))
+    if not cand:
+        return None
+    t, necesario, precio_mxn, w = max(cand, key=lambda x: x[1])
+    fx, estimado = _MON.tipo_cambio()
+    return {
+        # Hacia ARRIBA: redondeando al más cercano, un mínimo real de $50,049
+        # se publicaría como $50,000 y el usuario llegaría corto.
+        "monto_mxn":  int(-(-necesario // 100) * 100),
+        "emisora":    t,
+        "precio_mxn": round(precio_mxn, 2),
+        "peso":       round(w, 4),
+        "fx_estimado": estimado,
+    }
+
+
 def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = None,
-                      forzar: bool = False) -> Dict[str, Any]:
+                      forzar: bool = False,
+                      capital: Optional[float] = None) -> Dict[str, Any]:
     """Genera el portafolio óptimo.
 
     Dos modos:
@@ -1351,6 +1424,8 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
     # que caducara el TTL de 6 horas. Se versiona el algoritmo: cualquier cambio
     # de reglas sube ese número y las cachés viejas quedan huérfanas al instante.
     cache_key += f"_alg{_VERSION_ALGORITMO}"
+    if capital:
+        cache_key += f"_cap{int(capital)}"
 
     cached = _CACHE.get(cache_key)
     if not forzar and cached and (time.time() - cached["ts"]) < _CACHE_TTL:
@@ -1374,7 +1449,9 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
     info_all = _cargar_info()
 
     # 1) Pre-seleccionar candidatos
-    candidatos = _seleccionar_candidatos(df_precios, info_all, nivel, max_candidatos=_MAX_CANDIDATOS)
+    candidatos = _seleccionar_candidatos(df_precios, info_all, nivel,
+                                         max_candidatos=_MAX_CANDIDATOS,
+                                         capital=capital)
     if len(candidatos) < 5:
         return {"ok": False, "error": "No hay suficientes candidatos con score positivo"}
 
@@ -1431,6 +1508,65 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
     if resultado is None:
         return {"ok": False, "error": "Optimizador no convergió"}
 
+    # ── SEGUNDA PASADA CON PISOS, SOLO SI HAY PRESUPUESTO ──────────────────
+    # El piso de una emisora (precio/capital) solo tiene sentido para las que
+    # ACABAN en la cartera. Ponérselo a los 40 candidatos hace el problema
+    # infactible sin remedio: con 40 tickers a ~$2,000 los pisos suman 1.6 y no
+    # existe ningún reparto que sume 1. Eso devolvía "Optimizador no convergió"
+    # para cualquier presupuesto.
+    #
+    # Así que se resuelve DOS veces: la primera elige, sin pisos y con todas
+    # las reglas de siempre; la segunda vuelve a optimizar solo sobre las
+    # elegidas, ahora sí con pisos, para que ninguna quede con un peso tan
+    # pequeño que exija más dinero del que hay. Si aun así no cabe, se suelta
+    # la más cara y se reintenta: es lo mismo que "usar acciones más baratas",
+    # pero decidido con una cuenta.
+    if capital:
+        # Se apunta un 2% por debajo: el mínimo se publica redondeado hacia
+        # arriba al centenar, así que apuntar justo al número dejaba carteras
+        # en "$100,100" para una meta de $100,000.
+        capital = capital * 0.98
+        _n_obj = params["n_acciones"]
+        _elegidas = [t for t, w in sorted(resultado["pesos"].items(), key=lambda x: -x[1])
+                     if w > 1e-4][:_n_obj]
+
+        def _piso(t):
+            if t not in df_precios.columns or not df_precios[t].dropna().size:
+                return 0.0
+            if _MON.fraccionable(t, info_all):
+                return 0.0     # de cripto se compra cualquier fracción
+            return _MON.a_pesos(t, float(df_precios[t].dropna().iloc[-1]), info_all) / capital
+
+        _soltadas = []
+        while len(_elegidas) > 5:
+            _p = {t: _piso(t) for t in _elegidas}
+            # 0.92 y no 1.0: con los pisos sumando justo 1 el optimizador no
+            # tiene ni un grado de libertad y devuelve el único reparto posible,
+            # que ya no respeta el objetivo de volatilidad.
+            if sum(_p.values()) <= 0.92:
+                break
+            _caro = max(_p, key=_p.get)
+            _soltadas.append(_caro)
+            _elegidas = [t for t in _elegidas if t != _caro]
+
+        _cols = [t for t in df_rets.columns if t in _elegidas]
+        if len(_cols) >= 5:
+            _r2 = _optimizar_markowitz(
+                df_rets[_cols],
+                vol_objetivo_anual=params["vol_objetivo"],
+                rf_anual=rf,
+                max_peso=max_peso,
+                sectores={t: (info_all.get(t) or {}).get("sector") or "Desconocido"
+                          for t in _cols},
+                max_sector=_MAX_POR_SECTOR,
+                valuacion={t: v for t, v in _valuacion_candidatos.items() if t in _cols},
+                pisos={t: _piso(t) for t in _cols},
+            )
+            # Si la segunda pasada no converge se queda la primera: vale más una
+            # cartera correcta y cara que ninguna.
+            if _r2 is not None:
+                resultado = _r2
+
     # 4) Enriquecer pesos con metadata
     acciones = []
     for t, peso in sorted(resultado["pesos"].items(), key=lambda x: -x[1]):
@@ -1478,6 +1614,48 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
         a["peso"] = reparto.get(a["ticker"], 0.0)
         a["peso_pct"] = round(a["peso"] * 100, 2)
     acciones = [a for a in acciones if a["peso"] > 0]
+
+    # ÚLTIMO PASO CON PRESUPUESTO: el reparto anterior vuelve a mover pesos
+    # DESPUÉS del optimizador, y al hacerlo puede dejar a una emisora por
+    # debajo del piso que la hacía comprable. Medido: con un objetivo de
+    # $50,000, WILC acababa en 1.11% cuando necesitaba 1.22%, y la cartera
+    # terminaba exigiendo $55,000 — un 10% por encima de lo pedido.
+    #
+    # Aquí se sube a cada una a su piso y se le quita lo justo a las que más
+    # holgura tienen sobre el suyo. Se hace por rondas y respetando el tope del
+    # 10%, igual que _repartir_con_tope, para no romper la regla de
+    # concentración al arreglar la de presupuesto.
+    if capital and acciones:
+        _pisos_f = {}
+        for a in acciones:
+            t, p = a["ticker"], a.get("precio")
+            if not p or a.get("es_renta_fija") or _MON.fraccionable(t, info_all):
+                continue
+            _pisos_f[t] = _MON.a_pesos(t, float(p), info_all) / capital
+        for _ in range(60):
+            _falta = {t: _pisos_f[t] - next(a["peso"] for a in acciones if a["ticker"] == t)
+                      for t in _pisos_f
+                      if next(a["peso"] for a in acciones if a["ticker"] == t) < _pisos_f[t] - 1e-6}
+            if not _falta:
+                break
+            _deuda = sum(_falta.values())
+            # Donantes: las que están más arriba de su propio piso.
+            _don = sorted(
+                [a for a in acciones
+                 if a["peso"] - _pisos_f.get(a["ticker"], 0.0) > 1e-6],
+                key=lambda a: -(a["peso"] - _pisos_f.get(a["ticker"], 0.0)))
+            _holgura = sum(a["peso"] - _pisos_f.get(a["ticker"], 0.0) for a in _don)
+            if _holgura <= 1e-9:
+                break              # no hay de dónde sacar: se reporta el mínimo real
+            for a in _don:
+                _h = a["peso"] - _pisos_f.get(a["ticker"], 0.0)
+                a["peso"] -= min(_deuda, _holgura) * (_h / _holgura)
+            for a in acciones:
+                if a["ticker"] in _falta:
+                    a["peso"] = min(_pisos_f[a["ticker"]], _MAX_POR_EMISORA)
+        for a in acciones:
+            a["peso_pct"] = round(a["peso"] * 100, 2)
+        acciones = [a for a in acciones if a["peso"] > 0]
 
     # 6) El "efectivo" pasa a ser una posición REAL en CETES.
     #
@@ -1545,6 +1723,13 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
 
         # Composición
         "acciones":              acciones,
+
+        # CUÁNTO DINERO HACE FALTA. Se calcula sobre los pesos FINALES —tras el
+        # recorte a N y el reparto con tope—, no sobre los que salieron del
+        # optimizador: el reparto mueve pesos y el número tiene que
+        # corresponder a lo que se ve en pantalla.
+        "capital":               _capital_minimo_cartera(acciones, info_all),
+        "capital_objetivo":      int(capital) if capital else None,
 
         # Metodología
         "metodologia": (

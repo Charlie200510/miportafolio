@@ -85,97 +85,17 @@ MIN_TICKERS_FINAL = 4             # nunca menos de 4 acciones
 #  con el tipo de cambio que ya cachea el Periódico.
 # ============================================================
 
-_INFO_FULL = _BACKEND_DIR / "universo_info.json"
-_INFO_LITE = _BACKEND_DIR / "universo_lite_info.json"
-_CACHE_MERCADOS = _BACKEND_DIR / "_cache_periodico" / "mercados_dashboard.json"
+import moneda as _M
 
-# Si no hay forma de saber el tipo de cambio, se usa esto y se AVISA con la
-# bandera `fx_estimado`. Nunca se calla: un mínimo con un FX inventado que se
-# presenta como exacto es peor que no dar el número.
-_FX_RESPALDO = 17.5
-_FX_MAX_EDAD = 36 * 3600      # 36 h: el dólar no se mueve tanto en un día
-
-_cache_aux: dict = {"info": None, "fx": None}
-
-
-def _info_universo() -> dict:
-    """Metadata del universo (de ahí sale la MONEDA de cada emisora)."""
-    if _cache_aux["info"] is None:
-        datos: dict = {}
-        for p in (_INFO_FULL, _INFO_LITE):
-            if p.exists():
-                try:
-                    import json
-                    with open(p, encoding="utf-8") as fh:
-                        datos = json.load(fh)
-                    break
-                except Exception:
-                    continue
-        _cache_aux["info"] = datos
-    return _cache_aux["info"]
-
-
-def _tipo_cambio() -> tuple[float, bool]:
-    """(USD/MXN, estimado). Lee el caché del Periódico; si no sirve, lo pide."""
-    if _cache_aux["fx"] is not None:
-        return _cache_aux["fx"]
-
-    import json
-    import time as _t
-    valor, estimado = None, True
-
-    if _CACHE_MERCADOS.exists():
-        try:
-            with open(_CACHE_MERCADOS, encoding="utf-8") as fh:
-                d = json.load(fh)
-            fresco = (_t.time() - float(d.get("_ts", 0))) < _FX_MAX_EDAD
-            for x in ((d.get("data") or d).get("divisas") or []):
-                if x.get("ticker") == "MXN=X" and x.get("precio"):
-                    valor = float(x["precio"])
-                    estimado = not fresco
-                    break
-        except Exception:
-            pass
-
-    if valor is None or estimado:
-        try:
-            import yfinance as yf
-            h = yf.Ticker("MXN=X").history(period="5d", interval="1d", auto_adjust=True)
-            c = h["Close"].dropna()
-            if len(c):
-                valor, estimado = float(c.iloc[-1]), False
-        except Exception:
-            pass
-
-    if valor is None or not (5 < valor < 60):    # cordura: el peso no vale eso
-        valor, estimado = _FX_RESPALDO, True
-
-    _cache_aux["fx"] = (valor, estimado)
-    return _cache_aux["fx"]
-
-
-def _moneda_de(ticker: str, info: dict) -> str:
-    m = (info.get(ticker) or {}).get("moneda")
-    if m in ("MXN", "USD"):
-        return m
-    # Sin metadata, el sufijo manda: es la misma regla que usa elegir_benchmark.
-    return "MXN" if ticker.upper().endswith(".MX") else "USD"
-
-
-def _fraccionable(ticker: str, info: dict) -> bool:
-    """¿Se puede comprar un pedazo, o solo unidades enteras?
-
-    Las criptos SÍ: nadie compra un bitcoin entero, se compran 0.002. Tratarlas
-    como acciones enteras daba un mínimo de $6,967,600 para el perfil cripto —
-    el precio de UN bitcoin dividido entre su peso— y eso es sencillamente
-    falso. Una cifra así en pantalla destruye la credibilidad de todo lo demás.
-
-    Las acciones y los ETFs se asumen enteros. Algunos brokers mexicanos ya
-    venden fracciones, pero no todos, así que el número conservador es el que
-    sirve para cualquiera: si tu broker te deja fracciones, necesitas menos.
-    """
-    return (info.get(ticker) or {}).get("sector") == "Criptomoneda" \
-        or ticker.upper().endswith("-USD")
+# Los helpers de moneda, tipo de cambio y divisibilidad vivían aquí y ahora los
+# necesita también portafolio_optimo.py. Se movieron a moneda.py para que no
+# haya dos copias que se desincronicen: si cambia la fuente del tipo de cambio,
+# cambia en un solo sitio. Se conservan estos alias porque el resto del módulo
+# los llama por su nombre viejo.
+_info_universo = _M.info_universo
+_tipo_cambio   = _M.tipo_cambio
+_moneda_de     = lambda t, info=None: _M.moneda_de(t, info)
+_fraccionable  = lambda t, info=None: _M.fraccionable(t, info)
 
 
 def _precios_mxn(tickers: list, precios: pd.DataFrame) -> tuple[dict, bool]:

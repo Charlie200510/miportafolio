@@ -614,6 +614,29 @@
             <p id="po-descripcion" class="text-[11px] text-zinc-500 mt-3"></p>
           </div>
 
+          <!-- PRESUPUESTO. Opcional y por defecto sin límite: el nivel de
+               riesgo sigue mandando. Si se elige, entra como un filtro MÁS en
+               la misma cadena (liquidez, score canónico, SML, topes por sector
+               y por emisora), no como un modo aparte — la cartera sigue siendo
+               óptima bajo las mismas reglas, solo que entre las emisoras que
+               de verdad se pueden comprar con ese dinero.
+               Existe porque una cartera balanceada podía exigir $372,300 sin
+               que nada en pantalla lo dijera: basta una emisora cara con peso
+               chico para dispararlo. -->
+          <div class="mb-5">
+            <div class="flex items-center justify-between mb-2 gap-3 flex-wrap">
+              <span class="text-[12px] text-zinc-400 font-semibold">¿Con cuánto empiezas?</span>
+              <span id="po-capital-min" class="text-[11px] text-zinc-500 tabular"></span>
+            </div>
+            <div id="po-capital" class="mp-capital-ops" role="group" aria-label="Presupuesto">
+              <button type="button" data-capital="25000">$25 mil</button>
+              <button type="button" data-capital="50000">$50 mil</button>
+              <button type="button" data-capital="100000">$100 mil</button>
+              <button type="button" data-capital="250000">$250 mil</button>
+              <button type="button" data-capital="" aria-pressed="true" class="activa">Sin límite</button>
+            </div>
+          </div>
+
           <!-- Métricas del portafolio -->
           <div id="po-metricas" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
             <!-- llenado por JS con bbgSkel mientras carga -->
@@ -673,22 +696,6 @@
             cripto agresivo— cada una con sus emisoras, pesos y métricas históricas.
             Toca una y queda cargada en el editor; de ahí la puedes ajustar.
           </p>
-          <!-- PRESUPUESTO. El problema que resuelve: los perfiles salían
-               pidiendo hasta $706,000 sin que nadie lo hubiera decidido — es
-               lo que resulta de que a una emisora cara le toque un peso
-               chico. Aquí se elige con cuánto se empieza y el optimizador
-               rearma la mezcla para que quepa, subiendo el peso de las caras
-               y bajando el de las baratas. El default es "sin límite", que es
-               el comportamiento de siempre. -->
-          <div id="perfiles-capital" class="mp-capital" role="group" aria-label="Con cuánto empiezas">
-            <span class="mp-capital-etq">¿Con cuánto empiezas?</span>
-            <div class="mp-capital-ops">
-              <button type="button" data-capital="50000">$50 mil</button>
-              <button type="button" data-capital="100000">$100 mil</button>
-              <button type="button" data-capital="250000">$250 mil</button>
-              <button type="button" data-capital="" aria-pressed="true" class="activa">Sin límite</button>
-            </div>
-          </div>
           <div id="perfiles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
         </div>
       </div>

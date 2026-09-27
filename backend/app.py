@@ -2526,11 +2526,29 @@ def api_portafolio_optimo():
     try:
         import portafolio_optimo as _po
         forzar = (request.args.get("forzar") or "").lower() in ("1", "true", "yes")
+
+        # ?capital=50000 (opcional). Sin él, el comportamiento de siempre: la
+        # barra de riesgo manda y no hay límite de dinero. Con él, se aplica
+        # como un filtro MÁS dentro de la cadena que ya existía —liquidez,
+        # score canónico, SML, topes por sector y por emisora—, no como un
+        # modo aparte: la cartera sigue siendo óptima bajo las mismas reglas.
+        capital = None
+        crudo = (request.args.get("capital") or "").strip().replace(",", "")
+        if crudo:
+            try:
+                capital = float(crudo)
+            except ValueError:
+                return jsonify({"ok": False, "error": "capital debe ser un número de pesos"}), 400
+            if not (5_000 <= capital <= 50_000_000):
+                return jsonify({"ok": False, "error": "capital fuera de rango (5,000 a 50,000,000)"}), 400
+
         vol = request.args.get("vol")
         if vol not in (None, ""):
-            return jsonify(_po.portafolio_optimo(vol_objetivo=float(vol), forzar=forzar))
+            return jsonify(_po.portafolio_optimo(vol_objetivo=float(vol), forzar=forzar,
+                                                 capital=capital))
         nivel = int(request.args.get("nivel") or 5)
-        return jsonify(_po.portafolio_optimo(nivel_riesgo=nivel, forzar=forzar))
+        return jsonify(_po.portafolio_optimo(nivel_riesgo=nivel, forzar=forzar,
+                                             capital=capital))
     except Exception as e:
         return jsonify({"ok": False, "error": f"portafolio optimo falló: {e}"}), 500
 
