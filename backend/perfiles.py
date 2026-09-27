@@ -212,7 +212,10 @@ def _capital_minimo(pesos: dict, precios_mxn: dict) -> Optional[dict]:
     necesarios = {t: precios_mxn[t] / w for t, w in enteras.items()}
     manda = max(necesarios, key=necesarios.get)
     return {
-        "monto_mxn":   int(round(necesarios[manda] / 100.0) * 100),   # al centenar
+        # Al centenar HACIA ARRIBA. Redondeando al más cercano, un mínimo real
+        # de $50,049 se mostraba como $50,000 y el número quedaba por DEBAJO
+        # de lo que de verdad hace falta: el usuario llegaría corto.
+        "monto_mxn":   int(-(-necesarios[manda] // 100) * 100),
         "emisora":     manda,
         "precio_mxn":  round(precios_mxn[manda], 2),
         "peso":        round(enteras[manda], 4),
@@ -853,6 +856,12 @@ def _ajustar_a_capital(seleccionados: list, precios: pd.DataFrame, precios_mxn: 
     todavía puede mover algo y el riesgo se mantiene cerca.
     """
     TOPE = 0.92
+    # Se apunta un 2% POR DEBAJO del presupuesto. El mínimo se publica
+    # redondeado hacia arriba al centenar, así que apuntar justo al número
+    # dejaba cuatro perfiles de diez en "$50,100" para una meta de $50,000 —
+    # fuera por cien pesos, y la tarjeta diciendo que no se alcanzó. Con el
+    # colchón, el redondeo cae dentro.
+    capital = capital * 0.98
     quedan = list(seleccionados)
     soltadas = []
 
