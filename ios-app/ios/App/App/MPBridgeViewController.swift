@@ -59,10 +59,17 @@ final class MPBridgeViewController: CAPBridgeViewController, UITabBarDelegate, W
 
         // Tinta y papel: los mismos tokens que mp-tokens.css, para que la barra
         // nativa no se sienta pegada encima de otra app.
-        let fondo   = UIColor(red: 0.937, green: 0.945, blue: 0.961, alpha: 1)  // #EFF1F5
-        let sello   = UIColor(red: 0.125, green: 0.353, blue: 0.282, alpha: 1)  // #205A48
-        let tinta3  = UIColor(red: 0.369, green: 0.353, blue: 0.318, alpha: 1)  // #5E5A51
-        let regla   = UIColor(red: 0.875, green: 0.859, blue: 0.816, alpha: 1)  // #DFDBD0
+        //
+        // ESTO SE DESINCRONIZA SOLO. El comentario de arriba decía "los mismos
+        // tokens" y llevaba tres valores caducos: el rediseño cambió --sup de
+        // #EFF1F5 a #EDEFE8 y aquí seguía el gris azulado, a ΔE2000 5.74 del
+        // papel de la app. Resultado: la barra nativa parecía de otra
+        // aplicación pegada debajo. Si se vuelve a tocar mp-tokens.css, hay
+        // que volver aquí: el CSS no puede alcanzar a UIKit.
+        let fondo   = UIColor(red: 0.929, green: 0.937, blue: 0.910, alpha: 1)  // #EDEFE8 --sup
+        let sello   = UIColor(red: 0.106, green: 0.302, blue: 0.243, alpha: 1)  // #1B4D3E --sello
+        let tinta3  = UIColor(red: 0.392, green: 0.427, blue: 0.380, alpha: 1)  // #646D61 --tinta-3
+        let regla   = UIColor(red: 0.847, green: 0.863, blue: 0.824, alpha: 1)  // #D8DCD2 --regla
 
         let apar = UITabBarAppearance()
         apar.configureWithOpaqueBackground()

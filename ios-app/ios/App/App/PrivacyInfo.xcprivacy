@@ -43,6 +43,29 @@
         <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
       </array>
     </dict>
+    <dict>
+      <!-- Identificador del aparato (identifierForVendor).
+           FALTABA, y la app SÍ lo recolecta. La cadena entera:
+             MPBridgeViewController.swift lee UIDevice.current.identifierForVendor
+             y lo inyecta al JS por window.mpDispositivoId;
+             native-config.js lo guarda en window.MP_DISPOSITIVO;
+             app.js lo manda en la cabecera X-MP-Dispositivo;
+             backend/auth.py lo recibe y lo retiene para el control de pruebas
+             gratuitas (que un aparato no abra cuenta nueva al acabársele).
+           Es identificación de aparato con retención en servidor: hay que
+           declararla. NO es tracking —no se cruza con datos de terceros ni se
+           usa para publicidad— pero sí va ligada a la cuenta. -->
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeDeviceID</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
   </array>
 
   <!-- APIs con "required reason" que usan Capacitor/plugins -->

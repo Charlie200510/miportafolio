@@ -2160,3 +2160,60 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
   margin: 0 auto;
 }
 .mp-copo-fila > svg { width: 30px; height: 30px; }
+
+/* ── PRESUPUESTO DE LOS PERFILES ───────────────────────────────────────────
+   El selector de "¿con cuánto empiezas?" y la línea de mínimo en cada
+   tarjeta. La línea existe porque el mínimo era invisible: un perfil pedía
+   $706,000 y no había forma de saberlo hasta intentar comprarlo. */
+.mp-capital {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--paso-2) var(--paso-4);
+  margin-bottom: var(--paso-4);
+}
+.mp-capital-etq {
+  font-family: var(--ff-sans);
+  font-size: var(--txt-etq);
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+.mp-capital-ops { display: flex; flex-wrap: wrap; gap: var(--paso-2); }
+.mp-capital-ops button {
+  font-family: var(--ff-mono);
+  font-size: var(--txt-meta);
+  padding: 6px 12px;
+  border: var(--hairline) solid var(--regla);
+  border-radius: var(--radio);
+  background: var(--sup-panel);
+  color: var(--tinta-2);
+  cursor: pointer;
+  transition: border-color var(--t-rapida) var(--easing),
+              color var(--t-rapida) var(--easing);
+}
+.mp-capital-ops button:hover { border-color: var(--regla-fuerte); color: var(--tinta-1); }
+.mp-capital-ops button.activa {
+  background: var(--sello-solido);
+  border-color: var(--sello-solido);
+  color: var(--sobre-sello);
+  font-weight: 600;
+}
+.mp-capital-ops button:focus-visible { outline: 2px solid var(--sello); outline-offset: 2px; }
+
+/* La línea del mínimo dentro de la tarjeta del perfil. */
+.mp-capital-nota {
+  font-family: var(--ff-sans);
+  font-size: var(--txt-meta);
+  line-height: 1.45;
+  color: var(--tinta-3);
+  margin: var(--paso-2) 0 0;
+  padding-top: var(--paso-2);
+  border-top: var(--hairline) solid var(--regla-suave);
+}
+.mp-capital-nota b { color: var(--tinta-1); font-weight: 600; }
+.mp-capital-nota s { color: var(--tinta-4); text-decoration-thickness: 1px; }
+.mp-capital-nota span { color: var(--tinta-4); }
+/* Cuando no se pudo llegar al presupuesto pedido, se dice, no se disimula. */
+.mp-capital-nota.corto b { color: var(--baja); }

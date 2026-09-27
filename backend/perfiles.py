@@ -53,6 +53,185 @@ ALPHA_CORRELACION = 0.5           # peso de la diversificación vs calidad
 MIN_TICKERS_FINAL = 4             # nunca menos de 4 acciones
 
 
+
+# ============================================================
+#  CAPITAL MÍNIMO — cuánto dinero hace falta para armar el perfil
+# ============================================================
+#  LA CUENTA, que es más simple de lo que parece.
+#
+#  Las acciones se compran por unidades enteras. Para sostener el peso w_i de
+#  una emisora dentro de un portafolio de V pesos hay que poder comprar al
+#  menos UNA acción, o sea V·w_i >= precio_i. Despejando:
+#
+#        capital mínimo = máx_i ( precio_i / peso_i )
+#
+#  Basta UNA emisora cara con peso pequeño para disparar el mínimo: una acción
+#  de $2,000 con peso 1% pide $200,000 de portafolio. Por eso los perfiles
+#  automáticos pedían ~$300,000 sin que nadie lo hubiera decidido — salía de
+#  la interacción entre el precio de una emisora y el peso que le tocó.
+#
+#  Y por eso "hacerlo más barato" no es buscar acciones baratas a ciegas: es
+#  subir el peso de las caras y bajar el de las baratas. Como restricción del
+#  optimizador es un simple PISO por peso:
+#
+#        w_i >= precio_i / V_objetivo
+#
+#  que entra tal cual en los `bounds` de scipy. Si la suma de los pisos pasa
+#  de 1, con esas emisoras el objetivo es imposible y hay que soltar la más
+#  cara: eso es la otra mitad de la petición.
+#
+#  MONEDA. Los perfiles mezclan BMV y EE.UU. Sumar un precio en dólares con
+#  uno en pesos da un mínimo 17 veces equivocado, así que todo se pasa a MXN
+#  con el tipo de cambio que ya cachea el Periódico.
+# ============================================================
+
+_INFO_FULL = _BACKEND_DIR / "universo_info.json"
+_INFO_LITE = _BACKEND_DIR / "universo_lite_info.json"
+_CACHE_MERCADOS = _BACKEND_DIR / "_cache_periodico" / "mercados_dashboard.json"
+
+# Si no hay forma de saber el tipo de cambio, se usa esto y se AVISA con la
+# bandera `fx_estimado`. Nunca se calla: un mínimo con un FX inventado que se
+# presenta como exacto es peor que no dar el número.
+_FX_RESPALDO = 17.5
+_FX_MAX_EDAD = 36 * 3600      # 36 h: el dólar no se mueve tanto en un día
+
+_cache_aux: dict = {"info": None, "fx": None}
+
+
+def _info_universo() -> dict:
+    """Metadata del universo (de ahí sale la MONEDA de cada emisora)."""
+    if _cache_aux["info"] is None:
+        datos: dict = {}
+        for p in (_INFO_FULL, _INFO_LITE):
+            if p.exists():
+                try:
+                    import json
+                    with open(p, encoding="utf-8") as fh:
+                        datos = json.load(fh)
+                    break
+                except Exception:
+                    continue
+        _cache_aux["info"] = datos
+    return _cache_aux["info"]
+
+
+def _tipo_cambio() -> tuple[float, bool]:
+    """(USD/MXN, estimado). Lee el caché del Periódico; si no sirve, lo pide."""
+    if _cache_aux["fx"] is not None:
+        return _cache_aux["fx"]
+
+    import json
+    import time as _t
+    valor, estimado = None, True
+
+    if _CACHE_MERCADOS.exists():
+        try:
+            with open(_CACHE_MERCADOS, encoding="utf-8") as fh:
+                d = json.load(fh)
+            fresco = (_t.time() - float(d.get("_ts", 0))) < _FX_MAX_EDAD
+            for x in ((d.get("data") or d).get("divisas") or []):
+                if x.get("ticker") == "MXN=X" and x.get("precio"):
+                    valor = float(x["precio"])
+                    estimado = not fresco
+                    break
+        except Exception:
+            pass
+
+    if valor is None or estimado:
+        try:
+            import yfinance as yf
+            h = yf.Ticker("MXN=X").history(period="5d", interval="1d", auto_adjust=True)
+            c = h["Close"].dropna()
+            if len(c):
+                valor, estimado = float(c.iloc[-1]), False
+        except Exception:
+            pass
+
+    if valor is None or not (5 < valor < 60):    # cordura: el peso no vale eso
+        valor, estimado = _FX_RESPALDO, True
+
+    _cache_aux["fx"] = (valor, estimado)
+    return _cache_aux["fx"]
+
+
+def _moneda_de(ticker: str, info: dict) -> str:
+    m = (info.get(ticker) or {}).get("moneda")
+    if m in ("MXN", "USD"):
+        return m
+    # Sin metadata, el sufijo manda: es la misma regla que usa elegir_benchmark.
+    return "MXN" if ticker.upper().endswith(".MX") else "USD"
+
+
+def _fraccionable(ticker: str, info: dict) -> bool:
+    """¿Se puede comprar un pedazo, o solo unidades enteras?
+
+    Las criptos SÍ: nadie compra un bitcoin entero, se compran 0.002. Tratarlas
+    como acciones enteras daba un mínimo de $6,967,600 para el perfil cripto —
+    el precio de UN bitcoin dividido entre su peso— y eso es sencillamente
+    falso. Una cifra así en pantalla destruye la credibilidad de todo lo demás.
+
+    Las acciones y los ETFs se asumen enteros. Algunos brokers mexicanos ya
+    venden fracciones, pero no todos, así que el número conservador es el que
+    sirve para cualquiera: si tu broker te deja fracciones, necesitas menos.
+    """
+    return (info.get(ticker) or {}).get("sector") == "Criptomoneda" \
+        or ticker.upper().endswith("-USD")
+
+
+def _precios_mxn(tickers: list, precios: pd.DataFrame) -> tuple[dict, bool]:
+    """Último cierre de cada emisora, TODO en pesos."""
+    info = _info_universo()
+    fx, estimado = _tipo_cambio()
+    out = {}
+    for t in tickers:
+        if t not in precios.columns:
+            continue
+        serie = precios[t].dropna()
+        if not len(serie):
+            continue
+        p = float(serie.iloc[-1])
+        if p <= 0:
+            continue
+        out[t] = p * fx if _moneda_de(t, info) == "USD" else p
+    return out, estimado
+
+
+def _capital_minimo(pesos: dict, precios_mxn: dict) -> Optional[dict]:
+    """Cuánto hace falta para que NINGUNA posición se quede en cero acciones."""
+    faltan = [t for t in pesos if t not in precios_mxn]
+    reales = {t: w for t, w in pesos.items() if w > 0 and t in precios_mxn}
+    if not reales:
+        return None
+    info = _info_universo()
+    enteras = {t: w for t, w in reales.items() if not _fraccionable(t, info)}
+    if not enteras:
+        # Cartera solo de cosas fraccionables: el mínimo lo pone el broker, no
+        # la aritmética. Se dice que no aplica en vez de inventar una cifra.
+        return {"monto_mxn": None, "emisora": None, "solo_fraccionables": True,
+                "sin_precio": faltan}
+    necesarios = {t: precios_mxn[t] / w for t, w in enteras.items()}
+    manda = max(necesarios, key=necesarios.get)
+    return {
+        "monto_mxn":   int(round(necesarios[manda] / 100.0) * 100),   # al centenar
+        "emisora":     manda,
+        "precio_mxn":  round(precios_mxn[manda], 2),
+        "peso":        round(enteras[manda], 4),
+        "fraccionables": [t for t in reales if _fraccionable(t, info)],
+        # Honestidad: si de alguna no se supo el precio, el mínimo real puede
+        # ser mayor que este. Se dice, no se esconde.
+        "sin_precio":  faltan,
+    }
+
+
+def _pisos_por_capital(tickers: list, precios_mxn: dict, capital: float) -> np.ndarray:
+    """Peso mínimo de cada emisora para que quepa una acción en `capital`."""
+    info = _info_universo()
+    return np.array([
+        0.0 if (capital <= 0 or _fraccionable(t, info))
+        else min(precios_mxn.get(t, 0.0) / capital, 0.98)
+        for t in tickers
+    ])
+
 # ============================================================
 #  PERFILES — universos candidatos amplios
 # ============================================================
@@ -471,22 +650,43 @@ def _seleccionar_diversificado(
 # -----------------------------------------------------------------------
 #  OPTIMIZADORES MARKOWITZ
 # -----------------------------------------------------------------------
-def _pesos_min_vol(cov: np.ndarray) -> np.ndarray:
+def _limites(n: int, pisos, suelo: float):
+    """Bounds para scipy. El piso por emisora es lo que hace barato al perfil:
+    obliga a que el peso alcance para comprar al menos una acción."""
+    if pisos is None:
+        return tuple((suelo, 1.0) for _ in range(n))
+    return tuple((max(suelo, float(pisos[i])), 1.0) for i in range(n))
+
+
+def _arranque(n: int, pisos):
+    """Punto inicial FACTIBLE. Arrancar en 1/n con pisos altos deja a SLSQP
+    fuera de la región válida y devuelve el w0 sin optimizar; se nota en que
+    todos los perfiles baratos salían equiponderados."""
+    if pisos is None:
+        return np.full(n, 1 / n)
+    p = np.clip(np.asarray(pisos, dtype=float), 0.0, 1.0)
+    resto = 1.0 - p.sum()
+    if resto <= 0:
+        return p / p.sum() if p.sum() > 0 else np.full(n, 1 / n)
+    return p + resto / n
+
+
+def _pesos_min_vol(cov: np.ndarray, pisos=None) -> np.ndarray:
     n = cov.shape[0]
-    w0 = np.full(n, 1 / n)
+    w0 = _arranque(n, pisos)
     res = minimize(
         lambda w: float(w @ cov @ w),
         w0, method="SLSQP",
-        bounds=tuple((0.0, 1.0) for _ in range(n)),
+        bounds=_limites(n, pisos, 0.0),
         constraints=({"type": "eq", "fun": lambda w: w.sum() - 1.0},),
         options={"ftol": 1e-10, "maxiter": 500, "disp": False},
     )
     return res.x if res.success else w0
 
 
-def _pesos_max_sharpe(mu: np.ndarray, cov: np.ndarray, rf_diaria: float) -> np.ndarray:
+def _pesos_max_sharpe(mu: np.ndarray, cov: np.ndarray, rf_diaria: float, pisos=None) -> np.ndarray:
     n = len(mu)
-    w0 = np.full(n, 1 / n)
+    w0 = _arranque(n, pisos)
 
     def neg_sharpe(w):
         ret = float(w @ mu) * DIAS_HABILES
@@ -497,16 +697,16 @@ def _pesos_max_sharpe(mu: np.ndarray, cov: np.ndarray, rf_diaria: float) -> np.n
 
     res = minimize(
         neg_sharpe, w0, method="SLSQP",
-        bounds=tuple((0.0, 1.0) for _ in range(n)),
+        bounds=_limites(n, pisos, 0.0),
         constraints=({"type": "eq", "fun": lambda w: w.sum() - 1.0},),
         options={"ftol": 1e-9, "maxiter": 500, "disp": False},
     )
     return res.x if res.success else w0
 
 
-def _pesos_max_ret_capado(mu: np.ndarray, cov: np.ndarray, vol_max_anual: float) -> np.ndarray:
+def _pesos_max_ret_capado(mu: np.ndarray, cov: np.ndarray, vol_max_anual: float, pisos=None) -> np.ndarray:
     n = len(mu)
-    w0 = np.full(n, 1 / n)
+    w0 = _arranque(n, pisos)
 
     def restr_vol(w):
         var_anual = float(w @ cov @ w) * DIAS_HABILES
@@ -514,7 +714,7 @@ def _pesos_max_ret_capado(mu: np.ndarray, cov: np.ndarray, vol_max_anual: float)
 
     res = minimize(
         lambda w: -float(w @ mu) * DIAS_HABILES, w0, method="SLSQP",
-        bounds=tuple((0.0, 1.0) for _ in range(n)),
+        bounds=_limites(n, pisos, 0.0),
         constraints=(
             {"type": "eq",   "fun": lambda w: w.sum() - 1.0},
             {"type": "ineq", "fun": restr_vol},
@@ -524,10 +724,10 @@ def _pesos_max_ret_capado(mu: np.ndarray, cov: np.ndarray, vol_max_anual: float)
     return res.x if res.success else w0
 
 
-def _pesos_risk_parity(cov: np.ndarray) -> np.ndarray:
+def _pesos_risk_parity(cov: np.ndarray, pisos=None) -> np.ndarray:
     """Cada ticker contribuye igual al riesgo total."""
     n = cov.shape[0]
-    w0 = np.full(n, 1 / n)
+    w0 = _arranque(n, pisos)
 
     def objetivo(w):
         port_var = w @ cov @ w
@@ -540,7 +740,7 @@ def _pesos_risk_parity(cov: np.ndarray) -> np.ndarray:
 
     res = minimize(
         objetivo, w0, method="SLSQP",
-        bounds=tuple((0.001, 1.0) for _ in range(n)),
+        bounds=_limites(n, pisos, 0.001),
         constraints=({"type": "eq", "fun": lambda w: w.sum() - 1.0},),
         options={"ftol": 1e-10, "maxiter": 500, "disp": False},
     )
@@ -553,26 +753,28 @@ def _limpiar_pesos(w: np.ndarray, min_w: float = MIN_WEIGHT) -> np.ndarray:
     return w / s if s > 0 else w
 
 
-def _optimizar(rend_diarios: pd.DataFrame, objetivo: str) -> tuple[np.ndarray, dict]:
+def _optimizar(rend_diarios: pd.DataFrame, objetivo: str, pisos=None) -> tuple[np.ndarray, dict]:
     mu = rend_diarios.mean().values
     cov = rend_diarios.cov().values
     rf_diaria = TASA_LIBRE_RIESGO / DIAS_HABILES
 
     if objetivo == "min_vol":
-        w = _pesos_min_vol(cov)
+        w = _pesos_min_vol(cov, pisos)
     elif objetivo == "max_sharpe":
-        w = _pesos_max_sharpe(mu, cov, rf_diaria)
+        w = _pesos_max_sharpe(mu, cov, rf_diaria, pisos)
     elif objetivo == "max_ret":
-        w_tan = _pesos_max_sharpe(mu, cov, rf_diaria)
+        w_tan = _pesos_max_sharpe(mu, cov, rf_diaria, pisos)
         vol_tan = float(np.sqrt(w_tan @ cov @ w_tan * DIAS_HABILES))
         vol_cap = max(vol_tan * 1.5, 0.01)
-        w = _pesos_max_ret_capado(mu, cov, vol_cap)
+        w = _pesos_max_ret_capado(mu, cov, vol_cap, pisos)
     elif objetivo == "risk_parity":
-        w = _pesos_risk_parity(cov)
+        w = _pesos_risk_parity(cov, pisos)
     else:
         w = np.full(len(mu), 1 / len(mu))
 
-    w = _limpiar_pesos(w)
+    # Con pisos NO se limpia: poner a cero una emisora con piso rompería
+    # justo la restricción que hace armable el portafolio.
+    w = w if pisos is not None else _limpiar_pesos(w)
     ret_anual = float(w @ mu) * DIAS_HABILES
     var_anual = float(w @ cov @ w) * DIAS_HABILES
     vol_anual = float(np.sqrt(max(var_anual, 0.0)))
@@ -611,7 +813,72 @@ def _optimizar(rend_diarios: pd.DataFrame, objetivo: str) -> tuple[np.ndarray, d
 # -----------------------------------------------------------------------
 #  API PÚBLICA
 # -----------------------------------------------------------------------
-def _construir_perfil(p: dict, precios: pd.DataFrame, universo_set: Optional[set]) -> Optional[dict]:
+def _pesos_efectivos(seleccionados: list, w, umbral: float = MIN_WEIGHT) -> dict:
+    """Los pesos que de verdad va a tener el perfil.
+
+    No es `w` a secas. Si la optimización deja menos de MIN_TICKERS_FINAL
+    emisoras con peso, _construir_perfil las reparte a partes iguales — y eso
+    ya pasaba antes de todo esto: con objetivo `max_ret`, el optimizador
+    devuelve [1,0,0,...] (todo a la de mayor retorno dentro del cap de
+    volatilidad) y el perfil termina equiponderado sin que se note.
+
+    Calcular el capital mínimo sobre `w` en vez de sobre esto daba $3,600 para
+    un perfil que de verdad pide $121,400, y con eso la guarda decidía que no
+    hacía falta abaratarlo.
+    """
+    pesos = {t: float(wi) for t, wi in zip(seleccionados, w) if wi > umbral}
+    if len(pesos) < MIN_TICKERS_FINAL:
+        pesos = {t: 1.0 / len(seleccionados) for t in seleccionados}
+    suma = sum(pesos.values())
+    return {t: v / suma for t, v in pesos.items()} if suma > 0 else pesos
+
+
+def _ajustar_a_capital(seleccionados: list, precios: pd.DataFrame, precios_mxn: dict,
+                       objetivo: str, capital: float):
+    """Rehace la optimización con pisos para que el perfil quepa en `capital`.
+
+    Devuelve (tickers, pesos_array, metricas, soltadas, alcanzado).
+
+    SI NO CABE, SE SUELTA LA MÁS CARA. Los pisos suman precio_i/capital; si esa
+    suma pasa de 1 no existe ningún reparto que compre una acción de cada una,
+    por mucho que se muevan los pesos. Entonces la única salida es tener MENOS
+    emisoras, y la que sobra es la que más piso pide — que es exactamente "usar
+    acciones un poco más baratas", solo que decidido con una cuenta en vez de a
+    ojo. Nunca se baja de MIN_TICKERS_FINAL: un perfil de dos emisoras dejaría
+    de estar diversificado, y eso es peor que pedir más dinero.
+
+    El tope es 0.92 y no 1.0 a propósito: con los pisos sumando exactamente 1
+    el optimizador no tiene ni un gramo de libertad y devuelve el único reparto
+    posible, que no se parece al perfil. Dejando un 8% de holgura, Markowitz
+    todavía puede mover algo y el riesgo se mantiene cerca.
+    """
+    TOPE = 0.92
+    quedan = list(seleccionados)
+    soltadas = []
+
+    while True:
+        pisos = _pisos_por_capital(quedan, precios_mxn, capital)
+        if pisos.sum() <= TOPE or len(quedan) <= MIN_TICKERS_FINAL:
+            break
+        # la que más piso pide = la más cara en relación al presupuesto
+        i = int(np.argmax(pisos))
+        soltadas.append(quedan[i])
+        quedan = [t for j, t in enumerate(quedan) if j != i]
+
+    sub = precios[quedan].dropna()
+    if len(sub) < MIN_DIAS_HISTORIA:
+        return None
+    rend = sub.pct_change().dropna()
+    pisos = _pisos_por_capital(quedan, precios_mxn, capital)
+    alcanzado = bool(pisos.sum() <= TOPE)
+    # Si ni soltando emisoras cabe, se optimiza SIN pisos y se reporta el
+    # mínimo real. Vale más un perfil honesto y caro que uno deformado.
+    w, metricas = _optimizar(rend, objetivo, pisos if alcanzado else None)
+    return quedan, w, metricas, soltadas, alcanzado
+
+
+def _construir_perfil(p: dict, precios: pd.DataFrame, universo_set: Optional[set],
+                      capital_objetivo: Optional[float] = None) -> Optional[dict]:
     universo_perfil = list(p["universo"])
     if universo_set is not None:
         universo_perfil = [t for t in universo_perfil if t in universo_set]
@@ -661,17 +928,44 @@ def _construir_perfil(p: dict, precios: pd.DataFrame, universo_set: Optional[set
     if len(seleccionados) < MIN_TICKERS_FINAL:
         return None
 
-    # Optimización Markowitz sobre los seleccionados
+    # Precios en pesos de los candidatos: hacen falta tanto para el modo
+    # barato como para reportar el mínimo del perfil normal.
+    precios_mxn, fx_estimado = _precios_mxn(seleccionados, precios)
+
+    # Optimización Markowitz normal. SIEMPRE se hace primero, aunque se haya
+    # pedido un capital: hace falta saber cuánto cuesta el perfil tal cual para
+    # decidir si hay algo que arreglar.
     sub_sel = precios[seleccionados].dropna()
     if len(sub_sel) < MIN_DIAS_HISTORIA:
         return None
     rend_sel = sub_sel.pct_change().dropna()
     w, metricas = _optimizar(rend_sel, p["objetivo"])
 
+    soltadas, capital_alcanzado = [], None
+    capital_natural = _capital_minimo(_pesos_efectivos(seleccionados, w), precios_mxn)
+
+    # SOLO SE REARMA SI DE VERDAD NO CABE.
+    # Sin esta guarda, pedir $50,000 EMPEORABA los perfiles que ya eran
+    # baratos: los pisos w_i >= precio_i/50000 suben el peso de las emisoras
+    # baratas, y el Conservador Mexicano pasaba de pedir $6,300 a pedir
+    # $49,500. El piso es un TECHO para el mínimo, no un objetivo que haya que
+    # alcanzar. Y un perfil de puras criptos tiene todos los pisos en cero
+    # (son fraccionables), así que rearmarlo solo lo deformaba: su volatilidad
+    # saltaba de 56% a 99% sin ganar nada.
+    natural = (capital_natural or {}).get("monto_mxn")
+    if (capital_objetivo and capital_objetivo > 0 and precios_mxn
+            and natural and natural > capital_objetivo):
+        ajuste = _ajustar_a_capital(seleccionados, precios, precios_mxn,
+                                    p["objetivo"], float(capital_objetivo))
+        if ajuste is not None:
+            seleccionados, w, metricas, soltadas, capital_alcanzado = ajuste
+            rend_sel = precios[seleccionados].dropna().pct_change().dropna()
+
     # Asegurar que al menos MIN_TICKERS_FINAL queden con peso > 0
     pesos = {}
+    umbral = 0.0 if capital_alcanzado else MIN_WEIGHT
     for t, wi in zip(seleccionados, w):
-        if wi > MIN_WEIGHT:
+        if wi > umbral:
             pesos[t] = round(float(wi), 4)
 
     if len(pesos) < MIN_TICKERS_FINAL:
@@ -697,6 +991,15 @@ def _construir_perfil(p: dict, precios: pd.DataFrame, universo_set: Optional[set
     if suma > 0:
         pesos = {t: round(w / suma, 4) for t, w in pesos.items()}
 
+    # La bandera se calcula con el mínimo FINAL, no con la factibilidad de los
+    # pisos. Con la holgura del 0.92 el resultado puede quedar un pelo por
+    # encima del objetivo ($51,200 para una meta de $50,000) y decir que sí se
+    # alcanzó sería mentir por 1,200 pesos.
+    cap_final = _capital_minimo(pesos, precios_mxn)
+    if capital_objetivo:
+        monto = (cap_final or {}).get("monto_mxn")
+        capital_alcanzado = bool(monto is None or monto <= capital_objetivo)
+
     score_promedio = round(sum(scores[t] for t in seleccionados) / len(seleccionados), 1)
 
     return {
@@ -715,11 +1018,25 @@ def _construir_perfil(p: dict, precios: pd.DataFrame, universo_set: Optional[set
         "score_promedio": score_promedio,
         "scores":         {t: scores[t] for t in seleccionados},
         "metodo":         "multi_criterio_" + p["objetivo"],
+        # Lo que hace falta para armarlo de verdad, con acciones enteras.
+        "capital":        cap_final,
+        # Lo que costaría sin el ajuste, para poder decir "de $706,200 a $50,000".
+        "capital_natural":   (capital_natural or {}).get("monto_mxn"),
+        "capital_objetivo":  int(capital_objetivo) if capital_objetivo else None,
+        "capital_alcanzado": capital_alcanzado,
+        "soltadas_por_precio": soltadas,
+        "fx_estimado":    fx_estimado,
     }
 
 
-def listar_perfiles(universo_tickers: Optional[set[str]] = None) -> list[dict]:
-    """Devuelve los perfiles con pesos óptimos calculados al vuelo."""
+def listar_perfiles(universo_tickers: Optional[set[str]] = None,
+                    capital_objetivo: Optional[float] = None) -> list[dict]:
+    """Devuelve los perfiles con pesos óptimos calculados al vuelo.
+
+    `capital_objetivo` en PESOS: si viene, cada perfil se rearma para que se
+    pueda comprar con ese dinero (ver _ajustar_a_capital). Si no viene, los
+    perfiles salen como siempre y solo se reporta cuánto costaría armarlos.
+    """
     precios = _cargar_precios()
     if precios is None:
         # Fallback: equal weight de los primeros n del universo si no hay CSV
@@ -748,7 +1065,7 @@ def listar_perfiles(universo_tickers: Optional[set[str]] = None) -> list[dict]:
     out = []
     for p in PERFILES:
         try:
-            res = _construir_perfil(p, precios, universo_tickers)
+            res = _construir_perfil(p, precios, universo_tickers, capital_objetivo)
             if res:
                 out.append(res)
         except Exception as e:

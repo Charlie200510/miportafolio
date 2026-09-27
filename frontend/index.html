@@ -673,6 +673,22 @@
             cripto agresivo— cada una con sus emisoras, pesos y métricas históricas.
             Toca una y queda cargada en el editor; de ahí la puedes ajustar.
           </p>
+          <!-- PRESUPUESTO. El problema que resuelve: los perfiles salían
+               pidiendo hasta $706,000 sin que nadie lo hubiera decidido — es
+               lo que resulta de que a una emisora cara le toque un peso
+               chico. Aquí se elige con cuánto se empieza y el optimizador
+               rearma la mezcla para que quepa, subiendo el peso de las caras
+               y bajando el de las baratas. El default es "sin límite", que es
+               el comportamiento de siempre. -->
+          <div id="perfiles-capital" class="mp-capital" role="group" aria-label="Con cuánto empiezas">
+            <span class="mp-capital-etq">¿Con cuánto empiezas?</span>
+            <div class="mp-capital-ops">
+              <button type="button" data-capital="50000">$50 mil</button>
+              <button type="button" data-capital="100000">$100 mil</button>
+              <button type="button" data-capital="250000">$250 mil</button>
+              <button type="button" data-capital="" aria-pressed="true" class="activa">Sin límite</button>
+            </div>
+          </div>
           <div id="perfiles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
         </div>
       </div>

@@ -2939,14 +2939,42 @@ const Picker = (() => {
   // ============================================================
   const perfilesCache = [];
 
+  /* Presupuesto elegido, en pesos. null = sin límite (comportamiento de
+     siempre). Lo lee cargarPerfiles() y lo pintan las tarjetas. */
+  let capitalObjetivo = null;
+
+  function bindCapital() {
+    const caja = $('perfiles-capital');
+    if (!caja || caja.dataset.listo === '1') return;
+    caja.dataset.listo = '1';
+    caja.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-capital]');
+      if (!b) return;
+      const v = b.dataset.capital ? Number(b.dataset.capital) : null;
+      if (v === capitalObjetivo) return;
+      capitalObjetivo = v;
+      caja.querySelectorAll('[data-capital]').forEach(x => {
+        const activa = x === b;
+        x.classList.toggle('activa', activa);
+        x.setAttribute('aria-pressed', activa ? 'true' : 'false');
+      });
+      // Recalcular pide al servidor rearmar los diez perfiles: se avisa, que
+      // tarda unos segundos y si no parece que el botón no hizo nada.
+      const grid = $('perfiles-grid');
+      if (grid) grid.innerHTML = '<div class="col-span-full mp-vacio">Rearmando los perfiles para ese presupuesto…</div>';
+      cargarPerfiles();
+    });
+  }
+
   async function cargarPerfiles(intento = 0) {
+    bindCapital();
     const grid = $('perfiles-grid');
     if (!grid) return;
     if (!grid.querySelector('.perfil-card')) {
       grid.innerHTML = `<div class="col-span-full mp-vacio">Calculando perfiles…</div>`;
     }
     try {
-      const res = await fetch('/api/perfiles');
+      const res = await fetch('/api/perfiles' + (capitalObjetivo ? '?capital=' + capitalObjetivo : ''));
       let body = null;
       try { body = await res.json(); } catch { body = null; }
       if (!res.ok) throw new Error((body && body.error) || `HTTP ${res.status}`);
@@ -2990,6 +3018,31 @@ const Picker = (() => {
       'max_ret':     'Máx. retorno',
       'risk_parity': 'Risk parity',
     };
+    /* Cuánto cuesta armarlo de verdad. Es el dato que faltaba: un perfil puede
+       pedir $706,000 sin que nadie lo haya decidido, solo porque a una emisora
+       cara le tocó un peso chico. Si además se rearmó para caber en el
+       presupuesto, se enseña el antes y el después. */
+    const capitalHTML = (p) => {
+      const c = p.capital || {};
+      if (c.solo_fraccionables) {
+        return '<p class="mp-capital-nota">Se compra por fracciones: no hay mínimo por acción.</p>';
+      }
+      if (!c.monto_mxn) return '';
+      const fmt = (v) => '$' + Number(v).toLocaleString('es-MX');
+      const antes = p.capital_natural;
+      const bajo = antes && antes > c.monto_mxn * 1.05;
+      const corto = p.capital_objetivo && p.capital_alcanzado === false;
+      return '<p class="mp-capital-nota' + (corto ? ' corto' : '') + '">'
+           + (bajo ? '<s>' + fmt(antes) + '</s> ' : '')
+           + '<b>Desde ' + fmt(c.monto_mxn) + '</b>'
+           + (c.emisora ? ' <span>lo marca ' + escapeHtml(String(c.emisora).split('.')[0]) + '</span>' : '')
+           + (corto ? ' <span>no baja más sin perder diversificación</span>' : '')
+           + ((p.soltadas_por_precio || []).length
+               ? ' <span>fuera ' + p.soltadas_por_precio.map(t => escapeHtml(String(t).split('.')[0])).join(', ')
+                 + ' por precio</span>' : '')
+           + '</p>';
+    };
+
     grid.innerHTML = perfilesCache.map(p => {
       const tickersPreview = (p.tickers || []).slice(0, 4).join(' · ');
       const extras = (p.tickers || []).length > 4 ? ` +${p.tickers.length - 4}` : '';
@@ -2998,6 +3051,7 @@ const Picker = (() => {
       const sc = p.score_promedio;
       const div = m && m.diversificacion != null ? m.diversificacion : null;
       const nf = (x, d = 1) => Number.isFinite(Number(x)) ? Number(x).toFixed(d) : '—';
+      const capHTML = capitalHTML(p);
       const metricasHTML = m ? `
         <div class="grid grid-cols-3 gap-1 pt-2 border-t border-surface-border">
           <div>
@@ -3038,6 +3092,7 @@ const Picker = (() => {
               style="font-family:var(--ff-serif);letter-spacing:-.015em">${escapeHtml(p.nombre)}</h4>
           <p class="text-[11.5px] text-zinc-400 leading-snug line-clamp-3">${escapeHtml(p.thesis)}</p>
           ${metricasHTML}
+          ${capHTML}
           <div class="mt-auto pt-2 border-t border-surface-border">
             <p class="mp-firma truncate"><span class="tabular">${nActivos}</span> activos · ${escapeHtml(tickersPreview)}${extras}</p>
             <p class="text-[11px] mt-1" style="color:var(--sello)">Usar esta mezcla &rarr;</p>

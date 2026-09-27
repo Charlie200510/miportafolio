@@ -1365,8 +1365,24 @@ def api_perfiles():
         except Exception:
             universo_set = None
 
+    # ?capital=50000 rearma cada perfil para que se pueda comprar con ese
+    # dinero. Sin el parámetro, los perfiles salen como siempre y solo se
+    # reporta cuánto costaría armarlos.
+    capital = None
+    crudo = (request.args.get("capital") or "").strip().replace(",", "")
+    if crudo:
+        try:
+            capital = float(crudo)
+        except ValueError:
+            return jsonify({"error": "capital debe ser un número de pesos"}), 400
+        # Cota inferior por sentido común: con menos de $5,000 no hay portafolio
+        # diversificado que valga, y cotas absurdas harían al optimizador soltar
+        # emisoras hasta quedarse en el mínimo sin decir nada útil.
+        if not (5_000 <= capital <= 50_000_000):
+            return jsonify({"error": "capital fuera de rango (5,000 a 50,000,000)"}), 400
+
     try:
-        return jsonify(_perfiles.listar_perfiles(universo_set))
+        return jsonify(_perfiles.listar_perfiles(universo_set, capital))
     except Exception as e:
         return jsonify({"error": f"fallo inesperado: {e}"}), 500
 
