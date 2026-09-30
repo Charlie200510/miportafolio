@@ -7,15 +7,21 @@ const config: CapacitorConfig = {
   appName: 'Mi Portafolio',
   webDir: 'www',
   bundledWebRuntime: false,
+  // OJO: estos colores son ESPEJO de mp-tokens.css y no hay forma de que los
+  // lea de ahí. Se quedaron en #EFF1F5 —el papel gris azulado anterior al
+  // rediseño— y en el ocre #8C520C del acento viejo, así que el splash, el
+  // fondo nativo y el spinner contradecían a la app durante el segundo y medio
+  // que más se mira: el arranque. Si se tocan los tokens, tocar aquí y en
+  // LaunchScreen.storyboard, que tiene el mismo color en componentes RGB.
   ios: {
     contentInset: 'always',          // respeta safe areas (notch, home indicator)
-    backgroundColor: '#EFF1F5',
+    backgroundColor: '#EDEFE8',
     overrideUserAgent: 'MiPortafolio-iOS',
     scheme: 'MiPortafolio',
     limitsNavigationsToAppBoundDomains: false,
   },
   android: {
-    backgroundColor: '#EFF1F5',
+    backgroundColor: '#EDEFE8',
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,  // poner true solo para depurar en dev
@@ -32,17 +38,17 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchAutoHide: true,
       launchShowDuration: 1500,
-      backgroundColor: '#EFF1F5',
+      backgroundColor: '#EDEFE8',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
       iosSpinnerStyle: 'small',
-      spinnerColor: '#8C520C',
+      spinnerColor: '#1B4D3E',
       splashFullScreen: true,
       splashImmersive: true,
     },
     StatusBar: {
       style: 'LIGHT',
-      backgroundColor: '#EFF1F5',
+      backgroundColor: '#EDEFE8',
       overlaysWebView: false,
     },
     PushNotifications: {
