@@ -558,6 +558,15 @@ function _onbModo(m) {
   ch.classList.toggle('hidden', m !== 'chooser');
   man.classList.toggle('hidden', m !== 'manual');
   aut.classList.toggle('hidden', m !== 'auto');
+  // El optimizador se carga AQUÍ, en el único sitio por el que pasa toda
+  // entrada al modo automático. Antes lo pedía solo el clic en #chooser-auto, y
+  // el botón "Perfiles sugeridos" abría este mismo modo por otro camino: la
+  // tarjeta del optimizador quedaba con la composición y la frontera vacías,
+  // y los botones de presupuesto sin reaccionar. asegurarCargado() no hace nada
+  // si ya cargó o está cargando, así que llamarlo de más no cuesta.
+  if (m === 'auto' && typeof PortafolioOptimo !== 'undefined') {
+    PortafolioOptimo.asegurarCargado();
+  }
 }
 document.addEventListener('click', (e) => {
   if (e.target.closest('#chooser-auto')) {
@@ -2455,7 +2464,6 @@ const PortafolioOptimo = (() => {
   }
 
   async function cargar(vol) {
-    bindCapitalPO();
     const myReq = ++state.reqSeq;   // marca esta petición como la más reciente
     state.enVuelo = true;
     pintarSkeletons();
@@ -2515,6 +2523,10 @@ const PortafolioOptimo = (() => {
   }
 
   function bind() {
+    // El presupuesto se engancha al ARRANCAR, igual que el slider. Vivía dentro
+    // de cargar(), así que hasta que el optimizador no cargaba por primera vez
+    // los botones eran decorativos: tocar "$50 mil" no hacía nada.
+    bindCapitalPO();
     const slider = document.getElementById('po-slider');
     if (slider) {
       slider.addEventListener('input', (e) => {
