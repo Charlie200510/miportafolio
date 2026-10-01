@@ -28,16 +28,16 @@
   /* Los cinco ejes. El orden importa: se lee de izquierda a derecha y PODER va
    * primero porque es la pregunta que trae al usuario a la app. */
   var EJES = [
-    { id: 'poder',      etq: 'PODER',      art: 'el poder',      ayuda: 'Contra CETES, lo que rindió al año' },
-    { id: 'eficiencia', etq: 'EFICIENCIA', art: 'la eficiencia', ayuda: 'Cuánto rinde por unidad de riesgo' },
-    { id: 'calma',      etq: 'CALMA',      art: 'la calma',      ayuda: 'Qué tan poco se mueve' },
-    { id: 'aguante',    etq: 'AGUANTE',    art: 'el aguante',    ayuda: 'Qué tan poco cayó en su peor racha' },
+    { id: 'poder',      etq: 'Poder',      art: 'el poder',      ayuda: 'Contra CETES, lo que rindió al año' },
+    { id: 'eficiencia', etq: 'Eficiencia', art: 'la eficiencia', ayuda: 'Cuánto rinde por unidad de riesgo' },
+    { id: 'calma',      etq: 'Calma',      art: 'la calma',      ayuda: 'Qué tan poco se mueve' },
+    { id: 'aguante',    etq: 'Aguante',    art: 'el aguante',    ayuda: 'Qué tan poco cayó en su peor racha' },
     /* La ayuda de MERCADO es un MARCADOR, no el texto final: el benchmark lo
        elige el backend según la moneda dominante (^MXX si la cartera es
        mayoritariamente MXN, ^GSPC si no). Decía fijo "Contra el IPC", así que
        una cartera de acciones estadounidenses leía "Contra el IPC" junto a un
        número calculado contra el S&P 500. Usa ayudaEje(), no este campo. */
-    { id: 'mercado',    etq: 'MERCADO',    art: 'el mercado',    ayuda: 'Contra el índice de tu mercado' }
+    { id: 'mercado',    etq: 'Mercado',    art: 'el mercado',    ayuda: 'Contra el índice de tu mercado' }
   ];
 
   /* Los dos benchmarks que devuelve el backend, en cristiano. Si algún día
@@ -150,14 +150,33 @@
     function eje(valor, fn) {
       return (typeof valor === 'number' && isFinite(valor)) ? acotar(fn(valor), -3, 3) : null;
     }
+    /* RENDIMIENTO COMPUESTO, no aritmético. Contra CETES —que no fluctúa— la
+       única comparación honesta es lo que de verdad se ganó por año. Usar la
+       media aritmética de los rendimientos diarios por 252 sobrestima eso por
+       el arrastre de la volatilidad, y el error NO es pequeño: medido, WALMEX
+       salía +6.99% aritmético contra −5.68% compuesto, y ORBIA +0.2% contra
+       −16.69%. La flotación decía "le gana a CETES" de carteras que en realidad
+       componían por debajo, y el Cuadernillo, dos pantallas más abajo, decía
+       lo contrario. Si no viene el compuesto se cae al aritmético, pero el
+       backend ya lo manda para cartera, posiciones e índice. */
+    var rend = (typeof m.rendimiento_cagr_pct === 'number' && isFinite(m.rendimiento_cagr_pct))
+      ? m.rendimiento_cagr_pct : m.rendimiento_anualizado_pct;
     return {
-      poder:      eje(m.rendimiento_anualizado_pct, function (v) { return (v - cetes) / 5; }),
+      poder:      eje(rend, function (v) { return (v - cetes) / 5; }),
       eficiencia: eje(m.sharpe_ratio,               function (v) { return v * 2; }),
       calma:      eje(m.volatilidad_anual_pct,      function (v) { return (22 - v) / 6; }),
       aguante:    eje(m.max_drawdown_pct,           function (v) { return (30 - Math.abs(v)) / 10; }),
       mercado:    bench === null ? null
-                : eje(m.rendimiento_anualizado_pct, function (v) { return (v - bench) / 5; })
+                : eje(rend, function (v) { return (v - bench) / 5; })
     };
+  }
+
+  /* Número con signo a un decimal. Se redondea ANTES de decidir el signo: con
+     el signo sacado del valor crudo, −0.04 salía como "−0.0" y +0.03 como
+     "+0.0", un cero con signo que parece error de captura. */
+  function firmado(v) {
+    var r = Math.round(v * 10) / 10;
+    return (r > 0 ? '+' : r < 0 ? '\u2212' : '') + Math.abs(r).toFixed(1);
   }
 
   function esc(s) {
@@ -247,7 +266,7 @@
         var v = puntajes[e.id];
         var alto = Math.abs(v) * P.unidad;
         var y = v >= 0 ? agua - alto - 6 : agua + alto + 13;
-        var txt = (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v).toFixed(1);
+        var txt = firmado(v);
         partes.push('<text x="' + centro(i).toFixed(1) + '" y="' + y.toFixed(1) + '">' + txt + '</text>');
       });
       partes.push('</g>');
@@ -256,7 +275,7 @@
     /* Etiquetas de eje a Y FIJA, abajo del marco: así nunca chocan */
     if (P.etiquetas) {
       partes.push('<g font-family="var(--ff-sans)" font-size="9" font-weight="600" ' +
-        'letter-spacing="0.06em" fill="var(--tinta-3)" text-anchor="middle">');
+        'fill="var(--tinta-3)" text-anchor="middle">');
       vivos.forEach(function (e, i) {
         partes.push('<text x="' + centro(i).toFixed(1) + '" y="' + (P.h - 4) + '">' + e.etq + '</text>');
       });
@@ -272,7 +291,10 @@
   function veredicto(puntajes, metricas, opciones) {
     var o = opciones || {};
     var cetes = typeof o.cetes === 'number' ? o.cetes : 9.5;
-    var r = metricas.rendimiento_anualizado_pct;
+    // El mismo rendimiento que puntuar(): si la frase dijera el aritmético y
+    // la figura el compuesto, se contradirían dentro del mismo bloque.
+    var r = (typeof metricas.rendimiento_cagr_pct === 'number' && isFinite(metricas.rendimiento_cagr_pct))
+      ? metricas.rendimiento_cagr_pct : metricas.rendimiento_anualizado_pct;
     var vivos = EJES.filter(function (e) { return puntajes[e.id] !== null && puntajes[e.id] !== undefined; });
 
     var peor = null, mejor = null;
@@ -430,7 +452,7 @@
         '" height="' + alto.toFixed(1) + '" fill="' + colorDe(b._total * COLOR_POR_FLOTA) + '">' +
         '<title>' + esc(b.etq) + ' · ' +
         (b._peso && sumaCartera > 0 ? Math.round(b._peso / sumaCartera * 100) + '% de la cartera · ' : '') +
-        (b._total > 0 ? '+' : b._total < 0 ? '−' : '') + Math.abs(b._total).toFixed(1) +
+        firmado(b._total) +
         ' de 6 contra CETES</title></rect>');
       x += an + HUECO;
     });
@@ -481,7 +503,7 @@
       var v = r.b._total;
       var y = v >= 0 ? r.y - 5 : r.y + r.alto + 11;
       p.push('<text x="' + (r.x + r.an / 2).toFixed(1) + '" y="' + y.toFixed(1) + '">' +
-        (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '</text>');
+        firmado(v) + '</text>');
     });
     p.push('</g>');
     p.push('</svg>');

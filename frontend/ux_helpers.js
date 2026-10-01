@@ -426,7 +426,10 @@
         padding: 6px 8px !important;
         font-size: 12px !important;
       }
-      /* Ocultar nombre largo del portafolio en mobile (queda el avatar) */
+      /* El nombre del portafolio: entre 560 y 767px se recorta a 90px. Por
+         debajo de 560 se OCULTA, que es lo que ya pedía la clase hidden del
+         HTML; este display:inline-block, con más especificidad, la pisaba y en
+         iPhone salía "Po…" junto al avatar. Queda el avatar, que identifica. */
       header #port-active-nombre {
         max-width: 90px;
         overflow: hidden;
@@ -435,6 +438,7 @@
         display: inline-block;
         font-size: 12px;
       }
+      @media (max-width: 559px) { header #port-active-nombre { display: none !important; } }
       /* Botón ? de ayuda: más compacto */
       header button[onclick*="iniciarTour"], header button[title*="utorial"] {
         padding: 6px !important;

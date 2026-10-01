@@ -1043,7 +1043,10 @@
     if (!btn) return;
     if (_btnHTMLOriginal === null) _btnHTMLOriginal = btn.innerHTML;
     if (_premiumEfectivo(e)) {        // servidor O compra (SDK), pero CON sesión
-      if (!btn.dataset.premium) { btn.dataset.premium = '1'; btn.textContent = 'Suscrito ✓'; }
+      // Ya suscrito, el botón deja de vender: dice el plan en voz baja (el estilo
+      // de [data-premium] en mp-editorial.css le quita el relleno verde). Sigue
+      // siendo tocable y abre el paywall, donde se gestiona la suscripción.
+      if (!btn.dataset.premium) { btn.dataset.premium = '1'; btn.textContent = 'Premium'; }
     } else if (btn.dataset.premium) {
       delete btn.dataset.premium; btn.innerHTML = _btnHTMLOriginal;
     }

@@ -255,6 +255,7 @@ const $ = (id) => document.getElementById(id);
 //   · etiquetas de eje y tooltip en monoespaciada con cifras tabulares
 // Cambiar aquí cambia la app entera. Los valores salen de MP_COLOR, que a su
 // vez los lee de mp-tokens.css: el tema de las gráficas NO se define aparte.
+const MP_MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const MP_GRAFICA = {
   sup:         MP_COLOR.sup,
   panel:       MP_COLOR.supPanel,
@@ -330,6 +331,19 @@ const MP_GRAFICA = {
         autoSkip: true,
         maxRotation: 0,
         padding: 6,
+        /* Las fechas llegan en ISO ("2025-10-06"): cinco de esas a 9.5px en un
+           iPhone se enciman y se leen como un log. Se dice "oct 25"; si todo
+           el rango cabe en tres meses, "6 oct". Lo que no sea fecha ISO pasa
+           tal cual. */
+        callback: function (val) {
+          const l = String(this.getLabelForValue(val) ?? '');
+          const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?/.exec(l);
+          if (!m) return l;
+          const mes = MP_MESES[parseInt(m[2], 10) - 1] || m[2];
+          const ls = this.chart.data.labels || [];
+          const dias = (Date.parse(ls[ls.length - 1]) - Date.parse(ls[0])) / 864e5;
+          return (m[3] && dias < 95) ? `${parseInt(m[3], 10)} ${mes}` : `${mes} ${m[1].slice(2)}`;
+        },
       },
       ...extra,
     };
@@ -830,8 +844,8 @@ function renderFlotacion(data) {
 
   const opciones = {
     cetes: meta.tasa_libre_riesgo_pct,
-    benchmarkAnual: data.benchmark && typeof data.benchmark.rendimiento_anualizado_pct === 'number'
-      ? data.benchmark.rendimiento_anualizado_pct : undefined,
+    benchmarkAnual: data.benchmark && typeof (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) === 'number'
+      ? (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) : undefined,
     // El backend elige ^MXX o ^GSPC según la moneda dominante; el rótulo del
     // eje MERCADO tiene que decir cuál, no dar por hecho que es el IPC.
     benchmarkTicker: (data.benchmark && data.benchmark.ticker) || meta.benchmark || undefined
@@ -928,8 +942,8 @@ function renderRegata(data) {
   const F = window.MP_FLOTACION;
   const opciones = {
     cetes: meta.tasa_libre_riesgo_pct,
-    benchmarkAnual: data.benchmark && typeof data.benchmark.rendimiento_anualizado_pct === 'number'
-      ? data.benchmark.rendimiento_anualizado_pct : undefined
+    benchmarkAnual: data.benchmark && typeof (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) === 'number'
+      ? (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) : undefined
   };
   // Se destapa ANTES de medir: oculto, el contenedor mide 0 y la figura se
   // dibujaría al ancho de emergencia en vez de al real.
@@ -1133,9 +1147,10 @@ function renderHero(data) {
     : p.rendimiento_anualizado_pct;
   $('kpi-retorno-anual').textContent = fmtPct(ra);
   $('kpi-retorno-anual').className = `text-2xl font-semibold tabular mt-1 ${claseColor(ra)}`;
-  $('kpi-retorno-anual-ctx').textContent = ra >= 0
-    ? 'Promedio por año (últimos 5 años)'
-    : 'Pérdida promedio por año (últimos 5 años)';
+  // El rótulo ya dice "Rendimiento": el contexto dice sobre qué ventana.
+  const a5 = p.rendimiento_prom_anual_5y_pct != null;
+  $('kpi-retorno-anual-ctx').textContent = (ra >= 0 ? 'Al año' : 'Pérdida al año')
+    + (a5 ? ', últimos 5 años' : ', todo el periodo');
 
   const vol = p.volatilidad_anual_pct;
   $('kpi-vol').textContent = fmtPct(vol, 1, false);
@@ -1148,39 +1163,43 @@ function renderHero(data) {
 
   const dd = p.max_drawdown_pct;
   $('kpi-dd').textContent = fmtPct(dd, 1);
-  $('kpi-dd-ctx').textContent = 'Peor caída desde un máximo';
+  // Repetir "peor caída" debajo del rótulo "Peor caída" no decía nada; en
+  // pesos se entiende sin saber qué es un drawdown.
+  $('kpi-dd-ctx').textContent = (typeof dd === 'number' && isFinite(dd))
+    ? `De cada $100 llegaste a ver $${Math.max(0, Math.round(100 + dd))}`
+    : '—';
 }
 
 function interpretarVol(v) {
   if (v === null || v === undefined) return '—';
-  if (v < 12) return 'Baja · portafolio conservador';
-  if (v < 20) return 'Moderada';
-  if (v < 30) return 'Alta · movimientos fuertes';
-  return 'Muy alta · riesgo elevado';
+  if (v < 12) return 'Baja, se mueve poco';
+  if (v < 20) return 'Media';
+  if (v < 30) return 'Alta, con días bruscos';
+  return 'Muy alta, con caídas fuertes';
 }
 
 function interpretarSharpe(s) {
   if (s === null || s === undefined) return '—';
-  if (s >= 1)    return 'Excelente relación riesgo/retorno';
-  if (s >= 0.5)  return 'Buena relación riesgo/retorno';
-  if (s >= 0)    return 'Supera a una tasa libre de riesgo';
-  return 'No compensa el riesgo asumido';
+  if (s >= 1)    return 'El riesgo está muy bien pagado';
+  if (s >= 0.5)  return 'El riesgo está bien pagado';
+  if (s >= 0)    return 'Apenas le gana a CETES';
+  return 'CETES rinde más, sin riesgo';
 }
 
 // --- INSIGHTS (observaciones) ----------------------------------------------
 
-const SEV_STYLES = {
-  alta:      { bar: 'bg-accent-red',     badge: 'bg-accent-red/10 text-accent-red border-accent-red/20',       label: 'Importante', icon: 'alert' },
-  media:     { bar: 'bg-accent-amber',   badge: 'bg-amber-500/10 text-accent-amber border-amber-500/20',        label: 'Atención',   icon: 'alert' },
-  positivo:  { bar: 'bg-accent-green',   badge: 'bg-accent-green/10 text-accent-green border-accent-green/20',  label: 'Bien',       icon: 'check' },
-  baja:      { bar: 'bg-zinc-600',       badge: 'bg-zinc-800 text-zinc-400 border-zinc-700',                    label: 'Nota',       icon: 'info' },
-  info:      { bar: 'bg-accent-blue',    badge: 'bg-accent-blue/10 text-accent-blue border-accent-blue/20',     label: 'Info',       icon: 'info' },
-};
-
-const ICON_SVG = {
-  alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-  check: '<polyline points="20 6 9 17 4 12"/>',
-  info:  '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+/* LA LECTURA DEL DÍA, como dos listas y no como tarjetas de alerta.
+   Cada observación era una tarjeta blanca con un filete de color a la
+   izquierda, un icono de librería (el triángulo de alerta, la palomita) y una
+   pastilla en versalitas: "IMPORTANTE", "BIEN". Las cuatro revisiones de
+   diseño lo señalaron como plantilla pura, y además la severidad se decía TRES
+   veces —color, icono y pastilla—. "BIEN" en una pastilla parece la
+   calificación de un examen.
+   Ahora se agrupan en dos listas sobre el papel y el subtítulo del grupo ya
+   dice lo que antes decían los tres adornos. */
+const _GRUPO_INSIGHT = {
+  alta: 'vigilar', media: 'vigilar', baja: 'vigilar', info: 'vigilar',
+  positivo: 'favor',
 };
 
 function renderInsights(data) {
@@ -1190,33 +1209,27 @@ function renderInsights(data) {
   const insights = Array.isArray(data.insights) ? data.insights : [];
 
   if (!seccion || !grid) return;
-
-  if (!insights.length) {
-    seccion.classList.add('hidden');
-    return;
-  }
+  if (!insights.length) { seccion.classList.add('hidden'); return; }
   seccion.classList.remove('hidden');
-  count.textContent = `${insights.length} ${insights.length === 1 ? 'observación' : 'observaciones'}`;
+  if (count) count.textContent = '';
 
-  grid.innerHTML = insights.map(ins => {
-    const style = SEV_STYLES[ins.severidad] || SEV_STYLES.info;
-    const icon = ICON_SVG[style.icon] || ICON_SVG.info;
-    return `
-      <div class="bg-surface-card border border-surface-border rounded-xl overflow-hidden flex hover:border-zinc-700 transition">
-        <div class="w-1 ${style.bar} shrink-0"></div>
-        <div class="p-4 flex-1 min-w-0">
-          <div class="flex items-start justify-between gap-3 mb-1.5">
-            <div class="flex items-center gap-2 min-w-0">
-              <svg class="w-4 h-4 shrink-0 ${style.bar.replace('bg-', 'text-')}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>
-              <h4 class="text-sm font-semibold text-zinc-100 truncate">${escapeHtml(ins.titulo || '')}</h4>
-            </div>
-            <span class="text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded border shrink-0 ${style.badge}">${style.label}</span>
-          </div>
-          <p class="text-xs text-zinc-400 leading-relaxed">${escapeHtml(ins.detalle || '')}</p>
-        </div>
-      </div>
-    `;
-  }).join('');
+  // Lo importante primero dentro de cada grupo.
+  const peso = { alta: 0, media: 1, baja: 2, info: 3, positivo: 0 };
+  const orden = insights.slice().sort((a, b) => (peso[a.severidad] ?? 9) - (peso[b.severidad] ?? 9));
+  const vigilar = orden.filter(i => _GRUPO_INSIGHT[i.severidad] !== 'favor');
+  const favor   = orden.filter(i => _GRUPO_INSIGHT[i.severidad] === 'favor');
+
+  const lista = (items) => items.map(ins => `
+      <li class="mp-lectura-item">
+        <p class="mp-lectura-tit">${escapeHtml(ins.titulo || '')}</p>
+        ${ins.detalle ? `<p class="mp-lectura-det">${escapeHtml(ins.detalle)}</p>` : ''}
+      </li>`).join('');
+
+  grid.innerHTML =
+    (vigilar.length ? `<div class="mp-lectura-grupo">
+        <h4 class="mp-lectura-cab">Para vigilar</h4><ul>${lista(vigilar)}</ul></div>` : '') +
+    (favor.length ? `<div class="mp-lectura-grupo">
+        <h4 class="mp-lectura-cab">A tu favor</h4><ul>${lista(favor)}</ul></div>` : '');
 }
 
 function escapeHtml(s) {
@@ -1531,19 +1544,19 @@ function renderTablaActivos(data, info) {
   const meta = data.metadata || {};
   const opcFig = {
     cetes: meta.tasa_libre_riesgo_pct,
-    benchmarkAnual: data.benchmark && typeof data.benchmark.rendimiento_anualizado_pct === 'number'
-      ? data.benchmark.rendimiento_anualizado_pct : undefined,
+    benchmarkAnual: data.benchmark && typeof (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) === 'number'
+      ? (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) : undefined,
   };
   const copoDe = (m) => {
     const F = window.MP_FLOTACION;
     if (!F || !m) return '';
-    return '<span class="mp-copo-fila">' + F.copo(F.puntuar(m, opcFig), 30, '') + '</span>';
+    return '<span class="mp-copo-fila">' + F.copo(F.puntuar(m, opcFig), 40, '') + '</span>';
   };
 
   $('activos-count').textContent = `${tickers.length} activo${tickers.length === 1 ? '' : 's'}`;
 
   if (!tickers.length) {
-    $('tabla-activos').innerHTML = `<tr><td colspan="9" class="px-5 py-8 text-center text-zinc-500 text-xs">Sin datos</td></tr>`;
+    $('tabla-activos').innerHTML = `<tr><td colspan="8" class="px-5 py-8 text-center text-zinc-500 text-xs">Sin datos</td></tr>`;
     return;
   }
 
@@ -1558,16 +1571,13 @@ function renderTablaActivos(data, info) {
       <tr class="hover:bg-surface-hover transition">
         <td class="px-5 py-3">
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] font-semibold text-zinc-300">
-              ${t.split('.')[0].slice(0, 3)}
-            </div>
+            ${copoDe(a) || '<span class="mp-copo-fila"></span>'}
             <div>
               <div class="font-medium text-zinc-100 text-sm">${t}</div>
               <div class="text-[11px] text-zinc-500 truncate max-w-[180px]">${nombre}</div>
             </div>
           </div>
         </td>
-        <td class="px-2 py-3 w-9">${copoDe(a)}</td>
         <td class="px-5 py-3 hidden md:table-cell text-xs text-zinc-400">${sector}</td>
         <td class="px-5 py-3 text-right tabular text-sm">${fmtPct(peso, 1, false)}</td>
         <td class="px-5 py-3 text-right tabular text-sm ${claseColor(a.rendimiento_total_pct)}">${fmtPct(a.rendimiento_total_pct, 1)}</td>
@@ -4083,8 +4093,10 @@ const Periodico = (() => {
     // El tope de la escala se imprime SIEMPRE: la figura se autoescala al día,
     // así que sin esta línea sería una gráfica sin unidades.
     $('marea-escala').textContent =
-      'Las guías punteadas marcan ±' + out.maxDist.toFixed(2) +
-      ' puntos de distancia. El color no dice si el sector subió: dice si le ganó al mercado.';
+      // Sin "no es X: es Y": esa construcción es la muletilla de LLM que más
+      // delata un texto generado, y esta app la usaba en tres sitios.
+      'Azul: le ganó al mercado. Café: se quedó atrás, aunque haya subido. ' +
+      'Las guías marcan ±' + out.maxDist.toFixed(2) + ' puntos.';
     bloque.classList.remove('hidden');
   }
 
@@ -7723,7 +7735,7 @@ const Brokers = (() => {
       </tr>`).join('');
     return `<table class="w-full text-left">
       <thead><tr class="border-b border-surface-border">
-        ${headers.map(h => `<th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">${h}</th>`).join('')}
+        ${headers.map(h => `<th class="py-2 px-3 text-[11px] font-semibold text-zinc-500">${h}</th>`).join('')}
       </tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
@@ -8331,13 +8343,15 @@ const CetesBench = (() => {
     $('cetes-tasa').textContent = cetesCache.toFixed(2) + '%';
     const cls = spread >= 0 ? 'text-accent-green' : 'text-accent-red';
     $('cetes-spread').className = `text-2xl font-bold tabular mt-0.5 ${cls}`;
-    $('cetes-spread').textContent = (spread >= 0 ? '+' : '') + spread.toFixed(2) + ' pp';
+    // "pts", como en la flotación: dos unidades distintas para la misma resta
+    // en la misma pantalla hacían pensar que eran dos cifras.
+    $('cetes-spread').textContent = (spread >= 0 ? '+' : '\u2212') + Math.abs(spread).toFixed(2) + ' pts';
     let veredicto;
-    if (spread >= 5) veredicto = '▲ Tu portafolio aplasta a CETES — el riesgo extra está pagando.';
-    else if (spread >= 2) veredicto = '✓ Sí compensa el riesgo: ganas más que la tasa libre.';
-    else if (spread >= 0) veredicto = '≈ Apenas igualas a CETES — revisa si vale la volatilidad.';
-    else if (spread >= -3) veredicto = '⚠ CETES te gana sin riesgo. Considera rebalancear.';
-    else veredicto = '× CETES te gana por mucho. Revisa tu estrategia.';
+    if (spread >= 5) veredicto = 'Le ganas a CETES por mucho.';
+    else if (spread >= 2) veredicto = 'Le ganas a CETES.';
+    else if (spread >= 0) veredicto = 'Apenas igualas a CETES.';
+    else if (spread >= -3) veredicto = 'CETES te gana sin riesgo.';
+    else veredicto = 'CETES te gana por mucho.';
     $('cetes-veredicto').className = `text-[11px] mt-0.5 ${cls}`;
     $('cetes-veredicto').textContent = veredicto;
     box.classList.remove('hidden');
@@ -8668,6 +8682,17 @@ const Analizador = (() => {
     if (a >= 1e6) return `${s}${(v / 1e6).toFixed(1)} M`;
     return `${s}${v.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
   }
+  /* "$794 mil millones": la cifra en mono y la palabra en la letra del texto.
+     Con "mil M" todo en mono salía espaciado como un código. */
+  function _montoConPalabra(v, mon = 'USD') {
+    if (v == null) return null;
+    const s = mon === 'MXN' ? '$' : 'US$';
+    const a = Math.abs(v);
+    const n = (x) => x.toLocaleString('es-MX', { maximumFractionDigits: x >= 100 ? 0 : 1 });
+    const [num, pal] = a >= 1e12 ? [v / 1e12, 'billones'] : a >= 1e9 ? [v / 1e9, 'mil millones']
+                     : a >= 1e6 ? [v / 1e6, 'millones'] : [v, ''];
+    return `${s}${n(num)}${pal ? ` <span class="mp-unidad">${pal}</span>` : ''}`;
+  }
   function _pfEntero(v) {
     return (v == null) ? null : Number(v).toLocaleString('es-MX', { maximumFractionDigits: 0 });
   }
@@ -8946,7 +8971,115 @@ const Analizador = (() => {
       const ges = ((d.perfil || {}).identidad || {}).gestora;
       return ['ETF / fondo cotizado', cat, ges].filter(Boolean).join(' · ');
     }
-    return [d.sector, d.industria].filter(Boolean).join(' · ') || 'Acción';
+    const sec = _SECTOR_ES[String(d.sector || '').toLowerCase()];
+    const ind = _INDUSTRIA_ES[String(d.industria || '').toLowerCase()];
+    // Solo lo que se sabe decir en español. "Consumo básico · Discount Stores"
+    // mezcla dos idiomas en un renglón; mejor el sector solo.
+    return [sec || (d.sector && !/[a-z]/.test(d.sector) ? '' : d.sector), ind]
+      .filter(Boolean).join(' · ') || 'Acción';
+  }
+
+  /* Los sectores y las industrias llegan como los publica Yahoo, en inglés.
+     El mismo diccionario de sectores que usa el backend en analisis.py; de
+     industrias, las que de verdad aparecen en la BMV y en las grandes de EU. */
+  const _SECTOR_ES = {
+    'technology': 'Tecnología', 'financial services': 'Finanzas', 'financial': 'Finanzas',
+    'healthcare': 'Salud', 'consumer cyclical': 'Consumo discrecional',
+    'consumer defensive': 'Consumo básico', 'consumer staples': 'Consumo básico',
+    'communication services': 'Comunicaciones', 'industrials': 'Industria',
+    'energy': 'Energía', 'utilities': 'Servicios públicos', 'basic materials': 'Materiales',
+    'materials': 'Materiales', 'real estate': 'Bienes raíces',
+  };
+  const _INDUSTRIA_ES = {
+    'discount stores': 'Tiendas de descuento', 'grocery stores': 'Supermercados',
+    'department stores': 'Tiendas departamentales', 'beverages—non-alcoholic': 'Refrescos',
+    'beverages—brewers': 'Cerveceras', 'beverages - brewers': 'Cerveceras',
+    'beverages—wineries & distilleries': 'Vinos y licores', 'packaged foods': 'Alimentos',
+    'confectioners': 'Dulces', 'household & personal products': 'Hogar y cuidado personal',
+    'banks—regional': 'Bancos', 'banks - regional': 'Bancos', 'banks—diversified': 'Bancos',
+    'banks - diversified': 'Bancos', 'credit services': 'Crédito', 'insurance—diversified': 'Seguros',
+    'insurance - diversified': 'Seguros', 'asset management': 'Gestión de activos',
+    'capital markets': 'Mercados de capitales', 'telecom services': 'Telecomunicaciones',
+    'building materials': 'Materiales de construcción', 'airports & air services': 'Aeropuertos',
+    'airlines': 'Aerolíneas', 'railroads': 'Ferrocarriles', 'trucking': 'Autotransporte',
+    'conglomerates': 'Conglomerados', 'specialty chemicals': 'Químicos',
+    'chemicals': 'Químicos', 'steel': 'Acero', 'copper': 'Cobre', 'gold': 'Oro', 'silver': 'Plata',
+    'other industrial metals & mining': 'Minería', 'reit—diversified': 'Fibras',
+    'reit - diversified': 'Fibras', 'reit—industrial': 'Fibras industriales',
+    'reit - industrial': 'Fibras industriales', 'reit—retail': 'Fibras comerciales',
+    'real estate—development': 'Desarrollo inmobiliario', 'engineering & construction': 'Construcción',
+    'infrastructure operations': 'Infraestructura', 'broadcasting': 'Televisión',
+    'entertainment': 'Entretenimiento', 'restaurants': 'Restaurantes', 'lodging': 'Hoteles',
+    'auto parts': 'Autopartes', 'auto manufacturers': 'Automotriz', 'packaging & containers': 'Empaques',
+    'medical care facilities': 'Hospitales', 'pharmaceutical retailers': 'Farmacias',
+    'drug manufacturers—general': 'Farmacéuticas', 'drug manufacturers - general': 'Farmacéuticas',
+    'consumer electronics': 'Electrónica de consumo', 'software—infrastructure': 'Software',
+    'software - infrastructure': 'Software', 'software—application': 'Software',
+    'software - application': 'Software', 'semiconductors': 'Semiconductores',
+    'internet content & information': 'Internet', 'internet retail': 'Comercio en línea',
+    'oil & gas integrated': 'Petróleo y gas', 'utilities—regulated electric': 'Electricidad',
+    'specialty retail': 'Tiendas especializadas', 'home improvement retail': 'Mejoras para el hogar',
+    'farm products': 'Agroindustria', 'tobacco': 'Tabaco', 'apparel retail': 'Ropa',
+  };
+
+  /* "WAL-MART DE MEXICO SAB DE CV" -> "Wal-Mart de Mexico SAB de CV". Solo se
+     toca si el nombre llega TODO en mayúsculas (así lo manda Yahoo para la
+     BMV); uno que ya trae minúsculas se respeta, porque alguien lo escribió así. */
+  const _SIGLAS = new Set(['SAB','SA','CV','SAPI','SC','NV','PLC','AG','SE','LP','LLC','ETF',
+    'ADR','REIT','II','III','IV','BBVA','IBM','AMD','ASML','TSMC','UBS','HSBC','GE','AT&T']);
+  const _PARTICULAS = new Set(['de','del','la','las','los','el','y','e','en','of','the','and']);
+  function _nombreLegible(s) {
+    s = String(s || '');
+    if (!s || /[a-z]/.test(s)) return s;
+    return s.split(/(\s+)/).map((w, i) => {
+      if (/^\s+$/.test(w)) return w;
+      const limpio = w.replace(/[.,]/g, '');
+      if (_SIGLAS.has(limpio)) return w;
+      const low = w.toLowerCase();
+      if (i > 0 && _PARTICULAS.has(low)) return low;
+      return low.replace(/(^|[-'’&/])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
+    }).join('');
+  }
+
+  /* LA MARCA DEL ACTIVO: el copo en vez del anillo de score.
+     Las cuatro revisiones de diseño coincidieron: el círculo con "52 / 100"
+     dentro y "INTERESANTE" en versalitas es la huella más reconocible de un
+     dashboard generado, y además no dice nada del activo —cualquier 52 se ve
+     igual—. El copo sí es propio de la app y cambia de forma con cada emisora.
+
+     OJO CON LAS UNIDADES. Este endpoint manda las métricas de riesgo en
+     FRACCIONES (volatilidad_anual 0.2154, max_drawdown −0.2714) y puntuar()
+     las espera en PORCENTAJE. Sin convertir, el copo saldría con la calma y
+     el aguante al tope para cualquier activo. El rendimiento es a un año,
+     que es lo que trae; se usa como compuesto porque eso es lo que es.
+
+     EL SCORE NO SE BORRA. El 52 es un compuesto que incluye fundamentales
+     (P/E, ROE, dividendo); el copo mide riesgo y rendimiento contra CETES.
+     Son preguntas distintas y las dos valen. Lo que sobraba era el anillo, no
+     el número: queda como cifra grande junto al copo. */
+  function _marcaActivo(d, ver) {
+    const F = window.MP_FLOTACION;
+    const fu = (d && d.fundamentales) || {};
+    const pct = (x) => (typeof x === 'number' && isFinite(x)) ? x * 100 : undefined;
+    let copo = '';
+    if (F) {
+      const m = {
+        rendimiento_cagr_pct:  pct(fu.retorno_1y),
+        sharpe_ratio:          (typeof fu.sharpe_ratio === 'number') ? fu.sharpe_ratio : undefined,
+        volatilidad_anual_pct: pct(fu.volatilidad_anual),
+        max_drawdown_pct:      pct(fu.max_drawdown),
+      };
+      copo = F.copo(F.puntuar(m, { cetes: 9.5 }), 128, 'Perfil de ' + (d.nombre || d.ticker));
+    }
+    const score = d.score == null ? '—' : Math.round(d.score);
+    return `
+      <div class="mp-marca-activo">
+        ${copo ? `<div class="mp-marca-copo">${copo}</div>` : ''}
+        <div class="mp-marca-score">
+          <span class="mp-marca-num">${score}</span>
+          <span class="mp-marca-ver">${escapeHtml(ver.etiqueta || '')}</span>
+        </div>
+      </div>`;
   }
 
   function render(d) {
@@ -8967,28 +9100,20 @@ const Analizador = (() => {
         ${(d.avisos && d.avisos.length) ? `<div class="mb-4 rounded-lg border border-accent-amber/30 bg-accent-amber/10 px-3 py-2 text-[12px] text-accent-amber leading-relaxed">${d.avisos.map(a => escapeHtml(a)).join('<br>')}</div>` : ''}
         <div class="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <p class="text-xs uppercase tracking-wider text-zinc-500">${escapeHtml(_encabezadoTipo(d))}</p>
-            <h3 class="text-2xl font-semibold text-zinc-100 mt-1">${escapeHtml(d.nombre || d.ticker)}</h3>
+            <p class="mp-an-tipo">${escapeHtml(_encabezadoTipo(d))}</p>
+            <h3 class="text-2xl font-semibold text-zinc-100 mt-1">${escapeHtml(_nombreLegible(d.nombre || d.ticker))}</h3>
             <p class="text-sm text-zinc-500 font-mono mt-0.5">${escapeHtml(d.ticker)} · ${escapeHtml(moneda)}
               <button id="an-watch-btn" data-ticker="${escapeHtml(d.ticker)}" title="Seguir en tu lista" class="ml-2 text-2xl align-middle leading-none ${enWatchlist(d.ticker) ? 'text-accent-amber' : 'text-zinc-600'} hover:text-accent-amber">${enWatchlist(d.ticker) ? '★' : '☆'}</button>
             </p>
-            ${d.precio_actual != null ? `<p class="text-base text-zinc-200 tabular mt-2">Último precio: <span class="font-semibold">${fmtMoney(d.precio_actual, moneda)} ${escapeHtml(moneda)}</span></p>` : ''}
+            ${d.precio_actual != null ? `<p class="mp-an-precio">Último precio <span class="tabular">${fmtMoney(d.precio_actual, moneda)}</span> ${escapeHtml(moneda)}</p>` : ''}
           </div>
-          <div class="text-center">
-            <div class="inline-flex items-center justify-center w-28 h-28 rounded-full border-4 ${verCls} relative">
-              <div class="text-center">
-                <p class="text-3xl font-bold tabular leading-none">${d.score == null ? '—' : Math.round(d.score)}</p>
-                <p class="text-[9px] uppercase tracking-wider mt-1">/ 100</p>
-              </div>
-            </div>
-            <p class="text-xs uppercase tracking-wider mt-2 ${verCls.split(' ')[0]} font-semibold">${escapeHtml(ver.etiqueta || '')}</p>
-          </div>
+          ${_marcaActivo(d, ver)}
         </div>
 
         <!-- Razones del score canónico (mismo score que Acción del Día) -->
         ${(d.score_razones && d.score_razones.length) ? `
         <div class="mt-5 pt-5 border-t border-surface-border">
-          <p class="text-xs uppercase tracking-wider text-zinc-500 mb-3">Por qué este score</p>
+          <p class="mp-etq mb-3">Por qué este score</p>
           <ul class="space-y-1.5">
             ${d.score_razones.map(r => `<li class="flex gap-2 items-start text-xs text-zinc-300"><span class="text-accent-green mt-0.5">+</span><span>${escapeHtml(r)}</span></li>`).join('')}
           </ul>
@@ -8996,7 +9121,7 @@ const Analizador = (() => {
         </div>` : `
         <!-- Fallback: desglose del score propio (tickers fuera del universo) -->
         <div class="mt-5 pt-5 border-t border-surface-border">
-          <p class="text-xs uppercase tracking-wider text-zinc-500 mb-3">Desglose del score</p>
+          <p class="mp-etq mb-3">Desglose del score</p>
           <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             ${Object.entries(sc).map(([k, v]) => {
               const peso = (d.score_pesos || {})[k] || 0;
@@ -9047,22 +9172,19 @@ const Analizador = (() => {
     }).join('');
     const peerHTML = `
       <div class="bg-surface border border-surface-border rounded-2xl p-6">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="text-accent-green">●</span>
-          <h4 class="text-sm font-semibold text-zinc-200 uppercase tracking-wider">Comparativa con empresas similares</h4>
-        </div>
+        <h4 class="text-sm font-semibold text-zinc-200 mb-3">Contra empresas parecidas</h4>
         <p class="text-xs text-zinc-500 mb-4">Valuación relativa contra ${(peer.peers || []).length} competidores. Un puntaje V/C más bajo significa más crecimiento por cada peso de valuación.</p>
         <div class="overflow-x-auto -mx-2">
           <table class="w-full text-left">
             <thead>
               <tr class="border-b border-surface-border">
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">Ticker</th>
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">P/S TTM</th>
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">P/S proy.</th>
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">EV/EBITDA</th>
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">Margen bruto</th>
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">Ingresos a/a</th>
-                <th class="py-2 px-3 text-[10px] uppercase tracking-wider text-zinc-500">Puntaje V/C</th>
+                <th class="py-2 px-3 text-[11px] font-semibold text-zinc-500">Ticker</th>
+                <th class="py-2 px-3 text-[11px] font-semibold text-zinc-500">P/S TTM</th>
+                <th class="py-2 px-3 text-[11px] font-semibold text-zinc-500">P/S proy.</th>
+                <th class="py-2 px-3 text-[11px] font-semibold text-zinc-500">EV/EBITDA</th>
+                <th class="py-2 px-3 text-[11px] font-semibold text-zinc-500">Margen bruto</th>
+                <th class="py-2 px-3 text-[11px] font-semibold text-zinc-500">Ingresos a/a</th>
+                <th class="py-2 px-3 text-[11px] font-semibold text-zinc-500">Puntaje V/C</th>
               </tr>
             </thead>
             <tbody>${peerRows || '<tr><td colspan="7" class="py-4 text-center text-xs text-zinc-500">Sin datos de empresas comparables.</td></tr>'}</tbody>
@@ -9124,7 +9246,7 @@ const Analizador = (() => {
         <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h4 class="text-sm font-semibold text-zinc-200">Precio histórico</h4>
           <div class="flex gap-1 text-[11px]">
-            ${['1M', '6M', '1A', '5A', 'MAX'].map(r => `<button data-an-rango="${r}" class="an-rango px-2 py-0.5 rounded border border-surface-border ${r === '1A' ? 'text-zinc-200 bg-zinc-900' : 'text-zinc-500 hover:text-zinc-200'}">${r}</button>`).join('')}
+            ${['1M', '6M', '1A', '5A', 'MAX'].map(r => `<button data-an-rango="${r}" class="an-rango${r === '1A' ? ' activo' : ''}" aria-pressed="${r === '1A'}">${r}</button>`).join('')}
           </div>
         </div>
         <div class="h-60"><canvas id="an-price-canvas"></canvas></div>
@@ -9132,31 +9254,31 @@ const Analizador = (() => {
 
     // Fundamentales clave (incluye FCF derivado de los estados financieros;
     // se llena aun para acciones .MX donde el resumen de Yahoo viene vacío)
+    // null = no llegó y el renglón no se pinta. Eran ocho tarjetas en rejilla
+    // y a WALMEX le salían dos vacías con un guion. Los montos van con
+    // _pfMoneda: "$794.37B" en español se lee como billones y eran miles de
+    // millones.
     const _fundKpis = [
-      ['P/E',           fund.pe_trailing != null ? fmtNum(fund.pe_trailing, 1) : '—'],
-      ['P/B',           fund.pb != null ? fmtNum(fund.pb, 2) : '—'],
-      ['ROE',           fund.roe != null ? fmtPct(fund.roe) : '—'],
-      ['Margen neto',   (fund.margenes && fund.margenes.neto != null) ? fmtPct(fund.margenes.neto) : '—'],
-      ['FCF',           fund.fcf != null ? fmtMoney(fund.fcf, moneda) : '—'],
-      ['FCF yield',     fund.fcf_yield != null ? fmtPct(fund.fcf_yield) : '—'],
-      ['Market cap',    fund.market_cap != null ? fmtMoney(fund.market_cap, moneda) : '—'],
-      ['Deuda/Capital', fund.debt_to_equity != null ? (fmtNum(fund.debt_to_equity, 0) + '%') : '—'],
-    ];
+      ['Precio / utilidad', fund.pe_trailing != null ? fmtNum(fund.pe_trailing, 1) : null],
+      ['Precio / valor en libros', fund.pb != null ? fmtNum(fund.pb, 2) : null],
+      ['ROE',               fund.roe != null ? fmtPct(fund.roe) : null],
+      ['Margen neto',       (fund.margenes && fund.margenes.neto != null) ? fmtPct(fund.margenes.neto) : null],
+      ['Flujo libre',       fund.fcf != null ? _montoConPalabra(fund.fcf, moneda) : null],
+      ['Flujo libre / valor', fund.fcf_yield != null ? fmtPct(fund.fcf_yield) : null],
+      ['Valor de mercado',  fund.market_cap != null ? _montoConPalabra(fund.market_cap, moneda) : null],
+      ['Deuda / capital',   fund.debt_to_equity != null ? (fmtNum(fund.debt_to_equity, 0) + '%') : null],
+    ].filter(([, v]) => v != null);
     const fuenteTxt = fund.fuente_respaldo === 'cache' ? 'caché de respaldo'
                     : fund.fuente_respaldo === 'alphavantage' ? 'Alpha Vantage (respaldo)'
                     : null;
     const fundHTML = `
       <div class="bg-surface border border-surface-border rounded-2xl p-5">
         <h4 class="text-sm font-semibold text-zinc-200 mb-3">Fundamentales clave</h4>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          ${_fundKpis.map(([l, v]) => `
-            <div class="bg-zinc-900/40 border border-surface-border rounded-lg p-3">
-              <p class="text-[10px] uppercase tracking-wider text-zinc-500">${l}</p>
-              <p class="text-sm font-semibold text-zinc-100 tabular mt-1">${v}</p>
-            </div>`).join('')}
-        </div>
+        <dl class="mp-fund">
+          ${_fundKpis.map(([l, v]) => `<div><dt>${l}</dt><dd class="tabular">${v}</dd></div>`).join('')}
+        </dl>
         ${fuenteTxt ? `<p class="text-[10px] text-zinc-600 mt-3">Fuente: ${fuenteTxt}.</p>` : ''}
-        <p class="text-[10px] text-zinc-600 mt-2">FCF = flujo operativo − CapEx, calculado de los estados financieros.</p>
+        ${fund.fcf != null ? '<p class="text-[11px] text-zinc-600 mt-2">Flujo libre = flujo operativo menos inversión en activos, de los estados financieros.</p>' : ''}
       </div>`;
 
     // ddHTML + srHTML removidos (requieren Claude API)
@@ -9182,8 +9304,8 @@ const Analizador = (() => {
 
     _renderPrecioChart(d.ticker, '1A');
     cont.querySelectorAll('.an-rango').forEach(b => b.addEventListener('click', () => {
-      cont.querySelectorAll('.an-rango').forEach(x => { x.classList.remove('text-zinc-200', 'bg-zinc-900'); x.classList.add('text-zinc-500'); });
-      b.classList.add('text-zinc-200', 'bg-zinc-900'); b.classList.remove('text-zinc-500');
+      cont.querySelectorAll('.an-rango').forEach(x => { x.classList.remove('activo'); x.setAttribute('aria-pressed', 'false'); });
+      b.classList.add('activo'); b.setAttribute('aria-pressed', 'true');
       _renderPrecioChart(d.ticker, b.dataset.anRango);
     }));
 

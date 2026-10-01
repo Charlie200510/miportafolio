@@ -586,14 +586,13 @@
             <p class="mp-etq">
               Portafolio óptimo
             </p>
-            <h3 class="text-sm font-semibold text-zinc-200 mt-0.5">Mezcla generada automáticamente</h3>
+            <h3 class="text-sm font-semibold text-zinc-200 mt-0.5">Tu mezcla para este riesgo</h3>
             <p class="text-[11px] text-zinc-600 mt-0.5 leading-snug max-w-lg">
               Optimización mean-variance (Markowitz): combinamos las mejores acciones del universo
               para maximizar Sharpe al nivel de riesgo que elijas, eliminando riesgo idiosincrático
               mediante diversificación.
             </p>
           </div>
-          <span class="text-[11px] text-accent-amber border border-accent-amber/30 bg-accent-amber/10 rounded-md px-2 py-0.5">Optimizado</span>
         </div>
 
         <div id="portafolio-optimo-card"
@@ -671,7 +670,7 @@
             </button>
             <button id="po-regenerar"
                     class="text-[12px] text-zinc-300 border border-surface-border hover:border-zinc-600 rounded-lg px-3 py-2 transition">
-              ↻ Regenerar
+              Otra mezcla
             </button>
             <span class="text-[10px] text-zinc-600 ml-auto">Markowitz · max Sharpe · vol objetivo</span>
           </div>
@@ -860,66 +859,64 @@
           <p class="mp-etq">Posición por posición</p>
           <!-- La clave de lectura NO se esconde en móvil: sin ella el ancho de
                las barras es decoración. Con flex-wrap cae a su propio renglón. -->
-          <p class="mp-firma">Alto = distancia a CETES &middot; Ancho = peso en tu cartera</p>
+          <p class="mp-firma">Entre más ancha, más pesa en tu cartera</p>
         </div>
         <div id="regata-figura" class="mt-3"></div>
         <ul id="regata-leyenda" class="mp-regata-leyenda"></ul>
         <p id="regata-veredicto" class="text-[15px] leading-relaxed text-zinc-200 mt-3 max-w-2xl"></p>
       </section>
 
-      <!-- KPI cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up fade-up-1">
-        <div class="bg-surface-card border border-surface-border rounded-xl p-4 hover:border-zinc-700 transition">
-          <p class="text-[11px] text-zinc-500 uppercase tracking-wider" data-tooltip="Cuánto creció tu portafolio por año EN PROMEDIO durante los últimos 5 años (crecimiento anual compuesto/CAGR). Si ves +12%, en promedio $100 se volvieron $112 cada año.">Retorno promedio anual</p>
-          <p class="text-2xl font-semibold tabular mt-1" id="kpi-retorno-anual">—</p>
-          <p class="text-[11px] text-zinc-500 mt-1" id="kpi-retorno-anual-ctx">—</p>
-          <p class="text-[10px] text-zinc-600 mt-2 leading-snug border-t border-surface-border pt-2">
-            Cuánto creció tu portafolio por año en promedio. Si pones $100 y el retorno es 10%, al año siguiente tendrías $110.
-          </p>
+      <!-- LAS CUATRO CIFRAS, como lista y no como rejilla de tarjetas.
+           Eran cuatro cajas blancas con un párrafo gris de cuatro renglones
+           cada una. Esa "tarjeta de métrica con párrafo explicativo" es la
+           huella de dashboard generado que señalaron tres revisiones, y además
+           repetía en otro formato lo que la flotación de arriba ya dice. La
+           explicación larga sigue disponible en el data-tooltip de cada rótulo.
+           Los id se conservan: el JS escribe ahí y sobrescribe el className del
+           número, por eso el estilo cuelga de .mp-kpi-valor y no de la cifra. -->
+      <dl class="mp-kpis fade-up fade-up-1">
+        <div class="mp-kpi">
+          <dt>
+            <span class="mp-kpi-etq" data-tooltip="Cuánto creció tu portafolio por año, compuesto, en los últimos 5 años. Si ves +12%, en promedio $100 se volvieron $112 cada año.">Rendimiento</span>
+            <span class="mp-kpi-ctx" id="kpi-retorno-anual-ctx">—</span>
+          </dt>
+          <dd class="mp-kpi-valor"><span id="kpi-retorno-anual">—</span></dd>
         </div>
-        <div class="bg-surface-card border border-surface-border rounded-xl p-4 hover:border-zinc-700 transition">
-          <p class="text-[11px] text-zinc-500 uppercase tracking-wider" data-tooltip="Qué tan nervioso es tu portafolio. Mayor volatilidad = subidas y bajadas más bruscas. No es bueno ni malo: depende cuánto aguantas.">Volatilidad</p>
-          <p class="text-2xl font-semibold tabular mt-1 text-zinc-100" id="kpi-vol">—</p>
-          <p class="text-[11px] text-zinc-500 mt-1" id="kpi-vol-ctx">—</p>
-          <p class="text-[10px] text-zinc-600 mt-2 leading-snug border-t border-surface-border pt-2">
-            Qué tan nervioso es tu portafolio. Mayor volatilidad = subidas y bajadas más bruscas. No es bueno ni malo por sí solo, depende de cuánto aguantas.
-          </p>
+        <div class="mp-kpi">
+          <dt>
+            <span class="mp-kpi-etq" data-tooltip="La volatilidad. Más alta = subidas y bajadas más bruscas. No es buena ni mala por sí sola: depende de cuánto aguantas.">Qué tanto se mueve</span>
+            <span class="mp-kpi-ctx" id="kpi-vol-ctx">—</span>
+          </dt>
+          <dd class="mp-kpi-valor"><span id="kpi-vol">—</span></dd>
         </div>
-        <div class="bg-surface-card border border-surface-border rounded-xl p-4 hover:border-zinc-700 transition">
-          <p class="text-[11px] text-zinc-500 uppercase tracking-wider" data-tooltip="Cuánto ganas por cada unidad de riesgo. Arriba de 1 es muy bueno, arriba de 0.5 es razonable, abajo de 0 significa que CETES te gana sin riesgo.">Sharpe</p>
-          <p class="text-2xl font-semibold tabular mt-1" id="kpi-sharpe">—</p>
-          <p class="text-[11px] text-zinc-500 mt-1" id="kpi-sharpe-ctx">—</p>
-          <p class="text-[10px] text-zinc-600 mt-2 leading-snug border-t border-surface-border pt-2">
-            Cuánto ganas por cada unidad de riesgo. Arriba de 1 es muy bueno, arriba de 0.5 es razonable, abajo de 0 significa que te conviene más dejar el dinero en Cetes.
-          </p>
+        <div class="mp-kpi">
+          <dt>
+            <span class="mp-kpi-etq" data-tooltip="El Sharpe. Cuánto ganas por cada unidad de riesgo. Arriba de 1 es muy bueno; abajo de 0, CETES te gana sin arriesgar.">Rendimiento por riesgo</span>
+            <span class="mp-kpi-ctx" id="kpi-sharpe-ctx">—</span>
+          </dt>
+          <dd class="mp-kpi-valor"><span id="kpi-sharpe">—</span></dd>
         </div>
-        <div class="bg-surface-card border border-surface-border rounded-xl p-4 hover:border-zinc-700 transition">
-          <p class="text-[11px] text-zinc-500 uppercase tracking-wider" data-tooltip="La peor caída histórica desde un pico. Te dice cuánto podrías perder en el peor momento antes de vender por miedo.">Máx. drawdown</p>
-          <p class="text-2xl font-semibold tabular mt-1 text-accent-red" id="kpi-dd">—</p>
-          <p class="text-[11px] text-zinc-500 mt-1" id="kpi-dd-ctx">—</p>
-          <p class="text-[10px] text-zinc-600 mt-2 leading-snug border-t border-surface-border pt-2">
-            La peor caída histórica desde un pico. Te ayuda a saber cuánto podrías perder en el peor momento antes de vender por miedo.
-          </p>
+        <div class="mp-kpi">
+          <dt>
+            <span class="mp-kpi-etq" data-tooltip="La mayor caída desde un máximo. Te dice cuánto podrías llegar a perder en el peor momento.">Peor caída</span>
+            <span class="mp-kpi-ctx" id="kpi-dd-ctx">—</span>
+          </dt>
+          <dd class="mp-kpi-valor"><span id="kpi-dd">—</span></dd>
         </div>
-      </div>
+        <!-- Contra CETES: era una tarjeta aparte con degradado, un "₱" en una
+             cajita y un veredicto con glifo ("⚠ Considera rebalancear"). Es una
+             cifra más del portafolio y va en la misma lista. La llena
+             CetesBench en app.js, que le quita .hidden cuando ya tiene tasa. -->
+        <div class="mp-kpi hidden" id="cetes-benchmark">
+          <dt>
+            <span class="mp-kpi-etq" data-tooltip="Tu rendimiento por año menos lo que paga CETES a 28 días, que no tiene riesgo. Si sale negativo, CETES te ganó sin que arriesgaras nada.">Contra CETES</span>
+            <span class="mp-kpi-ctx">CETES paga <span id="cetes-tasa">—</span> sin riesgo</span>
+            <span id="cetes-veredicto" hidden></span>
+          </dt>
+          <dd class="mp-kpi-valor"><span id="cetes-spread">—</span></dd>
+        </div>
+      </dl>
 
-      <!-- CETES vs PORTAFOLIO -->
-      <div id="cetes-benchmark" class="hidden mt-4 bg-gradient-to-r from-accent-teal/10 to-zinc-900/40 border border-accent-teal/20 rounded-xl p-4 fade-up">
-        <div class="flex items-center justify-between flex-wrap gap-3">
-          <div class="flex items-center gap-3">
-            <span class="w-9 h-9 rounded-lg bg-accent-teal/20 border border-accent-teal/30 flex items-center justify-center text-accent-teal text-sm">₱</span>
-            <div>
-              <p class="mp-etq">vs Tasa libre de riesgo</p>
-              <p class="text-sm font-medium text-zinc-100">CETES 28d hoy: <span id="cetes-tasa" class="text-accent-teal font-semibold tabular">—</span></p>
-            </div>
-          </div>
-          <div class="text-right">
-            <p class="mp-etq">Tu portafolio vs CETES</p>
-            <p id="cetes-spread" class="text-2xl font-bold tabular mt-0.5">—</p>
-            <p id="cetes-veredicto" class="text-[11px] mt-0.5">—</p>
-          </div>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -986,9 +983,6 @@
       <h3 class="mp-sec-etq"><span class="mp-sec-orden">Sección B ·</span> La lectura del día</h3>
       <span class="text-xs text-zinc-500" id="insights-count">—</span>
     </div>
-    <p class="text-xs text-zinc-500 mb-3 leading-relaxed max-w-3xl">
-      Puntos clave detectados automáticamente sobre tu portafolio — concentración, riesgo, diversificación. Sirve para entender de un vistazo dónde están las oportunidades y las zonas de cuidado.
-    </p>
     <div id="insights-grid" class="grid md:grid-cols-2 gap-3 fade-up fade-up-2"></div>
   </section>
 
@@ -1222,10 +1216,6 @@
           <thead>
             <tr class="text-[11px] text-zinc-500 uppercase tracking-wider border-b border-surface-border">
               <th class="text-left font-medium px-5 py-3">Ticker</th>
-              <!-- El copo: la marca del activo. Va pegado al ticker a propósito,
-                   para que se lean como una sola cosa y el ojo aprenda la
-                   silueta junto al nombre. -->
-              <th class="font-medium px-2 py-3" title="Perfil contra CETES"><span class="sr-only">Perfil</span></th>
               <th class="text-left font-medium px-5 py-3 hidden md:table-cell">Sector</th>
               <th class="text-right font-medium px-5 py-3">Peso</th>
               <th class="text-right font-medium px-5 py-3">Retorno</th>
@@ -1236,7 +1226,7 @@
             </tr>
           </thead>
           <tbody id="tabla-activos" class="divide-y divide-surface-border">
-            <tr><td colspan="9" class="px-5 py-8 text-center text-zinc-500 text-xs">Cargando…</td></tr>
+            <tr><td colspan="8" class="px-5 py-8 text-center text-zinc-500 text-xs">Cargando…</td></tr>
           </tbody>
         </table>
       </div>
@@ -2351,7 +2341,7 @@
     <section id="marea-bloque" class="mp-marea max-w-7xl mx-auto hidden">
       <div class="flex items-baseline justify-between gap-4 flex-wrap">
         <p class="mp-etq">Los sectores contra el mercado</p>
-        <p class="mp-firma">La línea no es cero: es el mercado</p>
+        <p class="mp-firma">Medidos contra el S&amp;P 500</p>
       </div>
       <div id="marea-figura" class="mt-3"></div>
       <p id="marea-veredicto" class="mp-marea-ver"></p>

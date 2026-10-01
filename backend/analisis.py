@@ -25,7 +25,17 @@ INFO_PATH = CARPETA / "info_activos.json"
 JSON_PATH = CARPETA / "resultados.json"
 
 DIAS_HABILES = 252                 # días hábiles en un año bursátil
-TASA_LIBRE_RIESGO = 0.09           # Cetes 28 días en México (~9%)
+# Cetes 28 días. Estaba en 0.09 mientras los otros SEIS lugares del backend
+# que definen la tasa libre de riesgo en pesos usan 0.095 (backtest.py,
+# perfiles.py, metricas_canonicas.RF_MXN_DEFAULT, sml.RF_MXN_DEFAULT y el
+# respaldo de renta_fija_mx). En la misma pantalla la flotación decía "CETES
+# pagó 9.0%" y la celda del Cuadernillo "CETES 28 días 9.50%".
+#
+# PENDIENTE DE VERDAD: ninguna de las siete es en vivo. renta_fija_mx sabe
+# pedirla a Banxico SIE pero no hay BANXICO_SIE_TOKEN configurado, así que
+# todas son constantes. Lo correcto es un solo accesor cacheado que lean las
+# siete; mientras tanto, al menos dicen lo mismo.
+TASA_LIBRE_RIESGO = 0.095
 # Benchmarks disponibles (se eligen automáticamente según moneda dominante)
 BENCHMARK_US = "^GSPC"             # S&P 500
 BENCHMARK_MX = "^MXX"              # IPC México
@@ -306,6 +316,43 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
     elif _n >= 2:
         rend_1y_pct = float((valor_portafolio.iloc[-1] / valor_portafolio.iloc[0] - 1) * 100)
 
+    # --- CAGR: UNA sola definición, UNA sola ventana, para todo lo que se
+    #     compara contra CETES o contra el índice. ---
+    #
+    # Había tres rendimientos distintos en la misma pantalla y producían
+    # veredictos OPUESTOS. La figura de la flotación comparaba contra CETES el
+    # `rendimiento_anualizado_pct` —el promedio ARITMÉTICO de los rendimientos
+    # diarios por 252— mientras la tarjeta de rendimiento y el Cuadernillo
+    # usaban el CAGR. Con una cartera de 16.8% de volatilidad el aritmético
+    # salía ~10.4% y el compuesto 7.43%: la flotación decía "le gana a CETES"
+    # y dos pantallas más abajo la app decía "CETES te gana por 2.1 pts".
+    #
+    # El que dice la verdad es el compuesto. El aritmético sobrestima lo que de
+    # verdad se ganó por el arrastre de la volatilidad (≈ σ²/2): es el número
+    # que ganaría una cartera que no fluctuara, y ésta fluctúa. Contra CETES,
+    # que no fluctúa, la única comparación honesta es compuesto contra tasa.
+    #
+    # Se conserva `rendimiento_anualizado_pct` porque el Sharpe se define sobre
+    # la media aritmética —eso es convención, no error—, pero NADA que se
+    # compare contra la tasa libre de riesgo o contra el índice debe usarlo.
+    _n_cagr = len(valor_portafolio)
+    _vent = min(_n_cagr, DIAS_HABILES * 5)
+
+    def _cagr(serie):
+        """CAGR en % sobre la ventana común `_vent`. None si no hay un año."""
+        try:
+            s = serie.dropna()
+            if len(s) < DIAS_HABILES:
+                return None
+            v = s.iloc[-min(len(s), _vent):]
+            ini, fin = float(v.iloc[0]), float(v.iloc[-1])
+            anios = len(v) / DIAS_HABILES
+            if ini <= 0 or anios <= 0:
+                return None
+            return round(((fin / ini) ** (1.0 / anios) - 1) * 100, 2)
+        except Exception:
+            return None
+
     # --- Retorno PROMEDIO ANUAL de los últimos 5 años (CAGR) ---
     # Crecimiento anual compuesto sobre la ventana de 5 años (o la historia
     # disponible si es menor). Es el "en promedio, cuánto rindió por año".
@@ -318,12 +365,28 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
         if _v_ini > 0 and _anios > 0:
             rend_prom_anual_5y_pct = float(((_v_fin / _v_ini) ** (1.0 / _anios) - 1) * 100)
 
+    # Mismo CAGR, misma ventana, para cada posición: la regata y el copo de la
+    # tabla comparan cada emisora contra CETES y tienen que decir lo mismo que
+    # la figura de la cartera, que está justo encima.
+    # OJO CON LA VENTANA: se usa precios_port —la matriz ALINEADA con la que
+    # se construye valor_portafolio—, no precios[t]. Con la columna completa
+    # sin alinear, cada emisora tomaba su propia ventana y el resultado era
+    # imposible: FUNO11 salía con CAGR 17.42% y aritmético 10.75%. Sobre el
+    # mismo periodo el compuesto solo rebasa al aritmético ×252 por el efecto
+    # de capitalizar, fracciones de punto con volatilidad baja; siete puntos
+    # arriba son la prueba de que no era el mismo periodo.
+    for _t in activos:
+        if _t in por_activo and _t in precios_port.columns:
+            por_activo[_t]["rendimiento_cagr_pct"] = _cagr(precios_port[_t])
+
     portafolio = {
         "pesos": {t: round(w, 4) for t, w in pesos_dict.items()},
         "rendimiento_total_pct": round(rend_total_port, 2),
         "rendimiento_anualizado_pct": round(rend_port_anual, 2),
         "rendimiento_1y_pct": round(rend_1y_pct, 2) if rend_1y_pct is not None else None,
         "rendimiento_prom_anual_5y_pct": round(rend_prom_anual_5y_pct, 2) if rend_prom_anual_5y_pct is not None else None,
+        # Alias explícito: el mismo número, con el nombre que dice qué es.
+        "rendimiento_cagr_pct": round(rend_prom_anual_5y_pct, 2) if rend_prom_anual_5y_pct is not None else None,
         "volatilidad_anual_pct": round(vol_port_anual, 2),
         "sharpe_ratio": round(sharpe_port, 3),
         "max_drawdown_pct": round(max_dd_port, 2),
@@ -360,6 +423,10 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
             "ticker": benchmark_elegido,
             "rendimiento_total_pct": round(rend_bench_total, 2),
             "rendimiento_anualizado_pct": round(rend_bench_anual, 2),
+            # El eje MERCADO compara la cartera contra el índice: los dos tienen
+            # que ser compuestos y sobre la misma ventana, o el eje hereda el
+            # mismo sesgo que tenía PODER contra CETES.
+            "rendimiento_cagr_pct": _cagr(precios_bench.reindex(valor_portafolio.index).ffill()),
             "volatilidad_anual_pct": round(vol_bench_anual, 2),
             "sharpe_ratio": round(sharpe_bench, 3),
             "max_drawdown_pct": round(max_dd_bench, 2),

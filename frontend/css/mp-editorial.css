@@ -54,7 +54,7 @@ h4, h5, h6 { font-family: var(--ff-sans) !important; color: var(--tinta-1); }
    botones —como estaba— la pantalla deja de tener jerarquía: todo suena a
    terminal y nada suena a producto. Si vas a poner --ff-mono en una regla
    nueva, pregúntate si el usuario lee ESO como número. Si no, es sans. */
-.tabular, .mp-num, .mp-ticker, .mp-etq, code, kbd, samp {
+.tabular, .mp-num, .mp-ticker, code, kbd, samp {
   font-family: var(--ff-mono) !important;
   font-variant-numeric: tabular-nums lining-nums !important;
   font-feature-settings: 'tnum' 1, 'lnum' 1, 'zero' 1;
@@ -67,13 +67,20 @@ td, th, input[type="number"], .mp-tabla td, .mp-tabla th {
   font-variant-numeric: tabular-nums lining-nums;
 }
 
-/* Etiqueta técnica: mono, versalita óptica, tracking abierto. */
+/* Rótulo de bloque: sans, CAJA NORMAL, sin tracking.
+   Era mono de 10px en versalitas con .08em de tracking, repetido sobre cada
+   bloque de la app —"TU CARTERA CONTRA CETES", "POSICIÓN POR POSICIÓN"—. Esa
+   etiqueta es la firma tipográfica número uno del diseño generado en 2025-26:
+   cuando todo es rótulo, nada es jerarquía. Además rompía la regla de arriba
+   (la mono nunca para prosa) en frases enteras. Las mayúsculas quedan para UN
+   solo rol, el encabezado de sección (.mp-sec-etq). */
 .mp-etq {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--tinta-3);
+  font-family: var(--ff-sans) !important;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tinta-2);
 }
 
 /* ────────────────────────────── REGLAS ──────────────────────────────────── */
@@ -2153,13 +2160,18 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
    La marca del activo dentro de la tabla. Ancho fijo para que la columna no
    baile de fila en fila, y `overflow: visible` en el SVG porque el trazo del
    polígono se sale medio píxel del viewBox en los vértices extremos. */
+/* Ahora es el IDENTIFICADOR de la fila, donde antes iba una ficha gris con
+   las tres primeras letras del ticker ("AMX", "BIM"). Esa ficha era de
+   plantilla y no decía nada; el copo cambia de forma con cada emisora, así
+   que se aprende a reconocerlas por la silueta. 40px: a 30 se leía como una
+   mancha, y como marca tiene que leerse. */
 .mp-copo-fila {
   display: block;
-  width: 30px;
-  height: 30px;
-  margin: 0 auto;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
 }
-.mp-copo-fila > svg { width: 30px; height: 30px; }
+.mp-copo-fila > svg { width: 40px; height: 40px; }
 
 /* ── PRESUPUESTO DE LOS PERFILES ───────────────────────────────────────────
    El selector de "¿con cuánto empiezas?" y la línea de mínimo en cada
@@ -2217,3 +2229,157 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
 .mp-capital-nota span { color: var(--tinta-4); }
 /* Cuando no se pudo llegar al presupuesto pedido, se dice, no se disimula. */
 .mp-capital-nota.corto b { color: var(--baja); }
+
+/* ── LA MARCA DEL ACTIVO EN ANALIZAR ───────────────────────────────────────
+   El copo a la izquierda y el score como tipografía, sin caja ni anillo. El
+   veredicto en caja normal y en la serif itálica: las versalitas espaciadas
+   eran parte de la plantilla que se quitó. */
+.mp-marca-activo {
+  display: flex;
+  align-items: center;
+  gap: var(--paso-4);
+}
+.mp-marca-copo { width: 128px; height: 128px; flex: 0 0 auto; }
+.mp-marca-score { display: flex; flex-direction: column; gap: 2px; }
+.mp-marca-num {
+  font-family: var(--ff-display);
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--tinta-1);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.mp-marca-ver {
+  font-family: var(--ff-serif);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--tinta-2);
+}
+
+/* ── LA LECTURA DEL DÍA ────────────────────────────────────────────────────
+   Dos listas sobre el papel. Sin tarjeta, sin filete de color, sin icono y
+   sin pastilla: el subtítulo del grupo ya dice si es para vigilar o a favor. */
+#insights-grid {
+  display: grid;
+  gap: var(--paso-5);
+}
+@media (min-width: 768px) {
+  #insights-grid { grid-template-columns: 1fr 1fr; }
+}
+.mp-lectura-cab {
+  font-family: var(--ff-display) !important;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--tinta-1);
+  margin: 0 0 var(--paso-2);
+}
+.mp-lectura-grupo ul { list-style: none; margin: 0; padding: 0; }
+.mp-lectura-item {
+  padding: var(--paso-3) 0;
+  border-bottom: var(--hairline) solid var(--regla);
+}
+.mp-lectura-item:last-child { border-bottom: 0; }
+.mp-lectura-tit {
+  font-size: var(--txt-cuerpo);
+  font-weight: 600;
+  color: var(--tinta-1);
+  margin: 0;
+  line-height: 1.35;
+}
+.mp-lectura-det {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tinta-2);
+  margin: 4px 0 0;
+}
+
+/* ── LAS CUATRO CIFRAS DEL PORTAFOLIO ──────────────────────────────────────
+   Lista con hairline, del mismo ancho que la regata. Rótulo en caja normal y
+   su contexto debajo a la izquierda; la cifra a la derecha, en mono. */
+.mp-kpis { margin: var(--paso-5) 0 0; }
+.mp-kpi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--paso-4);
+  padding: var(--paso-3) 0;
+  border-bottom: var(--hairline) solid var(--regla);
+}
+.mp-kpi:last-child { border-bottom: 0; }
+.mp-kpi dt { display: flex; flex-direction: column; gap: 2px; min-width: 0; margin: 0; }
+.mp-kpi-etq { font-size: var(--txt-cuerpo); font-weight: 600; color: var(--tinta-1); }
+.mp-kpi-ctx { font-size: var(--txt-meta); color: var(--tinta-3); line-height: 1.35; }
+.mp-kpi-valor { margin: 0; flex: 0 0 auto; }
+/* El JS le pone "text-2xl font-semibold tabular mt-1 <color>" a la cifra: se
+   pisa el tamaño y el margen, y se respeta el color, que es el dato. */
+.mp-kpi-valor > span {
+  font-family: var(--ff-mono) !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Con la suscripción activa el botón ya no vende nada: era un bloque verde
+   relleno con "Suscrito ✓", lo más llamativo de la pantalla para anunciar un
+   estado. Queda como palabra en el color del sello, sin relleno ni borde, con
+   su área táctil intacta. */
+#btn-premium-header[data-premium] {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--sello) !important;
+  padding-left: var(--paso-2) !important;
+  padding-right: var(--paso-2) !important;
+}
+#btn-premium-header[data-premium]:hover { background: var(--sup-panel) !important; }
+
+/* ── ANALIZAR: encabezado de la emisora y fundamentales ──────────────────── */
+/* El sector sobre el nombre, en caja normal: en versalitas y en inglés
+   ("CONSUMER DEFENSIVE · DISCOUNT STORES") era texto crudo de la API. */
+.mp-an-tipo { font-size: var(--txt-meta); color: var(--tinta-3); margin: 0; }
+/* "Último precio" es una frase; solo la cifra va en mono. */
+.mp-an-precio { font-size: var(--txt-cuerpo); color: var(--tinta-2); margin-top: var(--paso-2); }
+.mp-an-precio .tabular { color: var(--tinta-1); font-weight: 600; }
+
+/* Fundamentales: dos columnas de renglones con hairline, no ocho tarjetas. */
+.mp-fund {
+  display: grid;
+  grid-template-columns: 1fr;
+  column-gap: var(--paso-5);
+  margin: 0;
+}
+@media (min-width: 640px) { .mp-fund { grid-template-columns: 1fr 1fr; } }
+.mp-fund > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--paso-3);
+  padding: 10px 0;
+  border-bottom: var(--hairline) solid var(--regla);
+}
+.mp-fund dt { font-size: var(--txt-cuerpo); color: var(--tinta-2); margin: 0; }
+.mp-fund dd { font-size: var(--txt-cuerpo); color: var(--tinta-1); font-weight: 600; margin: 0; }
+/* .mp-kpi es flex y va después de Tailwind: sin esto le gana a .hidden. */
+.mp-kpi.hidden { display: none; }
+
+/* La palabra de un monto ("mil millones") en la letra del texto, no en mono. */
+.mp-unidad { font-family: var(--ff-sans); font-weight: 500; color: var(--tinta-2); }
+
+/* Rangos de la gráfica de precio: texto con subrayado, no cinco cajas con
+   borde. El activo se marca con tinta y un filete debajo. */
+.an-rango {
+  min-height: 36px;
+  padding: 0 var(--paso-2);
+  font-family: var(--ff-sans);
+  font-size: var(--txt-meta);
+  font-weight: 600;
+  color: var(--tinta-3);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+.an-rango:hover { color: var(--tinta-1); }
+.an-rango.activo { color: var(--tinta-1); border-bottom-color: var(--tinta-1); }
