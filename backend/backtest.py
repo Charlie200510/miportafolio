@@ -26,7 +26,18 @@ _UNIV_LITE = _BACKEND_DIR / "universo_lite_precios.csv"
 _UNIV_CSV  = _UNIV_FULL if _UNIV_FULL.exists() else _UNIV_LITE
 
 DIAS_HABILES = 252
-TASA_LIBRE_RIESGO = 0.095
+# Respaldo si no se puede leer la tasa vigente. La que se usa sale de
+# renta_fija_mx.cetes_28_pct(): la misma CETES 28 días que enseña el chip.
+TASA_LIBRE_RIESGO = 0.0601
+
+
+def tasa_libre_riesgo() -> float:
+    """CETES 28 días vigente, como fracción."""
+    try:
+        from renta_fija_mx import tasa_libre_mx
+        return tasa_libre_mx()
+    except Exception:
+        return TASA_LIBRE_RIESGO
 
 # Periodos predefinidos (presets) — fechas inclusivas
 PERIODOS_PRESET = {
@@ -150,7 +161,7 @@ def _metricas(valor: pd.Series) -> dict:
     años = n / DIAS_HABILES
     ret_anual = (1 + ret_total) ** (1 / max(años, 1/DIAS_HABILES)) - 1 if años > 0 else 0
     vol_anual = float(rend.std() * np.sqrt(DIAS_HABILES))
-    sharpe = (ret_anual - TASA_LIBRE_RIESGO) / vol_anual if vol_anual > 0 else 0.0
+    sharpe = (ret_anual - tasa_libre_riesgo()) / vol_anual if vol_anual > 0 else 0.0
     max_dd, _, _ = _max_drawdown(valor)
     return {
         "retorno_total_pct":     round(ret_total * 100, 2),

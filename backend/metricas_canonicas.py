@@ -30,7 +30,7 @@ import pandas as pd
 # Constantes canónicas
 # ─────────────────────────────────────────────────────────
 RF_USD_DEFAULT = 0.045   # UST 3m aprox
-RF_MXN_DEFAULT = 0.095   # CETES 28d aprox
+RF_MXN_DEFAULT = 0.0601  # respaldo; la vigente sale de renta_fija_mx
 PREMIO_USD     = 0.06    # Premio histórico SP500
 PREMIO_MXN     = 0.04    # Premio histórico IPC
 
@@ -93,9 +93,18 @@ def tipo_activo(ticker: str, info: Optional[Dict[str, Any]] = None) -> str:
 def rf_para(ticker: str) -> float:
     """Tasa libre de riesgo en la moneda apropiada."""
     if (ticker or "").upper().endswith(".MX"):
+        # CETES_28D en el entorno manda (configuración explícita). Si no está,
+        # la CETES 28 días VIGENTE, la misma del chip y del Cuadernillo; antes
+        # era siempre el 9.5% de respaldo aunque Banxico dijera 6.01%.
+        if os.environ.get("CETES_28D"):
+            try:
+                return float(os.environ["CETES_28D"])
+            except (TypeError, ValueError):
+                pass
         try:
-            return float(os.environ.get("CETES_28D", RF_MXN_DEFAULT))
-        except (TypeError, ValueError):
+            from renta_fija_mx import tasa_libre_mx
+            return tasa_libre_mx()
+        except Exception:
             return RF_MXN_DEFAULT
     try:
         return float(os.environ.get("UST_3M", RF_USD_DEFAULT))
@@ -565,12 +574,16 @@ def score_compuesto(
 
 def nivel_para_score(score: int) -> Tuple[str, str]:
     """Devuelve (nivel, color) según el score canónico (escala recalibrada)."""
+    # Etiquetas DESCRIPTIVAS para todo tipo de activo. "Recomendación sólida"
+    # suena a consejo de compra y la app no es asesor registrado ante la CNBV:
+    # describe desempeño, no recomienda. Antes solo ETF y cripto se nombraban
+    # así (analizador.py); las acciones seguían diciendo "Recomendación".
     if score >= 78:
-        return "Recomendación fuerte", "green"
+        return "Desempeño destacado", "green"
     if score >= 62:
-        return "Recomendación sólida", "green"
+        return "Desempeño sólido", "green"
     if score >= 48:
-        return "Interesante", "blue"
+        return "Desempeño medio", "blue"
     if score >= 35:
-        return "Mención", "amber"
+        return "Desempeño flojo", "amber"
     return "Sin ventaja clara", "zinc"

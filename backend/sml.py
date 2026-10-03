@@ -41,7 +41,7 @@ import yfinance as yf
 # Tasas libres de riesgo asumidas (anualizadas)
 # Se pueden sobreescribir con CETES_28D / UST_3M env vars
 RF_USD_DEFAULT = 0.045   # 4.5% — UST 3m aprox
-RF_MXN_DEFAULT = 0.095   # 9.5% — CETES 28d aprox
+RF_MXN_DEFAULT = 0.0601  # respaldo; la vigente sale de renta_fija_mx
 
 # Premios de mercado históricos (retorno SP500 / IPC - tasa libre de riesgo)
 PREMIO_MERCADO_USA = 0.06   # ~6% histórico USA
@@ -63,9 +63,18 @@ def _es_crypto(ticker: str) -> bool:
 def _rf_para(ticker: str) -> float:
     """Tasa libre de riesgo en la moneda apropiada."""
     if (ticker or "").upper().endswith(".MX"):
+        # CETES_28D en el entorno manda (configuración explícita). Si no está,
+        # la CETES 28 días VIGENTE, la misma del chip y del Cuadernillo; antes
+        # era siempre el 9.5% de respaldo aunque Banxico dijera 6.01%.
+        if os.environ.get("CETES_28D"):
+            try:
+                return float(os.environ["CETES_28D"])
+            except (TypeError, ValueError):
+                pass
         try:
-            return float(os.environ.get("CETES_28D", RF_MXN_DEFAULT))
-        except (TypeError, ValueError):
+            from renta_fija_mx import tasa_libre_mx
+            return tasa_libre_mx()
+        except Exception:
             return RF_MXN_DEFAULT
     try:
         return float(os.environ.get("UST_3M", RF_USD_DEFAULT))

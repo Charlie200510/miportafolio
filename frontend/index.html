@@ -6,8 +6,8 @@
 
   <!-- SEO PRIMARY -->
   <title>Mi Portafolio · Análisis de inversión para mexicanos | miportafolio.uk</title>
-  <meta name="description" content="App educativa para optimizar tu portafolio: Markowitz, Sharpe, ISR mexicano automático, backtests, stress tests, comparativa de AFOREs y brokers MX. Gratis." />
-  <meta name="keywords" content="mi portafolio, portafolio inversión, markowitz mexico, ISR acciones, sharpe ratio, BMV, SIC, retail mexico, AFORE comparativa, calcular impuestos acciones" />
+  <meta name="description" content="App educativa para optimizar tu portafolio: Markowitz, Sharpe, ISR mexicano automático, backtests, stress tests y comparativa de brokers MX. Gratis." />
+  <meta name="keywords" content="mi portafolio, portafolio inversión, markowitz mexico, ISR acciones, sharpe ratio, BMV, SIC, retail mexico, calcular impuestos acciones" />
   <meta name="author" content="Mi Portafolio" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
   <link rel="canonical" href="https://miportafolio.uk/" />
@@ -36,7 +36,7 @@
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Mi Portafolio · Análisis para inversionista mexicano" />
-  <meta name="twitter:description" content="Markowitz, ISR mexicano, AFOREs y mucho más. Gratis." />
+  <meta name="twitter:description" content="Markowitz, ISR mexicano, CETES y mucho más. Gratis." />
   <meta name="twitter:image" content="https://miportafolio.uk/static/logo.png" />
 
   <!-- Structured Data: WebApplication -->
@@ -46,7 +46,7 @@
     "@type": "WebApplication",
     "name": "Mi Portafolio",
     "url": "https://miportafolio.uk",
-    "description": "Plataforma educativa de análisis de inversión para retail mexicano. Markowitz, ISR mexicano, AFOREs, brokers MX.",
+    "description": "Plataforma educativa de análisis de inversión para retail mexicano. Markowitz, ISR mexicano, CETES, brokers MX.",
     "applicationCategory": "FinanceApplication",
     "operatingSystem": "Web, iOS, Android",
     "inLanguage": "es-MX",
@@ -628,6 +628,11 @@
               <span id="po-capital-min" class="text-[11px] text-zinc-500 tabular"></span>
             </div>
             <div id="po-capital" class="mp-capital-ops" role="group" aria-label="Presupuesto">
+              <!-- $5 y $10 mil: con el tope de 10% por emisora caben 14–22
+                   emisoras baratas (BMV y EU) y el resto en CETES; probado con
+                   σ 8/14/20%: Sharpe 1.1–1.5, mínimo real $4,900 y $9,800. -->
+              <button type="button" data-capital="5000">$5 mil</button>
+              <button type="button" data-capital="10000">$10 mil</button>
               <button type="button" data-capital="25000">$25 mil</button>
               <button type="button" data-capital="50000">$50 mil</button>
               <button type="button" data-capital="100000">$100 mil</button>
@@ -924,7 +929,7 @@
   <!-- CUADERNILLO MÉXICO — la diferenciación, arriba y no escondida  -->
   <!-- ============================================================ -->
   <!-- Es lo que ninguna otra app de portafolios trae: ISR mexicano,
-       tax-loss harvesting, comparativa contra tu AFORE, CETES, brokers MX y
+       tax-loss harvesting, comparativa contra el IPC, CETES, brokers MX y
        stress tests con eventos de México. Cada celda enruta a la herramienta
        que YA existe (mismos data-vista, misma lógica): esto reordena la
        jerarquía visual, no la navegación. Lo llena renderCuadernilloMexico(). -->
@@ -935,7 +940,7 @@
     </div>
     <p class="text-xs text-zinc-500 mb-3 leading-relaxed max-w-3xl">
       Tu portafolio leído con las reglas del mercado mexicano: el ISR del artículo 129 de la LISR,
-      la tasa de CETES como piso libre de riesgo, el rendimiento de tu SIEFORE y los shocks que
+      la tasa de CETES como piso libre de riesgo, el IPC de la BMV y los shocks que
       de verdad han movido a México.
     </p>
     <div id="mx-reticula" class="mp-reticula grid-cols-2 md:grid-cols-3 lg:grid-cols-6 fade-up fade-up-1">
@@ -954,20 +959,29 @@
         <p class="text-xl font-semibold tabular mt-1.5" id="mx-cetes-valor">—</p>
         <p class="mp-firma mt-1" id="mx-cetes-nota">Piso libre de riesgo</p>
       </button>
-      <button data-vista="metas" class="nav-tab text-left" data-mx="afore">
-        <p class="mp-etq">Tu cartera vs AFORE</p>
+      <!-- Era "Tu cartera vs AFORE" con una tabla de SIEFOREs escrita a mano:
+           nombres por edad cuando CONSAR las nombra por año de nacimiento
+           ("SB 75-79" es para nacidos en 1975-79), cifras reales comparadas
+           contra un rendimiento nominal, y un pie que decía "IRN publicado por
+           CONSAR" sin serlo. Sin los datos oficiales no hay cifra honesta, así
+           que la celda compara contra el índice, que sí sale del análisis. -->
+      <button type="button" class="text-left" data-mx="indice" data-ir="#seccion-vs-mercado">
+        <p class="mp-etq" id="mx-indice-etq">Tu cartera vs IPC</p>
         <p class="text-xl font-semibold tabular mt-1.5" id="mx-afore-valor">—</p>
-        <p class="mp-firma mt-1" id="mx-afore-nota">SIEFORE comparable</p>
+        <p class="mp-firma mt-1" id="mx-afore-nota">Rendimiento compuesto, por año</p>
       </button>
       <button data-vista="explorador" class="nav-tab text-left" data-mx="fibras">
         <p class="mp-etq">FIBRAS · yield medio</p>
         <p class="text-xl font-semibold tabular mt-1.5" id="mx-fibras-valor">—</p>
         <p class="mp-firma mt-1" id="mx-fibras-nota">Renta inmobiliaria BMV</p>
       </button>
-      <button data-vista="analizar" class="nav-tab text-left" data-mx="stress">
+      <!-- Los cinco escenarios mexicanos que SÍ existen en stress_test.py. Decía
+           "T-MEC", que no es ninguno, y llevaba a Analizar, donde no hay stress
+           test: vive en esta misma vista, más abajo (#stress-bloque). -->
+      <button type="button" class="text-left" data-mx="stress" data-ir="#stress-bloque">
         <p class="mp-etq">Stress test México</p>
         <p class="text-xl font-semibold tabular mt-1.5" id="mx-stress-valor">5</p>
-        <p class="mp-firma mt-1">Peso, 2018, T-MEC, aranceles</p>
+        <p class="mp-firma mt-1">Peso, 2018, COVID, 2024, aranceles</p>
       </button>
     </div>
     <p class="mp-firma mt-2.5">
@@ -1004,7 +1018,7 @@
   <!-- ============================================================ -->
   <!-- COMPARACIÓN vs BENCHMARK                                      -->
   <!-- ============================================================ -->
-  <section class="max-w-7xl mx-auto px-6 py-6">
+  <section id="seccion-vs-mercado" class="max-w-7xl mx-auto px-6 py-6">
     <div class="flex items-center justify-between mb-2">
       <h3 class="mp-sec-etq"><span class="mp-sec-orden">Sección C ·</span> Desempeño vs. mercado</h3>
       <span class="text-xs text-zinc-500" id="benchmark-label">—</span>
@@ -1211,7 +1225,7 @@
     </p>
 
     <div class="bg-surface-card border border-surface-border rounded-xl overflow-hidden fade-up fade-up-4">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto mp-tabla-activos">
         <table class="w-full text-sm">
           <thead>
             <tr class="text-[11px] text-zinc-500 uppercase tracking-wider border-b border-surface-border">
@@ -1221,7 +1235,10 @@
               <th class="text-right font-medium px-5 py-3">Retorno</th>
               <th class="text-right font-medium px-5 py-3 hidden sm:table-cell">Retorno anual</th>
               <th class="text-right font-medium px-5 py-3 hidden md:table-cell">Volatilidad</th>
-              <th class="text-right font-medium px-5 py-3">Sharpe</th>
+              <!-- En iPhone no cabía la cuarta columna y salía cortada en el
+                   borde. Se oculta como "Retorno anual" y "Volatilidad": el
+                   eje "Eficiencia" del copo de cada fila ya es el Sharpe. -->
+              <th class="text-right font-medium px-5 py-3 hidden sm:table-cell">Sharpe</th>
               <th class="text-right font-medium px-5 py-3 hidden lg:table-cell">Max DD</th>
             </tr>
           </thead>
@@ -1502,7 +1519,7 @@
     </div>
 
     <!-- STRESS TEST -->
-    <div class="bg-surface-card border border-surface-border rounded-xl p-5">
+    <div id="stress-bloque" class="bg-surface-card border border-surface-border rounded-xl p-5">
       <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 class="text-sm font-semibold text-zinc-200 flex items-center gap-2">
           <span class="w-6 h-6 rounded-md bg-accent-red/15 border border-accent-red/30 flex items-center justify-center text-accent-red">
@@ -2274,7 +2291,7 @@
         </div>
         <p class="text-[10px] text-zinc-600 mt-3 leading-snug">
           Usa 5 años de retornos mensuales. Benchmark: SPY (USA) o NAFTRAC.MX (acciones .MX).
-          Tasa libre de riesgo: UST 3m (~4.5%) para USD o CETES 28d (~9.5%) para MXN.
+          Tasa libre de riesgo: UST 3m (~4.5%) para USD o la CETES 28 días vigente para MXN.
         </p>
       </div>
       <div id="sml-resultado" class="space-y-4"></div>
@@ -3486,7 +3503,6 @@
             <strong>Tasas CETES y UDIS:</strong> Banxico SIE.<br>
             <strong>Índice IPC y FIBRAS:</strong> BMV vía Yahoo Finance.<br>
             <strong>Tarifas ISR:</strong> LISR vigente (SAT).<br>
-            <strong>Rendimientos de AFORE:</strong> IRN publicado por CONSAR.
           </p>
         </div>
 

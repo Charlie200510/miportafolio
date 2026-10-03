@@ -145,7 +145,7 @@
    * sería mentir sobre un dato que no tenemos. */
   function puntuar(m, opciones) {
     var o = opciones || {};
-    var cetes = typeof o.cetes === 'number' ? o.cetes : 9.5;
+    var cetes = typeof o.cetes === 'number' ? o.cetes : cetesRespaldo();
     var bench = typeof o.benchmarkAnual === 'number' ? o.benchmarkAnual : null;
     function eje(valor, fn) {
       return (typeof valor === 'number' && isFinite(valor)) ? acotar(fn(valor), -3, 3) : null;
@@ -174,6 +174,14 @@
   /* Número con signo a un decimal. Se redondea ANTES de decidir el signo: con
      el signo sacado del valor crudo, −0.04 salía como "−0.0" y +0.03 como
      "+0.0", un cero con signo que parece error de captura. */
+  /* Sin tasa explícita, la CETES vigente que ya leyó la app (window.MP_CETES_HOY,
+     la misma del chip). El último respaldo es la de octubre de 2026; antes
+     era un 9.5 fijo que para entonces ya no existía. */
+  function cetesRespaldo() {
+    return (typeof window !== 'undefined' && typeof window.MP_CETES_HOY === 'number')
+      ? window.MP_CETES_HOY : 6.01;
+  }
+
   function firmado(v) {
     var r = Math.round(v * 10) / 10;
     return (r > 0 ? '+' : r < 0 ? '\u2212' : '') + Math.abs(r).toFixed(1);
@@ -290,7 +298,7 @@
    * qué concluir; con esto cada figura tiene moraleja. */
   function veredicto(puntajes, metricas, opciones) {
     var o = opciones || {};
-    var cetes = typeof o.cetes === 'number' ? o.cetes : 9.5;
+    var cetes = typeof o.cetes === 'number' ? o.cetes : cetesRespaldo();
     // El mismo rendimiento que puntuar(): si la frase dijera el aritmético y
     // la figura el compuesto, se contradirían dentro del mismo bloque.
     var r = (typeof metricas.rendimiento_cagr_pct === 'number' && isFinite(metricas.rendimiento_cagr_pct))
@@ -315,7 +323,8 @@
 
     var cabeza;
     if (typeof r === 'number' && r < cetes) {
-      cabeza = 'Rindió ' + r.toFixed(1) + '% al año. CETES pagó ' + cetes.toFixed(1) +
+      // "paga hoy": la tasa es la vigente, no lo que CETES pagó en el periodo.
+      cabeza = 'Rindió ' + r.toFixed(1) + '% al año. CETES paga hoy ' + cetes.toFixed(1) +
                '% sin arriesgar nada.';
     } else if (f === null) {
       cabeza = 'No hay datos suficientes para compararlo contra CETES.';

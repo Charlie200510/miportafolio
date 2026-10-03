@@ -86,7 +86,7 @@ _CACHE_DIR.mkdir(exist_ok=True)
 _MAX_POR_EMISORA = 0.10
 
 # Se sube al cambiar las REGLAS (tope, objetivo, restricciones). Invalida caché.
-_VERSION_ALGORITMO = 16
+_VERSION_ALGORITMO = 18   # 18: pisos por presupuesto sin pasarse de 100% (17: moneda real)
 
 # Más candidatos entre los que elegir. Con 40 y un tope del 10% por emisora, el
 # optimizador se quedaba sin dónde repartir: 7 u 8 de las posiciones acababan
@@ -1357,7 +1357,10 @@ def _capital_minimo_cartera(acciones: List[Dict[str, Any]],
             continue
         if _MON.fraccionable(t, info_all):
             continue
-        cand.append((t, _MON.a_pesos(t, float(p), info_all) / w, float(p), w))
+        # El tercer valor es el precio EN PESOS: antes se guardaba el crudo y
+        # "precio_mxn" de KLAC salía 254.54, que eran dólares.
+        pm = _MON.a_pesos(t, float(p), info_all)
+        cand.append((t, pm / w, pm, w))
     if not cand:
         return None
     t, necesario, precio_mxn, w = max(cand, key=lambda x: x[1])
@@ -1580,6 +1583,11 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
             "peso_pct": round(peso * 100, 2),
             "precio":  round(precio, 2) if precio else None,
             "es_mx":   t.upper().endswith(".MX"),
+            # La moneda real y el precio en su unidad mayor (Londres viene en
+            # peniques): la tarjeta decía "US$11.89" de CaixaBank, que son euros.
+            "moneda":  _MON.moneda_de(t, info_all),
+            "precio_local": (round(_MON.en_unidad_mayor(t, _MON.moneda_de(t, info_all), precio), 2)
+                             if precio else None),
         })
 
     # 5) Reducir a top N según el nivel.
@@ -1645,14 +1653,27 @@ def portafolio_optimo(nivel_riesgo: int = 5, vol_objetivo: Optional[float] = Non
                  if a["peso"] - _pisos_f.get(a["ticker"], 0.0) > 1e-6],
                 key=lambda a: -(a["peso"] - _pisos_f.get(a["ticker"], 0.0)))
             _holgura = sum(a["peso"] - _pisos_f.get(a["ticker"], 0.0) for a in _don)
-            if _holgura <= 1e-9:
+            # Lo que no alcanza con las donantes sale de la posición en CETES,
+            # si la hay (deja un margen de 1% para que siga siendo posición).
+            _de_cetes_disp = max(0.0, _cash_bruto - 0.01) if _cash_es_posicion else 0.0
+            _de_don = min(_deuda, _holgura)
+            _de_cetes = min(_deuda - _de_don, _de_cetes_disp)
+            _liberado = _de_don + _de_cetes
+            if _liberado <= 1e-9:
                 break              # no hay de dónde sacar: se reporta el mínimo real
-            for a in _don:
-                _h = a["peso"] - _pisos_f.get(a["ticker"], 0.0)
-                a["peso"] -= min(_deuda, _holgura) * (_h / _holgura)
+            if _holgura > 1e-9:
+                for a in _don:
+                    _h = a["peso"] - _pisos_f.get(a["ticker"], 0.0)
+                    a["peso"] -= _de_don * (_h / _holgura)
+            _cash_bruto -= _de_cetes
+            # A cada una se le sube SOLO lo que de verdad se liberó. Antes se les
+            # subía al piso completo aunque lo cedido no alcanzara, y con $5 o
+            # $10 mil la cartera llegaba a sumar más de 100% con un "Se arma
+            # desde" que no era cierto.
+            _frac = _liberado / _deuda
             for a in acciones:
                 if a["ticker"] in _falta:
-                    a["peso"] = min(_pisos_f[a["ticker"]], _MAX_POR_EMISORA)
+                    a["peso"] = min(a["peso"] + _falta[a["ticker"]] * _frac, _MAX_POR_EMISORA)
         for a in acciones:
             a["peso_pct"] = round(a["peso"] * 100, 2)
         acciones = [a for a in acciones if a["peso"] > 0]

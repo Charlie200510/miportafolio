@@ -16,7 +16,7 @@ import pandas as pd
 
 from analisis import (
     DIAS_HABILES,
-    TASA_LIBRE_RIESGO,
+    tasa_libre_riesgo,
     calcular_max_drawdown,
     optimizar_sharpe,
 )
@@ -147,7 +147,7 @@ def _metricas_portafolio(precios_sel, pesos_array):
     rend_anual = float(pesos_array @ media_diaria) * DIAS_HABILES * 100
     vol_anual = float(np.sqrt(pesos_array @ cov_diaria @ pesos_array)) * np.sqrt(DIAS_HABILES) * 100
     sharpe = (
-        (rend_anual - TASA_LIBRE_RIESGO * 100) / vol_anual
+        (rend_anual - tasa_libre_riesgo() * 100) / vol_anual
         if vol_anual > 0 else 0.0
     )
 
@@ -206,7 +206,7 @@ def analizar_seleccion(tickers):
     metricas_eq = _metricas_portafolio(precios_sel, pesos_eq)
 
     # Óptimo: Markowitz
-    opt = optimizar_sharpe(rend_diarios, TASA_LIBRE_RIESGO)
+    opt = optimizar_sharpe(rend_diarios, tasa_libre_riesgo())
     # Las métricas del óptimo vienen en formato ya %. Normalizamos.
     opt_metricas = {
         "rendimiento_anualizado_pct": opt["rendimiento_anualizado_pct"],
@@ -257,7 +257,7 @@ def analizar_seleccion(tickers):
             "fecha_inicio": str(precios_sel.index[0].date()),
             "fecha_fin":    str(precios_sel.index[-1].date()),
             "dias_observados": len(precios_sel),
-            "tasa_libre_riesgo_pct": round(TASA_LIBRE_RIESGO * 100, 2),
+            "tasa_libre_riesgo_pct": round(tasa_libre_riesgo() * 100, 2),
         },
         "info_activos": info_por_ticker,
         "equal_weight": {

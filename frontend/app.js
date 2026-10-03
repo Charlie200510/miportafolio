@@ -256,6 +256,49 @@ const $ = (id) => document.getElementById(id);
 // Cambiar aquí cambia la app entera. Los valores salen de MP_COLOR, que a su
 // vez los lee de mp-tokens.css: el tema de las gráficas NO se define aparte.
 const MP_MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+/* Chip de moneda para lo que no es MXN ni USD: "EU", "GB", "IN"… (las dos
+   primeras letras del código ISO). Sin código, el punto de siempre. */
+function _banderaMoneda(mon) {
+  return (typeof mon === 'string' && /^[A-Z]{3}$/.test(mon)) ? mon.slice(0, 2) : '·';
+}
+
+/* Sectores como los publica Yahoo, en inglés. Global: lo usan el encabezado
+   de Analizar y la columna Sector de la tabla de activos (en iPad y en web se
+   veía "Consumer Defensive" junto a todo lo demás en español). */
+const _SECTOR_ES = {
+  'technology': 'Tecnología', 'financial services': 'Finanzas', 'financial': 'Finanzas',
+  'healthcare': 'Salud', 'consumer cyclical': 'Consumo discrecional',
+  'consumer defensive': 'Consumo básico', 'consumer staples': 'Consumo básico',
+  'communication services': 'Comunicaciones', 'industrials': 'Industria',
+  'energy': 'Energía', 'utilities': 'Servicios públicos', 'basic materials': 'Materiales',
+  'materials': 'Materiales', 'real estate': 'Bienes raíces',
+};
+
+/* "WAL-MART DE MEXICO SAB DE CV" -> "Wal-Mart de Mexico SAB de CV". Solo se
+   toca si el nombre llega TODO en mayúsculas (así lo manda Yahoo para la
+   BMV); uno que ya trae minúsculas se respeta, porque alguien lo escribió así.
+   Global: lo usan Analizar, la tabla de activos y las listas de emisoras. */
+const _SIGLAS = new Set(['SAB','SA','CV','SAPI','SC','NV','PLC','AG','SE','LP','LLC','ETF',
+  'ADR','REIT','II','III','IV','BBVA','IBM','AMD','ASML','TSMC','UBS','HSBC','GE','AT&T',
+  'USD','MXN','EUR','IPC','BMV','NYSE','S&P','FTSE','MSCI','DAX','CAC','IBEX','VIX','STOXX']);
+const _PARTICULAS = new Set(['de','del','la','las','los','el','y','e','en','of','the','and']);
+function _nombreLegible(s) {
+  s = String(s || '');
+  // Sin espacios es un código, no un nombre: un ticker que hace de nombre de
+  // respaldo ("AMXB.MX"), un par ("USD/MXN") o un índice ("NAFTRAC"). Pasarlo a
+  // tipo título lo deformaba ("Usd/Mxn") justo donde la tarjeta lo usa de título.
+  if (!s || /[a-z]/.test(s) || !/\s/.test(s.trim())) return s;
+  return s.split(/(\s+)/).map((w, i) => {
+    if (/^\s+$/.test(w)) return w;
+    const limpio = w.replace(/[.,]/g, '');
+    if (_SIGLAS.has(limpio)) return w;
+    const low = w.toLowerCase();
+    if (i > 0 && _PARTICULAS.has(low)) return low;
+    return low.replace(/(^|[-'’&/])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
+  }).join('');
+}
+
 const MP_GRAFICA = {
   sup:         MP_COLOR.sup,
   panel:       MP_COLOR.supPanel,
@@ -841,6 +884,9 @@ function renderFlotacion(data) {
   const p = data && data.portafolio;
   const meta = (data && data.metadata) || {};
   if (!p) { bloque.classList.add('hidden'); return; }
+  // La tasa que usó el servidor es la CETES vigente; se guarda para que el
+  // copo de Analizar y la fila "Contra CETES" digan la misma.
+  if (typeof meta.tasa_libre_riesgo_pct === 'number') window.MP_CETES_HOY = meta.tasa_libre_riesgo_pct;
 
   const opciones = {
     cetes: meta.tasa_libre_riesgo_pct,
@@ -1043,9 +1089,10 @@ function redactarTitular(data) {
   const sharpe  = p.sharpe_ratio;
   const ddMax   = p.max_drawdown_pct;
   // /api/analizar devuelve el exceso ya calculado en benchmark.alpha_portafolio_pct.
+  const _rp = p.rendimiento_cagr_pct ?? p.rendimiento_anualizado_pct;
+  const _rb = b.rendimiento_cagr_pct ?? b.rendimiento_anualizado_pct;
   const alpha   = b.alpha_portafolio_pct ??
-                  ((p.rendimiento_anualizado_pct != null && b.rendimiento_anualizado_pct != null)
-                    ? p.rendimiento_anualizado_pct - b.rendimiento_anualizado_pct : null);
+                  ((_rp != null && _rb != null) ? _rp - _rb : null);
   const nombreB = b.ticker === '^GSPC' ? 'el S&P 500'
                 : b.ticker === '^MXX'  ? 'el IPC'
                 : b.ticker ? b.ticker : 'el mercado';
@@ -1085,7 +1132,9 @@ function redactarTitular(data) {
   if (ddMax != null && Math.abs(ddMax) >= 5) {
     partes.push(`La peor caída del periodo llegó a ${Math.abs(ddMax).toFixed(1)}%.`);
   }
-  const critico = insights.find(i => i.severidad === 'critico' || i.severidad === 'alto');
+  // insights.py emite 'alta'/'media'/'positivo'; buscaba 'critico'/'alto',
+  // que nunca llegan, y este renglón no salía jamás.
+  const critico = insights.find(i => ['alta', 'alto', 'critico'].includes(i.severidad));
   if (critico && critico.titulo) partes.push(`${critico.titulo}.`);
 
   return { titular: capitalizar(contraer(titular)), balazo: partes.slice(0, 2).join(' ') };
@@ -1168,6 +1217,11 @@ function renderHero(data) {
   $('kpi-dd-ctx').textContent = (typeof dd === 'number' && isFinite(dd))
     ? `De cada $100 llegaste a ver $${Math.max(0, Math.round(100 + dd))}`
     : '—';
+  // La fila "Contra CETES" se recalcula con cada cartera. CetesBench solo la
+  // calculaba una vez, 1.5 s después de abrir: si el análisis tardaba más no
+  // aparecía nunca, y al cambiar de portafolio se quedaba con la resta del
+  // anterior. Si la tasa aún no llega, cargar() la pinta cuando llegue.
+  try { CetesBench.actualizar(); } catch (_) { /* módulo aún no inicializado */ }
 }
 
 function interpretarVol(v) {
@@ -1180,10 +1234,14 @@ function interpretarVol(v) {
 
 function interpretarSharpe(s) {
   if (s === null || s === undefined) return '—';
+  // El Sharpe usa la media aritmética (es su definición) y la cifra de
+  // Rendimiento, el compuesto: decir "le gana a CETES" aquí podía contradecir
+  // a la fila "Contra CETES" de dos renglones abajo. Se dice lo que mide.
   if (s >= 1)    return 'El riesgo está muy bien pagado';
   if (s >= 0.5)  return 'El riesgo está bien pagado';
-  if (s >= 0)    return 'Apenas le gana a CETES';
-  return 'CETES rinde más, sin riesgo';
+  if (s >= 0.2)  return 'El riesgo se paga poco';
+  if (s >= 0)    return 'El riesgo casi no se paga';
+  return 'El riesgo no se está pagando';
 }
 
 // --- INSIGHTS (observaciones) ----------------------------------------------
@@ -1270,9 +1328,13 @@ function renderBenchmark(data) {
   $('chart-bench-label').textContent = benchName;
 
   // Comparativa
-  $('cmp-retorno-tu').textContent    = fmtPct(p.rendimiento_anualizado_pct);
-  $('cmp-retorno-tu').className = `text-sm font-semibold tabular ${claseColor(p.rendimiento_anualizado_pct)}`;
-  $('cmp-retorno-bench').textContent = fmtPct(b.rendimiento_anualizado_pct);
+  // Compuestos, como la cifra de Rendimiento y el alfa de arriba: con los
+  // aritméticos esta fila decía 9.52% y la lista de cifras 7.05% "al año".
+  const retTu = p.rendimiento_cagr_pct ?? p.rendimiento_anualizado_pct;
+  const retBench = b.rendimiento_cagr_pct ?? b.rendimiento_anualizado_pct;
+  $('cmp-retorno-tu').textContent    = fmtPct(retTu);
+  $('cmp-retorno-tu').className = `text-sm font-semibold tabular ${claseColor(retTu)}`;
+  $('cmp-retorno-bench').textContent = fmtPct(retBench);
 
   $('cmp-vol-tu').textContent    = fmtPct(p.volatilidad_anual_pct, 1, false);
   $('cmp-vol-bench').textContent = fmtPct(b.volatilidad_anual_pct, 1, false);
@@ -1564,8 +1626,8 @@ function renderTablaActivos(data, info) {
     const a = activos[t] || {};
     const peso = (pesos[t] || 0) * 100;
     const meta = info[t] || {};
-    const sector = meta.sector || '—';
-    const nombre = meta.nombre || t;
+    const sector = escapeHtml(_SECTOR_ES[String(meta.sector || '').toLowerCase()] || meta.sector || '—');
+    const nombre = escapeHtml(_nombreLegible(meta.nombre || t));
 
     return `
       <tr class="hover:bg-surface-hover transition">
@@ -1574,7 +1636,7 @@ function renderTablaActivos(data, info) {
             ${copoDe(a) || '<span class="mp-copo-fila"></span>'}
             <div>
               <div class="font-medium text-zinc-100 text-sm">${t}</div>
-              <div class="text-[11px] text-zinc-500 truncate max-w-[180px]">${nombre}</div>
+              <div class="mp-act-nom text-[11px] text-zinc-500 truncate max-w-[180px]">${nombre}</div>
             </div>
           </div>
         </td>
@@ -1583,7 +1645,7 @@ function renderTablaActivos(data, info) {
         <td class="px-5 py-3 text-right tabular text-sm ${claseColor(a.rendimiento_total_pct)}">${fmtPct(a.rendimiento_total_pct, 1)}</td>
         <td class="px-5 py-3 text-right tabular text-sm hidden sm:table-cell ${claseColor(a.rendimiento_anualizado_pct)}">${fmtPct(a.rendimiento_anualizado_pct, 1)}</td>
         <td class="px-5 py-3 text-right tabular text-sm text-zinc-300 hidden md:table-cell">${fmtPct(a.volatilidad_anual_pct, 1, false)}</td>
-        <td class="px-5 py-3 text-right tabular text-sm ${claseColor(a.sharpe_ratio)}">${fmtNum(a.sharpe_ratio)}</td>
+        <td class="px-5 py-3 text-right tabular text-sm hidden sm:table-cell ${claseColor(a.sharpe_ratio)}">${fmtNum(a.sharpe_ratio)}</td>
         <td class="px-5 py-3 text-right tabular text-sm text-accent-red hidden lg:table-cell">${fmtPct(a.max_drawdown_pct, 1)}</td>
       </tr>
     `;
@@ -1914,7 +1976,7 @@ const Explorador = (() => {
     $('universo-lista').innerHTML = lista.map(t => {
       const sel = state.seleccionados.has(t.ticker);
       const disabled = !sel && state.seleccionados.size >= MAX;
-      const flag = t.moneda === 'MXN' ? 'MX' : (t.moneda === 'USD' ? 'US' : '·');
+      const flag = t.moneda === 'MXN' ? 'MX' : (t.moneda === 'USD' ? 'US' : _banderaMoneda(t.moneda));
       const flagCls = t.moneda === 'MXN'
         ? 'bg-accent-green/10 text-accent-green border-accent-green/20'
         : 'bg-accent-blue/10 text-accent-blue border-accent-blue/20';
@@ -2134,7 +2196,7 @@ const Explorador = (() => {
       const we = (pesosEq[t]  || 0) * 100;
       const wo = (pesosOpt[t] || 0) * 100;
       const maxW = Math.max(we, wo, 1);
-      const nombre = (data.info_activos[t] || {}).nombre || t;
+      const nombre = _nombreLegible((data.info_activos[t] || {}).nombre || t);
       return `
         <div>
           <div class="flex items-center justify-between text-[11px] mb-1">
@@ -2354,9 +2416,16 @@ const PortafolioOptimo = (() => {
     }
     cont.innerHTML = d.acciones.map((a, i) => {
       const color = PALETA[i % PALETA.length];
-      const bandera = a.es_mx ? 'MX' : 'US';
-      const banderaCls = a.es_mx ? 'bg-accent-green/10 text-accent-green border-accent-green/30'
-                                  : 'bg-accent-blue/10 text-accent-blue border-accent-blue/30';
+      // La moneda real: antes todo lo que no era .MX decía "US", y CaixaBank
+      // (Madrid, en euros) salía como "US · US$11.89".
+      const mon = a.moneda || (a.es_mx ? 'MXN' : 'USD');
+      const bandera = mon.slice(0, 2);
+      const banderaCls = mon === 'MXN' ? 'bg-accent-green/10 text-accent-green border-accent-green/30'
+                                       : 'bg-accent-blue/10 text-accent-blue border-accent-blue/30';
+      const precioTxt = !a.precio ? ''
+        : mon === 'MXN' ? `$${a.precio.toFixed(2)}`
+        : mon === 'USD' ? `US$${a.precio.toFixed(2)}`
+        : `${(a.precio_local ?? a.precio).toFixed(2)} ${mon}`;
       return `
         <div class="flex items-center gap-3 p-2 rounded-lg bg-zinc-900/40 hover:bg-zinc-900/70 transition">
           <span style="background:${color}" class="w-1 h-8 rounded-full shrink-0"></span>
@@ -2369,7 +2438,7 @@ const PortafolioOptimo = (() => {
             <p class="text-[14px] font-bold text-zinc-100 tabular">${a.peso_pct.toFixed(1)}%</p>
             ${a.es_renta_fija
                 ? `<p class="text-[10px] text-accent-green tabular">${a.tasa_pct != null ? a.tasa_pct.toFixed(2) + '% anual' : 'tasa Banxico'}</p>`
-                : (a.precio ? `<p class="text-[10px] text-zinc-500 tabular">${a.es_mx?'$':'US$'}${a.precio.toFixed(2)}</p>` : '')}
+                : (precioTxt ? `<p class="text-[10px] text-zinc-500 tabular">${precioTxt}</p>` : '')}
           </div>
         </div>
       `;
@@ -2568,7 +2637,12 @@ const PortafolioOptimo = (() => {
         const rentaFija = state.data.acciones.filter(a => a.es_renta_fija);
         const tickers = state.data.acciones.filter(a => !a.es_renta_fija).map(a => ({
           ticker: a.ticker, nombre: a.nombre, peso: a.peso_pct,
-          moneda: a.es_mx ? 'MXN' : 'USD', precio: a.precio,
+          // La moneda real y el precio en su unidad mayor (Londres en libras,
+          // no en peniques): con es_mx ? MXN : USD, CaixaBank llegaba al
+          // selector como dólares.
+          // Precio CRUDO, como en el resto del selector (que lo refresca crudo
+          // de /api/precios-actuales); fmtPrecio lo pasa a la unidad mayor.
+          moneda: a.moneda || (a.es_mx ? 'MXN' : 'USD'), precio: a.precio,
         }));
         // Si existe el Picker, lo precargamos
         if (typeof Picker !== 'undefined' && Picker.cargarDesdeOptimo) {
@@ -2628,8 +2702,15 @@ const Picker = (() => {
   function fmtPrecio(t) {
     if (t.precio === null || t.precio === undefined) return '';
     const simbolo = t.moneda === 'MXN' ? '$' : '$';
-    const sufijo = t.moneda === 'MXN' ? ' MXN' : (t.moneda === 'USD' ? '' : '');
-    return `${simbolo}${t.precio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${sufijo}`;
+    const num = t.precio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // Otra moneda (EUR, GBP…): el código detrás, sin "$" que la haga pasar por
+    // pesos o dólares. Londres cotiza en PENIQUES: 13,462 de AZN.L son £134.62.
+    if (t.moneda && t.moneda !== 'MXN' && t.moneda !== 'USD') {
+      const mayor = (t.moneda === 'GBP' && /\.L$/i.test(t.ticker || '')) ? t.precio / 100 : t.precio;
+      return `${mayor.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t.moneda}`;
+    }
+    const sufijo = t.moneda === 'MXN' ? ' MXN' : '';
+    return `${simbolo}${num}${sufijo}`;
   }
 
   // ---- Universo ---------------------------------------------------------
@@ -2719,7 +2800,7 @@ const Picker = (() => {
     const disabled = !sel && state.seleccionados.size >= MAX;
     const mon = t.moneda || '';
     const cripto = esCripto(t);
-    const flag = cripto ? '₿' : (mon === 'MXN' ? 'MX' : (mon === 'USD' ? 'US' : (origen === 'yahoo' ? 'Y!' : '·')));
+    const flag = cripto ? '₿' : (mon === 'MXN' ? 'MX' : (mon === 'USD' ? 'US' : (mon ? _banderaMoneda(mon) : (origen === 'yahoo' ? 'Y!' : '·'))));
     const flagCls = cripto
       ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
       : mon === 'MXN'
@@ -2757,7 +2838,7 @@ const Picker = (() => {
             ${reco ? '<span class="text-accent-amber text-[11px] leading-none">✦</span>' : ''}
             <span class="text-[13px] font-medium text-zinc-100 truncate">${t.ticker}</span>
           </span>
-          <span class="block text-[10px] text-zinc-500 truncate">${escapeHtml(t.nombre || '')}</span>
+          <span class="block text-[10px] text-zinc-500 truncate">${escapeHtml(_nombreLegible(t.nombre || ''))}</span>
         </span>
         ${precioHtml}
         ${sel ? `
@@ -2901,7 +2982,7 @@ const Picker = (() => {
             <div class="flex items-center gap-2">
               ${meta.recomendada ? '<span class="text-accent-amber text-[11px]">✦</span>' : ''}
               <span class="text-sm font-medium text-zinc-100 truncate">${t}</span>
-              <span class="text-[11px] text-zinc-500 truncate">${escapeHtml(meta.nombre || '')}</span>
+              <span class="text-[11px] text-zinc-500 truncate">${escapeHtml(_nombreLegible(meta.nombre || ''))}</span>
             </div>
             <input type="range" min="0" max="100" step="0.5" value="${pct.toFixed(1)}"
                    data-w-ticker="${t}"
@@ -3426,7 +3507,7 @@ window.iniciarComparar = (function () {
     box.innerHTML = ms.map(u => `
       <button data-sug-tk="${escapeHtml(u.ticker)}" class="cmp-sug-item w-full text-left px-3 py-2 hover:bg-zinc-900/70 flex items-center gap-2">
         <span class="text-xs font-mono text-zinc-100 shrink-0">${escapeHtml(u.ticker)}</span>
-        <span class="text-[10px] text-zinc-500 truncate">${escapeHtml(u.nombre || '')}</span>
+        <span class="text-[10px] text-zinc-500 truncate">${escapeHtml(_nombreLegible(u.nombre || ''))}</span>
       </button>`).join('');
     box.classList.remove('hidden');
     box.querySelectorAll('.cmp-sug-item').forEach(b => b.addEventListener('click', () => {
@@ -4051,6 +4132,10 @@ const Periodico = (() => {
     const resto = sectores.slice()
       .filter(s => s.ticker !== dia.ticker)
       .sort((a, b) => (b.cambio_pct || 0) - (a.cambio_pct || 0));
+    // Lugar real por variación (el destacado puede ser el que más cayó, así
+    // que el orden del mazo no es el ranking).
+    const ranking = sectores.slice()
+      .sort((a, b) => (b.cambio_pct || 0) - (a.cambio_pct || 0)).map(s => s.ticker);
     return {
       tarjetas: [dia, ...resto].slice(0, MAX_TARJETAS).map((s, i) => {
         // El endpoint de sectores no devuelve `periodo` en cada fila, y sin él
@@ -4058,7 +4143,10 @@ const Periodico = (() => {
         const t = _tarjetaDeCotizacion({ ...s, periodo: per }, 'global');
         // El rótulo sigue la ventana elegida: decir "sector del día" mientras
         // el número es el del año es contradecirse en la misma tarjeta.
-        t.etq = i === 0 ? 'Sector destacado ' + _frasePeriodo(per) : 'Sector · ' + s.ticker;
+        // Sin el ticker del ETF: "Sector · XLK" es justo lo que se quitó de la
+        // marea porque nadie sabe qué es XLK. El lugar en el día sí dice algo.
+        t.etq = i === 0 ? 'Sector destacado ' + _frasePeriodo(per)
+                        : `Lugar ${ranking.indexOf(s.ticker) + 1} de ${sectores.length}`;
         return t;
       }),
       recorte: sectores.length > MAX_TARJETAS ? sectores.length - MAX_TARJETAS : 0,
@@ -4173,7 +4261,7 @@ const Periodico = (() => {
          ${t.meta ? `<span class="mp-tarjeta-meta">${escapeHtml(t.meta)}</span>` : ''}`
       : `<span class="mp-tarjeta-etq">${escapeHtml(t.etq || '')}</span>
          <span class="mp-tarjeta-fila">
-           <span class="mp-tarjeta-nom">${escapeHtml(t.nombre || '')}</span>
+           <span class="mp-tarjeta-nom">${escapeHtml(_nombreLegible(t.nombre || ''))}</span>
            ${t.variacion ? `<span class="mp-tarjeta-var ${dirCls}">${escapeHtml(t.variacion)}</span>` : ''}
          </span>
          ${t.meta ? `<span class="mp-tarjeta-meta">${escapeHtml(t.meta)}</span>` : ''}`;
@@ -7193,7 +7281,7 @@ const RentaFija = (() => {
         <tr class="hover:bg-zinc-900/40">
           <td class="px-4 py-3">
             <p class="font-semibold text-zinc-100">${escapeHtml(f.ticker)}</p>
-            <p class="text-[10px] text-zinc-500 mt-0.5">${escapeHtml(f.nombre || '')}</p>
+            <p class="text-[10px] text-zinc-500 mt-0.5">${escapeHtml(_nombreLegible(f.nombre || ''))}</p>
           </td>
           <td class="px-4 py-3 hidden md:table-cell text-xs text-zinc-400">${escapeHtml(f.sector || '—')}</td>
           <td class="px-4 py-3 text-right tabular text-zinc-200">${fmtMoneyMx(f.precio)}</td>
@@ -7360,7 +7448,7 @@ const Fundamentales = (() => {
         <tr class="hover:bg-zinc-900/40">
           <td class="px-4 py-3">
             <p class="font-semibold text-zinc-100">${escapeHtml(t.ticker)}</p>
-            <p class="text-[10px] text-zinc-500 mt-0.5 truncate max-w-[160px]">${escapeHtml(t.nombre || '')}</p>
+            <p class="text-[10px] text-zinc-500 mt-0.5 truncate max-w-[160px]">${escapeHtml(_nombreLegible(t.nombre || ''))}</p>
           </td>
           <td class="px-4 py-3 hidden md:table-cell">
             <p class="text-xs text-zinc-300">${escapeHtml(mcap.etiqueta || '—')}</p>
@@ -7629,6 +7717,15 @@ const Backtest = (() => {
 const StressTest = (() => {
   function bind() {
     $('st-correr')?.addEventListener('click', correr);
+    // Celdas del Cuadernillo con data-ir: bajan a su sección en esta misma
+    // vista. La del stress test deja elegido el primer escenario mexicano.
+    document.querySelectorAll('[data-ir]').forEach(el => el.addEventListener('click', () => {
+      if (el.dataset.mx === 'stress') {
+        const sel = $('st-escenario');
+        if (sel && sel.querySelector('option[value="peso_collapse"]')) sel.value = 'peso_collapse';
+      }
+      document.querySelector(el.dataset.ir)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }));
   }
   async function correr() {
     const tickers = leerPortafolioGuardado() || [];
@@ -8327,9 +8424,16 @@ const CetesBench = (() => {
     try {
       const res = await fetch('/api/renta-fija/mx');
       const data = await res.json();
-      const cetes = (data.cetes || data.cetes_panel || []).find(c => /28/.test(c.plazo || '')) || (data.cetes || data.cetes_panel || [])[0];
-      cetesCache = cetes ? (cetes.tasa_pct || cetes.tasa || 9.5) : 9.5;
-    } catch { cetesCache = 9.5; }
+      // /api/renta-fija/mx manda {cetes: {tasas: {'28': {tasa_pct}}}}. Se
+      // buscaba una LISTA (data.cetes.find) que nunca existió, así que la fila
+      // caía siempre al 9.5 de respaldo aunque Banxico dijera otra cosa.
+      const t28 = (((data.cetes || {}).tasas || {})['28'] || {}).tasa_pct;
+      cetesCache = (typeof t28 === 'number' && t28 > 0) ? t28 : null;
+    } catch { cetesCache = null; }
+    // Sin tasa vigente se usa la del último análisis (la misma fuente en el
+    // servidor); si tampoco hay, no se inventa: la fila no se enseña.
+    if (cetesCache == null && typeof window.MP_CETES_HOY === 'number') cetesCache = window.MP_CETES_HOY;
+    if (cetesCache != null) window.MP_CETES_HOY = cetesCache;
     actualizar();
   }
   function actualizar() {
@@ -8359,7 +8463,7 @@ const CetesBench = (() => {
   function bind() {
     setTimeout(cargar, 1500);  // pequeña espera para que el KPI se llene primero
   }
-  return { bind, refrescar: cargar };
+  return { bind, refrescar: cargar, actualizar };
 })();
 
 
@@ -8529,7 +8633,7 @@ const Analizador = (() => {
     const visible = lista.slice(0, TOPE);
     const html = visible.map(t => {
       const cripto = esCriptoTk(t);
-      const flag = cripto ? '₿' : (t.moneda === 'MXN' ? 'MX' : (t.moneda === 'USD' ? 'US' : '·'));
+      const flag = cripto ? '₿' : (t.moneda === 'MXN' ? 'MX' : (t.moneda === 'USD' ? 'US' : _banderaMoneda(t.moneda)));
       const flagCls = cripto
         ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
         : t.moneda === 'MXN'
@@ -8542,7 +8646,7 @@ const Analizador = (() => {
           <span class="text-[9px] px-1.5 py-0.5 rounded border ${flagCls} font-mono shrink-0">${flag}</span>
           <div class="min-w-0 flex-1">
             <p class="text-xs font-mono text-zinc-100 truncate">${escapeHtml(t.ticker)}</p>
-            <p class="text-[10px] text-zinc-500 truncate">${escapeHtml(t.nombre || '')}</p>
+            <p class="text-[10px] text-zinc-500 truncate">${escapeHtml(_nombreLegible(t.nombre || ''))}</p>
           </div>
           ${(estado.ordenScore && estado.scoreMap && estado.scoreMap[t.ticker] != null) ? `<span class="text-[11px] font-bold tabular px-1.5 py-0.5 rounded bg-accent-amber/15 text-accent-amber shrink-0">${estado.scoreMap[t.ticker]}</span>` : ''}
         </button>
@@ -8822,7 +8926,7 @@ const Analizador = (() => {
       const filas = comp.map((f, i) => `
         <tr class="${i === 0 ? 'font-semibold' : ''}">
           <td class="py-2 pr-2 tabular ${i === 0 ? 'text-accent-amber' : 'text-zinc-200'}">${escapeHtml(f.ticker)}${i === 0 ? ' ·' : ''}</td>
-          <td class="py-2 pr-2 text-[11px] text-zinc-400 truncate max-w-[140px]">${escapeHtml(f.nombre || '')}</td>
+          <td class="py-2 pr-2 text-[11px] text-zinc-400 truncate max-w-[140px]">${escapeHtml(_nombreLegible(f.nombre || ''))}</td>
           <td class="py-2 text-right tabular text-zinc-200">${_pfPct(f.ter, 2) || ''}</td>
           <td class="py-2 text-right tabular text-zinc-300">${_pfMoneda(f.aum, mon) || ''}</td>
           <td class="py-2 text-right tabular text-zinc-300">${_pfPct(f.volatilidad_anual, 1) || ''}</td>
@@ -8979,17 +9083,9 @@ const Analizador = (() => {
       .filter(Boolean).join(' · ') || 'Acción';
   }
 
-  /* Los sectores y las industrias llegan como los publica Yahoo, en inglés.
-     El mismo diccionario de sectores que usa el backend en analisis.py; de
-     industrias, las que de verdad aparecen en la BMV y en las grandes de EU. */
-  const _SECTOR_ES = {
-    'technology': 'Tecnología', 'financial services': 'Finanzas', 'financial': 'Finanzas',
-    'healthcare': 'Salud', 'consumer cyclical': 'Consumo discrecional',
-    'consumer defensive': 'Consumo básico', 'consumer staples': 'Consumo básico',
-    'communication services': 'Comunicaciones', 'industrials': 'Industria',
-    'energy': 'Energía', 'utilities': 'Servicios públicos', 'basic materials': 'Materiales',
-    'materials': 'Materiales', 'real estate': 'Bienes raíces',
-  };
+  /* Las industrias llegan como las publica Yahoo, en inglés: aquí las que de
+     verdad aparecen en la BMV y en las grandes de EU. Los sectores viven en
+     _SECTOR_ES, a nivel global. */
   const _INDUSTRIA_ES = {
     'discount stores': 'Tiendas de descuento', 'grocery stores': 'Supermercados',
     'department stores': 'Tiendas departamentales', 'beverages—non-alcoholic': 'Refrescos',
@@ -9022,25 +9118,6 @@ const Analizador = (() => {
     'farm products': 'Agroindustria', 'tobacco': 'Tabaco', 'apparel retail': 'Ropa',
   };
 
-  /* "WAL-MART DE MEXICO SAB DE CV" -> "Wal-Mart de Mexico SAB de CV". Solo se
-     toca si el nombre llega TODO en mayúsculas (así lo manda Yahoo para la
-     BMV); uno que ya trae minúsculas se respeta, porque alguien lo escribió así. */
-  const _SIGLAS = new Set(['SAB','SA','CV','SAPI','SC','NV','PLC','AG','SE','LP','LLC','ETF',
-    'ADR','REIT','II','III','IV','BBVA','IBM','AMD','ASML','TSMC','UBS','HSBC','GE','AT&T']);
-  const _PARTICULAS = new Set(['de','del','la','las','los','el','y','e','en','of','the','and']);
-  function _nombreLegible(s) {
-    s = String(s || '');
-    if (!s || /[a-z]/.test(s)) return s;
-    return s.split(/(\s+)/).map((w, i) => {
-      if (/^\s+$/.test(w)) return w;
-      const limpio = w.replace(/[.,]/g, '');
-      if (_SIGLAS.has(limpio)) return w;
-      const low = w.toLowerCase();
-      if (i > 0 && _PARTICULAS.has(low)) return low;
-      return low.replace(/(^|[-'’&/])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
-    }).join('');
-  }
-
   /* LA MARCA DEL ACTIVO: el copo en vez del anillo de score.
      Las cuatro revisiones de diseño coincidieron: el círculo con "52 / 100"
      dentro y "INTERESANTE" en versalitas es la huella más reconocible de un
@@ -9069,7 +9146,9 @@ const Analizador = (() => {
         volatilidad_anual_pct: pct(fu.volatilidad_anual),
         max_drawdown_pct:      pct(fu.max_drawdown),
       };
-      copo = F.copo(F.puntuar(m, { cetes: 9.5 }), 128, 'Perfil de ' + (d.nombre || d.ticker));
+      // La CETES vigente (la del chip), no un 9.5 fijo.
+      const cetesHoy = typeof window.MP_CETES_HOY === 'number' ? window.MP_CETES_HOY : undefined;
+      copo = F.copo(F.puntuar(m, { cetes: cetesHoy }), 128, 'Perfil de ' + (d.nombre || d.ticker));
     }
     const score = d.score == null ? '—' : Math.round(d.score);
     return `
@@ -10133,20 +10212,19 @@ function renderCuadernilloMexico(analisis) {
     })
     .catch(() => {});
 
-  // ── Comparativa contra la SIEFORE equivalente ──────────────────
-  if (retorno != null && typeof window.compararAfore === 'function') {
-    try {
-      const sf = window.compararAfore(retorno);
-      // La SIEFORE "de en medio" (SB75, 35-39 años) es la referencia por
-      // defecto: es el perfil más común entre quienes usan la app.
-      const ref = sf.find(s => s.siefore === 'SB75') || sf[0];
-      if (ref) {
-        const d = ref.diff;
-        set('mx-afore-valor', (d >= 0 ? '+' : '') + d.toFixed(1) + ' pts',
-            d > 0 ? 'mp-alza' : d < 0 ? 'mp-baja' : 'mp-plano');
-        set('mx-afore-nota', `${ref.siefore} (${ref.edad}) rinde ${ref.retorno}% real`);
-      }
-    } catch {}
+  // ── Contra el índice (antes: contra una SIEFORE de tabla escrita a mano) ──
+  // El mismo alfa compuesto que la Sección C y el titular: cartera menos índice,
+  // los dos en CAGR y en la misma ventana.
+  const b = analisis && analisis.benchmark;
+  if (b && typeof b.alpha_portafolio_pct === 'number') {
+    const nombreIdx = b.ticker === '^GSPC' ? 'S&P 500' : 'IPC';
+    set('mx-indice-etq', `Tu cartera vs ${nombreIdx}`);
+    const d = b.alpha_portafolio_pct;
+    set('mx-afore-valor', (d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(1) + ' pts',
+        d > 0 ? 'mp-alza' : d < 0 ? 'mp-baja' : 'mp-plano');
+    const ri = b.rendimiento_cagr_pct ?? b.rendimiento_anualizado_pct;
+    set('mx-afore-nota', typeof ri === 'number'
+      ? `El ${nombreIdx} rindió ${ri.toFixed(1)}% al año` : 'Rendimiento compuesto, por año');
   } else {
     set('mx-afore-nota', 'Analiza tu portafolio para comparar');
   }

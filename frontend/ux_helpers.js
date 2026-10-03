@@ -1468,7 +1468,7 @@
   // 12. GLOSARIO INTERACTIVO — modal con definiciones clave
   // ============================================================
   const GLOSARIO = [
-    { termino: 'Sharpe ratio',       def: 'Rendimiento por unidad de riesgo. Si tu portafolio gana 12% y la tasa libre de riesgo es 9.5%, dividido entre tu volatilidad. >1 es bueno, >2 es excelente.' },
+    { termino: 'Sharpe ratio',       def: 'Rendimiento por unidad de riesgo: lo que tu portafolio gana por encima de CETES, dividido entre su volatilidad. Si gana 12%, CETES paga 6% y la volatilidad es 15%, el Sharpe es 0.4. >1 es bueno, >2 es excelente.' },
     { termino: 'Sortino ratio',      def: 'Como Sharpe pero solo cuenta volatilidad "mala" (caídas). Más justo que Sharpe porque las subidas no son malas.' },
     { termino: 'Drawdown',           def: 'Caída desde un máximo histórico. Si tu portafolio iba en $100 y bajó a $75, tienes drawdown de -25%.' },
     { termino: 'Volatilidad',        def: 'Qué tanto sube y baja tu portafolio. Medida con desviación estándar de rendimientos anuales.' },
@@ -1549,7 +1549,7 @@
       titulo: 'Entendiendo el Sharpe ratio',
       slides: [
         { titulo: '¿Por qué importa?', cuerpo: 'Dos portafolios pueden tener mismo retorno pero uno con caídas brutales y otro estable. El Sharpe ajusta por eso: cuánto ganas por cada unidad de riesgo.' },
-        { titulo: 'La fórmula simple', cuerpo: 'Sharpe = (Retorno - Tasa libre de riesgo) / Volatilidad. En México, la tasa libre de riesgo es CETES 28d (~9.5%).' },
+        { titulo: 'La fórmula simple', cuerpo: 'Sharpe = (Retorno - Tasa libre de riesgo) / Volatilidad. En México, la tasa libre de riesgo es CETES a 28 días (la app usa la vigente de Banxico).' },
         { titulo: 'Cómo interpretarlo', cuerpo: 'Sharpe < 0: CETES te gana sin riesgo. Sharpe 0-0.5: mediocre. Sharpe 0.5-1: razonable. Sharpe 1-2: muy bueno. Sharpe > 2: excelente.' },
         { titulo: 'Trampa común', cuerpo: 'Sharpe alto NO significa "menos riesgo". Un portafolio con 30% vol y 40% retorno tiene Sharpe 1.0. Significa eficiencia, no seguridad.' },
         { titulo: 'Cuándo no aplica', cuerpo: 'Sharpe asume rendimientos normales. Con cripto o opciones (rendimientos muy asimétricos), considera Sortino que solo penaliza la volatilidad mala (caídas).' },

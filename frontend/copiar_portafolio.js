@@ -72,8 +72,14 @@
       // resto en dólares. Mezclar las dos sin convertir es el error que hace
       // que "cuánto cuesta" salga 17× mal.
       const mon = d.moneda || (t.toUpperCase().endsWith('.MX') ? 'MXN' : 'USD');
+      // Pesos y dólares como siempre. Cualquier otra moneda (euros, libras en
+      // peniques, rupias…) usa el precio en pesos que ya calcula el backend
+      // con su propio tipo de cambio: multiplicarla por el del dólar era el
+      // mismo error que tenía el optimizador.
       out[t] = {
-        mxn: mon === 'MXN' ? d.precio : d.precio * fx,
+        mxn: mon === 'MXN' ? d.precio
+           : mon === 'USD' ? d.precio * fx
+           : (d.mxn != null ? d.mxn : d.precio * fx),
         original: d.precio,
         moneda: mon,
       };

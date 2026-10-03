@@ -270,16 +270,18 @@ def _score(fund: Dict[str, Any], peer: Dict[str, Any]) -> Dict[str, Any]:
     # Garantizar 1..100
     total = max(1.0, min(100.0, total))
 
+    # Mismas etiquetas descriptivas que el score canónico: "Recomendable" /
+    # "No recomendable" se leían como consejo de inversión.
     if total >= 75:
-        veredicto = {"nivel": "muy_recomendable", "etiqueta": "Muy recomendable",  "color": "green"}
+        veredicto = {"nivel": "muy_recomendable", "etiqueta": "Desempeño destacado", "color": "green"}
     elif total >= 60:
-        veredicto = {"nivel": "recomendable",     "etiqueta": "Recomendable",      "color": "green"}
+        veredicto = {"nivel": "recomendable",     "etiqueta": "Desempeño sólido",    "color": "green"}
     elif total >= 45:
-        veredicto = {"nivel": "neutral",          "etiqueta": "Neutral",           "color": "blue"}
+        veredicto = {"nivel": "neutral",          "etiqueta": "Desempeño medio",     "color": "blue"}
     elif total >= 30:
-        veredicto = {"nivel": "poco",             "etiqueta": "Poco recomendable", "color": "amber"}
+        veredicto = {"nivel": "poco",             "etiqueta": "Desempeño flojo",     "color": "amber"}
     else:
-        veredicto = {"nivel": "no",               "etiqueta": "No recomendable",   "color": "red"}
+        veredicto = {"nivel": "no",               "etiqueta": "Desempeño débil",     "color": "red"}
 
     return {
         "score":       total,
@@ -454,17 +456,10 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
         det = _ad.score_para_ticker(ticker)   # usa el universo local (canónico)
         if det is not None and det.get("score") is not None:
             from metricas_canonicas import nivel_para_score as _niv
+            # La etiqueta ya llega DESCRIPTIVA para todo tipo de activo
+            # ("Desempeño sólido", no "Recomendación sólida"): la app no es asesor
+            # registrado ante la CNBV. Ver metricas_canonicas.nivel_para_score.
             etq, col = _niv(int(det["score"]))
-            # Para ETF y cripto la etiqueta se vuelve DESCRIPTIVA. "Recomendación
-            # sólida" sobre una criptomoneda suena a consejo de compra, y la app
-            # no es asesor registrado ante la CNBV: describe desempeño, no
-            # recomienda. El número no cambia, solo cómo se nombra.
-            if tipo in ("etf", "crypto", "generico"):
-                etq = {"Recomendación fuerte": "Desempeño destacado",
-                       "Recomendación sólida": "Desempeño sólido",
-                       "Interesante":          "Desempeño medio",
-                       "Mención":              "Desempeño flojo",
-                       "Sin ventaja clara":    "Sin ventaja clara"}.get(etq, etq)
             sc = {
                 "score":       int(det["score"]),
                 "veredicto":   {"nivel": etq, "etiqueta": etq, "color": col},

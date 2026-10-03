@@ -152,12 +152,16 @@ SIE_SERIES = {
     "364": "SF43945",    # CETES 364 días
 }
 
-# Fallback manual (actualizable por env). Abril 2026 — referencia aproximada.
+# Respaldo (actualizable por env CETES_<plazo>) para cuando Banxico no
+# contesta o no hay token. Eran valores de abril de 2026 (28 días en 9.50%) y
+# en octubre la tasa real era 6.01%: el respaldo viejo hacía que en local, o
+# en una caída de Banxico, toda la app comparara contra una CETES que ya no
+# existía. Banxico SIE, subasta del 1 de octubre de 2026.
 CETES_FALLBACK_DEFAULT = {
-    "28":  9.50,
-    "91":  9.25,
-    "182": 9.10,
-    "364": 9.00,
+    "28":  6.01,
+    "91":  6.73,
+    "182": 7.01,
+    "364": 7.44,
 }
 
 
@@ -194,7 +198,25 @@ def _obtener_cetes_sie(token: str) -> Optional[Dict[str, Dict[str, Any]]]:
         return None
 
 
+_MEM_CETES: Dict[str, Any] = {"ts": 0.0, "d": None, "ttl": 0}
+
+
 def obtener_cetes() -> Dict[str, Any]:
+    """Tasas CETES por plazo (Banxico SIE o respaldo), con caché por proceso.
+
+    El chip, el Cuadernillo y todos los cálculos (cetes_28_pct) leen de aquí:
+    con una caché aparte para el análisis y ninguna para el chip, podían
+    enseñar tasas distintas el día que Banxico publicara una nueva. 6 h si
+    vino de Banxico; 15 min si cayó al respaldo, para reintentar pronto."""
+    import time as _t
+    if _MEM_CETES["d"] is not None and _t.time() - _MEM_CETES["ts"] < _MEM_CETES["ttl"]:
+        return _MEM_CETES["d"]
+    d = _obtener_cetes_sin_cache()
+    _MEM_CETES.update(ts=_t.time(), d=d, ttl=6 * 3600 if d.get("fuente") == "banxico_sie" else 15 * 60)
+    return d
+
+
+def _obtener_cetes_sin_cache() -> Dict[str, Any]:
     """Devuelve tasas CETES por plazo. Intenta Banxico SIE, luego fallback."""
     token = _banxico_token()
     if token:
@@ -222,6 +244,35 @@ def obtener_cetes() -> Dict[str, Any]:
         "actualizado": None,
         "nota":        "Usando valores de respaldo. Configura BANXICO_SIE_TOKEN para tasas en vivo.",
     }
+
+
+# ---- La tasa libre de riesgo en pesos, UNA sola para toda la app ------------
+#
+# El chip de arriba y el Cuadernillo enseñaban la CETES 28 días de Banxico (en
+# octubre, 6.01%), mientras la flotación, la regata, el copo, los Sharpe y la
+# fila "Contra CETES" usaban un 9.5% escrito a mano en siete módulos. En la
+# misma pantalla salía "CETES 28d 6.01%" arriba y "CETES pagó 9.5%" abajo.
+# Todos leen ahora de aquí, y de la misma caché que el chip (obtener_cetes).
+
+
+def cetes_28_pct() -> tuple:
+    """(tasa de CETES 28 días en %, fuente: 'banxico_sie' | 'fallback').
+    Sin caché propia: lee la de obtener_cetes(), la misma que usa el chip."""
+    pct, fuente = None, "fallback"
+    try:
+        d = obtener_cetes()
+        pct = float(d["tasas"]["28"]["tasa_pct"])
+        fuente = d.get("fuente") or "fallback"
+    except Exception:
+        pass
+    if not pct or not (0 < pct < 50):
+        pct, fuente = CETES_FALLBACK_DEFAULT["28"], "fallback"
+    return pct, fuente
+
+
+def tasa_libre_mx() -> float:
+    """CETES 28 días vigente como FRACCIÓN (0.0601), para los Sharpe y Sortino."""
+    return cetes_28_pct()[0] / 100.0
 
 
 # ---- Curvas de rendimiento (US vía FRED + MX vía CETES) ---------------------

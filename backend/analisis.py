@@ -25,17 +25,20 @@ INFO_PATH = CARPETA / "info_activos.json"
 JSON_PATH = CARPETA / "resultados.json"
 
 DIAS_HABILES = 252                 # días hábiles en un año bursátil
-# Cetes 28 días. Estaba en 0.09 mientras los otros SEIS lugares del backend
-# que definen la tasa libre de riesgo en pesos usan 0.095 (backtest.py,
-# perfiles.py, metricas_canonicas.RF_MXN_DEFAULT, sml.RF_MXN_DEFAULT y el
-# respaldo de renta_fija_mx). En la misma pantalla la flotación decía "CETES
-# pagó 9.0%" y la celda del Cuadernillo "CETES 28 días 9.50%".
-#
-# PENDIENTE DE VERDAD: ninguna de las siete es en vivo. renta_fija_mx sabe
-# pedirla a Banxico SIE pero no hay BANXICO_SIE_TOKEN configurado, así que
-# todas son constantes. Lo correcto es un solo accesor cacheado que lean las
-# siete; mientras tanto, al menos dicen lo mismo.
-TASA_LIBRE_RIESGO = 0.095
+# Respaldo si no se puede leer la tasa vigente. La que se usa sale de
+# renta_fija_mx.cetes_28_pct(): la misma CETES 28 días que enseña el chip.
+TASA_LIBRE_RIESGO = 0.0601
+
+
+def tasa_libre_riesgo() -> float:
+    """CETES 28 días vigente, como fracción."""
+    try:
+        from renta_fija_mx import tasa_libre_mx
+        return tasa_libre_mx()
+    except Exception:
+        return TASA_LIBRE_RIESGO
+
+
 # Benchmarks disponibles (se eligen automáticamente según moneda dominante)
 BENCHMARK_US = "^GSPC"             # S&P 500
 BENCHMARK_MX = "^MXX"              # IPC México
@@ -81,7 +84,7 @@ def metricas_riesgo_avanzado(rend_port, rend_bench=None):
     ann_ret = float(r.mean()) * DIAS_HABILES
     neg = r[r < 0]
     downside = float(neg.std()) * np.sqrt(DIAS_HABILES) if len(neg) > 1 else 0.0
-    sortino = (ann_ret - TASA_LIBRE_RIESGO) / downside if downside > 0 else None
+    sortino = (ann_ret - tasa_libre_riesgo()) / downside if downside > 0 else None
 
     serie_val = (1 + r).cumprod()
     max_dd_frac = float((serie_val / serie_val.cummax() - 1).min())
@@ -267,7 +270,7 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
         rend_anual = float(rend_diarios[ticker].mean() * DIAS_HABILES) * 100
         vol_anual = float(rend_diarios[ticker].std() * np.sqrt(DIAS_HABILES)) * 100
         sharpe = (
-            (rend_anual - TASA_LIBRE_RIESGO * 100) / vol_anual
+            (rend_anual - tasa_libre_riesgo() * 100) / vol_anual
             if vol_anual > 0 else 0.0
         )
         max_dd = calcular_max_drawdown(precios_port[ticker])
@@ -298,7 +301,7 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
     vol_port_anual = float(np.sqrt(pesos_array @ cov_anual @ pesos_array)) * 100
 
     sharpe_port = (
-        (rend_port_anual - TASA_LIBRE_RIESGO * 100) / vol_port_anual
+        (rend_port_anual - tasa_libre_riesgo() * 100) / vol_port_anual
         if vol_port_anual > 0 else 0.0
     )
 
@@ -393,7 +396,7 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
     }
 
     # ---- 6b. PORTAFOLIO ÓPTIMO (Markowitz, máx Sharpe) ----
-    opt = optimizar_sharpe(rend_diarios, TASA_LIBRE_RIESGO)
+    opt = optimizar_sharpe(rend_diarios, tasa_libre_riesgo())
     # Deltas contra el portafolio actual (cuánto mejoraría)
     opt["delta_vs_actual"] = {
         "rendimiento_anualizado_pp": round(opt["rendimiento_anualizado_pct"] - rend_port_anual, 2),
@@ -413,11 +416,20 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
         rend_bench_anual = float(rend_bench_diario.mean() * DIAS_HABILES) * 100
         vol_bench_anual = float(rend_bench_diario.std() * np.sqrt(DIAS_HABILES)) * 100
         sharpe_bench = (
-            (rend_bench_anual - TASA_LIBRE_RIESGO * 100) / vol_bench_anual
+            (rend_bench_anual - tasa_libre_riesgo() * 100) / vol_bench_anual
             if vol_bench_anual > 0 else 0.0
         )
         max_dd_bench = calcular_max_drawdown(precios_bench)
-        alpha_pct = rend_port_anual - rend_bench_anual
+        # El alfa es "cuánto rendiste más al año que el índice": compuesto
+        # contra compuesto, en la misma ventana que la flotación y que la cifra
+        # de Rendimiento. Restaba los ARITMÉTICOS y en la misma página salía
+        # "Superas al IPC por 5.5 pp/año" con un rendimiento de 7.05% junto a
+        # un "Retorno anual" de 9.52%. Si falta algún compuesto, el de antes.
+        bench_cagr = _cagr(precios_bench.reindex(valor_portafolio.index).ffill())
+        if bench_cagr is not None and rend_prom_anual_5y_pct is not None:
+            alpha_pct = rend_prom_anual_5y_pct - bench_cagr
+        else:
+            alpha_pct = rend_port_anual - rend_bench_anual
 
         benchmark_info = {
             "ticker": benchmark_elegido,
@@ -426,7 +438,7 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
             # El eje MERCADO compara la cartera contra el índice: los dos tienen
             # que ser compuestos y sobre la misma ventana, o el eje hereda el
             # mismo sesgo que tenía PODER contra CETES.
-            "rendimiento_cagr_pct": _cagr(precios_bench.reindex(valor_portafolio.index).ffill()),
+            "rendimiento_cagr_pct": bench_cagr,
             "volatilidad_anual_pct": round(vol_bench_anual, 2),
             "sharpe_ratio": round(sharpe_bench, 3),
             "max_drawdown_pct": round(max_dd_bench, 2),
@@ -673,7 +685,7 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
             "fecha_fin": str(precios.index[-1].date()),
             "dias_observados": len(precios),
             "activos": activos,
-            "tasa_libre_riesgo_pct": round(TASA_LIBRE_RIESGO * 100, 2),
+            "tasa_libre_riesgo_pct": round(tasa_libre_riesgo() * 100, 2),
             "benchmark": benchmark_elegido if benchmark_info else None,
             "peso_mxn": peso_mxn,
             "peso_usd": peso_usd,

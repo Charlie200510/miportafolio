@@ -39,6 +39,17 @@ def _benchmark_nombre(ticker: str) -> str:
 # ------------------------------------------------------------
 # 1) Concentración sectorial y por país
 # ------------------------------------------------------------
+_PAIS_ES = {
+    "Mexico": "México", "United States": "Estados Unidos", "Spain": "España",
+    "United Kingdom": "Reino Unido", "Germany": "Alemania", "France": "Francia",
+    "Netherlands": "Países Bajos", "Switzerland": "Suiza", "Japan": "Japón",
+    "Canada": "Canadá", "Brazil": "Brasil", "Italy": "Italia", "Sweden": "Suecia",
+    "Norway": "Noruega", "Denmark": "Dinamarca", "Taiwan": "Taiwán",
+    "South Korea": "Corea del Sur", "Ireland": "Irlanda", "Belgium": "Bélgica",
+    "Peru": "Perú", "Singapore": "Singapur", "Finland": "Finlandia",
+}
+
+
 def _insight_concentracion(resultado: dict) -> list[dict]:
     """Busca el sector/país con mayor peso y genera alerta si supera umbral."""
     out = []
@@ -54,6 +65,19 @@ def _insight_concentracion(resultado: dict) -> list[dict]:
         top_k, top_v = _tomar_top(c.get(campo))
         if not top_k or top_k == "Desconocido":
             continue
+        # El país llega como lo publica Yahoo ("Mexico", "United States"), y
+        # salía "Alta concentración en Mexico… está en el país Mexico".
+        # "Global" (cripto, oro, ETFs mundiales) no es un país: "concentración
+        # en Global" no dice nada, así que no se avisa.
+        if etiqueta == "país":
+            if top_k == "Global":
+                continue
+            top_k = _PAIS_ES.get(top_k, top_k)
+            # Frase sin verbo que concuerde con el país: "Si Países Bajos cae"
+            # no concuerda y "Si caen" tampoco sirve para México.
+            donde, si_cae = top_k, "Si a ese país le va mal"
+        else:
+            donde, si_cae = f"el sector {top_k}", "Si ese sector cae"
 
         pct = top_v * 100  # backend guarda fracciones (0.65)
         if top_v >= UMBRAL_CONC_ALTA:
@@ -61,8 +85,8 @@ def _insight_concentracion(resultado: dict) -> list[dict]:
                 "tipo":      f"concentracion_{etiqueta}",
                 "severidad": "alta",
                 "titulo":    f"Alta concentración en {top_k}",
-                "detalle":   (f"{pct:.0f}% del peso está en el {etiqueta} {top_k}. "
-                              f"Si ese {etiqueta} cae, tu portafolio baja casi igual."),
+                "detalle":   (f"{pct:.0f}% del peso está en {donde}. "
+                              f"{si_cae}, tu portafolio baja casi igual."),
                 "orden":     10,
                 "datos":     {etiqueta: top_k, "peso_pct": round(pct, 1)},
             })
@@ -71,7 +95,7 @@ def _insight_concentracion(resultado: dict) -> list[dict]:
                 "tipo":      f"concentracion_{etiqueta}",
                 "severidad": "media",
                 "titulo":    f"Peso importante en {top_k}",
-                "detalle":   (f"{pct:.0f}% del portafolio está en el {etiqueta} {top_k}. "
+                "detalle":   (f"{pct:.0f}% del portafolio está en {donde}. "
                               f"No es extremo, pero sí una apuesta concentrada."),
                 "orden":     30,
                 "datos":     {etiqueta: top_k, "peso_pct": round(pct, 1)},

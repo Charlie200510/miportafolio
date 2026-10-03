@@ -1411,16 +1411,34 @@ def _precio_actual_de(t: str) -> tuple[str, dict]:
         # La moneda viaja con el precio: sin ella el front no puede sumar un
         # ticker de la BMV con uno de NYSE, y "cuánto cuesta el portafolio"
         # daría un número que mezcla pesos con dólares.
-        moneda = None
+        moneda, centavos = None, False
         for key in ("currency",):
             try:
                 v = info[key] if hasattr(info, "__getitem__") else getattr(info, key, None)
                 if v:
-                    moneda = str(v).upper()
+                    # Londres reporta "GBp" (peniques) y Tel Aviv "ILA" (agorot):
+                    # al pasarlo a mayúsculas se perdía que son centésimos.
+                    centavos = str(v) in ("GBp", "GBX", "ILA", "ZAc")
+                    moneda = {"GBX": "GBP", "ILA": "ILS", "ZAC": "ZAR"}.get(str(v).upper(), str(v).upper())
                     break
             except (KeyError, TypeError):
                 continue
-        return t, {"precio": round(precio, 2), "moneda": moneda, "error": None}
+        # El precio ya en pesos, con la misma conversión que el optimizador
+        # (moneda.py). Sin esto "Copiar mi portafolio" pasaba euros y libras
+        # por el tipo de cambio del dólar, y los peniques salían 100× caros.
+        mxn = None
+        try:
+            import moneda as _mon
+            if moneda:                      # Yahoo dijo la moneda: manda eso
+                mon = moneda
+                mayor = precio / 100.0 if centavos else precio
+            else:                           # sin dato: metadata y sufijo
+                mon = _mon.moneda_de(t)
+                mayor = _mon.en_unidad_mayor(t, mon, precio)
+            mxn = round(mayor * _mon.pesos_por(mon)[0], 2)
+        except Exception:
+            mxn = None
+        return t, {"precio": round(precio, 2), "moneda": moneda, "mxn": mxn, "error": None}
     except Exception as e:
         return t, {"precio": None, "error": str(e)[:80]}
 

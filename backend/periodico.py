@@ -327,7 +327,10 @@ def _normalizar_noticia(n: dict) -> dict | None:
             # yfinance v1 da providerPublishTime en segundos unix
             ts = n.get("providerPublishTime")
             if ts:
-                fecha_pub = pd.Timestamp(ts, unit="s").isoformat()
+                # Con zona: sin ella el teléfono la leía como hora local (6 h
+                # corridas en CDMX) y no se podía ordenar junto a las de v2,
+                # que traen "Z".
+                fecha_pub = pd.Timestamp(ts, unit="s", tz="UTC").isoformat()
             else:
                 fecha_pub = ""
             thumb = ""
@@ -383,6 +386,22 @@ _SEMILLA_CATEGORIA = {
     "BTC-USD": CAT_CRIPTO, "ETH-USD": CAT_CRIPTO,
     "^TNX": CAT_MACRO, "TLT": CAT_MACRO,
 }
+# Búsquedas para la sección México: la búsqueda de Yahoo no trae nada para
+# NAFTRAC.MX/WALMEX.MX/GFNORTEO.MX. Cada una solo acepta notas cuyo TÍTULO
+# mencione algo de la lista: "Mexico" a secas traía Nuevo México, langostas en
+# Dallas y reportes de mercado de dispositivos médicos.
+BUSQUEDAS_NOTICIAS_MX = {
+    "Mexico":         ("mexico", "mexican", "méxico"),
+    "Mexico economy": ("mexico", "mexican"),
+    "Banxico":        ("banxico", "mexico"),
+    "America Movil":  ("america movil", "américa móvil", "amer movil", "america móvil"),
+    "FEMSA":          ("femsa",),
+    "Walmex":         ("walmex", "walmart de mexico", "walmart de méxico"),
+    "Grupo Mexico":   ("grupo mexico", "grupo méxico"),
+}
+_RUIDO_BUSQUEDA = ("new mexico", "market report", "market size", "market research",
+                   "market forecast", "market analysis", "market outlook",
+                   "outlook to 20", "revenue, volume")
 
 # Palabras del titular que MANDAN sobre el ticker semilla: una nota sobre la
 # Fed que llegó colgada de SPY es macro, no "mercados globales".
@@ -408,22 +427,74 @@ def _categoria_de(noticia: dict, semilla: str) -> str:
 
 
 def _fecha_key(n):
-    """Orden por fecha de publicación, descendente. Las no parseables al final."""
+    """Orden por fecha de publicación, descendente. Las no parseables al final.
+    Todo a UTC con zona: mezclar fechas con y sin zona tumbaba el sort."""
     try:
-        return pd.Timestamp(n.get("fecha") or "")
+        f = pd.Timestamp(n.get("fecha") or "")
+        if pd.isna(f):
+            raise ValueError
+        return f.tz_localize("UTC") if f.tzinfo is None else f.tz_convert("UTC")
     except Exception:
-        return pd.Timestamp("1970-01-01")
+        return pd.Timestamp("1970-01-01", tz="UTC")
+
+
+# yf.Ticker(t).news dejó de devolver notas a principios de octubre de 2026:
+# lista vacía para todos los tickers, en la VM y en local, y el Periódico se
+# quedó en la edición del 1 de octubre. La búsqueda de Yahoo (yf.Search) sí las
+# trae, en el formato plano que _normalizar_noticia ya entiende (sin resumen).
+# Si la vía de siempre vuelve vacía, se pasa a la búsqueda y se recuerda 6 h
+# para no gastar dos peticiones por ticker.
+_NEWS_TICKER_VACIO = {"ts": 0.0}
+
+
+_SONDA_NEWS = "SPY"   # siempre tiene notas: si viene vacío, la vía está caída
+
+
+def _news_de(t: str, n: int = 10) -> list:
+    """Notas crudas de un ticker: Ticker.news y, si viene vacío, yf.Search.
+
+    Solo el vacío de la SONDA apaga la vía de siempre por 6 h. Un ticker
+    cualquiera sin notas (una emisora chica) no dice nada de Yahoo: se busca
+    por yf.Search solo para él, sin tocar el estado global."""
+    import time as _t
+    if _t.time() - _NEWS_TICKER_VACIO["ts"] > 6 * 3600:
+        try:
+            lista = yf.Ticker(t).news or []
+        except Exception:
+            lista = []
+        if lista:
+            return lista
+        if t == _SONDA_NEWS:
+            _NEWS_TICKER_VACIO["ts"] = _t.time()
+    try:
+        return yf.Search(t, max_results=1, news_count=n).news or []
+    except Exception:
+        return []
 
 
 def _descargar_noticias_top() -> list[dict]:
     """Baja y normaliza las noticias de todas las semillas (sin tocar caché)."""
     vistas: dict[str, dict] = {}
     out: list[dict] = []
-    for t in TICKERS_NOTICIAS_TOP:
+    def _busqueda(q):
+        terminos = BUSQUEDAS_NOTICIAS_MX[q]
         try:
-            lista = yf.Ticker(t).news or []
+            lista = yf.Search(q, max_results=1, news_count=10).news or []
         except Exception:
-            continue
+            return []
+        buenas = []
+        for n in lista:
+            tit = str(n.get("title") or "").lower()
+            if any(r in tit for r in _RUIDO_BUSQUEDA):
+                continue
+            if any(term in tit for term in terminos):
+                buenas.append(n)
+        return buenas
+
+    semillas = [(t, _news_de, False) for t in TICKERS_NOTICIAS_TOP] + \
+               [(q, _busqueda, True) for q in BUSQUEDAS_NOTICIAS_MX]
+    for t, traer, es_busqueda in semillas:
+        lista = traer(t)
         for n in lista:
             norm = _normalizar_noticia(n)
             if not norm:
@@ -432,16 +503,25 @@ def _descargar_noticias_top() -> list[dict]:
             if ya is not None:
                 # La misma nota colgada de dos semillas: no se duplica, se le
                 # suma el ticker. Así el chip de "tickers relacionados" de la
-                # tarjeta sale completo en vez de con uno solo.
-                if t not in ya["tickers"]:
+                # tarjeta sale completo en vez de con uno solo. Una BÚSQUEDA no
+                # es ticker: se pintaba como chip "Banxico →" que no lleva a nada.
+                if not es_busqueda and t not in ya["tickers"]:
                     ya["tickers"].append(t)
                 continue
-            norm["tickers"] = [t]
-            norm["categoria"] = _categoria_de(norm, t)
+            norm["tickers"] = [] if es_busqueda else [t]
+            norm["categoria"] = CAT_MX if es_busqueda else _categoria_de(norm, t)
             vistas[norm["url"]] = norm
             out.append(norm)
 
     out.sort(key=_fecha_key, reverse=True)
+    # Dos lugares reservados para México entre las primeras tarjetas: por fecha
+    # pura, las notas mexicanas (menos frecuentes) quedaban después del corte de
+    # 10 y la sección "Mercado mexicano" no aparecía nunca.
+    mx_fuera = [n for n in out[10:] if n.get("categoria") == CAT_MX][:2]
+    if mx_fuera and not any(n.get("categoria") == CAT_MX for n in out[:10]):
+        for pos, n in zip((3, 7), mx_fuera):
+            out.remove(n)
+            out.insert(pos, n)
     return out
 
 
@@ -518,6 +598,9 @@ def _escribir_diario(d: dict) -> None:
         pass
 
 
+_FALLO_DIARIO = {"ts": 0.0, "error": None}
+
+
 def noticias_diarias(limite: int = 24, forzar: bool = False) -> dict:
     """Edición del día del mazo de noticias.
 
@@ -534,6 +617,14 @@ def noticias_diarias(limite: int = 24, forzar: bool = False) -> dict:
 
     if not forzar and previo and previo.get("edicion") == edicion:
         return {**previo, "noticias": previo["noticias"][:limite], "degradado": False}
+    # Si la descarga acaba de fallar, se sirve la edición anterior al instante
+    # durante 10 min en vez de reintentarla en cada visita: cada reintento
+    # tardaba más que el tope del cliente (12 s) y la pantalla decía "No pude
+    # traer la edición de hoy" teniendo una edición previa que enseñar.
+    if (not forzar and previo and previo.get("noticias")
+            and time.time() - _FALLO_DIARIO["ts"] < 600):
+        return {**previo, "noticias": previo["noticias"][:limite], "degradado": True,
+                "error": _FALLO_DIARIO.get("error") or "La fuente de noticias no respondió."}
 
     with _lock_diario:
         # Otro worker pudo generarla mientras esperábamos el lock.
@@ -549,6 +640,7 @@ def noticias_diarias(limite: int = 24, forzar: bool = False) -> dict:
             err = None
 
         if not noticias:
+            _FALLO_DIARIO.update(ts=time.time(), error=err)
             if previo and previo.get("noticias"):
                 # Se sirve la edición vieja marcada como tal: mucho mejor que
                 # una sección en blanco.
@@ -589,10 +681,7 @@ def noticias_portafolio(tickers: list[str], limite: int = 12) -> list[dict]:
     vistas = set()
     out = []
     for t in tickers:
-        try:
-            lista = yf.Ticker(t).news or []
-        except Exception:
-            continue
+        lista = _news_de(t, 6)
         for n in lista[:4]:   # máximo 4 por ticker
             norm = _normalizar_noticia(n)
             if not norm:

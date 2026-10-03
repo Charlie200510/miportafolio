@@ -45,7 +45,18 @@ _UNIV_LITE = _BACKEND_DIR / "universo_lite_precios.csv"
 _UNIV_CSV  = _UNIV_FULL if _UNIV_FULL.exists() else _UNIV_LITE
 
 DIAS_HABILES = 252
-TASA_LIBRE_RIESGO = 0.095
+# Respaldo si no se puede leer la tasa vigente. La que se usa sale de
+# renta_fija_mx.cetes_28_pct(): la misma CETES 28 días que enseña el chip.
+TASA_LIBRE_RIESGO = 0.0601
+
+
+def tasa_libre_riesgo() -> float:
+    """CETES 28 días vigente, como fracción."""
+    try:
+        from renta_fija_mx import tasa_libre_mx
+        return tasa_libre_mx()
+    except Exception:
+        return TASA_LIBRE_RIESGO
 MIN_DIAS_HISTORIA = 252           # ahora pedimos ≥1 año para perfilar quality
 MIN_WEIGHT = 1e-3
 N_OBJETIVO_DEFAULT = 7            # tickers en el portafolio final
@@ -112,7 +123,9 @@ def _precios_mxn(tickers: list, precios: pd.DataFrame) -> tuple[dict, bool]:
         p = float(serie.iloc[-1])
         if p <= 0:
             continue
-        out[t] = p * fx if _moneda_de(t, info) == "USD" else p
+        # a_pesos y no "×fx si es USD": con esa regla una emisora en euros o en
+        # libras pasaba como si ya estuviera en pesos.
+        out[t] = _M.a_pesos(t, p, info)
     return out, estimado
 
 
@@ -451,13 +464,13 @@ def _metricas_ticker(precios_t: pd.Series) -> dict:
     vol_anual = std_d * np.sqrt(DIAS_HABILES)
 
     # Sharpe
-    sharpe = (ret_anual - TASA_LIBRE_RIESGO) / vol_anual if vol_anual > 0 else 0.0
+    sharpe = (ret_anual - tasa_libre_riesgo()) / vol_anual if vol_anual > 0 else 0.0
 
     # Sortino: usa solo desviación de retornos negativos
     rend_neg = rend[rend < 0]
     if len(rend_neg) > 5:
         downside = float(rend_neg.std()) * np.sqrt(DIAS_HABILES)
-        sortino = (ret_anual - TASA_LIBRE_RIESGO) / downside if downside > 0 else 0.0
+        sortino = (ret_anual - tasa_libre_riesgo()) / downside if downside > 0 else 0.0
     else:
         sortino = sharpe
 
@@ -679,7 +692,7 @@ def _limpiar_pesos(w: np.ndarray, min_w: float = MIN_WEIGHT) -> np.ndarray:
 def _optimizar(rend_diarios: pd.DataFrame, objetivo: str, pisos=None) -> tuple[np.ndarray, dict]:
     mu = rend_diarios.mean().values
     cov = rend_diarios.cov().values
-    rf_diaria = TASA_LIBRE_RIESGO / DIAS_HABILES
+    rf_diaria = tasa_libre_riesgo() / DIAS_HABILES
 
     if objetivo == "min_vol":
         w = _pesos_min_vol(cov, pisos)
@@ -701,7 +714,7 @@ def _optimizar(rend_diarios: pd.DataFrame, objetivo: str, pisos=None) -> tuple[n
     ret_anual = float(w @ mu) * DIAS_HABILES
     var_anual = float(w @ cov @ w) * DIAS_HABILES
     vol_anual = float(np.sqrt(max(var_anual, 0.0)))
-    sharpe = (ret_anual - TASA_LIBRE_RIESGO) / vol_anual if vol_anual > 0 else 0.0
+    sharpe = (ret_anual - tasa_libre_riesgo()) / vol_anual if vol_anual > 0 else 0.0
 
     # Diversificación: 1 - correlación promedio entre tickers ponderada por peso
     std = np.sqrt(np.diag(cov))
@@ -907,7 +920,7 @@ def _construir_perfil(p: dict, precios: pd.DataFrame, universo_set: Optional[set
         ret_anual = float(w_eq @ mu) * DIAS_HABILES
         var_anual = float(w_eq @ cov_arr @ w_eq) * DIAS_HABILES
         vol_anual = float(np.sqrt(max(var_anual, 0.0)))
-        sharpe = (ret_anual - TASA_LIBRE_RIESGO) / vol_anual if vol_anual > 0 else 0.0
+        sharpe = (ret_anual - tasa_libre_riesgo()) / vol_anual if vol_anual > 0 else 0.0
         metricas = {
             "retorno_anual_pct":     round(ret_anual * 100, 2),
             "volatilidad_anual_pct": round(vol_anual * 100, 2),

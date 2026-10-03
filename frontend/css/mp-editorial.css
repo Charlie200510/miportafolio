@@ -1100,6 +1100,10 @@ main .quick-link {
   text-transform: none !important;
   padding: revert !important;
 }
+/* …salvo dentro de la retícula del Cuadernillo, donde el "revert" les quitaba
+   el relleno de celda: cuatro celdas pegadas al borde y dos (las que no son
+   pestaña) con aire. Las seis usan el de .mp-reticula > *. */
+main .mp-reticula > .nav-tab { padding: var(--paso-3) var(--paso-4) !important; }
 
 /* 2) Los hijos de grid heredan min-width:auto y su min-content empujaba la
       retícula más allá del viewport (vista de transacciones). */
@@ -2383,3 +2387,12 @@ button:active, a:active, [role="button"]:active, .nav-tab:active {
 }
 .an-rango:hover { color: var(--tinta-1); }
 .an-rango.activo { color: var(--tinta-1); border-bottom-color: var(--tinta-1); }
+
+/* Tabla de activos en iPhone: con 20px de aire por lado y el nombre a 180px,
+   las cuatro columnas visibles medían ~520px en una tarjeta de ~370 y la de
+   rendimiento salía cortada a la mitad ("+1:"). Menos aire y nombre más
+   corto, y caben completas. */
+@media (max-width: 639px) {
+  .mp-tabla-activos th, .mp-tabla-activos td { padding-left: 10px !important; padding-right: 10px !important; }
+  .mp-tabla-activos .mp-act-nom { max-width: 118px; }
+}
