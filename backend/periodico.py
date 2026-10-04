@@ -467,9 +467,16 @@ def _news_de(t: str, n: int = 10) -> list:
         if t == _SONDA_NEWS:
             _NEWS_TICKER_VACIO["ts"] = _t.time()
     try:
-        return yf.Search(t, max_results=1, news_count=n).news or []
+        lista = yf.Search(t, max_results=1, news_count=n).news or []
     except Exception:
         return []
+    # La búsqueda es por TEXTO: para "NOW", "ALL", "KEY" o "GOLD" traía notas
+    # de Elon Musk, de Crumbl o de otras mineras, y se pintaban como noticia de
+    # la posición del usuario. Solo cuentan las que Yahoo relaciona con el
+    # ticker; mejor sin tarjeta que con una nota ajena.
+    tu = t.upper()
+    return [x for x in lista
+            if tu in {str(r).upper() for r in (x.get("relatedTickers") or [])}]
 
 
 def _descargar_noticias_top() -> list[dict]:
