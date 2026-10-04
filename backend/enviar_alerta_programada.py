@@ -164,15 +164,13 @@ def _construir_payload(tipo: str, snap: dict) -> dict:
             key=lambda x: abs(x["cambio_pct"]), reverse=True,
         )[:5]
         # Tasa CETES referencia
+        # Llamaba a renta_fija_mx.cetes_y_fibras(), que no existe, así que la
+        # sección CETES del correo no salía nunca. Ahora es la misma tasa (y la
+        # misma caché) que el chip de la app.
         cetes_tasa = None
         try:
             import renta_fija_mx as _rf
-            data = _rf.cetes_y_fibras() if hasattr(_rf, "cetes_y_fibras") else None
-            if data and data.get("cetes"):
-                for c in data["cetes"]:
-                    if "28" in str(c.get("plazo", "")):
-                        cetes_tasa = c.get("tasa_pct") or c.get("tasa")
-                        break
+            cetes_tasa = _rf.cetes_28_pct()[0]
         except Exception:
             pass
         return {

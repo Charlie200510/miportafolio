@@ -18,6 +18,7 @@ CETES:  intenta API pública Banxico (SIE) con token opcional, si no hay
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -198,7 +199,42 @@ def _obtener_cetes_sie(token: str) -> Optional[Dict[str, Dict[str, Any]]]:
         return None
 
 
+def _ahora_cdmx_iso() -> str:
+    """Hora de CDMX con su offset. datetime.now() da la hora de la VM (UTC) sin
+    zona, y la app la pintaba como si fuera local: seis horas adelantada."""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("America/Mexico_City")).isoformat(timespec="seconds")
+    except Exception:
+        return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
 _MEM_CETES: Dict[str, Any] = {"ts": 0.0, "d": None, "ttl": 0}
+# Caché COMPARTIDA entre los workers de gunicorn: con una en memoria por
+# proceso, uno podía seguir con la tasa de la mañana y otro con la de la
+# subasta nueva, y el chip y el análisis enseñaban dos CETES distintas.
+_ARCHIVO_CETES = Path(__file__).resolve().parent / "_cache_renta_fija" / "cetes.json"
+
+
+def _leer_cetes_disco() -> Optional[Dict[str, Any]]:
+    try:
+        import json as _json
+        with open(_ARCHIVO_CETES, encoding="utf-8") as fh:
+            return _json.load(fh)
+    except Exception:
+        return None
+
+
+def _escribir_cetes_disco(reg: Dict[str, Any]) -> None:
+    try:
+        import json as _json
+        _ARCHIVO_CETES.parent.mkdir(parents=True, exist_ok=True)
+        tmp = _ARCHIVO_CETES.with_suffix(".tmp")
+        with open(tmp, "w", encoding="utf-8") as fh:
+            _json.dump(reg, fh, ensure_ascii=False)
+        tmp.replace(_ARCHIVO_CETES)          # atómico: nadie lee un archivo a medias
+    except Exception:
+        pass
 
 
 def obtener_cetes() -> Dict[str, Any]:
@@ -209,10 +245,18 @@ def obtener_cetes() -> Dict[str, Any]:
     enseñar tasas distintas el día que Banxico publicara una nueva. 6 h si
     vino de Banxico; 15 min si cayó al respaldo, para reintentar pronto."""
     import time as _t
-    if _MEM_CETES["d"] is not None and _t.time() - _MEM_CETES["ts"] < _MEM_CETES["ttl"]:
+    ahora = _t.time()
+    # Memoria del proceso solo 60 s: lo que manda es el archivo compartido.
+    if _MEM_CETES["d"] is not None and ahora - _MEM_CETES["ts"] < min(60, _MEM_CETES["ttl"]):
         return _MEM_CETES["d"]
+    reg = _leer_cetes_disco()
+    if reg and isinstance(reg.get("d"), dict) and ahora - float(reg.get("ts", 0)) < float(reg.get("ttl", 0)):
+        _MEM_CETES.update(ts=ahora, d=reg["d"], ttl=float(reg["ttl"]))
+        return reg["d"]
     d = _obtener_cetes_sin_cache()
-    _MEM_CETES.update(ts=_t.time(), d=d, ttl=6 * 3600 if d.get("fuente") == "banxico_sie" else 15 * 60)
+    ttl = 6 * 3600 if d.get("fuente") == "banxico_sie" else 15 * 60
+    _escribir_cetes_disco({"ts": ahora, "ttl": ttl, "d": d})
+    _MEM_CETES.update(ts=ahora, d=d, ttl=ttl)
     return d
 
 
@@ -225,7 +269,7 @@ def _obtener_cetes_sin_cache() -> Dict[str, Any]:
             return {
                 "tasas": tasas,
                 "fuente": "banxico_sie",
-                "actualizado": datetime.now().isoformat(timespec="seconds"),
+                "actualizado": _ahora_cdmx_iso(),
             }
 
     # Fallback configurable por env
@@ -386,7 +430,7 @@ def obtener_curvas() -> Dict[str, Any]:
         "ok": True,
         "us": obtener_curva_us(),
         "mx": obtener_curva_mx(),
-        "actualizado": datetime.now().isoformat(timespec="seconds"),
+        "actualizado": _ahora_cdmx_iso(),
     }
     _CURVA_CACHE["data"] = {"ts": time.time(), "payload": payload}
     return payload
@@ -439,7 +483,7 @@ def obtener_panel_renta_fija() -> Dict[str, Any]:
         "yield_fibras_prom":   yield_prom,
         "spread_vs_cetes_28":  spread,
         "avisos":              avisos,
-        "generado":            datetime.now().isoformat(timespec="seconds"),
+        "generado":            _ahora_cdmx_iso(),
     }
 
 

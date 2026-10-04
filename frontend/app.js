@@ -886,7 +886,10 @@ function renderFlotacion(data) {
   if (!p) { bloque.classList.add('hidden'); return; }
   // La tasa que usó el servidor es la CETES vigente; se guarda para que el
   // copo de Analizar y la fila "Contra CETES" digan la misma.
-  if (typeof meta.tasa_libre_riesgo_pct === 'number') window.MP_CETES_HOY = meta.tasa_libre_riesgo_pct;
+  if (typeof meta.tasa_libre_riesgo_pct === 'number') {
+    window.MP_CETES_HOY = meta.tasa_libre_riesgo_pct;
+    try { CetesBench.actualizar(); } catch (_) { /* módulo aún no inicializado */ }
+  }
 
   const opciones = {
     cetes: meta.tasa_libre_riesgo_pct,
@@ -7235,9 +7238,14 @@ const RentaFija = (() => {
 
     if (fuente) {
       if (cetes?.fuente === 'banxico_sie') {
-        fuente.innerHTML = `Banxico SIE · ${cetes.actualizado || ''}`;
+        // La fecha de la SUBASTA, no la hora del servidor en ISO crudo (que
+        // además salía en UTC: el día de mañana a las 8 de la noche).
+        const f28 = (cetes.tasas && cetes.tasas['28'] && cetes.tasas['28'].fecha) || '';
+        fuente.innerHTML = `Banxico SIE${f28 ? ' · subasta del ' + escapeHtml(f28) : ''}`;
       } else {
-        fuente.innerHTML = `<span class="text-accent-amber/80">Valores de respaldo</span> · configura BANXICO_SIE_TOKEN`;
+        // Antes decía "configura BANXICO_SIE_TOKEN": una nota para el
+        // desarrollador enseñada al usuario.
+        fuente.innerHTML = `<span class="text-accent-amber/80">Tasas de referencia</span> · Banxico no respondió; se actualizan solas cuando vuelva`;
       }
     }
   }
@@ -8438,6 +8446,10 @@ const CetesBench = (() => {
   }
   function actualizar() {
     const box = $('cetes-benchmark');
+    // Si /api/renta-fija/mx falló, la tasa que usó el análisis (la misma
+    // fuente en el servidor). Antes este respaldo solo se miraba en cargar(),
+    // que corre una vez a los 1.5 s, antes de que el análisis llegara.
+    if (cetesCache == null && typeof window.MP_CETES_HOY === 'number') cetesCache = window.MP_CETES_HOY;
     if (!box || cetesCache == null) return;
     // Leer rendimiento anualizado del KPI ya rendereado
     const txt = ($('kpi-retorno-anual')?.textContent || '').replace(/[^\d.\-]/g, '');

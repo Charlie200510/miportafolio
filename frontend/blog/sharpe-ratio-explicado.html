@@ -104,21 +104,21 @@
       <p>Cada componente:</p>
       <ul>
         <li><strong>Retorno del portafolio:</strong> qué tanto ganaste en %. Si pusiste $100 y ahora tienes $112, tu retorno fue 12%.</li>
-        <li><strong>Tasa libre de riesgo:</strong> lo que habrías ganado sin tomar ningún riesgo. En México son los CETES 28 días (~9.5% en 2026). En USA son los Treasuries 3m (~4.5%).</li>
+        <li><strong>Tasa libre de riesgo:</strong> lo que habrías ganado sin tomar ningún riesgo. En México son los CETES 28 días (6.01% en octubre de 2026, según Banxico). En USA son los Treasuries 3m (~4.5%).</li>
         <li><strong>Volatilidad:</strong> qué tanto sube y baja tu portafolio (desviación estándar de los retornos). Si todos los meses el portafolio crece exactamente 1%, la volatilidad es 0. Si crece 5% un mes y cae 4% al siguiente, la volatilidad es alta.</li>
       </ul>
 
       <h2>3. Ejemplo numérico real con dos portafolios</h2>
-      <p>Asumamos CETES 28d = 9.5% (tasa libre de riesgo en pesos):</p>
+      <p>Asumamos CETES 28d = 6% (tasa libre de riesgo en pesos, redondeada de la de octubre de 2026):</p>
       <table>
         <thead><tr><th>Portafolio</th><th>Retorno</th><th>Volatilidad</th><th>Sharpe</th></tr></thead>
         <tbody>
-          <tr><td>A: Todo en NVDA</td><td>+45%</td><td>50%</td><td>(45−9.5)/50 = <strong>0.71</strong></td></tr>
-          <tr><td>B: 60% SPY + 30% TLT + 10% GLD</td><td>+15%</td><td>11%</td><td>(15−9.5)/11 = <strong>0.50</strong></td></tr>
-          <tr><td>C: 100% CETES</td><td>+9.5%</td><td>0%</td><td>(9.5−9.5)/0 = <strong>indefinido (≈0)</strong></td></tr>
+          <tr><td>A: Todo en NVDA</td><td>+45%</td><td>50%</td><td>(45−6)/50 = <strong>0.78</strong></td></tr>
+          <tr><td>B: 60% SPY + 30% TLT + 10% GLD</td><td>+15%</td><td>11%</td><td>(15−6)/11 = <strong>0.82</strong></td></tr>
+          <tr><td>C: 100% CETES</td><td>+6%</td><td>0%</td><td>(6−6)/0 = <strong>indefinido (≈0)</strong></td></tr>
         </tbody>
       </table>
-      <p>Aunque NVDA ganó MUCHO más en retorno absoluto, su Sharpe es solo 0.71. El portafolio diversificado B tiene Sharpe 0.50 — peor en absoluto pero similar en eficiencia.</p>
+      <p>Aunque NVDA ganó MUCHO más en retorno absoluto, su Sharpe es 0.78. El portafolio diversificado B tiene 0.82: rinde menos en absoluto, pero cada punto de riesgo está mejor pagado.</p>
       <p>El truco: si tomaras prestado dinero (margin) para apalancar el portafolio B hasta el mismo nivel de volatilidad del A, ganarías <strong>más retorno con menos drawdowns</strong>. Eso es lo que mide Sharpe: la calidad de cada peso de riesgo asumido.</p>
 
       <h2>4. Cómo interpretar valores típicos</h2>
