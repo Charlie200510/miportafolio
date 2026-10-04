@@ -345,7 +345,7 @@ def render_reporte_semanal(
     </div>
 
     <p style="margin:16px 0 0 0;font-size:13px;color:#52525b;line-height:1.55;">
-      Abre la app para ver el detalle completo, correr simulaciones o exportar tu reporte mensual en PDF.
+      Abre la app para ver el detalle completo o correr simulaciones.
     </p>
     """
     return subject, _html_base("Resumen semanal", cuerpo)

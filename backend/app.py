@@ -183,13 +183,6 @@ except Exception as _e:
     _aportaciones = None
     _aportaciones_error = str(_e)
 
-# Generador de reporte PDF mensual.
-try:
-    import reporte_pdf as _reporte_pdf
-except Exception as _e:
-    _reporte_pdf = None
-    _reporte_pdf_error = str(_e)
-
 # FIBRAS MX + CETES en vivo.
 try:
     import renta_fija_mx as _renta_fija
@@ -568,7 +561,7 @@ import gc as _gc
 _PESADAS = ("/api/analizar", "/api/backtest", "/api/stress-test",
             "/api/perfiles", "/api/universo", "/api/explorar",
             "/api/rebalanceo", "/api/dividendos", "/api/fundamentals",
-            "/api/dashboard", "/api/reporte/pdf", "/api/alertas/enviar",
+            "/api/dashboard", "/api/alertas/enviar",
             "/api/cron/")
 
 @app.after_request
@@ -1959,194 +1952,14 @@ def api_asistente_chat():
 
 
 # ------------------------------------------------------------
-# REPORTE MENSUAL PDF
+# REPORTE MENSUAL PDF — retirado
 # ------------------------------------------------------------
+# El reporte PDF se quitó de la app. La ruta queda para que las versiones ya
+# publicadas, que todavía tienen el botón, reciban un mensaje claro en vez de
+# un 404 sin explicación.
 @app.route("/api/reporte/pdf", methods=["POST"])
-@_rate_limit("10 per minute; 60 per hour")
-@requiere_acceso
 def api_reporte_pdf():
-    """
-    Genera el PDF del reporte mensual.
-    Body JSON:
-    {
-      "tickers":        ["AAPL", ...],
-      "pesos":          {...},          // opcional
-      "transacciones":  [...],          // opcional
-      "mes":            4,              // 1..12 opcional
-      "anio":           2026,           // opcional
-      "nombre_usuario": "Charlie"       // opcional
-    }
-    """
-    if _reporte_pdf is None:
-        return jsonify({"error": "reporte_pdf no cargado", "detalle": _reporte_pdf_error}), 500
-
-    from datetime import datetime as _dt
-    body = request.get_json(silent=True) or {}
-    tickers = body.get("tickers") or []
-    pesos   = body.get("pesos")  or {}
-    txs     = body.get("transacciones") or []
-    mes     = body.get("mes")
-    anio    = body.get("anio")
-    nombre  = (body.get("nombre_usuario") or "Inversionista").strip()
-
-    datos: dict = {}
-
-    # Métricas + insights: preferir lo que el frontend YA mandó (evita re-descargar
-    # de yfinance, que es lento/frágil y colgaba el endpoint). Recalcular solo si falta.
-    if body.get("portafolio_metrics"):
-        datos["portafolio_metrics"] = body["portafolio_metrics"]
-    if body.get("insights"):
-        datos["insights"] = [
-            (i.get("mensaje") if isinstance(i, dict) else str(i)) for i in body["insights"] if i
-        ][:12]
-    if "portafolio_metrics" not in datos:
-        try:
-            if tickers and _mi_portafolio is not None:
-                res_an = _mi_portafolio.analizar(list(tickers), dict(pesos) if pesos else None)
-                port = (res_an or {}).get("portafolio") or {}
-                if port:
-                    datos["portafolio_metrics"] = {
-                        "rendimiento_anualizado_pct": port.get("rendimiento_anualizado_pct"),
-                        "volatilidad_anual_pct":      port.get("volatilidad_anual_pct"),
-                        "sharpe_ratio":               port.get("sharpe_ratio"),
-                    }
-                if "insights" not in datos:
-                    ins = (res_an or {}).get("insights") or []
-                    if ins:
-                        datos["insights"] = [
-                            i.get("mensaje") if isinstance(i, dict) else str(i)
-                            for i in ins if i
-                        ][:8]
-        except Exception:
-            pass
-
-    # Totales y posiciones desde transacciones
-    try:
-        if txs and _transacciones is not None:
-            res_tx = _transacciones.calcular_portafolio(txs)
-            totales = (res_tx or {}).get("totales") or {}
-            if totales:
-                datos["totales"] = {
-                    "invertido":    totales.get("invertido"),
-                    "valor_actual": totales.get("valor_actual"),
-                    "pnl_absoluto": totales.get("pnl_absoluto"),
-                    "pnl_pct":      totales.get("pnl_pct"),
-                }
-            posiciones = (res_tx or {}).get("por_ticker") or []
-            if posiciones:
-                datos["posiciones"] = [
-                    {
-                        "ticker":          p.get("ticker"),
-                        "shares_actuales": p.get("shares_actuales"),
-                        "precio_actual":   p.get("precio_actual"),
-                        "valor_actual":    p.get("valor_actual"),
-                        "peso_pct":        p.get("peso_pct"),
-                        "pnl_pct":         p.get("pnl_pct"),
-                    }
-                    for p in posiciones
-                ]
-    except Exception:
-        pass
-
-    # Movimientos del mes solicitado
-    try:
-        if txs:
-            now = _dt.now()
-            m_obj = int(mes or now.month)
-            a_obj = int(anio or now.year)
-            movs_mes = []
-            for t in txs:
-                fecha = (t.get("fecha") or "").strip()
-                if not fecha or len(fecha) < 7:
-                    continue
-                try:
-                    y, mo = int(fecha[:4]), int(fecha[5:7])
-                except ValueError:
-                    continue
-                if y == a_obj and mo == m_obj:
-                    movs_mes.append({
-                        "fecha":           fecha,
-                        "ticker":          t.get("ticker"),
-                        "tipo":            t.get("tipo"),
-                        "shares":          t.get("shares"),
-                        "precio_unitario": t.get("precio_unitario"),
-                    })
-            datos["movimientos_mes"] = movs_mes
-    except Exception:
-        pass
-
-    # Dividendos proyectados (reutiliza módulo si está)
-    try:
-        if _dividendos is not None and datos.get("posiciones"):
-            posiciones_dict = {}
-            for p in datos["posiciones"]:
-                if p.get("shares_actuales") and p["shares_actuales"] > 0:
-                    posiciones_dict[p["ticker"]] = {
-                        "shares":         p["shares_actuales"],
-                        "costo_promedio": p.get("precio_actual"),
-                    }
-            if posiciones_dict:
-                res_div = _dividendos.analizar_dividendos_portafolio(posiciones=posiciones_dict)
-                tot_div = (res_div or {}).get("totales") or {}
-                if tot_div:
-                    datos["dividendos"] = tot_div
-    except Exception:
-        pass
-
-    # --- Datos extra para el PDF profesional (todos opcionales) ---
-    # Si el frontend ya envió estos datos en el body, usarlos. Si no, intentar
-    # generarlos a partir del análisis del portafolio.
-    if body.get("comportamiento"):
-        datos["comportamiento"] = body["comportamiento"]
-    if body.get("concentracion"):
-        datos["concentracion"] = body["concentracion"]
-    if body.get("fundamentales"):
-        datos["fundamentales"] = body["fundamentales"]
-    if body.get("fiscal"):
-        datos["fiscal"] = body["fiscal"]
-    if body.get("benchmarks"):
-        datos["benchmarks"] = body["benchmarks"]
-
-    # Si el análisis del portafolio ya generó concentración, también pasarla
-    try:
-        if tickers and _mi_portafolio is not None and "concentracion" not in datos:
-            # Re-extraer del análisis previo si está
-            res_an_again = _mi_portafolio.analizar(list(tickers), dict(pesos) if pesos else None)
-            conc = (res_an_again or {}).get("concentracion") or {}
-            if conc:
-                datos["concentracion"] = {
-                    "por_sector": conc.get("por_sector"),
-                    "por_pais":   conc.get("por_pais"),
-                    "por_moneda": conc.get("por_moneda"),
-                }
-    except Exception:
-        pass
-
-    # Fundamentales agregados si fundamentals.py disponible
-    try:
-        if _fundamentals is not None and tickers and "fundamentales" not in datos:
-            res_fund = _fundamentals.analizar_fundamentales(list(tickers))
-            resumen_fund = (res_fund or {}).get("resumen") or {}
-            if resumen_fund:
-                datos["fundamentales"] = resumen_fund
-    except Exception:
-        pass
-
-    try:
-        pdf_bytes = _reporte_pdf.generar_reporte(
-            datos, mes=mes, anio=anio, nombre_usuario=nombre
-        )
-        fname = _reporte_pdf.nombre_archivo_pdf(mes, anio)
-        return Response(
-            pdf_bytes,
-            mimetype="application/pdf",
-            headers={
-                "Content-Disposition": f'attachment; filename="{fname}"',
-                "Content-Length":      str(len(pdf_bytes)),
-            },
-        )
-    except Exception as e:
-        return jsonify({"error": f"fallo generando PDF: {e}"}), 500
+    return jsonify({"error": "El reporte PDF ya no está disponible en Mi Portafolio."}), 410
 
 
 # ------------------------------------------------------------

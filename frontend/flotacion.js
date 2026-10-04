@@ -178,8 +178,11 @@
      la misma del chip). El último respaldo es la de octubre de 2026; antes
      era un 9.5 fijo que para entonces ya no existía. */
   function cetesRespaldo() {
-    return (typeof window !== 'undefined' && typeof window.MP_CETES_HOY === 'number')
-      ? window.MP_CETES_HOY : 6.01;
+    if (typeof window !== 'undefined') {
+      if (typeof window.MP_CETES_PERIODO === 'number') return window.MP_CETES_PERIODO;
+      if (typeof window.MP_CETES_HOY === 'number') return window.MP_CETES_HOY;
+    }
+    return 6.01;
   }
 
   function firmado(v) {
@@ -323,9 +326,10 @@
 
     var cabeza;
     if (typeof r === 'number' && r < cetes) {
-      // "paga hoy": la tasa es la vigente, no lo que CETES pagó en el periodo.
-      cabeza = 'Rindió ' + r.toFixed(1) + '% al año. CETES paga hoy ' + cetes.toFixed(1) +
-               '% sin arriesgar nada.';
+      // La tasa es lo que CETES PAGÓ en la misma ventana (compuesta), no la de
+      // hoy: comparar cinco años contra la tasa de esta semana engañaba.
+      cabeza = 'Rindió ' + r.toFixed(1) + '% al año. CETES pagó ' + cetes.toFixed(1) +
+               '% en el mismo periodo, sin arriesgar nada.';
     } else if (f === null) {
       cabeza = 'No hay datos suficientes para compararlo contra CETES.';
     } else if (f >= 2.0) {

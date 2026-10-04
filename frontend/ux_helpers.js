@@ -491,8 +491,7 @@
 
       /* --- GRIDS de tickers: 1 columna full-width en mobile --- */
       #pick-curado-lista,
-      #universo-lista,
-      #perfiles-grid {
+      #universo-lista {
         grid-template-columns: 1fr !important;
       }
       /* Cards de tickers más altas y picables */
@@ -1549,7 +1548,7 @@
       titulo: 'Entendiendo el Sharpe ratio',
       slides: [
         { titulo: '¿Por qué importa?', cuerpo: 'Dos portafolios pueden tener mismo retorno pero uno con caídas brutales y otro estable. El Sharpe ajusta por eso: cuánto ganas por cada unidad de riesgo.' },
-        { titulo: 'La fórmula simple', cuerpo: 'Sharpe = (Retorno - Tasa libre de riesgo) / Volatilidad. En México, la tasa libre de riesgo es CETES a 28 días (la app usa la vigente de Banxico).' },
+        { titulo: 'La fórmula simple', cuerpo: 'Sharpe = (Retorno - Tasa libre de riesgo) / Volatilidad. En México, la tasa libre de riesgo es CETES a 28 días; la app usa lo que pagó en el mismo periodo, con datos de Banxico.' },
         { titulo: 'Cómo interpretarlo', cuerpo: 'Sharpe < 0: CETES te gana sin riesgo. Sharpe 0-0.5: mediocre. Sharpe 0.5-1: razonable. Sharpe 1-2: muy bueno. Sharpe > 2: excelente.' },
         { titulo: 'Trampa común', cuerpo: 'Sharpe alto NO significa "menos riesgo". Un portafolio con 30% vol y 40% retorno tiene Sharpe 1.0. Significa eficiencia, no seguridad.' },
         { titulo: 'Cuándo no aplica', cuerpo: 'Sharpe asume rendimientos normales. Con cripto o opciones (rendimientos muy asimétricos), considera Sortino que solo penaliza la volatilidad mala (caídas).' },

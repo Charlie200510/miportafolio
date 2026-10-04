@@ -160,12 +160,12 @@ def _metricas_comportamiento(ticker: str) -> Dict[str, Any]:
         out["volatilidad_anual"] = round(vol, 4)
 
         # Sharpe ratio: (retorno_anual - rf) / vol_anual
-        # rf = 4.5% USD (UST 3m) o la CETES 28 días vigente en MXN (la misma
-        # del chip; antes un 9.5% fijo que ya no era la tasa real).
+        # rf = 4.5% USD (UST 3m) o, en MXN, el promedio de CETES 28 días en el
+        # MISMO año de precios (no la tasa de hoy ni un 9.5% fijo).
         if ticker.upper().endswith(".MX"):
             try:
-                from renta_fija_mx import tasa_libre_mx
-                rf = tasa_libre_mx()
+                from renta_fija_mx import tasa_libre_periodo
+                rf = tasa_libre_periodo(precios.index[0], precios.index[-1], compuesta=True)  # retorno_anual es (1+μ)^252−1
             except Exception:
                 rf = 0.0601
         else:

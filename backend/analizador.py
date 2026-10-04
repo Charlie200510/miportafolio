@@ -78,6 +78,18 @@ _PEERS_CURADO: Dict[str, List[str]] = {
 }
 
 
+
+def _cetes_ultimo_anio():
+    """CETES 28 días compuesta de los últimos 365 días (%), o None."""
+    try:
+        from datetime import datetime, timedelta
+        from renta_fija_mx import cetes_periodo
+        hoy = datetime.now()
+        c = cetes_periodo(hoy - timedelta(days=365), hoy)
+        return c["compuesto_pct"] if c else None
+    except Exception:
+        return None
+
 def _peers_de(ticker: str, fund: Dict[str, Any]) -> List[str]:
     """Encuentra hasta 2 peers para un ticker dado."""
     if ticker in _PEERS_CURADO:
@@ -536,6 +548,9 @@ def analizar_accion(ticker: str) -> Dict[str, Any]:
         "industria":        fund.get("industria"),
         "moneda":           fund.get("moneda"),
         "precio_actual":    fund.get("precio_actual"),
+        # Lo que pagó CETES en el último año, compuesto: el copo compara contra
+        # esto el rendimiento a un año de la emisora (no contra la tasa de hoy).
+        "cetes_1a_pct":     _cetes_ultimo_anio(),
         "fundamentales":    fund,
         "peer_comparison":  peer,
         "deep_dive":        narrativas.get("deep_dive"),

@@ -500,7 +500,7 @@ def analisis_etf(ticker: str, info: Dict[str, Any], moneda: str = "USD") -> Dict
     s = _serie(ticker, period="5y")
     if s is not None and len(s) > 60:
         import metricas_canonicas as _mc
-        rf = _mc.rf_para(ticker)
+        rf = _mc.rf_para(ticker, s.index[0], s.index[-1])
         # Contra su ÍNDICE, no contra un ETF hermano: la sección promete
         # "fidelidad de la réplica" y eso solo se mide contra lo replicado.
         # benchmark_para() devuelve el propio ticker para NAFTRAC —es el proxy
@@ -546,7 +546,7 @@ def analisis_etf(ticker: str, info: Dict[str, Any], moneda: str = "USD") -> Dict
             if s2 is not None:
                 _poner(fila, "volatilidad_anual", _redondear(_vol_anual(s2)))
                 import metricas_canonicas as _mc2
-                _poner(fila, "sharpe", _redondear(_sharpe(s2, _mc2.rf_para(p)), 2))
+                _poner(fila, "sharpe", _redondear(_sharpe(s2, _mc2.rf_para(p, s2.index[0], s2.index[-1])), 2))
             if len(fila) > 1:
                 filas_par.append(fila)
         except Exception:
@@ -558,7 +558,7 @@ def analisis_etf(ticker: str, info: Dict[str, Any], moneda: str = "USD") -> Dict
         if s is not None:
             import metricas_canonicas as _mc3
             _poner(propio, "volatilidad_anual", _redondear(_vol_anual(s)))
-            _poner(propio, "sharpe", _redondear(_sharpe(s, _mc3.rf_para(ticker)), 2))
+            _poner(propio, "sharpe", _redondear(_sharpe(s, _mc3.rf_para(ticker, s.index[0], s.index[-1])), 2))
         _poner(out, "comparables", [propio] + filas_par)
 
     # ── Contexto para el inversionista mexicano ──────────────────────────

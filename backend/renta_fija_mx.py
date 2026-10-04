@@ -319,6 +319,141 @@ def tasa_libre_mx() -> float:
     return cetes_28_pct()[0] / 100.0
 
 
+# ---- Lo que CETES PAGÓ en una ventana de tiempo -----------------------------
+#
+# Comparar un rendimiento de 5 años contra la CETES de HOY favorece o castiga a
+# la cartera según por dónde ande la tasa: en octubre de 2026 CETES pagaba 6.01%,
+# pero en los cinco años anteriores pagó 9.27% al año compuesto (11.9% en 2023).
+# Las comparaciones históricas (flotación, regata, "Contra CETES", Sharpe,
+# backtests) usan lo que CETES pagó en ESA MISMA ventana. "CETES paga hoy" y la
+# SML/CAPM, que miran hacia adelante, siguen con la tasa vigente.
+#
+# La serie es la CETES 28 días de Banxico (SF43936), una subasta por semana. En la
+# VM se baja con el token y se guarda un día; sin token o si Banxico no contesta,
+# se usa la copia versionada (cetes_28_historico.csv, datos públicos), extendida
+# con la tasa vigente para las semanas que le falten.
+_CSV_HISTORICO = Path(__file__).resolve().parent / "cetes_28_historico.csv"
+_ARCHIVO_HISTORICO = Path(__file__).resolve().parent / "_cache_renta_fija" / "cetes_28_historico.json"
+_MEM_HIST: Dict[str, Any] = {"ts": 0.0, "serie": None}
+# El score corre sobre miles de emisoras con las mismas ventanas: se memoriza.
+_MEMO_PERIODO: Dict[Any, Any] = {}
+
+
+def _historico_banxico(token: str) -> Optional[List[List[Any]]]:
+    try:
+        hoy = datetime.now().strftime("%Y-%m-%d")
+        url = (f"https://www.banxico.org.mx/SieAPIRest/service/v1/series/"
+               f"{SIE_SERIES['28']}/datos/2005-01-01/{hoy}")
+        r = requests.get(url, headers={"Bmx-Token": token}, timeout=30)
+        if r.status_code != 200:
+            return None
+        out = []
+        for d in r.json()["bmx"]["series"][0]["datos"]:
+            dd, mm, aa = d["fecha"].split("/")
+            try:
+                out.append([f"{aa}-{mm}-{dd}", float(str(d["dato"]).replace(",", "."))])
+            except (ValueError, TypeError):
+                continue
+        return out or None
+    except Exception:
+        return None
+
+
+def serie_cetes_28():
+    """pandas.Series de la CETES 28 días (%), indexada por fecha de subasta."""
+    import time as _t
+    import json as _json
+    import pandas as pd
+    ahora = _t.time()
+    if _MEM_HIST["serie"] is not None and ahora - _MEM_HIST["ts"] < 3600:
+        return _MEM_HIST["serie"]
+    filas = None
+    try:
+        with open(_ARCHIVO_HISTORICO, encoding="utf-8") as fh:
+            reg = _json.load(fh)
+        if ahora - float(reg.get("ts", 0)) < 24 * 3600:
+            filas = reg.get("filas")
+    except Exception:
+        pass
+    if not filas:
+        token = _banxico_token()
+        if token:
+            filas = _historico_banxico(token)
+            if filas:
+                try:
+                    _ARCHIVO_HISTORICO.parent.mkdir(parents=True, exist_ok=True)
+                    tmp = _ARCHIVO_HISTORICO.with_suffix(".tmp")
+                    with open(tmp, "w", encoding="utf-8") as fh:
+                        _json.dump({"ts": ahora, "filas": filas}, fh)
+                    tmp.replace(_ARCHIVO_HISTORICO)
+                except Exception:
+                    pass
+    if filas:
+        serie = pd.Series({pd.Timestamp(f): v for f, v in filas}).sort_index()
+    else:
+        try:
+            df = pd.read_csv(_CSV_HISTORICO, parse_dates=["fecha"])
+            serie = df.set_index("fecha")["tasa_pct"].sort_index()
+        except Exception:
+            serie = pd.Series(dtype=float)
+    # Las semanas que falten hasta hoy, con la tasa vigente.
+    hoy = pd.Timestamp(datetime.now().date())
+    if len(serie) == 0 or serie.index[-1] < hoy - pd.Timedelta(days=7):
+        serie.loc[hoy] = cetes_28_pct()[0]
+    _MEM_HIST.update(ts=ahora, serie=serie)
+    return serie
+
+
+def cetes_periodo(inicio, fin) -> Optional[Dict[str, Any]]:
+    """Lo que pagó CETES 28 días entre `inicio` y `fin`, reinvirtiendo.
+
+    compuesto_pct: rendimiento anual compuesto (comparable con un CAGR).
+    promedio_pct:  promedio simple de la tasa (el que va en un Sharpe).
+    None si la ventana no se puede medir."""
+    try:
+        import pandas as pd
+        ini, fi = pd.Timestamp(inicio).normalize(), pd.Timestamp(fin).normalize()
+        if ini.tzinfo is not None:
+            ini = ini.tz_localize(None)
+        if fi.tzinfo is not None:
+            fi = fi.tz_localize(None)
+        if fi <= ini:
+            return None
+        s = serie_cetes_28()
+        clave = (str(ini.date()), str(fi.date()), id(s))
+        if clave in _MEMO_PERIODO:
+            return _MEMO_PERIODO[clave]
+        if len(s) == 0 or s.index[0] > ini:
+            return None
+        dias = pd.date_range(ini, fi, freq="D")
+        r = s.reindex(s.index.union(dias)).ffill().reindex(dias).dropna()
+        if len(r) < 2:
+            return None
+        crec = float((1 + r / 100.0 / 360.0).prod())
+        res = {
+            "compuesto_pct": round((crec ** (365.0 / len(r)) - 1) * 100, 2),
+            "promedio_pct":  round(float(r.mean()), 2),
+            "desde": str(ini.date()), "hasta": str(fi.date()),
+        }
+        if len(_MEMO_PERIODO) > 5000:
+            _MEMO_PERIODO.clear()
+        _MEMO_PERIODO[clave] = res
+        return res
+    except Exception:
+        return None
+
+
+def tasa_libre_periodo(inicio, fin, compuesta: bool = False) -> float:
+    """CETES 28 días de la ventana, como FRACCIÓN. compuesta=False: promedio
+    simple (va con un rendimiento anualizado por media aritmética, ×252);
+    compuesta=True: rendimiento anual compuesto (va con un CAGR o con (1+μ)^252−1).
+    Si la ventana no se puede medir, la tasa vigente."""
+    c = cetes_periodo(inicio, fin)
+    if not c:
+        return tasa_libre_mx()
+    return (c["compuesto_pct"] if compuesta else c["promedio_pct"]) / 100.0
+
+
 # ---- Curvas de rendimiento (US vía FRED + MX vía CETES) ---------------------
 
 def _fred_key() -> Optional[str]:

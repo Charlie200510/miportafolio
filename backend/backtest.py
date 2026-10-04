@@ -161,9 +161,18 @@ def _metricas(valor: pd.Series) -> dict:
     años = n / DIAS_HABILES
     ret_anual = (1 + ret_total) ** (1 / max(años, 1/DIAS_HABILES)) - 1 if años > 0 else 0
     vol_anual = float(rend.std() * np.sqrt(DIAS_HABILES))
-    sharpe = (ret_anual - tasa_libre_riesgo()) / vol_anual if vol_anual > 0 else 0.0
+    # CETES de ESAS fechas, compuesta como ret_anual: un backtest de 2023 contra
+    # la CETES de hoy (6%) salía con Sharpe positivo cuando CETES pagó 11.9%.
+    try:
+        from renta_fija_mx import cetes_periodo as _cp
+        _c = _cp(valor.index[0], valor.index[-1])
+    except Exception:
+        _c = None
+    rf = (_c["compuesto_pct"] / 100.0) if _c else tasa_libre_riesgo()
+    sharpe = (ret_anual - rf) / vol_anual if vol_anual > 0 else 0.0
     max_dd, _, _ = _max_drawdown(valor)
     return {
+        "cetes_periodo_pct":     round(rf * 100, 2),
         "retorno_total_pct":     round(ret_total * 100, 2),
         "retorno_anual_pct":     round(ret_anual * 100, 2),
         "volatilidad_anual_pct": round(vol_anual * 100, 2),

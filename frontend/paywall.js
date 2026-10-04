@@ -358,7 +358,7 @@
     'Simulación Monte Carlo y plan de rebalanceo',
     'Análisis profundo y valuación SML',
     'Screener avanzado y ranking por score',
-    'Reporte mensual en PDF y alertas',
+    'Alertas por correo: drift, precios y resumen semanal',
   ];
 
   function vista(email, premium, bloqueante) {

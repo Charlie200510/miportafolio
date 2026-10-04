@@ -464,8 +464,8 @@
           <button id="chooser-auto" class="text-left bg-surface-card border border-surface-border hover:border-accent-amber/60 rounded-2xl p-6 transition group">
             <div class="w-11 h-11 rounded-xl bg-accent-amber/10 border border-accent-amber/30 flex items-center justify-center mb-4 text-accent-amber text-xl">✦</div>
             <h3 class="text-base font-semibold text-zinc-100">Automático</h3>
-            <p class="text-[13px] text-zinc-400 mt-1.5 leading-snug">Eliges tu nivel de riesgo y te armamos la mezcla óptima con Markowitz — o tomas uno de los 10 perfiles ya hechos. Lo más rápido.</p>
-            <span class="inline-block mt-4 text-[12px] font-semibold text-accent-amber group-hover:underline">Por riesgo o por perfil →</span>
+            <p class="text-[13px] text-zinc-400 mt-1.5 leading-snug">Eliges tu nivel de riesgo y con cuánto empiezas, desde $5 mil, y te armamos la mezcla óptima. Lo más rápido.</p>
+            <span class="inline-block mt-4 text-[12px] font-semibold text-accent-amber group-hover:underline">Por nivel de riesgo →</span>
           </button>
           <button id="chooser-manual" class="text-left bg-surface-card border border-surface-border hover:border-accent-green/60 rounded-2xl p-6 transition group">
             <div class="w-11 h-11 rounded-xl bg-accent-green/10 border border-accent-green/30 flex items-center justify-center mb-4 text-accent-green text-xl">✓</div>
@@ -683,25 +683,8 @@
           <p id="po-metodologia" class="text-[10px] text-zinc-600 mt-3 leading-snug"></p>
         </div>
 
-        <!-- ══ PERFILES SUGERIDOS ═══════════════════════════════════════════
-             Diez mezclas ya optimizadas (min. varianza / máx. Sharpe) que se
-             aplican con un toque. Habían quedado ocultas cuando entró el
-             optimizador de Markowitz, pero son la vía rápida para quien no
-             quiere armar el portafolio emisora por emisora, así que vuelven
-             como sección propia. Las pinta renderPerfiles() en app.js y el
-             clic lo atiende aplicarPerfil(). -->
-        <div class="pt-7 mt-6 border-t border-surface-border">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="mp-sec-etq"><span class="mp-sec-orden">O empieza aquí ·</span> Perfiles sugeridos</h3>
-            <span class="mp-firma mp-sec-fin hidden sm:inline">Mezclas ya optimizadas</span>
-          </div>
-          <p class="text-xs text-zinc-500 mb-4 leading-relaxed max-w-3xl">
-            Diez carteras armadas con criterios distintos —del conservador 100% en pesos al
-            cripto agresivo— cada una con sus emisoras, pesos y métricas históricas.
-            Toca una y queda cargada en el editor; de ahí la puedes ajustar.
-          </p>
-          <div id="perfiles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-        </div>
+        <!-- Aquí estaban los 10 "perfiles sugeridos" (carteras prearmadas). Se quitaron:
+             el automático se arma por nivel de riesgo y con cuánto empiezas. -->
       </div>
       </div><!-- /modo-auto -->
     </section>
@@ -799,19 +782,6 @@
           <span class="mp-sec-fin flex items-center gap-2">
             <button id="btn-editar-portafolio" class="hidden mp-btn mp-btn-secundario mp-btn-chico">
               Editar
-            </button>
-            <!-- Atajo de UN toque a los perfiles sugeridos. Antes, con un
-                 portafolio ya guardado, llegar a ellos exigía cuatro pasos:
-                 Editar → picker manual → "Cambiar método" → Automático → bajar
-                 más allá del optimizador. -->
-            <button id="btn-perfiles-portafolio" class="hidden mp-btn mp-btn-secundario mp-btn-chico">
-              Perfiles
-            </button>
-            <button id="btn-exportar-pdf" class="hidden mp-btn mp-btn-secundario mp-btn-chico">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-              Reporte PDF
             </button>
           </span>
         </div>
@@ -914,8 +884,9 @@
              CetesBench en app.js, que le quita .hidden cuando ya tiene tasa. -->
         <div class="mp-kpi hidden" id="cetes-benchmark">
           <dt>
-            <span class="mp-kpi-etq" data-tooltip="Tu rendimiento por año menos lo que paga CETES a 28 días, que no tiene riesgo. Si sale negativo, CETES te ganó sin que arriesgaras nada.">Contra CETES</span>
-            <span class="mp-kpi-ctx">CETES paga <span id="cetes-tasa">—</span> sin riesgo</span>
+            <span class="mp-kpi-etq" data-tooltip="Tu rendimiento por año menos lo que pagó CETES a 28 días en el mismo periodo, reinvirtiendo cada mes. Si sale negativo, CETES te ganó sin que arriesgaras nada.">Contra CETES</span>
+            <span class="mp-kpi-ctx" id="cetes-ctx">CETES en el mismo periodo</span>
+            <span id="cetes-tasa" hidden></span>
             <span id="cetes-veredicto" hidden></span>
           </dt>
           <dd class="mp-kpi-valor"><span id="cetes-spread">—</span></dd>

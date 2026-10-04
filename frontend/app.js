@@ -652,8 +652,6 @@ function mostrarOnboarding() {
   $('portafolio-onboarding').classList.remove('hidden');
   $('portafolio-dashboard').classList.add('hidden');
   $('btn-editar-portafolio').classList.add('hidden');
-  $('btn-perfiles-portafolio')?.classList.add('hidden');
-  $('btn-exportar-pdf')?.classList.add('hidden');
   _onbModo('chooser');
 }
 
@@ -661,8 +659,6 @@ function mostrarDashboard() {
   $('portafolio-onboarding').classList.add('hidden');
   $('portafolio-dashboard').classList.remove('hidden');
   $('btn-editar-portafolio').classList.remove('hidden');
-  $('btn-perfiles-portafolio')?.classList.remove('hidden');
-  $('btn-exportar-pdf')?.classList.remove('hidden');
 }
 
 // --- carga principal --------------------------------------------------------
@@ -886,10 +882,13 @@ function renderFlotacion(data) {
   if (!p) { bloque.classList.add('hidden'); return; }
   // La tasa que usó el servidor es la CETES vigente; se guarda para que el
   // copo de Analizar y la fila "Contra CETES" digan la misma.
-  if (typeof meta.tasa_libre_riesgo_pct === 'number') {
-    window.MP_CETES_HOY = meta.tasa_libre_riesgo_pct;
-    try { CetesBench.actualizar(); } catch (_) { /* módulo aún no inicializado */ }
-  }
+  // tasa_libre_riesgo_pct es lo que CETES PAGÓ en la misma ventana del CAGR
+  // (compuesto); cetes_hoy_pct, la tasa vigente. Se guardan aparte: la fila
+  // "Contra CETES" compara contra la del periodo, el copo de Analizar usa la
+  // de su propio año y "hoy" solo sirve para decir cuánto paga hoy.
+  if (typeof meta.tasa_libre_riesgo_pct === 'number') window.MP_CETES_PERIODO = meta.tasa_libre_riesgo_pct;
+  if (typeof meta.cetes_hoy_pct === 'number') window.MP_CETES_HOY = meta.cetes_hoy_pct;
+  try { CetesBench.actualizar(); } catch (_) { /* módulo aún no inicializado */ }
 
   const opciones = {
     cetes: meta.tasa_libre_riesgo_pct,
@@ -2760,7 +2759,6 @@ const Picker = (() => {
         </div>`;
     }
     renderSeleccion();
-    cargarPerfiles();
   }
 
   function filtrarUniverso(q) {
@@ -3080,181 +3078,8 @@ const Picker = (() => {
     }
   }
 
-  // ============================================================
-  // PERFILES SUGERIDOS
-  // ============================================================
-  const perfilesCache = [];
-
-  async function cargarPerfiles(intento = 0) {
-    const grid = $('perfiles-grid');
-    if (!grid) return;
-    if (!grid.querySelector('.perfil-card')) {
-      grid.innerHTML = `<div class="col-span-full mp-vacio">Calculando perfiles…</div>`;
-    }
-    try {
-      const res = await fetch('/api/perfiles');
-      let body = null;
-      try { body = await res.json(); } catch { body = null; }
-      if (!res.ok) throw new Error((body && body.error) || `HTTP ${res.status}`);
-      if (!Array.isArray(body)) throw new Error('respuesta vacía');
-      perfilesCache.splice(0, perfilesCache.length, ...(body || []));
-      renderPerfiles();
-    } catch (err) {
-      // Reintentar hasta 2 veces (cold start de Render puede tardar)
-      if (intento < 2) {
-        grid.innerHTML = `
-          <div class="col-span-full text-xs text-zinc-500 py-4 text-center">
-            Cargando perfiles… ${intento + 1}/3
-          </div>`;
-        setTimeout(() => cargarPerfiles(intento + 1), 4000);
-        return;
-      }
-      grid.innerHTML = `
-        <div class="col-span-full text-xs text-zinc-500 py-4 text-center">
-          Perfiles no disponibles.
-          <button onclick="location.reload()" class="ml-2 px-2 py-1 bg-zinc-700 rounded text-xs hover:bg-zinc-600">↻ Recargar</button>
-        </div>`;
-    }
-  }
-
-  function renderPerfiles() {
-    const grid = $('perfiles-grid');
-    if (!grid) return;
-    if (!perfilesCache.length) {
-      grid.innerHTML = `
-        <div class="col-span-full text-xs text-zinc-500 py-4 text-center">
-          No hay perfiles sugeridos disponibles.
-        </div>`;
-      return;
-    }
-    // El nivel de riesgo ya NO se colorea: verde y rojo quedan reservados para
-    // dirección de mercado, y aquí el dato lo dice la palabra ("bajo", "muy
-    // alto") junto a la volatilidad, que está a la vista en la misma tarjeta.
-    const objetivoLabel = {
-      'min_vol':     'Mín. varianza',
-      'max_sharpe':  'Máx. Sharpe',
-      'max_ret':     'Máx. retorno',
-      'risk_parity': 'Risk parity',
-    };
-    /* Cuánto cuesta armarlo de verdad. Es el dato que faltaba: un perfil puede
-       pedir $706,000 sin que nadie lo haya decidido, solo porque a una emisora
-       cara le tocó un peso chico. Si además se rearmó para caber en el
-       presupuesto, se enseña el antes y el después. */
-    const capitalHTML = (p) => {
-      const c = p.capital || {};
-      if (c.solo_fraccionables) {
-        return '<p class="mp-capital-nota">Se compra por fracciones: no hay mínimo por acción.</p>';
-      }
-      if (!c.monto_mxn) return '';
-      const fmt = (v) => '$' + Number(v).toLocaleString('es-MX');
-      const antes = p.capital_natural;
-      const bajo = antes && antes > c.monto_mxn * 1.05;
-      const corto = false;
-      return '<p class="mp-capital-nota' + (corto ? ' corto' : '') + '">'
-           + (bajo ? '<s>' + fmt(antes) + '</s> ' : '')
-           + '<b>Desde ' + fmt(c.monto_mxn) + '</b>'
-           + (c.emisora ? ' <span>lo marca ' + escapeHtml(String(c.emisora).split('.')[0]) + '</span>' : '')
-           + (corto ? ' <span>no baja más sin perder diversificación</span>' : '')
-           + ((p.soltadas_por_precio || []).length
-               ? ' <span>fuera ' + p.soltadas_por_precio.map(t => escapeHtml(String(t).split('.')[0])).join(', ')
-                 + ' por precio</span>' : '')
-           + '</p>';
-    };
-
-    grid.innerHTML = perfilesCache.map(p => {
-      const tickersPreview = (p.tickers || []).slice(0, 4).join(' · ');
-      const extras = (p.tickers || []).length > 4 ? ` +${p.tickers.length - 4}` : '';
-      const obj = objetivoLabel[p.objetivo] || '';
-      const m = p.metricas;
-      const sc = p.score_promedio;
-      const div = m && m.diversificacion != null ? m.diversificacion : null;
-      const nf = (x, d = 1) => Number.isFinite(Number(x)) ? Number(x).toFixed(d) : '—';
-      const capHTML = capitalHTML(p);
-      const metricasHTML = m ? `
-        <div class="grid grid-cols-3 gap-1 pt-2 border-t border-surface-border">
-          <div>
-            <p class="mp-etq">Ret. anual</p>
-            <p class="text-[12px] font-semibold tabular ${Number(m.retorno_anual_pct) >= 0 ? 'mp-alza' : 'mp-baja'}">${nf(m.retorno_anual_pct)}%</p>
-          </div>
-          <div>
-            <p class="mp-etq">Volatilidad</p>
-            <p class="text-[12px] font-semibold tabular text-zinc-100">${nf(m.volatilidad_anual_pct)}%</p>
-          </div>
-          <div>
-            <p class="mp-etq">Sharpe</p>
-            <p class="text-[12px] font-semibold tabular text-zinc-100">${nf(m.sharpe_ratio, 2)}</p>
-          </div>
-        </div>
-        ${(sc != null || div != null) ? `
-        <div class="grid grid-cols-2 gap-1 pt-1.5">
-          ${sc != null ? `
-          <div>
-            <p class="mp-etq">Calidad</p>
-            <p class="text-[11px] font-semibold tabular text-zinc-100">${Math.round(sc)}<span class="text-zinc-600">/100</span></p>
-          </div>` : ''}
-          ${div != null ? `
-          <div>
-            <p class="mp-etq">Diversif.</p>
-            <p class="text-[11px] font-semibold tabular text-zinc-100">${(div * 100).toFixed(0)}%</p>
-          </div>` : ''}
-        </div>` : ''}` : '';
-      const nActivos = p.num_activos || (p.tickers || []).length;
-      return `
-        <button data-perfil="${p.id}"
-          class="perfil-card mp-celda text-left transition flex flex-col gap-2 min-h-[220px]">
-          <div class="mp-sec">
-            <span class="mp-sec-etq">${escapeHtml(p.nivel_riesgo)}</span>
-            ${obj ? `<span class="mp-sec-fin mp-firma">${escapeHtml(obj)}</span>` : ''}
-          </div>
-          <h4 class="font-serif text-[17px] font-semibold text-zinc-100 leading-tight"
-              style="font-family:var(--ff-serif);letter-spacing:-.015em">${escapeHtml(p.nombre)}</h4>
-          <p class="text-[11.5px] text-zinc-400 leading-snug line-clamp-3">${escapeHtml(p.thesis)}</p>
-          ${metricasHTML}
-          ${capHTML}
-          <div class="mt-auto pt-2 border-t border-surface-border">
-            <p class="mp-firma truncate"><span class="tabular">${nActivos}</span> activos · ${escapeHtml(tickersPreview)}${extras}</p>
-            <p class="text-[11px] mt-1" style="color:var(--sello)">Usar esta mezcla &rarr;</p>
-          </div>
-        </button>
-      `;
-    }).join('');
-  }
-
-  async function aplicarPerfil(idPerfil) {
-    const p = perfilesCache.find(x => x.id === idPerfil);
-    if (!p) return;
-    // Asegurar que el universo esté cargado (necesitamos metadata para renderPesos)
-    if (!state.cargado) await cargar();
-
-    const univMap = new Map(state.universo.map(x => [x.ticker, x]));
-    state.seleccionados.clear();
-    state.pesos.clear();
-
-    (p.tickers || []).forEach(t => {
-      const u = univMap.get(t);
-      state.seleccionados.set(t, u ? {
-        ticker: t,
-        nombre: u.nombre,
-        moneda: u.moneda,
-        precio: u.precio,
-        recomendada: u.recomendada,
-      } : { ticker: t, nombre: t, moneda: '', precio: null, recomendada: false });
-      const pesoPct = (p.pesos && p.pesos[t] !== undefined) ? p.pesos[t] * 100 : 0;
-      state.pesos.set(t, pesoPct);
-    });
-
-    // Normalizar por si los pesos no suman exactamente 100 (por redondeos)
-    let suma = 0;
-    state.pesos.forEach(v => { suma += v; });
-    if (suma > 0 && Math.abs(suma - 100) > 0.05) {
-      const factor = 100 / suma;
-      state.pesos.forEach((v, k) => state.pesos.set(k, v * factor));
-    }
-
-    renderSeleccion();
-    renderPesos();
-    mostrarPaso('pesos');
-  }
+  // Aquí vivían los 10 "perfiles sugeridos" (carteras prearmadas). Se quitaron:
+  // el portafolio automático se arma por nivel de riesgo y presupuesto.
 
   // ============================================================
   // REFRESCO DE PRECIOS (cuasi-real vía Yahoo)
@@ -3327,11 +3152,6 @@ const Picker = (() => {
     $('pick-buscar').addEventListener('input', onBuscarInput);
 
     $('portafolio-onboarding').addEventListener('click', (e) => {
-      const perfil = e.target.closest('.perfil-card');
-      if (perfil) {
-        aplicarPerfil(perfil.dataset.perfil);
-        return;
-      }
       const filtro = e.target.closest('.pick-filtro');
       if (filtro) {
         setFiltro(filtro.dataset.filtro);
@@ -3388,7 +3208,6 @@ const Picker = (() => {
     cargar();
     renderCurado($('pick-buscar').value || '');
     renderSeleccion();
-    if (!perfilesCache.length) cargarPerfiles();
   }
 
   // Carga un portafolio óptimo generado por Markowitz directamente al picker
@@ -3416,7 +3235,7 @@ const Picker = (() => {
     }, 100);
   }
 
-  return { cargar, bind, resetYPrecargar, refrescarPrecios, cargarPerfiles, cargarDesdeOptimo };
+  return { cargar, bind, resetYPrecargar, refrescarPrecios, cargarDesdeOptimo };
 })();
 
 // ============================================================
@@ -8450,13 +8269,21 @@ const CetesBench = (() => {
     // fuente en el servidor). Antes este respaldo solo se miraba en cargar(),
     // que corre una vez a los 1.5 s, antes de que el análisis llegara.
     if (cetesCache == null && typeof window.MP_CETES_HOY === 'number') cetesCache = window.MP_CETES_HOY;
-    if (!box || cetesCache == null) return;
+    // La cifra de Rendimiento es un CAGR de hasta 5 años: se compara contra lo
+    // que CETES pagó en ESOS años. Solo si no hay periodo, contra la de hoy.
+    const periodo = typeof window.MP_CETES_PERIODO === 'number' ? window.MP_CETES_PERIODO : null;
+    const ref = periodo != null ? periodo : cetesCache;
+    if (!box || ref == null) return;
     // Leer rendimiento anualizado del KPI ya rendereado
     const txt = ($('kpi-retorno-anual')?.textContent || '').replace(/[^\d.\-]/g, '');
     const port = parseFloat(txt);
     if (!isFinite(port)) return;
-    const spread = port - cetesCache;
-    $('cetes-tasa').textContent = cetesCache.toFixed(2) + '%';
+    const spread = port - ref;
+    $('cetes-tasa').textContent = ref.toFixed(2) + '%';
+    const ctx = $('cetes-ctx');
+    if (ctx) ctx.textContent = periodo != null
+      ? `CETES pagó ${ref.toFixed(2)}% al año en el mismo periodo`
+      : `CETES paga hoy ${ref.toFixed(2)}% sin riesgo`;
     const cls = spread >= 0 ? 'text-accent-green' : 'text-accent-red';
     $('cetes-spread').className = `text-2xl font-bold tabular mt-0.5 ${cls}`;
     // "pts", como en la flotación: dos unidades distintas para la misma resta
@@ -9158,9 +8985,11 @@ const Analizador = (() => {
         volatilidad_anual_pct: pct(fu.volatilidad_anual),
         max_drawdown_pct:      pct(fu.max_drawdown),
       };
-      // La CETES vigente (la del chip), no un 9.5 fijo.
-      const cetesHoy = typeof window.MP_CETES_HOY === 'number' ? window.MP_CETES_HOY : undefined;
-      copo = F.copo(F.puntuar(m, { cetes: cetesHoy }), 128, 'Perfil de ' + (d.nombre || d.ticker));
+      // El rendimiento es a un año: se compara contra lo que pagó CETES en
+      // ese mismo año (cetes_1a_pct). Sin ese dato, la vigente.
+      const cetesRef = typeof d.cetes_1a_pct === 'number' ? d.cetes_1a_pct
+                     : (typeof window.MP_CETES_HOY === 'number' ? window.MP_CETES_HOY : undefined);
+      copo = F.copo(F.puntuar(m, { cetes: cetesRef }), 128, 'Perfil de ' + (d.nombre || d.ticker));
     }
     const score = d.score == null ? '—' : Math.round(d.score);
     return `
@@ -9844,202 +9673,6 @@ function bindEditar() {
   });
 }
 
-// --- botón Perfiles (atajo directo a los perfiles sugeridos) ---------------
-function bindPerfiles() {
-  const btn = $('btn-perfiles-portafolio');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    mostrarOnboarding();
-    _onbModo('auto');
-    // Los perfiles viven al final del modo automático, debajo del optimizador:
-    // sin este scroll el usuario aterriza arriba y no los ve.
-    try { Picker.cargarPerfiles(); } catch (_) {}
-    // Se cargan por fetch, así que hay que esperar a que la retícula tenga
-    // tarjetas: con un solo requestAnimationFrame el grid mide 0 de alto y el
-    // scroll no va a ningún lado.
-    // Scroll INSTANTÁNEO, no 'smooth': la animación suave se cancelaba a media
-    // corrida porque la retícula crece cuando llegan las tarjetas y el
-    // documento cambia de alto. Se posiciona en cuanto la sección mide algo
-    // (aunque sea el aviso de carga) y se reafirma cuando ya hay tarjetas.
-    let intentos = 0, yaConTarjetas = false;
-    (function irAPerfiles() {
-      const grid = $('perfiles-grid');
-      if (grid && grid.offsetHeight > 0) {
-        grid.scrollIntoView({ block: 'start' });
-        if (grid.querySelector('.perfil-card')) yaConTarjetas = true;
-      }
-      if (!yaConTarjetas && ++intentos < 60) setTimeout(irAPerfiles, 150);  // hasta ~9s
-    })();
-  });
-}
-
-// --- botón Exportar reporte PDF -------------------------------------------
-function bindExportarPdf() {
-  const btn = $('btn-exportar-pdf');
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
-    const tickers = leerPortafolioGuardado() || [];
-    if (!tickers.length) {
-      alert('Primero guarda un portafolio.');
-      return;
-    }
-    const pesos = leerPesosGuardados() || {};
-    let txs = [];
-    try {
-      const raw = localStorage.getItem('miPortafolio.transacciones.v1');
-      if (raw) { const j = JSON.parse(raw); if (Array.isArray(j)) txs = j; }
-    } catch (_) {}
-
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = 'Generando…';
-
-    try {
-      const now = new Date();
-      const body = {
-        tickers,
-        pesos,
-        transacciones:  txs,
-        mes:            now.getMonth() + 1,
-        anio:           now.getFullYear(),
-        nombre_usuario: 'Charlie',
-      };
-
-      // Enriquecer body con datos extras (concentración, fundamentales,
-      // comportamiento estadístico) en paralelo para que el PDF salga
-      // completo. Si alguno falla, simplemente se omite esa sección.
-      btn.innerHTML = 'Recolectando datos…';
-      try {
-        const [resultsRes, fundRes] = await Promise.all([
-          fetch('/api/resultados').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/fundamentals/portafolio', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({tickers}),
-          }).then(r => r.ok ? r.json() : null).catch(() => null),
-        ]);
-
-        // Concentración + benchmark + insights (vienen de /api/resultados)
-        if (resultsRes) {
-          if (resultsRes.concentracion) {
-            body.concentracion = {
-              por_sector: resultsRes.concentracion.por_sector,
-              por_pais:   resultsRes.concentracion.por_pais,
-              por_moneda: resultsRes.concentracion.por_moneda,
-            };
-          }
-          if (resultsRes.insights && Array.isArray(resultsRes.insights)) {
-            body.insights = resultsRes.insights
-              .map(i => typeof i === 'string' ? i : (i.mensaje || i.titulo || ''))
-              .filter(Boolean).slice(0, 10);
-          }
-          // Comportamiento estadístico desde portafolio.metricas
-          const pm = resultsRes.portafolio || {};
-          body.portafolio_metrics = {
-            rendimiento_anualizado_pct: pm.rendimiento_anualizado_pct,
-            volatilidad_anual_pct:      pm.volatilidad_anual_pct,
-            sharpe_ratio:               pm.sharpe_ratio,
-            max_drawdown_pct:           pm.max_drawdown_pct,
-          };
-          body.comportamiento = {
-            volatilidad_anual:   pm.volatilidad_anual_pct ? pm.volatilidad_anual_pct / 100 : null,
-            sharpe_ratio:        pm.sharpe_ratio,
-            sortino_ratio:       pm.sortino_ratio,
-            max_drawdown:        pm.max_drawdown_pct ? pm.max_drawdown_pct / 100 : null,
-            correlacion_sp500:   pm.correlacion_sp500,
-            retorno_1m:          pm.retorno_1m,
-            retorno_3m:          pm.retorno_3m,
-            retorno_1y:          pm.rendimiento_anualizado_pct ? pm.rendimiento_anualizado_pct / 100 : null,
-            retorno_ytd:         pm.retorno_ytd,
-          };
-          // Benchmarks vs los principales
-          if (resultsRes.benchmark) {
-            body.benchmarks = [
-              {
-                nombre: pm.nombre_propio || 'Tu portafolio',
-                retorno_pct: pm.rendimiento_anualizado_pct,
-                volatilidad_pct: pm.volatilidad_anual_pct,
-                sharpe: pm.sharpe_ratio,
-                max_dd_pct: pm.max_drawdown_pct,
-              },
-              {
-                nombre: resultsRes.benchmark.nombre || 'Benchmark',
-                retorno_pct: resultsRes.benchmark.retorno_anualizado_pct,
-                volatilidad_pct: resultsRes.benchmark.volatilidad_anual_pct,
-                sharpe: resultsRes.benchmark.sharpe_ratio,
-                max_dd_pct: resultsRes.benchmark.max_drawdown_pct,
-              },
-            ].filter(b => b.retorno_pct !== undefined);
-          }
-        }
-
-        // Fundamentales
-        if (fundRes && fundRes.resumen) {
-          body.fundamentales = fundRes.resumen;
-        }
-
-        // Fiscal MX (calculado en cliente con transacciones)
-        if (txs.length) {
-          const ano = now.getFullYear();
-          let ganancia_realizada = 0;
-          const positions = {};
-          txs.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
-          for (const t of txs) {
-            const ticker = (t.ticker||'').toUpperCase();
-            const sh = parseFloat(t.shares)||0, pr = parseFloat(t.precio)||0;
-            if (!ticker || sh<=0 || pr<=0) continue;
-            const tipo = (t.tipo||'compra').toLowerCase();
-            if (!positions[ticker]) positions[ticker] = {sh:0, costo:0};
-            if (tipo.startsWith('c')) {
-              positions[ticker].sh += sh;
-              positions[ticker].costo += sh*pr;
-            } else if (tipo.startsWith('v') && positions[ticker].sh > 0) {
-              const costoPromedio = positions[ticker].costo / positions[ticker].sh;
-              const shVender = Math.min(sh, positions[ticker].sh);
-              const ganancia = shVender * (pr - costoPromedio);
-              if ((t.fecha||'').startsWith(String(ano))) ganancia_realizada += ganancia;
-              positions[ticker].sh -= shVender;
-              positions[ticker].costo -= shVender * costoPromedio;
-            }
-          }
-          body.fiscal = {
-            ano,
-            ganancia_realizada_ano: Math.round(ganancia_realizada * 100) / 100,
-            isr_proyectado: Math.max(0, ganancia_realizada) * 0.10,
-            perdidas_disponibles: 0,
-          };
-        }
-      } catch (e) {
-        console.warn('Algunos datos extras no se pudieron recolectar:', e);
-      }
-
-      btn.innerHTML = 'Generando PDF…';
-      const res = await fetch('/api/reporte/pdf', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `reporte_portafolio_${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert('No se pudo generar el PDF: ' + (e.message || e));
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = orig;
-    }
-  });
-}
-
 // --- go ---------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -10049,8 +9682,6 @@ document.addEventListener('DOMContentLoaded', () => {
   CetesBench.bind();
   bindNav();
   bindEditar();
-  bindPerfiles();
-  bindExportarPdf();
   Explorador.bind();
   Periodico.bind();
   Rebalanceo.bind();
@@ -10210,10 +9841,14 @@ function renderCuadernilloMexico(analisis) {
       const t28 = d && d.cetes && d.cetes.tasas && d.cetes.tasas['28'];
       if (t28 && t28.tasa_pct != null) {
         set('mx-cetes-valor', t28.tasa_pct.toFixed(2) + '%');
-        if (retorno != null) {
-          const spread = retorno - t28.tasa_pct;
-          set('mx-cetes-nota',
-            `${spread >= 0 ? 'Le ganas por' : 'Te gana por'} ${Math.abs(spread).toFixed(1)} pts`);
+        // La cifra grande es la de HOY. Restarla de un CAGR de 5 años mezclaba
+        // tiempos; abajo se dice lo que pagó en la misma ventana del análisis.
+        const per = analisis && analisis.metadata && analisis.metadata.cetes_periodo;
+        if (per && typeof per.compuesto_pct === 'number') {
+          const anios = Math.max(1, Math.round((Date.parse(per.hasta) - Date.parse(per.desde)) / 3.15576e10));
+          set('mx-cetes-nota', `Hoy. En ${anios === 1 ? 'el último año' : `tus ${anios} años`} pagó ${per.compuesto_pct.toFixed(1)}%`);
+        } else {
+          set('mx-cetes-nota', 'Tasa de hoy, sin riesgo');
         }
       }
       if (d && d.yield_fibras_prom != null) {

@@ -39,6 +39,26 @@ def tasa_libre_riesgo() -> float:
         return TASA_LIBRE_RIESGO
 
 
+def tasa_libre_periodo(inicio, fin) -> float:
+    """Promedio de CETES 28 días ENTRE inicio y fin, como fracción: la tasa
+    libre de riesgo de un Sharpe histórico. Si la ventana no se puede medir, la
+    vigente."""
+    try:
+        from renta_fija_mx import tasa_libre_periodo as _tlp
+        return _tlp(inicio, fin)
+    except Exception:
+        return tasa_libre_riesgo()
+
+
+def cetes_periodo(inicio, fin):
+    """Lo que pagó CETES en la ventana (compuesto y promedio), o None."""
+    try:
+        from renta_fija_mx import cetes_periodo as _cp
+        return _cp(inicio, fin)
+    except Exception:
+        return None
+
+
 # Benchmarks disponibles (se eligen automáticamente según moneda dominante)
 BENCHMARK_US = "^GSPC"             # S&P 500
 BENCHMARK_MX = "^MXX"              # IPC México
@@ -84,7 +104,7 @@ def metricas_riesgo_avanzado(rend_port, rend_bench=None):
     ann_ret = float(r.mean()) * DIAS_HABILES
     neg = r[r < 0]
     downside = float(neg.std()) * np.sqrt(DIAS_HABILES) if len(neg) > 1 else 0.0
-    sortino = (ann_ret - tasa_libre_riesgo()) / downside if downside > 0 else None
+    sortino = (ann_ret - tasa_libre_periodo(r.index[0], r.index[-1])) / downside if downside > 0 else None
 
     serie_val = (1 + r).cumprod()
     max_dd_frac = float((serie_val / serie_val.cummax() - 1).min())
@@ -260,6 +280,10 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
 
     # ---- 3. RENDIMIENTOS DIARIOS ----
     rend_diarios = precios_port.pct_change().dropna()
+    # Tasa libre de riesgo de ESTE periodo (promedio de CETES 28 días entre la
+    # primera y la última fecha): un Sharpe de cinco años contra la CETES de hoy
+    # premiaba o castigaba según por dónde anduviera la tasa esta semana.
+    _rf = tasa_libre_periodo(precios_port.index[0], precios_port.index[-1])
 
     # ---- 4. MÉTRICAS POR ACTIVO ----
     por_activo = {}
@@ -270,7 +294,7 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
         rend_anual = float(rend_diarios[ticker].mean() * DIAS_HABILES) * 100
         vol_anual = float(rend_diarios[ticker].std() * np.sqrt(DIAS_HABILES)) * 100
         sharpe = (
-            (rend_anual - tasa_libre_riesgo() * 100) / vol_anual
+            (rend_anual - _rf * 100) / vol_anual
             if vol_anual > 0 else 0.0
         )
         max_dd = calcular_max_drawdown(precios_port[ticker])
@@ -301,7 +325,7 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
     vol_port_anual = float(np.sqrt(pesos_array @ cov_anual @ pesos_array)) * 100
 
     sharpe_port = (
-        (rend_port_anual - tasa_libre_riesgo() * 100) / vol_port_anual
+        (rend_port_anual - _rf * 100) / vol_port_anual
         if vol_port_anual > 0 else 0.0
     )
 
@@ -340,6 +364,9 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
     # compare contra la tasa libre de riesgo o contra el índice debe usarlo.
     _n_cagr = len(valor_portafolio)
     _vent = min(_n_cagr, DIAS_HABILES * 5)
+    # Lo que pagó CETES en ESA MISMA ventana, reinvirtiendo cada 28 días: es la
+    # cifra comparable con el CAGR (flotación, regata, "Contra CETES").
+    _cetes_vent = cetes_periodo(valor_portafolio.index[-_vent], valor_portafolio.index[-1])
 
     def _cagr(serie):
         """CAGR en % sobre la ventana común `_vent`. None si no hay un año."""
@@ -396,7 +423,7 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
     }
 
     # ---- 6b. PORTAFOLIO ÓPTIMO (Markowitz, máx Sharpe) ----
-    opt = optimizar_sharpe(rend_diarios, tasa_libre_riesgo())
+    opt = optimizar_sharpe(rend_diarios, _rf)
     # Deltas contra el portafolio actual (cuánto mejoraría)
     opt["delta_vs_actual"] = {
         "rendimiento_anualizado_pp": round(opt["rendimiento_anualizado_pct"] - rend_port_anual, 2),
@@ -416,7 +443,7 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
         rend_bench_anual = float(rend_bench_diario.mean() * DIAS_HABILES) * 100
         vol_bench_anual = float(rend_bench_diario.std() * np.sqrt(DIAS_HABILES)) * 100
         sharpe_bench = (
-            (rend_bench_anual - tasa_libre_riesgo() * 100) / vol_bench_anual
+            (rend_bench_anual - _rf * 100) / vol_bench_anual
             if vol_bench_anual > 0 else 0.0
         )
         max_dd_bench = calcular_max_drawdown(precios_bench)
@@ -685,7 +712,13 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
             "fecha_fin": str(precios.index[-1].date()),
             "dias_observados": len(precios),
             "activos": activos,
-            "tasa_libre_riesgo_pct": round(tasa_libre_riesgo() * 100, 2),
+            # La CETES contra la que se compara el CAGR: lo que pagó en la
+            # misma ventana, compuesta. Sin histórico, la vigente.
+            "tasa_libre_riesgo_pct": (_cetes_vent["compuesto_pct"] if _cetes_vent
+                                      else round(tasa_libre_riesgo() * 100, 2)),
+            "cetes_periodo": _cetes_vent,          # {compuesto_pct, promedio_pct, desde, hasta}
+            "cetes_sharpe_pct": round(_rf * 100, 2),   # promedio del periodo de los Sharpe
+            "cetes_hoy_pct": round(tasa_libre_riesgo() * 100, 2),
             "benchmark": benchmark_elegido if benchmark_info else None,
             "peso_mxn": peso_mxn,
             "peso_usd": peso_usd,

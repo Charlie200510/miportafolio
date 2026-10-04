@@ -503,10 +503,10 @@ def _html_bienvenida(email: str) -> str:
       </p>
     </div>
     <div style="background:#fafafa;border:1px solid #e4e4e7;border-radius:8px;padding:18px;margin-bottom:18px;">
-      <p style="margin:0 0 12px;font-weight:600;">3 · Explora los perfiles pre-armados</p>
+      <p style="margin:0 0 12px;font-weight:600;">3 · Arma un portafolio automático</p>
       <p style="margin:0 0 4px;font-size:13px;color:#52525b;line-height:1.5;">
-        Si quieres una mezcla óptima sin pensar mucho, abajo de la página principal hay 10
-        portafolios pre-armados — desde conservador hasta agresivo.
+        En Mi portafolio elige "Automático": dices tu nivel de riesgo y con cuánto empiezas,
+        desde $5 mil, y la app arma una mezcla óptima que sí puedes comprar.
       </p>
     </div>
     <div style="text-align:center;margin:28px 0 8px;">

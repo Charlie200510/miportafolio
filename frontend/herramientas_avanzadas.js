@@ -1081,7 +1081,7 @@
             <span style="color:var(--tinta-1);font-family:monospace;float:right;">${d.moneda}</span>
           </div>
           <div style="padding:6px 0;border-bottom:1px solid var(--sup-panel);">
-            <span style="color:var(--tinta-4);">Tasa libre de riesgo:</span>
+            <span style="color:var(--tinta-4);">${d.moneda === 'MXN' ? 'CETES del periodo (compuesta):' : 'Tasa libre de riesgo:'}</span>
             <span style="color:var(--tinta-1);font-family:monospace;float:right;">${fmtPct(d.tasa_libre_riesgo)}</span>
           </div>
           <div style="padding:6px 0;border-bottom:1px solid var(--sup-panel);">

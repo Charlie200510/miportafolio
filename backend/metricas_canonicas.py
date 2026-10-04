@@ -90,8 +90,21 @@ def tipo_activo(ticker: str, info: Optional[Dict[str, Any]] = None) -> str:
     return "generico"
 
 
-def rf_para(ticker: str) -> float:
-    """Tasa libre de riesgo en la moneda apropiada."""
+def rf_para(ticker: str, inicio=None, fin=None) -> float:
+    """Tasa libre de riesgo en la moneda apropiada.
+
+    Con `inicio` y `fin` (rendimientos históricos: Sharpe, alfa de Jensen), en
+    pesos es el PROMEDIO de CETES 28 días en esa ventana; sin fechas (valuación
+    hacia adelante), la vigente."""
+    if (ticker or "").upper().endswith(".MX") and inicio is not None and fin is not None \
+            and not os.environ.get("CETES_28D"):
+        try:
+            from renta_fija_mx import tasa_libre_periodo
+            # Compuesta: el alfa y el Sharpe del score usan rendimientos
+            # anualizados compuestos (desde mensuales).
+            return tasa_libre_periodo(inicio, fin, compuesta=True)
+        except Exception:
+            pass
     if (ticker or "").upper().endswith(".MX"):
         # CETES_28D en el entorno manda (configuración explícita). Si no está,
         # la CETES 28 días VIGENTE, la misma del chip y del Cuadernillo; antes
@@ -236,7 +249,12 @@ def calcular_metricas(
     if beta is None:
         return None
 
-    rf = rf_para(ticker)
+    # Rendimientos históricos: la CETES de ESA ventana (alfa y Sharpe).
+    try:
+        _s = serie_precios.dropna()
+        rf = rf_para(ticker, _s.index[0], _s.index[-1])
+    except Exception:
+        rf = rf_para(ticker)
     # Premio de mercado: histórico observado, con piso de 1%
     r_mkt_anual = retorno_anualizado_desde_mensuales(rets_mkt) or 0
     premio = max(0.01, r_mkt_anual - rf) if r_mkt_anual else premio_mercado_para(ticker)
