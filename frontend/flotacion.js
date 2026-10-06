@@ -328,8 +328,9 @@
     if (typeof r === 'number' && r < cetes) {
       // La tasa es lo que CETES PAGÓ en la misma ventana (compuesta), no la de
       // hoy: comparar cinco años contra la tasa de esta semana engañaba.
-      cabeza = 'Rindió ' + r.toFixed(1) + '% al año. CETES pagó ' + cetes.toFixed(1) +
-               '% en el mismo periodo, sin arriesgar nada.';
+      cabeza = o.cetesPeriodo === false
+        ? 'Rindió ' + r.toFixed(1) + '% al año. CETES paga hoy ' + cetes.toFixed(1) + '% sin arriesgar nada.'
+        : 'Rindió ' + r.toFixed(1) + '% al año. CETES pagó ' + cetes.toFixed(1) + '% en el mismo periodo, sin arriesgar nada.';
     } else if (f === null) {
       cabeza = 'No hay datos suficientes para compararlo contra CETES.';
     } else if (f >= 2.0) {

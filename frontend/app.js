@@ -886,12 +886,14 @@ function renderFlotacion(data) {
   // (compuesto); cetes_hoy_pct, la tasa vigente. Se guardan aparte: la fila
   // "Contra CETES" compara contra la del periodo, el copo de Analizar usa la
   // de su propio año y "hoy" solo sirve para decir cuánto paga hoy.
-  if (typeof meta.tasa_libre_riesgo_pct === 'number') window.MP_CETES_PERIODO = meta.tasa_libre_riesgo_pct;
-  if (typeof meta.cetes_hoy_pct === 'number') window.MP_CETES_HOY = meta.cetes_hoy_pct;
+  window.MP_CETES_PERIODO = typeof meta.cetes_periodo_pct === 'number' ? meta.cetes_periodo_pct : undefined;
+  if (typeof meta.tasa_libre_riesgo_pct === 'number') window.MP_CETES_HOY = meta.tasa_libre_riesgo_pct;
   try { CetesBench.actualizar(); } catch (_) { /* módulo aún no inicializado */ }
 
   const opciones = {
-    cetes: meta.tasa_libre_riesgo_pct,
+    // Lo que pagó CETES en la misma ventana; si no hay histórico, la vigente.
+    cetes: meta.cetes_periodo_pct ?? meta.tasa_libre_riesgo_pct,
+    cetesPeriodo: meta.cetes_periodo_pct != null,
     benchmarkAnual: data.benchmark && typeof (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) === 'number'
       ? (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) : undefined,
     // El backend elige ^MXX o ^GSPC según la moneda dominante; el rótulo del
@@ -989,7 +991,9 @@ function renderRegata(data) {
 
   const F = window.MP_FLOTACION;
   const opciones = {
-    cetes: meta.tasa_libre_riesgo_pct,
+    // Lo que pagó CETES en la misma ventana; si no hay histórico, la vigente.
+    cetes: meta.cetes_periodo_pct ?? meta.tasa_libre_riesgo_pct,
+    cetesPeriodo: meta.cetes_periodo_pct != null,
     benchmarkAnual: data.benchmark && typeof (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) === 'number'
       ? (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) : undefined
   };
@@ -1607,7 +1611,9 @@ function renderTablaActivos(data, info) {
      funcionando: la marca es un extra, no un requisito. */
   const meta = data.metadata || {};
   const opcFig = {
-    cetes: meta.tasa_libre_riesgo_pct,
+    // Lo que pagó CETES en la misma ventana; si no hay histórico, la vigente.
+    cetes: meta.cetes_periodo_pct ?? meta.tasa_libre_riesgo_pct,
+    cetesPeriodo: meta.cetes_periodo_pct != null,
     benchmarkAnual: data.benchmark && typeof (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) === 'number'
       ? (data.benchmark.rendimiento_cagr_pct ?? data.benchmark.rendimiento_anualizado_pct) : undefined,
   };
@@ -9845,8 +9851,7 @@ function renderCuadernilloMexico(analisis) {
         // tiempos; abajo se dice lo que pagó en la misma ventana del análisis.
         const per = analisis && analisis.metadata && analisis.metadata.cetes_periodo;
         if (per && typeof per.compuesto_pct === 'number') {
-          const anios = Math.max(1, Math.round((Date.parse(per.hasta) - Date.parse(per.desde)) / 3.15576e10));
-          set('mx-cetes-nota', `Hoy. En ${anios === 1 ? 'el último año' : `tus ${anios} años`} pagó ${per.compuesto_pct.toFixed(1)}%`);
+          set('mx-cetes-nota', `Hoy. En el mismo periodo pagó ${per.compuesto_pct.toFixed(1)}% al año`);
         } else {
           set('mx-cetes-nota', 'Tasa de hoy, sin riesgo');
         }

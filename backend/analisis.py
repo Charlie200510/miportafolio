@@ -712,10 +712,11 @@ def analizar_portafolio_desde_df(precios: pd.DataFrame, info: dict, pesos=None):
             "fecha_fin": str(precios.index[-1].date()),
             "dias_observados": len(precios),
             "activos": activos,
-            # La CETES contra la que se compara el CAGR: lo que pagó en la
-            # misma ventana, compuesta. Sin histórico, la vigente.
-            "tasa_libre_riesgo_pct": (_cetes_vent["compuesto_pct"] if _cetes_vent
-                                      else round(tasa_libre_riesgo() * 100, 2)),
+            # La VIGENTE, como siempre: la app 1.0.3 publicada la presenta como
+            # "CETES paga hoy". Lo que pagó CETES en la ventana del CAGR va en
+            # cetes_periodo_pct, que es lo que compara el frontend nuevo.
+            "tasa_libre_riesgo_pct": round(tasa_libre_riesgo() * 100, 2),
+            "cetes_periodo_pct": _cetes_vent["compuesto_pct"] if _cetes_vent else None,
             "cetes_periodo": _cetes_vent,          # {compuesto_pct, promedio_pct, desde, hasta}
             "cetes_sharpe_pct": round(_rf * 100, 2),   # promedio del periodo de los Sharpe
             "cetes_hoy_pct": round(tasa_libre_riesgo() * 100, 2),
