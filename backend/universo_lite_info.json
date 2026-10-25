@@ -5,7 +5,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.1,
+    "precio_actual": 0.09,
     "recomendada": false
   },
   "AAPL": {
@@ -14,7 +14,15 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 341.07,
+    "trailingPE": null,
+    "returnOnEquity": null,
+    "profitMargins": null,
+    "debtToEquity": null,
+    "dividendYield": null,
+    "marketCap": null,
+    "averageVolume": null,
+    "beta": null,
+    "precio_actual": 347.73,
     "recomendada": true
   },
   "AAVE-USD": {
@@ -23,7 +31,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 155.63,
+    "precio_actual": 138.01,
     "recomendada": false
   },
   "ABBV": {
@@ -32,7 +40,15 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 264.34,
+    "trailingPE": null,
+    "returnOnEquity": null,
+    "profitMargins": null,
+    "debtToEquity": null,
+    "dividendYield": null,
+    "marketCap": null,
+    "averageVolume": null,
+    "beta": null,
+    "precio_actual": 285.64,
     "recomendada": true
   },
   "AC.MX": {
@@ -41,7 +57,15 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 199.24,
+    "trailingPE": null,
+    "returnOnEquity": null,
+    "profitMargins": null,
+    "debtToEquity": null,
+    "dividendYield": null,
+    "marketCap": null,
+    "averageVolume": null,
+    "beta": null,
+    "precio_actual": 218.02,
     "recomendada": true
   },
   "ACWI": {
@@ -50,7 +74,15 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 161.05,
+    "trailingPE": null,
+    "returnOnEquity": null,
+    "profitMargins": null,
+    "debtToEquity": null,
+    "dividendYield": null,
+    "marketCap": null,
+    "averageVolume": null,
+    "beta": null,
+    "precio_actual": 156.8,
     "recomendada": true
   },
   "ADA-USD": {
@@ -59,7 +91,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.25,
+    "precio_actual": 0.21,
     "recomendada": true
   },
   "ADBE": {
@@ -68,7 +100,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 235.47,
+    "precio_actual": 263.82,
     "recomendada": true
   },
   "ADI": {
@@ -77,7 +109,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 393.6,
+    "precio_actual": 391.07,
     "recomendada": false
   },
   "AEVO-USD": {
@@ -86,7 +118,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.03,
+    "precio_actual": 0.02,
     "recomendada": false
   },
   "AGG": {
@@ -95,7 +127,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 95.12,
+    "precio_actual": 95.96,
     "recomendada": true
   },
   "AGIX-USD": {
@@ -104,25 +136,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.09,
-    "recomendada": false
-  },
-  "AGX": {
-    "nombre": "AGX",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 364.29,
-    "recomendada": false
-  },
-  "AIT": {
-    "nombre": "AIT",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 333.39,
+    "precio_actual": 0.02,
     "recomendada": false
   },
   "AKT-USD": {
@@ -131,16 +145,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.7,
-    "recomendada": false
-  },
-  "ALAB": {
-    "nombre": "ALAB",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 364.62,
+    "precio_actual": 0.66,
     "recomendada": false
   },
   "ALGO-USD": {
@@ -149,7 +154,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.12,
+    "precio_actual": 0.1,
     "recomendada": false
   },
   "ALPACA-USD": {
@@ -167,7 +172,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 14.9,
+    "precio_actual": 15.53,
     "recomendada": false
   },
   "ALPHA-USD": {
@@ -185,7 +190,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 44.97,
+    "precio_actual": 52.0,
     "recomendada": true
   },
   "AMAT": {
@@ -194,7 +199,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 485.0,
+    "precio_actual": 377.24,
     "recomendada": false
   },
   "AMD": {
@@ -203,7 +208,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 630.63,
+    "precio_actual": 516.79,
     "recomendada": true
   },
   "AMG": {
@@ -212,7 +217,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 373.69,
+    "precio_actual": 383.42,
     "recomendada": false
   },
   "AMGN": {
@@ -221,7 +226,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 414.61,
+    "precio_actual": 439.26,
     "recomendada": false
   },
   "AMP": {
@@ -230,16 +235,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 493.0,
-    "recomendada": false
-  },
-  "AMUU": {
-    "nombre": "AMUU",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 298.74,
+    "precio_actual": 492.19,
     "recomendada": false
   },
   "AMXB.MX": {
@@ -248,7 +244,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 19.5,
+    "precio_actual": 22.98,
     "recomendada": true
   },
   "AMZN": {
@@ -257,7 +253,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 249.67,
+    "precio_actual": 248.0,
     "recomendada": true
   },
   "ANKR-USD": {
@@ -266,7 +262,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.01,
+    "precio_actual": 0.0,
     "recomendada": false
   },
   "ANT-USD": {
@@ -275,16 +271,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.06,
-    "recomendada": false
-  },
-  "APD": {
-    "nombre": "APD",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 281.76,
+    "precio_actual": 0.05,
     "recomendada": false
   },
   "APE18876-USD": {
@@ -293,7 +280,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.15,
+    "precio_actual": 0.13,
     "recomendada": false
   },
   "API3-USD": {
@@ -302,16 +289,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.28,
-    "recomendada": false
-  },
-  "APP": {
-    "nombre": "APP",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 310.75,
+    "precio_actual": 0.26,
     "recomendada": false
   },
   "APT21794-USD": {
@@ -320,7 +298,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.85,
+    "precio_actual": 0.72,
     "recomendada": false
   },
   "ARA.MX": {
@@ -329,7 +307,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 4.78,
+    "precio_actual": 5.28,
     "recomendada": false
   },
   "ARB11841-USD": {
@@ -338,7 +316,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.22,
+    "precio_actual": 0.17,
     "recomendada": false
   },
   "ARGX": {
@@ -347,7 +325,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 959.49,
+    "precio_actual": 873.71,
     "recomendada": false
   },
   "ARKB": {
@@ -356,7 +334,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 27.86,
+    "precio_actual": 26.92,
     "recomendada": true
   },
   "ARKF": {
@@ -365,7 +343,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 46.88,
+    "precio_actual": 45.16,
     "recomendada": true
   },
   "ARKG": {
@@ -374,7 +352,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 53.36,
+    "precio_actual": 48.16,
     "recomendada": true
   },
   "ARKK": {
@@ -383,7 +361,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 90.77,
+    "precio_actual": 81.99,
     "recomendada": true
   },
   "ARKQ": {
@@ -392,7 +370,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 124.42,
+    "precio_actual": 112.01,
     "recomendada": true
   },
   "ARKW": {
@@ -401,7 +379,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 163.88,
+    "precio_actual": 154.89,
     "recomendada": true
   },
   "ARKX": {
@@ -410,17 +388,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 32.69,
+    "precio_actual": 29.84,
     "recomendada": true
-  },
-  "ARM": {
-    "nombre": "ARM",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 310.32,
-    "recomendada": false
   },
   "ASHR": {
     "nombre": "ASHR",
@@ -428,7 +397,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 33.09,
+    "precio_actual": 30.74,
     "recomendada": true
   },
   "ASML": {
@@ -437,7 +406,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 1743.94,
+    "precio_actual": 1571.8,
     "recomendada": false
   },
   "ASURB.MX": {
@@ -446,7 +415,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 430.57,
+    "precio_actual": 464.87,
     "recomendada": true
   },
   "ATOM-USD": {
@@ -455,7 +424,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 1.87,
+    "precio_actual": 1.64,
     "recomendada": false
   },
   "AUDIO-USD": {
@@ -473,7 +442,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 10.86,
+    "precio_actual": 8.99,
     "recomendada": true
   },
   "AVGO": {
@@ -482,7 +451,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 352.81,
+    "precio_actual": 321.68,
     "recomendada": true
   },
   "AXON": {
@@ -491,16 +460,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 430.11,
-    "recomendada": false
-  },
-  "AXP": {
-    "nombre": "AXP",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 308.89,
+    "precio_actual": 420.37,
     "recomendada": false
   },
   "AXS-USD": {
@@ -509,16 +469,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 1.17,
-    "recomendada": false
-  },
-  "AYI": {
-    "nombre": "AYI",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 319.42,
+    "precio_actual": 0.96,
     "recomendada": false
   },
   "AZO": {
@@ -527,7 +478,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 2872.16,
+    "precio_actual": 3200.76,
     "recomendada": false
   },
   "BA": {
@@ -536,7 +487,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 198.07,
+    "precio_actual": 188.35,
     "recomendada": false
   },
   "BAC": {
@@ -545,7 +496,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 56.7,
+    "precio_actual": 50.56,
     "recomendada": true
   },
   "BADGER-USD": {
@@ -554,7 +505,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.34,
+    "precio_actual": 0.31,
     "recomendada": false
   },
   "BAKE-USD": {
@@ -572,7 +523,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.14,
+    "precio_actual": 0.12,
     "recomendada": false
   },
   "BAND-USD": {
@@ -581,16 +532,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.23,
-    "recomendada": false
-  },
-  "BAP": {
-    "nombre": "BAP",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 386.16,
+    "precio_actual": 0.21,
     "recomendada": false
   },
   "BAT-USD": {
@@ -599,7 +541,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.1,
+    "precio_actual": 0.16,
     "recomendada": false
   },
   "BBAJIOO.MX": {
@@ -608,7 +550,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 57.48,
+    "precio_actual": 58.79,
     "recomendada": false
   },
   "BCH-USD": {
@@ -617,16 +559,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 335.88,
-    "recomendada": false
-  },
-  "BE": {
-    "nombre": "BE",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 288.7,
+    "precio_actual": 277.65,
     "recomendada": false
   },
   "BEL-USD": {
@@ -635,7 +568,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.13,
+    "precio_actual": 0.11,
     "recomendada": false
   },
   "BH": {
@@ -644,7 +577,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 344.81,
+    "precio_actual": 396.19,
     "recomendada": false
   },
   "BICO-USD": {
@@ -662,17 +595,8 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 55.13,
+    "precio_actual": 62.82,
     "recomendada": true
-  },
-  "BIO": {
-    "nombre": "BIO",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 381.0,
-    "recomendada": false
   },
   "BITO": {
     "nombre": "BITO",
@@ -680,7 +604,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 11.27,
+    "precio_actual": 10.83,
     "recomendada": true
   },
   "BLK": {
@@ -689,7 +613,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 1086.31,
+    "precio_actual": 1118.25,
     "recomendada": false
   },
   "BLUR-USD": {
@@ -698,7 +622,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.02,
+    "precio_actual": 0.01,
     "recomendada": false
   },
   "BNB-USD": {
@@ -707,7 +631,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 773.24,
+    "precio_actual": 738.7,
     "recomendada": true
   },
   "BND": {
@@ -716,7 +640,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 70.63,
+    "precio_actual": 71.2,
     "recomendada": true
   },
   "BNT-USD": {
@@ -725,7 +649,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.35,
+    "precio_actual": 0.3,
     "recomendada": false
   },
   "BNX-USD": {
@@ -734,7 +658,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 41.59,
+    "precio_actual": 33.69,
     "recomendada": false
   },
   "BOLSAA.MX": {
@@ -743,7 +667,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 38.68,
+    "precio_actual": 37.07,
     "recomendada": false
   },
   "BOME-USD": {
@@ -770,7 +694,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 35.4,
+    "precio_actual": 33.02,
     "recomendada": true
   },
   "BRK-B": {
@@ -779,7 +703,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 505.48,
+    "precio_actual": 542.19,
     "recomendada": true
   },
   "BRKRP": {
@@ -788,7 +712,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 470.52,
+    "precio_actual": 421.45,
     "recomendada": false
   },
   "BSV": {
@@ -797,7 +721,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 76.5,
+    "precio_actual": 76.79,
     "recomendada": true
   },
   "BTC-USD": {
@@ -806,7 +730,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 84406.45,
+    "precio_actual": 80790.84,
     "recomendada": true
   },
   "BTT-USD": {
@@ -833,7 +757,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 657.64,
+    "precio_actual": 896.61,
     "recomendada": false
   },
   "CACC": {
@@ -842,7 +766,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 555.68,
+    "precio_actual": 545.04,
     "recomendada": false
   },
   "CACI": {
@@ -851,7 +775,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 618.32,
+    "precio_actual": 633.98,
     "recomendada": false
   },
   "CASY": {
@@ -860,7 +784,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 598.46,
+    "precio_actual": 699.26,
     "recomendada": false
   },
   "CAT": {
@@ -869,25 +793,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 821.58,
-    "recomendada": false
-  },
-  "CB": {
-    "nombre": "CB",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 333.37,
-    "recomendada": false
-  },
-  "CDNS": {
-    "nombre": "CDNS",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 326.13,
+    "precio_actual": 687.0,
     "recomendada": false
   },
   "CELO-USD": {
@@ -896,7 +802,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.1,
+    "precio_actual": 0.08,
     "recomendada": false
   },
   "CEMEXCPO.MX": {
@@ -905,7 +811,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 17.27,
+    "precio_actual": 19.09,
     "recomendada": true
   },
   "CHDRAUIB.MX": {
@@ -914,7 +820,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 86.84,
+    "precio_actual": 90.91,
     "recomendada": false
   },
   "CHE": {
@@ -923,7 +829,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 512.16,
+    "precio_actual": 512.98,
     "recomendada": false
   },
   "CHESS-USD": {
@@ -941,7 +847,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.02,
+    "precio_actual": 0.01,
     "recomendada": false
   },
   "CIBR": {
@@ -950,17 +856,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 100.95,
+    "precio_actual": 106.12,
     "recomendada": true
-  },
-  "CIEN": {
-    "nombre": "CIEN",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 356.91,
-    "recomendada": false
   },
   "CKB-USD": {
     "nombre": "CKB",
@@ -969,24 +866,6 @@
     "pais": "Global",
     "moneda": "USD",
     "precio_actual": 0.0,
-    "recomendada": false
-  },
-  "CLH": {
-    "nombre": "CLH",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 313.04,
-    "recomendada": false
-  },
-  "CLS": {
-    "nombre": "CLS",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 365.44,
     "recomendada": false
   },
   "CLV-USD": {
@@ -1004,25 +883,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 525.06,
-    "recomendada": false
-  },
-  "COHR": {
-    "nombre": "COHR",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 295.83,
-    "recomendada": false
-  },
-  "COR": {
-    "nombre": "COR",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 306.92,
+    "precio_actual": 517.4,
     "recomendada": false
   },
   "COST": {
@@ -1031,7 +892,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 922.77,
+    "precio_actual": 1003.32,
     "recomendada": true
   },
   "CPAY": {
@@ -1040,16 +901,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 398.11,
-    "recomendada": false
-  },
-  "CRL": {
-    "nombre": "CRL",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 292.84,
+    "precio_actual": 408.46,
     "recomendada": false
   },
   "CRM": {
@@ -1058,16 +910,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 234.02,
-    "recomendada": false
-  },
-  "CRS": {
-    "nombre": "CRS",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 396.84,
+    "precio_actual": 248.57,
     "recomendada": false
   },
   "CRV-USD": {
@@ -1085,26 +928,8 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 106.7,
+    "precio_actual": 106.5,
     "recomendada": true
-  },
-  "CSL": {
-    "nombre": "CSL",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 326.37,
-    "recomendada": false
-  },
-  "CSW": {
-    "nombre": "CSW",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 296.8,
-    "recomendada": false
   },
   "CTSI-USD": {
     "nombre": "CTSI",
@@ -1121,7 +946,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 14.2,
+    "precio_actual": 16.32,
     "recomendada": false
   },
   "CVCO": {
@@ -1130,7 +955,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 557.28,
+    "precio_actual": 534.25,
     "recomendada": false
   },
   "CVX": {
@@ -1139,7 +964,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 204.45,
+    "precio_actual": 233.21,
     "recomendada": true
   },
   "CW": {
@@ -1148,7 +973,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 539.73,
+    "precio_actual": 464.94,
     "recomendada": false
   },
   "CYDSASAA.MX": {
@@ -1157,7 +982,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 24.5,
+    "precio_actual": 27.0,
     "recomendada": false
   },
   "DAI-USD": {
@@ -1175,7 +1000,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 28.99,
+    "precio_actual": 28.85,
     "recomendada": false
   },
   "DASH-USD": {
@@ -1184,16 +1009,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 71.83,
-    "recomendada": false
-  },
-  "DAVE": {
-    "nombre": "DAVE",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 324.88,
+    "precio_actual": 52.31,
     "recomendada": false
   },
   "DBC": {
@@ -1202,7 +1018,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 32.62,
+    "precio_actual": 34.1,
     "recomendada": true
   },
   "DDS": {
@@ -1211,7 +1027,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 664.07,
+    "precio_actual": 695.68,
     "recomendada": false
   },
   "DE": {
@@ -1220,7 +1036,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 690.46,
+    "precio_actual": 646.15,
     "recomendada": false
   },
   "DELL": {
@@ -1229,7 +1045,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 562.89,
+    "precio_actual": 456.44,
     "recomendada": false
   },
   "DEXE-USD": {
@@ -1238,7 +1054,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 1.93,
+    "precio_actual": 1.64,
     "recomendada": false
   },
   "DGB-USD": {
@@ -1256,7 +1072,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 517.49,
+    "precio_actual": 521.37,
     "recomendada": true
   },
   "DIS": {
@@ -1265,7 +1081,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 106.15,
+    "precio_actual": 112.52,
     "recomendada": false
   },
   "DJCO": {
@@ -1274,7 +1090,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 656.86,
+    "precio_actual": 592.84,
     "recomendada": false
   },
   "DODO-USD": {
@@ -1292,7 +1108,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.1,
+    "precio_actual": 0.08,
     "recomendada": true
   },
   "DOT-USD": {
@@ -1301,16 +1117,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 1.24,
-    "recomendada": false
-  },
-  "DPZ": {
-    "nombre": "DPZ",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 292.14,
+    "precio_actual": 1.05,
     "recomendada": false
   },
   "DYDX-USD": {
@@ -1319,7 +1126,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.14,
+    "precio_actual": 0.11,
     "recomendada": false
   },
   "EEM": {
@@ -1328,7 +1135,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 67.98,
+    "precio_actual": 62.01,
     "recomendada": true
   },
   "EFA": {
@@ -1337,7 +1144,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 105.56,
+    "precio_actual": 102.63,
     "recomendada": true
   },
   "EG": {
@@ -1346,7 +1153,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 370.43,
+    "precio_actual": 398.6,
     "recomendada": false
   },
   "EGLD-USD": {
@@ -1355,7 +1162,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 4.71,
+    "precio_actual": 3.32,
     "recomendada": false
   },
   "ELV": {
@@ -1364,7 +1171,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 396.09,
+    "precio_actual": 439.95,
     "recomendada": false
   },
   "EME": {
@@ -1373,7 +1180,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 762.21,
+    "precio_actual": 647.66,
     "recomendada": false
   },
   "ENJ-USD": {
@@ -1391,7 +1198,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 7.06,
+    "precio_actual": 5.36,
     "recomendada": false
   },
   "EOS-USD": {
@@ -1400,7 +1207,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.1,
+    "precio_actual": 0.09,
     "recomendada": false
   },
   "EQIX": {
@@ -1409,7 +1216,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 1008.08,
+    "precio_actual": 955.03,
     "recomendada": false
   },
   "ESLT": {
@@ -1418,7 +1225,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 735.0,
+    "precio_actual": 735.34,
     "recomendada": false
   },
   "ETC-USD": {
@@ -1427,7 +1234,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 9.44,
+    "precio_actual": 7.68,
     "recomendada": false
   },
   "ETH-USD": {
@@ -1436,7 +1243,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 2695.21,
+    "precio_actual": 2355.95,
     "recomendada": true
   },
   "ETHFI-USD": {
@@ -1445,16 +1252,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.73,
-    "recomendada": false
-  },
-  "ETN": {
-    "nombre": "ETN",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 439.98,
+    "precio_actual": 0.62,
     "recomendada": false
   },
   "EWG": {
@@ -1463,7 +1261,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 42.26,
+    "precio_actual": 40.94,
     "recomendada": true
   },
   "EWI": {
@@ -1472,7 +1270,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 60.4,
+    "precio_actual": 54.98,
     "recomendada": true
   },
   "EWJ": {
@@ -1481,7 +1279,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 97.93,
+    "precio_actual": 94.1,
     "recomendada": true
   },
   "EWP": {
@@ -1490,7 +1288,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 61.2,
+    "precio_actual": 57.49,
     "recomendada": true
   },
   "EWQ": {
@@ -1499,7 +1297,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 43.85,
+    "precio_actual": 41.37,
     "recomendada": true
   },
   "EWT": {
@@ -1508,7 +1306,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 114.78,
+    "precio_actual": 104.9,
     "recomendada": true
   },
   "EWU": {
@@ -1517,7 +1315,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 47.32,
+    "precio_actual": 47.52,
     "recomendada": true
   },
   "EWY": {
@@ -1526,7 +1324,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 187.18,
+    "precio_actual": 151.26,
     "recomendada": true
   },
   "EWZ": {
@@ -1535,7 +1333,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 36.82,
+    "precio_actual": 42.59,
     "recomendada": true
   },
   "FARM-USD": {
@@ -1544,7 +1342,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 8.42,
+    "precio_actual": 6.77,
     "recomendada": false
   },
   "FBTC": {
@@ -1553,7 +1351,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 73.05,
+    "precio_actual": 70.61,
     "recomendada": true
   },
   "FCFE18.MX": {
@@ -1562,7 +1360,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 25.0,
+    "precio_actual": 23.95,
     "recomendada": false
   },
   "FCNCA": {
@@ -1571,7 +1369,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 2090.36,
+    "precio_actual": 2375.84,
     "recomendada": false
   },
   "FDN": {
@@ -1580,17 +1378,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 291.61,
+    "precio_actual": 281.16,
     "recomendada": true
-  },
-  "FDX": {
-    "nombre": "FDX",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 285.85,
-    "recomendada": false
   },
   "FEMSAUBD.MX": {
     "nombre": "FEMSAUBD.MX",
@@ -1598,7 +1387,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 211.53,
+    "precio_actual": 240.51,
     "recomendada": true
   },
   "FET-USD": {
@@ -1607,7 +1396,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.24,
+    "precio_actual": 0.18,
     "recomendada": false
   },
   "FFIV": {
@@ -1616,7 +1405,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 443.06,
+    "precio_actual": 455.42,
     "recomendada": false
   },
   "FIBRAHD15.MX": {
@@ -1625,7 +1414,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 2.09,
+    "precio_actual": 2.19,
     "recomendada": false
   },
   "FIBRAMQ12.MX": {
@@ -1634,7 +1423,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 44.19,
+    "precio_actual": 44.54,
     "recomendada": false
   },
   "FIBRAPL14.MX": {
@@ -1643,7 +1432,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 74.77,
+    "precio_actual": 80.54,
     "recomendada": false
   },
   "FICO": {
@@ -1652,7 +1441,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 863.09,
+    "precio_actual": 815.31,
     "recomendada": false
   },
   "FIHO12.MX": {
@@ -1661,7 +1450,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 7.56,
+    "precio_actual": 7.59,
     "recomendada": false
   },
   "FIL-USD": {
@@ -1670,7 +1459,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 1.14,
+    "precio_actual": 0.94,
     "recomendada": false
   },
   "FIX": {
@@ -1679,7 +1468,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 1658.91,
+    "precio_actual": 1160.86,
     "recomendada": false
   },
   "FLOKI-USD": {
@@ -1715,25 +1504,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 14.21,
-    "recomendada": false
-  },
-  "FN": {
-    "nombre": "FN",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 417.39,
-    "recomendada": false
-  },
-  "FNGG": {
-    "nombre": "FNGG",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 281.87,
+    "precio_actual": 14.69,
     "recomendada": false
   },
   "FNOVA17.MX": {
@@ -1751,7 +1522,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.3,
+    "precio_actual": 0.19,
     "recomendada": false
   },
   "FRAGUAB.MX": {
@@ -1760,7 +1531,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 429.0,
+    "precio_actual": 415.0,
     "recomendada": false
   },
   "FRONT-USD": {
@@ -1772,22 +1543,13 @@
     "precio_actual": 0.02,
     "recomendada": false
   },
-  "FTEC": {
-    "nombre": "FTEC",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 301.22,
-    "recomendada": false
-  },
   "FUNO11.MX": {
     "nombre": "FUNO11.MX",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 29.63,
+    "precio_actual": 32.94,
     "recomendada": false
   },
   "FXI": {
@@ -1796,7 +1558,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 33.96,
+    "precio_actual": 32.31,
     "recomendada": true
   },
   "GAPB.MX": {
@@ -1805,7 +1567,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 381.93,
+    "precio_actual": 414.3,
     "recomendada": true
   },
   "GBTC": {
@@ -1814,7 +1576,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 64.9,
+    "precio_actual": 62.66,
     "recomendada": true
   },
   "GCARSOA1.MX": {
@@ -1823,7 +1585,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 141.06,
+    "precio_actual": 165.31,
     "recomendada": false
   },
   "GCC.MX": {
@@ -1832,16 +1594,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 183.18,
-    "recomendada": false
-  },
-  "GD": {
-    "nombre": "GD",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 336.72,
+    "precio_actual": 177.83,
     "recomendada": false
   },
   "GDX": {
@@ -1850,7 +1603,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 92.87,
+    "precio_actual": 80.2,
     "recomendada": true
   },
   "GDXJ": {
@@ -1859,17 +1612,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 121.11,
+    "precio_actual": 99.35,
     "recomendada": true
-  },
-  "GE": {
-    "nombre": "GE",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 327.09,
-    "recomendada": false
   },
   "GENTERA.MX": {
     "nombre": "GENTERA.MX",
@@ -1877,7 +1621,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 36.19,
+    "precio_actual": 37.31,
     "recomendada": false
   },
   "GEV": {
@@ -1886,7 +1630,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 957.63,
+    "precio_actual": 815.0,
     "recomendada": false
   },
   "GFINBURO.MX": {
@@ -1895,7 +1639,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 41.65,
+    "precio_actual": 47.08,
     "recomendada": false
   },
   "GFNORTEO.MX": {
@@ -1904,7 +1648,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 196.76,
+    "precio_actual": 213.5,
     "recomendada": true
   },
   "GHC": {
@@ -1913,7 +1657,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 1154.89,
+    "precio_actual": 1213.48,
     "recomendada": false
   },
   "GHST-USD": {
@@ -1922,7 +1666,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.07,
+    "precio_actual": 0.06,
     "recomendada": false
   },
   "GISSAA.MX": {
@@ -1931,7 +1675,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 12.95,
+    "precio_actual": 12.42,
     "recomendada": false
   },
   "GLD": {
@@ -1940,7 +1684,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 393.41,
+    "precio_actual": 366.61,
     "recomendada": true
   },
   "GLM-USD": {
@@ -1949,7 +1693,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.13,
+    "precio_actual": 0.11,
     "recomendada": false
   },
   "GMD.MX": {
@@ -1958,7 +1702,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 5.6,
+    "precio_actual": 5.48,
     "recomendada": false
   },
   "GMEXICOB.MX": {
@@ -1967,7 +1711,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 224.11,
+    "precio_actual": 229.09,
     "recomendada": true
   },
   "GMT18069-USD": {
@@ -1985,7 +1729,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 341.08,
+    "precio_actual": 317.28,
     "recomendada": false
   },
   "GOOGL": {
@@ -1994,7 +1738,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 343.92,
+    "precio_actual": 320.21,
     "recomendada": true
   },
   "GPROFUT.MX": {
@@ -2003,16 +1747,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 119.0,
-    "recomendada": false
-  },
-  "GRMN": {
-    "nombre": "GRMN",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 294.14,
+    "precio_actual": 120.0,
     "recomendada": false
   },
   "GRT6719-USD": {
@@ -2021,7 +1756,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.03,
+    "precio_actual": 0.02,
     "recomendada": false
   },
   "GRUMAB.MX": {
@@ -2030,7 +1765,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 239.13,
+    "precio_actual": 251.0,
     "recomendada": true
   },
   "GS": {
@@ -2039,7 +1774,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 935.45,
+    "precio_actual": 875.68,
     "recomendada": false
   },
   "GWW": {
@@ -2048,7 +1783,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 1243.07,
+    "precio_actual": 1349.9,
     "recomendada": false
   },
   "HACK": {
@@ -2057,7 +1792,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 118.35,
+    "precio_actual": 127.83,
     "recomendada": true
   },
   "HBAR-USD": {
@@ -2066,7 +1801,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.09,
+    "precio_actual": 0.08,
     "recomendada": false
   },
   "HCA": {
@@ -2075,7 +1810,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 435.61,
+    "precio_actual": 469.03,
     "recomendada": false
   },
   "HCITY.MX": {
@@ -2084,7 +1819,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 5.4,
+    "precio_actual": 6.0,
     "recomendada": false
   },
   "HD": {
@@ -2093,17 +1828,8 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 293.2,
+    "precio_actual": 319.83,
     "recomendada": true
-  },
-  "HEI": {
-    "nombre": "HEI",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 308.53,
-    "recomendada": false
   },
   "HERDEZ.MX": {
     "nombre": "HERDEZ.MX",
@@ -2111,25 +1837,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 54.9,
-    "recomendada": false
-  },
-  "HIFS": {
-    "nombre": "HIFS",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 299.18,
-    "recomendada": false
-  },
-  "HLT": {
-    "nombre": "HLT",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 313.96,
+    "precio_actual": 55.7,
     "recomendada": false
   },
   "HNT-USD": {
@@ -2138,7 +1846,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.53,
+    "precio_actual": 0.4,
     "recomendada": false
   },
   "HUBB": {
@@ -2147,7 +1855,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 466.62,
+    "precio_actual": 448.1,
     "recomendada": false
   },
   "HUM": {
@@ -2156,7 +1864,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 397.93,
+    "precio_actual": 422.07,
     "recomendada": false
   },
   "HYG": {
@@ -2165,7 +1873,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 77.86,
+    "precio_actual": 77.05,
     "recomendada": true
   },
   "HYPE32196-USD": {
@@ -2174,7 +1882,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 92.52,
+    "precio_actual": 76.6,
     "recomendada": false
   },
   "IBIT": {
@@ -2183,7 +1891,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 47.57,
+    "precio_actual": 45.96,
     "recomendada": true
   },
   "IBM": {
@@ -2192,7 +1900,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 225.51,
+    "precio_actual": 253.56,
     "recomendada": false
   },
   "ICHB.MX": {
@@ -2201,7 +1909,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 176.02,
+    "precio_actual": 170.0,
     "recomendada": false
   },
   "ICLN": {
@@ -2210,7 +1918,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 17.23,
+    "precio_actual": 16.02,
     "recomendada": true
   },
   "ICP-USD": {
@@ -2219,7 +1927,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 3.2,
+    "precio_actual": 2.66,
     "recomendada": false
   },
   "ICX-USD": {
@@ -2229,15 +1937,6 @@
     "pais": "Global",
     "moneda": "USD",
     "precio_actual": 0.01,
-    "recomendada": false
-  },
-  "IDCC": {
-    "nombre": "IDCC",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 334.21,
     "recomendada": false
   },
   "IDEALB-1.MX": {
@@ -2255,7 +1954,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 519.26,
+    "precio_actual": 560.38,
     "recomendada": false
   },
   "IEF": {
@@ -2264,7 +1963,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 90.0,
+    "precio_actual": 91.05,
     "recomendada": true
   },
   "IEFA": {
@@ -2273,7 +1972,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 98.46,
+    "precio_actual": 95.68,
     "recomendada": true
   },
   "IEMG": {
@@ -2282,17 +1981,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 82.55,
+    "precio_actual": 75.74,
     "recomendada": true
-  },
-  "IESC": {
-    "nombre": "IESC",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 324.13,
-    "recomendada": false
   },
   "IJH": {
     "nombre": "IJH",
@@ -2300,7 +1990,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 72.99,
+    "precio_actual": 72.37,
     "recomendada": true
   },
   "IJR": {
@@ -2309,7 +1999,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 138.29,
+    "precio_actual": 138.22,
     "recomendada": true
   },
   "IMX10603-USD": {
@@ -2318,7 +2008,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.17,
+    "precio_actual": 0.14,
     "recomendada": false
   },
   "INDA": {
@@ -2327,7 +2017,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 47.86,
+    "precio_actual": 46.46,
     "recomendada": true
   },
   "INJ-USD": {
@@ -2336,7 +2026,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 7.78,
+    "precio_actual": 7.71,
     "recomendada": false
   },
   "INTC": {
@@ -2345,7 +2035,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 123.0,
+    "precio_actual": 86.96,
     "recomendada": false
   },
   "INVEXA.MX": {
@@ -2372,25 +2062,61 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 405.18,
+    "precio_actual": 452.29,
     "recomendada": false
   },
-  "JBL": {
-    "nombre": "JBL",
+  "ITOT": {
+    "nombre": "ITOT",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 165.57,
+    "recomendada": true
+  },
+  "IVV": {
+    "nombre": "IVV",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 763.25,
+    "recomendada": true
+  },
+  "IWB": {
+    "nombre": "IWB",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 316.74,
+    "precio_actual": 415.35,
     "recomendada": false
   },
-  "JLL": {
-    "nombre": "JLL",
+  "IWM": {
+    "nombre": "IWM",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 275.75,
+    "recomendada": true
+  },
+  "IWV": {
+    "nombre": "IWV",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 321.91,
+    "precio_actual": 430.72,
+    "recomendada": false
+  },
+  "JASMY-USD": {
+    "nombre": "JASMY",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.0,
     "recomendada": false
   },
   "JNJ": {
@@ -2399,7 +2125,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 271.22,
+    "precio_actual": 263.81,
     "recomendada": true
   },
   "JNK": {
@@ -2408,7 +2134,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 93.61,
+    "precio_actual": 92.52,
     "recomendada": true
   },
   "JOE-USD": {
@@ -2417,7 +2143,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.04,
+    "precio_actual": 0.03,
     "recomendada": false
   },
   "JPM": {
@@ -2426,7 +2152,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 343.06,
+    "precio_actual": 331.58,
     "recomendada": true
   },
   "JST-USD": {
@@ -2435,7 +2161,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.12,
+    "precio_actual": 0.14,
     "recomendada": false
   },
   "JTO-USD": {
@@ -2444,7 +2170,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.6,
+    "precio_actual": 0.43,
     "recomendada": false
   },
   "KAVA-USD": {
@@ -2462,16 +2188,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.03,
-    "recomendada": false
-  },
-  "KEYS": {
-    "nombre": "KEYS",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 362.15,
+    "precio_actual": 0.02,
     "recomendada": false
   },
   "KIMBERA.MX": {
@@ -2480,16 +2197,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 38.96,
-    "recomendada": false
-  },
-  "KNSL": {
-    "nombre": "KNSL",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 330.49,
+    "precio_actual": 37.86,
     "recomendada": false
   },
   "KO": {
@@ -2498,7 +2206,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 87.81,
+    "precio_actual": 92.71,
     "recomendada": true
   },
   "KOFUBL.MX": {
@@ -2507,17 +2215,8 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 195.32,
+    "precio_actual": 220.86,
     "recomendada": true
-  },
-  "KRYS": {
-    "nombre": "KRYS",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 345.82,
-    "recomendada": false
   },
   "KSM-USD": {
     "nombre": "KSM",
@@ -2525,7 +2224,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 4.8,
+    "precio_actual": 3.89,
     "recomendada": false
   },
   "LABB.MX": {
@@ -2534,16 +2233,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 12.84,
-    "recomendada": false
-  },
-  "LAD": {
-    "nombre": "LAD",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 316.42,
+    "precio_actual": 15.26,
     "recomendada": false
   },
   "LAMOSA.MX": {
@@ -2552,7 +2242,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 93.97,
+    "precio_actual": 91.0,
     "recomendada": false
   },
   "LDO-USD": {
@@ -2561,7 +2251,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.48,
+    "precio_actual": 0.38,
     "recomendada": false
   },
   "LEO-USD": {
@@ -2570,43 +2260,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 8.99,
-    "recomendada": false
-  },
-  "LFUS": {
-    "nombre": "LFUS",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 429.22,
-    "recomendada": false
-  },
-  "LGND": {
-    "nombre": "LGND",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 301.52,
-    "recomendada": false
-  },
-  "LH": {
-    "nombre": "LH",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 309.64,
-    "recomendada": false
-  },
-  "LII": {
-    "nombre": "LII",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 373.77,
+    "precio_actual": 9.04,
     "recomendada": false
   },
   "LIN": {
@@ -2615,7 +2269,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 469.89,
+    "precio_actual": 508.83,
     "recomendada": false
   },
   "LINK-USD": {
@@ -2624,7 +2278,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 14.15,
+    "precio_actual": 11.62,
     "recomendada": true
   },
   "LIT": {
@@ -2633,7 +2287,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 69.02,
+    "precio_actual": 60.68,
     "recomendada": true
   },
   "LITE": {
@@ -2642,7 +2296,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 941.65,
+    "precio_actual": 756.17,
     "recomendada": false
   },
   "LIVEPOLC-1.MX": {
@@ -2651,7 +2305,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 105.66,
+    "precio_actual": 102.33,
     "recomendada": false
   },
   "LLY": {
@@ -2660,7 +2314,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 1183.46,
+    "precio_actual": 1273.46,
     "recomendada": false
   },
   "LMT": {
@@ -2669,16 +2323,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 519.56,
-    "recomendada": false
-  },
-  "LPLA": {
-    "nombre": "LPLA",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 314.36,
+    "precio_actual": 604.18,
     "recomendada": false
   },
   "LPT-USD": {
@@ -2687,7 +2332,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 1.74,
+    "precio_actual": 1.51,
     "recomendada": false
   },
   "LQD": {
@@ -2696,7 +2341,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 103.21,
+    "precio_actual": 103.85,
     "recomendada": true
   },
   "LRC-USD": {
@@ -2708,22 +2353,13 @@
     "precio_actual": 0.01,
     "recomendada": false
   },
-  "LRCX": {
-    "nombre": "LRCX",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 315.21,
-    "recomendada": false
-  },
   "LTC-USD": {
     "nombre": "Litecoin",
     "sector": "Criptomoneda",
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 72.63,
+    "precio_actual": 56.96,
     "recomendada": false
   },
   "LUSD-USD": {
@@ -2732,8 +2368,161 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 1.0,
+    "precio_actual": 1.01,
     "recomendada": false
+  },
+  "MA": {
+    "nombre": "MA",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 623.6,
+    "recomendada": true
+  },
+  "MANA-USD": {
+    "nombre": "MANA",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.08,
+    "recomendada": false
+  },
+  "MAR": {
+    "nombre": "MAR",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 390.71,
+    "recomendada": false
+  },
+  "MBOX-USD": {
+    "nombre": "MBOX",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.0,
+    "recomendada": false
+  },
+  "MCD": {
+    "nombre": "MCD",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 248.46,
+    "recomendada": false
+  },
+  "MCHI": {
+    "nombre": "MCHI",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 49.0,
+    "recomendada": true
+  },
+  "MCK": {
+    "nombre": "MCK",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 1000.77,
+    "recomendada": false
+  },
+  "MCO": {
+    "nombre": "MCO",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 483.45,
+    "recomendada": false
+  },
+  "MDGL": {
+    "nombre": "MDGL",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 434.24,
+    "recomendada": false
+  },
+  "MDY": {
+    "nombre": "MDY",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 660.16,
+    "recomendada": true
+  },
+  "MEDICAB.MX": {
+    "nombre": "MEDICAB.MX",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "Mexico",
+    "moneda": "MXN",
+    "precio_actual": 53.0,
+    "recomendada": false
+  },
+  "MEDP": {
+    "nombre": "MEDP",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 669.2,
+    "recomendada": false
+  },
+  "MEGACPO.MX": {
+    "nombre": "MEGACPO.MX",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "Mexico",
+    "moneda": "MXN",
+    "precio_actual": 54.21,
+    "recomendada": true
+  },
+  "MELI": {
+    "nombre": "MELI",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 1810.15,
+    "recomendada": false
+  },
+  "MEME-USD": {
+    "nombre": "MEME",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.0,
+    "recomendada": false
+  },
+  "META": {
+    "nombre": "META",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 642.62,
+    "recomendada": true
+  },
+  "MEXTRAC.MX": {
+    "nombre": "MEXTRAC.MX",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "Mexico",
+    "moneda": "MXN",
+    "precio_actual": 70.38,
+    "recomendada": true
   },
   "MFRISCOA-1.MX": {
     "nombre": "MFRISCOA-1.MX",
@@ -2741,34 +2530,160 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 19.91,
+    "precio_actual": 18.69,
     "recomendada": false
   },
-  "MGC": {
-    "nombre": "MGC",
+  "MINA-USD": {
+    "nombre": "MINA",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.06,
+    "recomendada": false
+  },
+  "MINSAB.MX": {
+    "nombre": "MINSAB.MX",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "Mexico",
+    "moneda": "MXN",
+    "precio_actual": 9.7,
+    "recomendada": false
+  },
+  "MKL": {
+    "nombre": "MKL",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 286.19,
+    "precio_actual": 1870.09,
     "recomendada": false
   },
-  "MTSI": {
-    "nombre": "MTSI",
+  "MKR-USD": {
+    "nombre": "MKR",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 1599.84,
+    "recomendada": false
+  },
+  "MLM": {
+    "nombre": "MLM",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 285.57,
+    "precio_actual": 507.17,
     "recomendada": false
   },
-  "MTUM": {
-    "nombre": "MTUM",
+  "MLN-USD": {
+    "nombre": "MLN",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 1.3,
+    "recomendada": false
+  },
+  "MNT27075-USD": {
+    "nombre": "MNT27075",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.51,
+    "recomendada": false
+  },
+  "MOVR-USD": {
+    "nombre": "MOVR",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 1.1,
+    "recomendada": false
+  },
+  "MPC": {
+    "nombre": "MPC",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 318.5,
+    "precio_actual": 457.22,
+    "recomendada": false
+  },
+  "MPWR": {
+    "nombre": "MPWR",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 1140.12,
+    "recomendada": false
+  },
+  "MRK": {
+    "nombre": "MRK",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 145.27,
+    "recomendada": true
+  },
+  "MSCI": {
+    "nombre": "MSCI",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 615.62,
+    "recomendada": false
+  },
+  "MSFT": {
+    "nombre": "MSFT",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 524.51,
+    "recomendada": true
+  },
+  "MSGS": {
+    "nombre": "MSGS",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 388.63,
+    "recomendada": false
+  },
+  "MSI": {
+    "nombre": "MSI",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 481.83,
+    "recomendada": false
+  },
+  "MTD": {
+    "nombre": "MTD",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 1670.29,
+    "recomendada": false
+  },
+  "MTL-USD": {
+    "nombre": "MTL",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.27,
     "recomendada": false
   },
   "MU": {
@@ -2777,7 +2692,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 1082.28,
+    "precio_actual": 877.55,
     "recomendada": false
   },
   "MUB": {
@@ -2786,7 +2701,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 101.17,
+    "precio_actual": 103.43,
     "recomendada": true
   },
   "MUSA": {
@@ -2795,16 +2710,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 511.54,
-    "recomendada": false
-  },
-  "MYRG": {
-    "nombre": "MYRG",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 292.58,
+    "precio_actual": 534.63,
     "recomendada": false
   },
   "NAFTRAC.MX": {
@@ -2813,17 +2719,8 @@
     "industria": "ETF / Índice",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 64.68,
+    "precio_actual": 69.51,
     "recomendada": true
-  },
-  "NDSN": {
-    "nombre": "NDSN",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 325.77,
-    "recomendada": false
   },
   "NEAR-USD": {
     "nombre": "NEAR Protocol",
@@ -2831,17 +2728,35 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 5.02,
+    "precio_actual": 4.5,
     "recomendada": false
   },
-  "NET": {
-    "nombre": "NET",
+  "NEMAKA.MX": {
+    "nombre": "NEMAKA.MX",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "Mexico",
+    "moneda": "MXN",
+    "precio_actual": 3.31,
+    "recomendada": false
+  },
+  "NEU": {
+    "nombre": "NEU",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 349.02,
+    "precio_actual": 870.6,
     "recomendada": false
+  },
+  "NFLX": {
+    "nombre": "NFLX",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 65.85,
+    "recomendada": true
   },
   "NKE": {
     "nombre": "NKE",
@@ -2849,7 +2764,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 35.75,
+    "precio_actual": 37.3,
     "recomendada": false
   },
   "NOC": {
@@ -2858,25 +2773,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 510.52,
-    "recomendada": false
-  },
-  "NPO": {
-    "nombre": "NPO",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 311.43,
-    "recomendada": false
-  },
-  "NSC": {
-    "nombre": "NSC",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 313.0,
+    "precio_actual": 551.44,
     "recomendada": false
   },
   "NTRA": {
@@ -2885,7 +2782,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 412.56,
+    "precio_actual": 403.95,
     "recomendada": false
   },
   "NU-USD": {
@@ -2894,7 +2791,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.02,
+    "precio_actual": 0.01,
     "recomendada": false
   },
   "NVDA": {
@@ -2903,17 +2800,8 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 225.07,
+    "precio_actual": 210.96,
     "recomendada": true
-  },
-  "NVMI": {
-    "nombre": "NVMI",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 368.23,
-    "recomendada": false
   },
   "NVR": {
     "nombre": "NVR",
@@ -2921,7 +2809,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 6297.6,
+    "precio_actual": 5983.68,
     "recomendada": false
   },
   "OCEAN-USD": {
@@ -2930,7 +2818,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.16,
+    "precio_actual": 0.13,
     "recomendada": false
   },
   "OEF": {
@@ -2939,7 +2827,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 386.16,
+    "precio_actual": 377.29,
     "recomendada": false
   },
   "OGN-USD": {
@@ -2948,7 +2836,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.02,
+    "precio_actual": 0.03,
     "recomendada": false
   },
   "OIH": {
@@ -2957,7 +2845,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 393.68,
+    "precio_actual": 397.36,
     "recomendada": false
   },
   "OMAB.MX": {
@@ -2966,7 +2854,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 228.37,
+    "precio_actual": 229.18,
     "recomendada": true
   },
   "OMG-USD": {
@@ -2984,7 +2872,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 360.85,
+    "precio_actual": 377.63,
     "recomendada": false
   },
   "ONDO-USD": {
@@ -2993,16 +2881,16 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.54,
+    "precio_actual": 0.41,
     "recomendada": false
   },
-  "ONTO": {
-    "nombre": "ONTO",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
+  "ONT-USD": {
+    "nombre": "ONT",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 287.64,
+    "precio_actual": 0.05,
     "recomendada": false
   },
   "OP-USD": {
@@ -3011,7 +2899,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.14,
+    "precio_actual": 0.11,
     "recomendada": false
   },
   "ORBIA.MX": {
@@ -3020,7 +2908,16 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 19.69,
+    "precio_actual": 23.03,
+    "recomendada": true
+  },
+  "ORCL": {
+    "nombre": "ORCL",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 126.16,
     "recomendada": true
   },
   "OXT-USD": {
@@ -3038,7 +2935,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 22.98,
+    "precio_actual": 18.94,
     "recomendada": true
   },
   "PANW": {
@@ -3047,7 +2944,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 374.74,
+    "precio_actual": 380.55,
     "recomendada": false
   },
   "PE&OLES.MX": {
@@ -3056,16 +2953,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 900.5,
-    "recomendada": false
-  },
-  "PEN": {
-    "nombre": "PEN",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 318.89,
+    "precio_actual": 821.94,
     "recomendada": false
   },
   "PENDLE-USD": {
@@ -3074,7 +2962,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 2.57,
+    "precio_actual": 2.01,
     "recomendada": false
   },
   "PEP": {
@@ -3083,7 +2971,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 128.63,
+    "precio_actual": 135.77,
     "recomendada": true
   },
   "PEPE24478-USD": {
@@ -3110,8 +2998,17 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 28.67,
+    "precio_actual": 30.03,
     "recomendada": false
+  },
+  "PG": {
+    "nombre": "PG",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 161.02,
+    "recomendada": true
   },
   "PH": {
     "nombre": "PH",
@@ -3119,7 +3016,34 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 978.33,
+    "precio_actual": 880.57,
+    "recomendada": false
+  },
+  "PINFRA.MX": {
+    "nombre": "PINFRA.MX",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "Mexico",
+    "moneda": "MXN",
+    "precio_actual": 307.86,
+    "recomendada": true
+  },
+  "POCHTECB.MX": {
+    "nombre": "POCHTECB.MX",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "Mexico",
+    "moneda": "MXN",
+    "precio_actual": 6.62,
+    "recomendada": false
+  },
+  "POL28321-USD": {
+    "nombre": "POL28321",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.09,
     "recomendada": false
   },
   "POND-USD": {
@@ -3131,13 +3055,22 @@
     "precio_actual": 0.0,
     "recomendada": false
   },
+  "POSADASA.MX": {
+    "nombre": "POSADASA.MX",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "Mexico",
+    "moneda": "MXN",
+    "precio_actual": 27.0,
+    "recomendada": false
+  },
   "PPLT": {
     "nombre": "PPLT",
     "sector": "ETF / Índice",
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 16.09,
+    "precio_actual": 14.05,
     "recomendada": true
   },
   "PRNT": {
@@ -3146,7 +3079,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 25.16,
+    "precio_actual": 24.26,
     "recomendada": true
   },
   "PV.MX": {
@@ -3155,7 +3088,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 8.5,
+    "precio_actual": 8.35,
     "recomendada": false
   },
   "PWR": {
@@ -3164,7 +3097,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 649.13,
+    "precio_actual": 546.43,
     "recomendada": false
   },
   "PYPL": {
@@ -3173,7 +3106,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 55.04,
+    "precio_actual": 57.02,
     "recomendada": false
   },
   "PYR-USD": {
@@ -3182,7 +3115,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.05,
+    "precio_actual": 0.04,
     "recomendada": false
   },
   "PYTH-USD": {
@@ -3191,7 +3124,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.08,
+    "precio_actual": 0.07,
     "recomendada": false
   },
   "Q.MX": {
@@ -3200,7 +3133,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 153.86,
+    "precio_actual": 190.37,
     "recomendada": false
   },
   "QCOM": {
@@ -3209,7 +3142,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 201.97,
+    "precio_actual": 175.91,
     "recomendada": false
   },
   "QNT-USD": {
@@ -3218,7 +3151,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 152.75,
+    "precio_actual": 179.01,
     "recomendada": false
   },
   "QQQ": {
@@ -3227,26 +3160,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 744.5,
+    "precio_actual": 704.4,
     "recomendada": true
-  },
-  "QQQM": {
-    "nombre": "QQQM",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 306.54,
-    "recomendada": false
-  },
-  "QTEC": {
-    "nombre": "QTEC",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 330.63,
-    "recomendada": false
   },
   "QTUM-USD": {
     "nombre": "QTUM",
@@ -3254,7 +3169,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 1.03,
+    "precio_actual": 0.84,
     "recomendada": false
   },
   "QUICK-USD": {
@@ -3263,7 +3178,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 13.42,
+    "precio_actual": 11.14,
     "recomendada": false
   },
   "RA.MX": {
@@ -3272,7 +3187,16 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 142.48,
+    "precio_actual": 155.19,
+    "recomendada": false
+  },
+  "RACE": {
+    "nombre": "RACE",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 393.28,
     "recomendada": false
   },
   "RBC": {
@@ -3281,7 +3205,16 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 506.1,
+    "precio_actual": 471.98,
+    "recomendada": false
+  },
+  "RCENTROA.MX": {
+    "nombre": "RCENTROA.MX",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "Mexico",
+    "moneda": "MXN",
+    "precio_actual": 4.0,
     "recomendada": false
   },
   "RDNT-USD": {
@@ -3291,6 +3224,15 @@
     "pais": "Global",
     "moneda": "USD",
     "precio_actual": 0.0,
+    "recomendada": false
+  },
+  "REGN": {
+    "nombre": "REGN",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 805.02,
     "recomendada": false
   },
   "REN-USD": {
@@ -3308,7 +3250,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.26,
+    "precio_actual": 0.43,
     "recomendada": false
   },
   "REQ-USD": {
@@ -3317,7 +3259,25 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.06,
+    "precio_actual": 0.05,
+    "recomendada": false
+  },
+  "RIF-USD": {
+    "nombre": "RIF",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.07,
+    "recomendada": false
+  },
+  "RL": {
+    "nombre": "RL",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 377.4,
     "recomendada": false
   },
   "RLC-USD": {
@@ -3326,17 +3286,17 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.37,
+    "precio_actual": 0.56,
     "recomendada": false
   },
-  "RNR": {
-    "nombre": "RNR",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
+  "ROBO": {
+    "nombre": "ROBO",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 325.6,
-    "recomendada": false
+    "precio_actual": 74.8,
+    "recomendada": true
   },
   "ROK": {
     "nombre": "ROK",
@@ -3344,7 +3304,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 434.15,
+    "precio_actual": 426.11,
     "recomendada": false
   },
   "ROP": {
@@ -3353,7 +3313,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 358.56,
+    "precio_actual": 438.14,
     "recomendada": false
   },
   "ROSE-USD": {
@@ -3365,13 +3325,31 @@
     "precio_actual": 0.01,
     "recomendada": false
   },
+  "RPL-USD": {
+    "nombre": "RPL",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 1.48,
+    "recomendada": false
+  },
+  "RS": {
+    "nombre": "RS",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 415.62,
+    "recomendada": false
+  },
   "RUNE-USD": {
     "nombre": "RUNE",
     "sector": "Criptomoneda",
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.77,
+    "precio_actual": 0.63,
     "recomendada": false
   },
   "RVN-USD": {
@@ -3383,22 +3361,13 @@
     "precio_actual": 0.0,
     "recomendada": false
   },
-  "SAIA": {
-    "nombre": "SAIA",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 324.22,
-    "recomendada": false
-  },
   "SAND-USD": {
     "nombre": "SAND",
     "sector": "Criptomoneda",
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.04,
+    "precio_actual": 0.05,
     "recomendada": false
   },
   "SBUX": {
@@ -3407,7 +3376,16 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 94.86,
+    "precio_actual": 100.8,
+    "recomendada": false
+  },
+  "SC-USD": {
+    "nombre": "SC",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.0,
     "recomendada": false
   },
   "SCHB": {
@@ -3416,7 +3394,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 29.67,
+    "precio_actual": 29.19,
     "recomendada": true
   },
   "SCHD": {
@@ -3425,7 +3403,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 33.21,
+    "precio_actual": 35.27,
     "recomendada": true
   },
   "SCHF": {
@@ -3434,7 +3412,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 27.92,
+    "precio_actual": 26.79,
     "recomendada": true
   },
   "SCHG": {
@@ -3443,7 +3421,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 36.26,
+    "precio_actual": 34.82,
     "recomendada": true
   },
   "SCHX": {
@@ -3452,7 +3430,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 30.37,
+    "precio_actual": 29.88,
     "recomendada": true
   },
   "SEB": {
@@ -3461,7 +3439,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 3969.18,
+    "precio_actual": 3885.4,
     "recomendada": false
   },
   "SHIB-USD": {
@@ -3473,22 +3451,13 @@
     "precio_actual": 0.0,
     "recomendada": false
   },
-  "SHW": {
-    "nombre": "SHW",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 329.1,
-    "recomendada": false
-  },
   "SHY": {
     "nombre": "SHY",
     "sector": "ETF / Índice",
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 81.21,
+    "precio_actual": 81.5,
     "recomendada": true
   },
   "SIMECB.MX": {
@@ -3497,7 +3466,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 176.49,
+    "precio_actual": 166.5,
     "recomendada": false
   },
   "SITM": {
@@ -3506,7 +3475,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 662.27,
+    "precio_actual": 460.22,
     "recomendada": false
   },
   "SKL-USD": {
@@ -3524,7 +3493,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 58.14,
+    "precio_actual": 48.72,
     "recomendada": true
   },
   "SMH": {
@@ -3533,17 +3502,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 606.56,
+    "precio_actual": 527.2,
     "recomendada": true
-  },
-  "SNA": {
-    "nombre": "SNA",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 369.2,
-    "recomendada": false
   },
   "SNDK": {
     "nombre": "SNDK",
@@ -3551,16 +3511,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 1777.8,
-    "recomendada": false
-  },
-  "SNOW": {
-    "nombre": "SNOW",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 335.94,
+    "precio_actual": 1238.03,
     "recomendada": false
   },
   "SNPS": {
@@ -3569,7 +3520,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 425.76,
+    "precio_actual": 430.14,
     "recomendada": false
   },
   "SNX-USD": {
@@ -3578,7 +3529,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.26,
+    "precio_actual": 0.2,
     "recomendada": false
   },
   "SOL-USD": {
@@ -3587,7 +3538,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 121.43,
+    "precio_actual": 102.27,
     "recomendada": true
   },
   "SORIANAB.MX": {
@@ -3596,7 +3547,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 33.5,
+    "precio_actual": 32.14,
     "recomendada": false
   },
   "SOXX": {
@@ -3605,7 +3556,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 572.68,
+    "precio_actual": 478.2,
     "recomendada": true
   },
   "SPGI": {
@@ -3614,7 +3565,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 403.3,
+    "precio_actual": 450.31,
     "recomendada": false
   },
   "SPORTS.MX": {
@@ -3632,16 +3583,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 510.01,
-    "recomendada": false
-  },
-  "SPXL": {
-    "nombre": "SPXL",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 291.28,
+    "precio_actual": 584.22,
     "recomendada": false
   },
   "SPY": {
@@ -3650,7 +3592,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 771.35,
+    "precio_actual": 759.97,
     "recomendada": true
   },
   "STORAGE18.MX": {
@@ -3659,7 +3601,16 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 25.5,
+    "precio_actual": 24.55,
+    "recomendada": false
+  },
+  "STORJ-USD": {
+    "nombre": "STORJ",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.02,
     "recomendada": false
   },
   "STRK22691-USD": {
@@ -3668,16 +3619,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.04,
-    "recomendada": false
-  },
-  "STRL": {
-    "nombre": "STRL",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 512.29,
+    "precio_actual": 0.05,
     "recomendada": false
   },
   "STX": {
@@ -3686,7 +3628,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 916.83,
+    "precio_actual": 630.49,
     "recomendada": false
   },
   "STX4847-USD": {
@@ -3695,7 +3637,25 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.34,
+    "precio_actual": 0.3,
+    "recomendada": false
+  },
+  "SUI20947-USD": {
+    "nombre": "SUI20947",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.94,
+    "recomendada": false
+  },
+  "SUN-USD": {
+    "nombre": "SUN",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.02,
     "recomendada": false
   },
   "SUSHI-USD": {
@@ -3704,7 +3664,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.27,
+    "precio_actual": 0.21,
     "recomendada": false
   },
   "SXP-USD": {
@@ -3716,13 +3676,67 @@
     "precio_actual": 0.0,
     "recomendada": false
   },
-  "TILT": {
-    "nombre": "TILT",
+  "T": {
+    "nombre": "T",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 281.0,
+    "precio_actual": 20.93,
+    "recomendada": false
+  },
+  "TAN": {
+    "nombre": "TAN",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 41.07,
+    "recomendada": true
+  },
+  "TAO22974-USD": {
+    "nombre": "TAO22974",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 250.97,
+    "recomendada": false
+  },
+  "TDG": {
+    "nombre": "TDG",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 1104.84,
+    "recomendada": false
+  },
+  "TDY": {
+    "nombre": "TDY",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 625.41,
+    "recomendada": false
+  },
+  "TFUEL-USD": {
+    "nombre": "TFUEL",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.01,
+    "recomendada": false
+  },
+  "THETA-USD": {
+    "nombre": "THETA",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.19,
     "recomendada": false
   },
   "TIP": {
@@ -3731,7 +3745,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 104.54,
+    "precio_actual": 106.24,
     "recomendada": true
   },
   "TLEVISACPO.MX": {
@@ -3740,16 +3754,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 8.31,
-    "recomendada": false
-  },
-  "TLN": {
-    "nombre": "TLN",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 304.42,
+    "precio_actual": 8.81,
     "recomendada": false
   },
   "TLT": {
@@ -3758,7 +3763,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 79.32,
+    "precio_actual": 81.34,
     "recomendada": true
   },
   "TMMA.MX": {
@@ -3767,16 +3772,16 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 10.24,
+    "precio_actual": 10.55,
     "recomendada": false
   },
-  "TPL": {
-    "nombre": "TPL",
+  "TMO": {
+    "nombre": "TMO",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 341.07,
+    "precio_actual": 673.82,
     "recomendada": false
   },
   "TRB-USD": {
@@ -3785,7 +3790,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 20.05,
+    "precio_actual": 17.79,
     "recomendada": false
   },
   "TRV": {
@@ -3794,7 +3799,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 363.04,
+    "precio_actual": 398.28,
     "recomendada": false
   },
   "TRX-USD": {
@@ -3812,7 +3817,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 372.11,
+    "precio_actual": 372.22,
     "recomendada": true
   },
   "TSM": {
@@ -3821,7 +3826,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 450.61,
+    "precio_actual": 418.51,
     "recomendada": false
   },
   "TT": {
@@ -3830,7 +3835,70 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 454.44,
+    "precio_actual": 444.9,
+    "recomendada": false
+  },
+  "TYL": {
+    "nombre": "TYL",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 390.14,
+    "recomendada": false
+  },
+  "UI": {
+    "nombre": "UI",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 587.42,
+    "recomendada": false
+  },
+  "ULTA": {
+    "nombre": "ULTA",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 624.46,
+    "recomendada": false
+  },
+  "UMA-USD": {
+    "nombre": "UMA",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.36,
+    "recomendada": false
+  },
+  "UNG": {
+    "nombre": "UNG",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 9.58,
+    "recomendada": true
+  },
+  "UNH": {
+    "nombre": "UNH",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 418.09,
+    "recomendada": true
+  },
+  "UNI7083-USD": {
+    "nombre": "UNI7083",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 6.86,
     "recomendada": false
   },
   "URA": {
@@ -3839,7 +3907,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 40.91,
+    "precio_actual": 34.11,
     "recomendada": true
   },
   "URI": {
@@ -3848,11 +3916,20 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 1047.06,
+    "precio_actual": 1098.88,
     "recomendada": false
   },
   "USDC-USD": {
     "nombre": "USD Coin",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 1.0,
+    "recomendada": false
+  },
+  "USDT-USD": {
+    "nombre": "Tether",
     "sector": "Criptomoneda",
     "industria": "Criptomoneda",
     "pais": "Global",
@@ -3866,7 +3943,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 148.33,
+    "precio_actual": 169.53,
     "recomendada": true
   },
   "UTHR": {
@@ -3875,26 +3952,44 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 475.45,
+    "precio_actual": 587.5,
     "recomendada": false
   },
-  "VB": {
-    "nombre": "VB",
+  "V": {
+    "nombre": "V",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 289.7,
-    "recomendada": false
+    "precio_actual": 407.92,
+    "recomendada": true
   },
-  "VBK": {
-    "nombre": "VBK",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
+  "VAW": {
+    "nombre": "VAW",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 341.36,
-    "recomendada": false
+    "precio_actual": 224.32,
+    "recomendada": true
+  },
+  "VCR": {
+    "nombre": "VCR",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 378.18,
+    "recomendada": true
+  },
+  "VDC": {
+    "nombre": "VDC",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 239.24,
+    "recomendada": true
   },
   "VDE": {
     "nombre": "VDE",
@@ -3902,7 +3997,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 173.71,
+    "precio_actual": 192.98,
     "recomendada": true
   },
   "VEA": {
@@ -3911,8 +4006,17 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 71.84,
+    "precio_actual": 69.05,
     "recomendada": true
+  },
+  "VESTA.MX": {
+    "nombre": "VESTA.MX",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "Mexico",
+    "moneda": "MXN",
+    "precio_actual": 67.82,
+    "recomendada": false
   },
   "VET-USD": {
     "nombre": "VET",
@@ -3929,7 +4033,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 84.38,
+    "precio_actual": 80.7,
     "recomendada": true
   },
   "VFH": {
@@ -3938,7 +4042,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 133.67,
+    "precio_actual": 135.89,
     "recomendada": true
   },
   "VGT": {
@@ -3947,7 +4051,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 126.17,
+    "precio_actual": 119.17,
     "recomendada": true
   },
   "VHT": {
@@ -3956,17 +4060,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 319.61,
+    "precio_actual": 332.53,
     "recomendada": true
-  },
-  "VICR": {
-    "nombre": "VICR",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 281.96,
-    "recomendada": false
   },
   "VINTE.MX": {
     "nombre": "VINTE.MX",
@@ -3974,8 +4069,17 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 35.0,
+    "precio_actual": 34.39,
     "recomendada": false
+  },
+  "VIS": {
+    "nombre": "VIS",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 314.8,
+    "recomendada": true
   },
   "VITROA.MX": {
     "nombre": "VITROA.MX",
@@ -3983,7 +4087,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 4.55,
+    "precio_actual": 4.7,
     "recomendada": false
   },
   "VLO": {
@@ -3992,7 +4096,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 387.18,
+    "precio_actual": 419.28,
     "recomendada": false
   },
   "VMI": {
@@ -4001,7 +4105,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 466.83,
+    "precio_actual": 435.01,
     "recomendada": false
   },
   "VNQ": {
@@ -4010,7 +4114,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 90.99,
+    "precio_actual": 92.69,
     "recomendada": true
   },
   "VOLARA.MX": {
@@ -4019,16 +4123,7 @@
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 12.17,
-    "recomendada": false
-  },
-  "VONE": {
-    "nombre": "VONE",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 348.41,
+    "precio_actual": 10.7,
     "recomendada": false
   },
   "VOO": {
@@ -4037,17 +4132,17 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 710.79,
+    "precio_actual": 698.58,
     "recomendada": true
   },
-  "VOT": {
-    "nombre": "VOT",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
+  "VOX": {
+    "nombre": "VOX",
+    "sector": "ETF / Índice",
+    "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 297.3,
-    "recomendada": false
+    "precio_actual": 181.01,
+    "recomendada": true
   },
   "VOXEL-USD": {
     "nombre": "VOXEL",
@@ -4064,17 +4159,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 171.48,
+    "precio_actual": 184.01,
     "recomendada": true
-  },
-  "VRSN": {
-    "nombre": "VRSN",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 287.25,
-    "recomendada": false
   },
   "VRTX": {
     "nombre": "VRTX",
@@ -4082,7 +4168,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 526.19,
+    "precio_actual": 523.93,
     "recomendada": false
   },
   "VTHO-USD": {
@@ -4094,22 +4180,13 @@
     "precio_actual": 0.0,
     "recomendada": false
   },
-  "VTHR": {
-    "nombre": "VTHR",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 339.23,
-    "recomendada": false
-  },
   "VTI": {
     "nombre": "VTI",
     "sector": "ETF / Índice",
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 379.77,
+    "precio_actual": 373.01,
     "recomendada": true
   },
   "VTV": {
@@ -4118,7 +4195,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 220.81,
+    "precio_actual": 225.05,
     "recomendada": true
   },
   "VUG": {
@@ -4127,17 +4204,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 90.94,
+    "precio_actual": 86.76,
     "recomendada": true
-  },
-  "VV": {
-    "nombre": "VV",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 356.76,
-    "recomendada": false
   },
   "VWO": {
     "nombre": "VWO",
@@ -4145,7 +4213,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 60.16,
+    "precio_actual": 56.84,
     "recomendada": true
   },
   "VZ": {
@@ -4154,7 +4222,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 47.08,
+    "precio_actual": 44.66,
     "recomendada": false
   },
   "W-USD": {
@@ -4166,22 +4234,13 @@
     "precio_actual": 0.01,
     "recomendada": false
   },
-  "WAB": {
-    "nombre": "WAB",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 288.0,
-    "recomendada": false
-  },
   "WALMEX.MX": {
     "nombre": "WALMEX.MX",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "Mexico",
     "moneda": "MXN",
-    "precio_actual": 46.6,
+    "precio_actual": 50.73,
     "recomendada": true
   },
   "WAT": {
@@ -4190,7 +4249,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 433.54,
+    "precio_actual": 453.67,
     "recomendada": false
   },
   "WAVES-USD": {
@@ -4199,7 +4258,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.3,
+    "precio_actual": 0.24,
     "recomendada": false
   },
   "WAXP-USD": {
@@ -4208,7 +4267,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.01,
+    "precio_actual": 0.0,
     "recomendada": false
   },
   "WBTC-USD": {
@@ -4217,25 +4276,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 84308.0,
-    "recomendada": false
-  },
-  "WCC": {
-    "nombre": "WCC",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 367.44,
-    "recomendada": false
-  },
-  "WDC": {
-    "nombre": "WDC",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 456.81,
+    "precio_actual": 80523.49,
     "recomendada": false
   },
   "WIF-USD": {
@@ -4244,7 +4285,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.25,
+    "precio_actual": 0.19,
     "recomendada": false
   },
   "WIN-USD": {
@@ -4256,22 +4297,13 @@
     "precio_actual": 0.0,
     "recomendada": false
   },
-  "WINA": {
-    "nombre": "WINA",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 296.35,
-    "recomendada": false
-  },
   "WLD-USD": {
     "nombre": "WLD",
     "sector": "Criptomoneda",
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.52,
+    "precio_actual": 0.47,
     "recomendada": false
   },
   "WMT": {
@@ -4280,7 +4312,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 107.98,
+    "precio_actual": 119.89,
     "recomendada": true
   },
   "WRX-USD": {
@@ -4292,22 +4324,13 @@
     "precio_actual": 0.02,
     "recomendada": false
   },
-  "WSO": {
-    "nombre": "WSO",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 317.23,
-    "recomendada": false
-  },
   "WST": {
     "nombre": "WST",
     "sector": "Desconocido",
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 370.44,
+    "precio_actual": 392.15,
     "recomendada": false
   },
   "WTM": {
@@ -4316,34 +4339,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 2028.62,
-    "recomendada": false
-  },
-  "WTS": {
-    "nombre": "WTS",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 357.79,
-    "recomendada": false
-  },
-  "WTW": {
-    "nombre": "WTW",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 293.99,
-    "recomendada": false
-  },
-  "WWD": {
-    "nombre": "WWD",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 330.31,
+    "precio_actual": 2225.24,
     "recomendada": false
   },
   "XLB": {
@@ -4352,7 +4348,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 49.8,
+    "precio_actual": 51.31,
     "recomendada": true
   },
   "XLC": {
@@ -4361,7 +4357,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 112.96,
+    "precio_actual": 105.51,
     "recomendada": true
   },
   "XLE": {
@@ -4370,7 +4366,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 62.04,
+    "precio_actual": 69.33,
     "recomendada": true
   },
   "XLF": {
@@ -4379,7 +4375,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 54.84,
+    "precio_actual": 55.9,
     "recomendada": true
   },
   "XLI": {
@@ -4388,7 +4384,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 170.43,
+    "precio_actual": 164.62,
     "recomendada": true
   },
   "XLK": {
@@ -4397,7 +4393,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 196.27,
+    "precio_actual": 183.23,
     "recomendada": true
   },
   "XLM-USD": {
@@ -4406,7 +4402,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.22,
+    "precio_actual": 0.17,
     "recomendada": false
   },
   "XLP": {
@@ -4415,7 +4411,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 82.06,
+    "precio_actual": 88.26,
     "recomendada": true
   },
   "XLRE": {
@@ -4424,7 +4420,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 41.56,
+    "precio_actual": 42.57,
     "recomendada": true
   },
   "XLU": {
@@ -4433,7 +4429,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 39.51,
+    "precio_actual": 42.56,
     "recomendada": true
   },
   "XLV": {
@@ -4442,7 +4438,7 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 170.7,
+    "precio_actual": 179.28,
     "recomendada": true
   },
   "XLY": {
@@ -4451,17 +4447,8 @@
     "industria": "ETF / Índice",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 110.56,
+    "precio_actual": 113.1,
     "recomendada": true
-  },
-  "XNTK": {
-    "nombre": "XNTK",
-    "sector": "Desconocido",
-    "industria": "Desconocido",
-    "pais": "United States",
-    "moneda": "USD",
-    "precio_actual": 383.08,
-    "recomendada": false
   },
   "XOM": {
     "nombre": "XOM",
@@ -4469,7 +4456,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 160.59,
+    "precio_actual": 183.21,
     "recomendada": true
   },
   "XRP-USD": {
@@ -4478,7 +4465,7 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 1.53,
+    "precio_actual": 1.3,
     "recomendada": true
   },
   "XSD": {
@@ -4487,7 +4474,7 @@
     "industria": "Desconocido",
     "pais": "United States",
     "moneda": "USD",
-    "precio_actual": 540.74,
+    "precio_actual": 453.75,
     "recomendada": false
   },
   "XTZ-USD": {
@@ -4496,7 +4483,52 @@
     "industria": "Criptomoneda",
     "pais": "Global",
     "moneda": "USD",
-    "precio_actual": 0.33,
+    "precio_actual": 0.3,
+    "recomendada": false
+  },
+  "YFI-USD": {
+    "nombre": "YFI",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 2168.25,
+    "recomendada": false
+  },
+  "ZBRA": {
+    "nombre": "ZBRA",
+    "sector": "Desconocido",
+    "industria": "Desconocido",
+    "pais": "United States",
+    "moneda": "USD",
+    "precio_actual": 386.45,
+    "recomendada": false
+  },
+  "ZEC-USD": {
+    "nombre": "ZEC",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 1207.57,
+    "recomendada": false
+  },
+  "ZIL-USD": {
+    "nombre": "ZIL",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.0,
+    "recomendada": false
+  },
+  "ZRX-USD": {
+    "nombre": "ZRX",
+    "sector": "Criptomoneda",
+    "industria": "Criptomoneda",
+    "pais": "Global",
+    "moneda": "USD",
+    "precio_actual": 0.1,
     "recomendada": false
   }
 }
